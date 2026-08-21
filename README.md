@@ -59,6 +59,10 @@ xtask/             workspace tooling; `cargo xtask boundary`
 The kernel crates have no third-party dependencies: `Cargo.lock` holds seven
 local entries and nothing else, so the workspace builds and tests offline.
 
+## Start here if you are new to the tree
+
+[docs/HANDOFF.md](docs/HANDOFF.md) — current state, what is next, how to prove it.
+
 ## Gate order
 
 - **Gate K:** prove the semantic kernel without graphics.
