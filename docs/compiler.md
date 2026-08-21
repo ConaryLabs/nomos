@@ -1,7 +1,7 @@
 ---
 title: Gate K compiler
-status: Implementation reference through SW-F
-date: 2026-08-21
+status: Implementation reference through SW-G
+date: 2026-08-22
 applies_to: KERNEL.md sections 1, 2, 4, 9; acceptance 1-3 and 11
 ---
 
@@ -9,15 +9,20 @@ applies_to: KERNEL.md sections 1, 2, 4, 9; acceptance 1-3 and 11
 
 SW-C turns one `nomos.source@1` file into a typed Canonical World IR
 construction snapshot. SW-D validates executable machine semantics, SW-E adds
-ground movement, and SW-F adds compiler-owned light union plus implemented
-persistence and diagnostics projections. The public library paths are:
+ground movement, SW-F adds compiler-owned light union plus all four projections,
+and SW-G promotes the complete schema into stable World IR before projection.
+The public library paths are:
 
 ```rust
 nomos_compiler::compile_source(source, repository_relative_path)
-nomos_compiler::compile_simulation_plan(&world_ir)
-nomos_compiler::compile_navigation_plan(&world_ir)
-nomos_compiler::compile_persistence_plan(&world_ir)
-nomos_compiler::compile_diagnostics_plan(&world_ir)
+nomos_compiler::promote_world_ir(&construction_ir)
+nomos_compiler::compile_world(source, repository_relative_path)
+nomos_compiler::compile_simulation_plan(&stable_world_ir)
+nomos_compiler::compile_navigation_plan(&stable_world_ir)
+nomos_compiler::compile_persistence_plan(&stable_world_ir)
+nomos_compiler::compile_diagnostics_plan(&stable_world_ir)
+nomos_compiler::compile_world_package(source, repository_relative_path)
+nomos_cli::compile_and_write_world(source, repository_relative_path, destination)
 ```
 
 The source language and primitive catalog are documented in
@@ -52,6 +57,13 @@ records why that language was chosen.
     dependencies, subjects, and consumers; project one typed light plan to
     simulation, `nomos.projection.persistence@1`, and
     `nomos.projection.diagnostics@1`.
+12. Validate the complete construction snapshot, derive the required initial
+    v1 `blocked_ground` / nullable `traversal_cost_ground` rows, and promote a
+    distinct `nomos.world_ir@1` carrying explicit source, construction,
+    compiler, primitive-catalog, ownership, and provenance versions.
+13. Compile every projection only from the stable type, emit the exact schema
+    ownership registry and typed compiler receipts, and validate the complete
+    seven-member semantic package set before filesystem publication.
 
 Parser failures use `EK05xx`; linker and ownership failures use `EK06xx`;
 transition/projection validation uses `EK07xx`; movement resolver validation
@@ -73,6 +85,8 @@ class. The mutation suite plants each ownership/cross-reference violation in
 - typed light-union composition, consumers, and resolver subjects;
 - typed fact-ownership receipts: fact IDs, resolved values, projection
   consumers, derivation producers/passes, and causal inputs.
+- stable `nomos.world_ir@1`, its v1 movement rows, and the package schema
+  registry with typed authoritative owners.
 
 `nomos-compiler` exclusively defines parsing, the sealed primitive catalog,
 name resolution, validation, expansion, linking, cycle rejection, and
@@ -113,6 +127,11 @@ SW-C corrected the narrower SW-B naming before it became serialized behavior.
   producer/pass pairs, and incompatible resolved-value classes fail closed.
 - structured provenance and human-readable explanation rendering are separate
   outputs; display wording is not canonical semantics.
+- construction-v3 bytes remain frozen while stable-v1 bytes receive their own
+  golden hash; construction evidence is never relabelled into the stable line;
+- the public projection APIs accept `StableWorldIr`, not construction IR;
+- complete package members, build receipts, schema ownership, and initial state
+  reproduce byte-for-byte across clean compilation.
 
 ## Still unproved
 
@@ -122,9 +141,9 @@ SW-C proves its expansion/IR half but does not call the criterion satisfied.
 Issue #5 records that scope split.
 
 Typed provenance prepares the data needed by `explain-entity`, but the CLI
-surface itself remains unimplemented. SW-F resolves light and emits persistence
-and diagnostics, but it does not write packages, replay, migrate, or implement
-explanations/filesystem CLI commands. `produced_schemas()` now reports the five
-actual compiler artifacts. Each incompatible incomplete shape increments the
-`nomos.world_ir.construction@N` version. Stable `nomos.world_ir@1` begins only
-when the contracted schema is complete.
+surface itself remains unimplemented. SW-G writes complete packages through a
+library boundary, but it does not implement command-line verbs, run outputs,
+replay, migration, or explanations. `produced_schemas()` reports construction
+evidence, stable IR, all four projections, the registry, and compiler receipts.
+Construction versions remain preserved evidence; stable `nomos.world_ir@1` is
+now independently frozen for the later required v1-to-v2 migration.

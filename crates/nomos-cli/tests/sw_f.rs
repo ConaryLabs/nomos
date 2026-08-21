@@ -2,7 +2,7 @@
 
 use nomos_compiler::{
     compile_diagnostics_plan, compile_navigation_plan, compile_persistence_plan,
-    compile_simulation_plan, compile_source, validate_light_projections,
+    compile_simulation_plan, compile_world, validate_light_projections,
 };
 use nomos_core::hash::Sha256Digest;
 use nomos_core::{CatalogValueId, EntityId, Ident, NamespaceId, SourcePath};
@@ -35,14 +35,14 @@ fn command(entity: &str, namespace: &str, action: &str) -> Command {
 }
 
 fn fixture_plan() -> SimulationPlan {
-    let ir = compile_source(SOURCE, SourcePath::new("fixtures/gaol.nomos").unwrap()).unwrap();
+    let ir = compile_world(SOURCE, SourcePath::new("fixtures/gaol.nomos").unwrap()).unwrap();
     validate_light_projections(&ir).unwrap();
     compile_simulation_plan(&ir).unwrap()
 }
 
 #[test]
 fn extinguish_commits_versioned_state_hash_and_typed_projection_receipt() {
-    let ir = compile_source(SOURCE, SourcePath::new("fixtures/gaol.nomos").unwrap()).unwrap();
+    let ir = compile_world(SOURCE, SourcePath::new("fixtures/gaol.nomos").unwrap()).unwrap();
     let plan = compile_simulation_plan(&ir).unwrap();
     let persistence = compile_persistence_plan(&ir).unwrap();
     let diagnostics = compile_diagnostics_plan(&ir).unwrap();

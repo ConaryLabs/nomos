@@ -252,13 +252,14 @@ impl WorldPackage {
         root: &Path,
         members: impl IntoIterator<Item = (MemberName, Vec<u8>)>,
     ) -> Result<Self, Diagnostic> {
-        Self::write_internal(root, members, None)
+        Self::write_internal(root, members, None, false)
     }
 
     fn write_internal(
         root: &Path,
         members: impl IntoIterator<Item = (MemberName, Vec<u8>)>,
         fail_after_member_writes: Option<usize>,
+        fail_staged_verification: bool,
     ) -> Result<Self, Diagnostic> {
         let normalized_root = lexical_path(root);
         let root = normalized_root.as_path();
@@ -317,6 +318,17 @@ impl WorldPackage {
             let manifest_path = staging.join(MANIFEST_FILE);
             fs::write(&manifest_path, manifest.to_canonical().to_canonical_bytes())
                 .map_err(|error| io_failure(&manifest_path, &error))?;
+
+            if fail_staged_verification {
+                let Some(first) = members.keys().next() else {
+                    return Err(io_failure(
+                        &staging,
+                        &io::Error::other("injected staged-verification failure needs a member"),
+                    ));
+                };
+                let path = staging.join(first.as_str());
+                fs::write(&path, b"{}").map_err(|error| io_failure(&path, &error))?;
+            }
 
             let mut verified = Self::open(&staging)?;
             require_absent_destination(root)?;
@@ -801,7 +813,8 @@ mod tests {
     fn an_injected_mid_write_failure_cleans_staging_and_never_publishes() {
         let parent = PathBuf::from(option_env!("CARGO_TARGET_TMPDIR").unwrap_or("target/tmp"))
             .join("package-faults")
-            .join(std::process::id().to_string());
+            .join(std::process::id().to_string())
+            .join("mid-write");
         fs::create_dir_all(&parent).unwrap();
         let root = parent.join("injected.world");
         let members = ["alpha.json", "beta.json"].map(|name| {
@@ -812,7 +825,7 @@ mod tests {
             )
         });
 
-        let rejected = WorldPackage::write_internal(&root, members, Some(1)).unwrap_err();
+        let rejected = WorldPackage::write_internal(&root, members, Some(1), false).unwrap_err();
         assert_eq!(rejected.code().as_str(), "EK0407");
         assert!(
             !root.exists(),
@@ -827,6 +840,35 @@ mod tests {
                     .contains(".staging-")
             }),
             "a failed publication must remove its sibling staging directory"
+        );
+    }
+
+    #[test]
+    fn an_injected_staged_verification_failure_never_publishes() {
+        let parent = PathBuf::from(option_env!("CARGO_TARGET_TMPDIR").unwrap_or("target/tmp"))
+            .join("package-faults")
+            .join(std::process::id().to_string())
+            .join("staged-verification");
+        fs::create_dir_all(&parent).unwrap();
+        let root = parent.join("staged-verification.world");
+        let members = [(
+            MemberName::new("world-ir.json").unwrap(),
+            CanonicalValue::object_declared([("value", CanonicalValue::Uint(1))])
+                .to_canonical_bytes(),
+        )];
+
+        let rejected = WorldPackage::write_internal(&root, members, None, true).unwrap_err();
+        assert_eq!(rejected.code().as_str(), "EK0403");
+        assert!(!root.exists());
+        assert!(
+            fs::read_dir(&parent).unwrap().all(|entry| {
+                !entry
+                    .unwrap()
+                    .file_name()
+                    .to_string_lossy()
+                    .contains(".staging-")
+            }),
+            "failed staged verification must remove its sibling staging directory"
         );
     }
 }

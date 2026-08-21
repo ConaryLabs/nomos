@@ -1,6 +1,6 @@
 [package]
 name = "nomos-compiler"
-description = "Build and validate Canonical World IR construction snapshots."
+description = "Build and validate Canonical World IR, projections, and package artifacts."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

@@ -1,6 +1,8 @@
 //! SW-E compiler proof for movement resolver preparation and projection.
 
-use nomos_compiler::{compile_navigation_plan, compile_simulation_plan, compile_source};
+use nomos_compiler::{
+    compile_navigation_plan, compile_simulation_plan, compile_source, promote_world_ir,
+};
 use nomos_core::{ClaimRef, EntityId, Ident, NamespaceId, PrimitiveKindId, SourcePath, SourceSpan};
 use nomos_schema::{
     Binding, CapabilityKind, Cell, ClaimActivation, ClaimTemplate, ClaimValue, Direction,
@@ -29,8 +31,9 @@ fn fixture_ir() -> WorldIr {
 #[test]
 fn simulation_and_navigation_share_identical_movement_plan_bytes() {
     let ir = fixture_ir();
-    let simulation = compile_simulation_plan(&ir).unwrap();
-    let navigation = compile_navigation_plan(&ir).unwrap();
+    let stable = promote_world_ir(&ir).unwrap();
+    let simulation = compile_simulation_plan(&stable).unwrap();
+    let navigation = compile_navigation_plan(&stable).unwrap();
     assert_eq!(simulation.schema(), &nomos_projection::simulation_schema());
     assert_eq!(navigation.schema(), &nomos_projection::navigation_schema());
     assert_eq!(
@@ -99,7 +102,7 @@ fn compiler_rejects_dangling_activation_namespace_and_state() {
         valid_face_connectivity(),
     );
     assert_eq!(
-        compile_navigation_plan(&dangling_namespace)
+        promote_world_ir(&dangling_namespace)
             .unwrap_err()
             .code()
             .as_str(),
@@ -119,7 +122,7 @@ fn compiler_rejects_dangling_activation_namespace_and_state() {
         valid_face_connectivity(),
     );
     assert_eq!(
-        compile_navigation_plan(&missing_state)
+        promote_world_ir(&missing_state)
             .unwrap_err()
             .code()
             .as_str(),
@@ -139,10 +142,7 @@ fn compiler_rejects_wrong_claim_values_and_connectivity() {
         valid_face_connectivity(),
     );
     assert_eq!(
-        compile_navigation_plan(&wrong_value)
-            .unwrap_err()
-            .code()
-            .as_str(),
+        promote_world_ir(&wrong_value).unwrap_err().code().as_str(),
         "EK0905"
     );
 
@@ -159,7 +159,7 @@ fn compiler_rejects_wrong_claim_values_and_connectivity() {
         },
     );
     assert_eq!(
-        compile_navigation_plan(&wrong_connectivity)
+        promote_world_ir(&wrong_connectivity)
             .unwrap_err()
             .code()
             .as_str(),
@@ -176,7 +176,7 @@ fn compiler_rejects_wrong_claim_values_and_connectivity() {
         },
     );
     assert_eq!(
-        compile_navigation_plan(&no_ground_connection)
+        promote_world_ir(&no_ground_connection)
             .unwrap_err()
             .code()
             .as_str(),
@@ -196,7 +196,7 @@ fn compiler_rejects_wrong_claim_values_and_connectivity() {
         },
     );
     assert_eq!(
-        compile_navigation_plan(&inverted_region)
+        promote_world_ir(&inverted_region)
             .unwrap_err()
             .code()
             .as_str(),
@@ -214,10 +214,7 @@ fn compiler_rejects_resolver_subjects_without_world_entities() {
         ],
         vec![ghost],
     ));
-    assert_eq!(
-        compile_navigation_plan(&ir).unwrap_err().code().as_str(),
-        "EK0907"
-    );
+    assert_eq!(promote_world_ir(&ir).unwrap_err().code().as_str(), "EK0907");
 }
 
 fn claim_world(

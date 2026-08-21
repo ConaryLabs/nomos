@@ -1,7 +1,7 @@
 ---
 title: Gate K workspace
 status: Implementation reference for SW-B
-date: 2026-08-21
+date: 2026-08-22
 applies_to: KERNEL.md sections 5, 7, 8, 10; acceptance 12, 15, 16
 ---
 
@@ -16,8 +16,8 @@ This document says where they live and how to run the proof. Contract revision
 ```text
 crates/nomos-core        stable IDs, canonical bytes, hashing, checked
                           arithmetic, diagnostics, world packages
-crates/nomos-schema      authoring source and Canonical World IR construction
-                          schemas
+crates/nomos-schema      authoring source, construction/stable World IR, and
+                          package-registry schemas
 crates/nomos-projection  simulation/navigation/persistence/diagnostics
                           projection schemas
 crates/nomos-compiler    parse, link, expand, validate, migrate, project
@@ -121,9 +121,10 @@ It also has to be reachable from more crates than `nomos-projection` is:
 `nomos-projection` would either strand the schema crate or require an edge
 section 10 forbids.
 
-The module knows nothing about member *meaning*. It enforces names, bytes,
-hashes, and immutability. What `simulation.json` must contain stays in
-`nomos-projection`.
+The core module knows nothing about member *meaning*. It enforces names, bytes,
+hashes, and immutability. SW-G keeps semantic assembly and validation in
+`nomos-compiler`, while the CLI crate performs only typed filesystem
+orchestration. What `simulation.json` means stays in `nomos-projection`.
 
 Contract revision 5 closes the directory boundary around that generic layer.
 Writes use a verified sibling staging directory and one same-filesystem rename;

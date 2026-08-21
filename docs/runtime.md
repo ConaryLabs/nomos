@@ -7,8 +7,9 @@ applies_to: KERNEL.md sections 2, 3, 5, 7, and 9; acceptance 5, 9, 10, and 12
 
 # Gate K light resolution and runtime commit evidence
 
-SW-F closes the in-memory transaction boundary without assigning stable World
-IR or implementing package, CLI, replay, or migration orchestration. The path is:
+SW-F closes the in-memory transaction boundary. SW-G subsequently assigns
+stable World IR and packages the simulation plan that supplies initial-state
+material; CLI commands, run outputs, replay, and migration remain later. The path is:
 
 ```text
 nomos-schema construction@3 light-union plan
@@ -28,10 +29,11 @@ dark; absence of an active positive claim is dark. The compiler validates every
 activation namespace and state before projecting one byte-identical
 `LightResolverPlan` to all three consumers.
 
-`nomos_compiler::produced_schemas()` now reports construction IR, simulation,
-navigation, persistence, and diagnostics. `planned_output_schemas()` remains the
-ownership inventory; the two lists now happen to contain the same five current
-artifacts, but retain different meanings.
+`nomos_compiler::produced_schemas()` now reports construction evidence, stable
+IR, simulation, navigation, persistence, diagnostics, the package schema
+registry, and compiler receipts. `planned_output_schemas()` remains the
+ownership inventory; the lists currently contain the same eight schema
+identities but retain different meanings.
 
 ## Runtime snapshot and hash domain
 
@@ -75,7 +77,8 @@ remains downstream and is not part of the canonical semantic receipt.
 
 ## Evidence boundary
 
-SW-F proves in-memory snapshot immutability and commit evidence. It does not
-write run directories, assemble complete packages, implement filesystem CLI
-commands, command logs, replay, stable `nomos.world_ir@1`, the required World IR
-migration, the multi-target ten-run matrix, or formal cold-agent gates.
+SW-F proves in-memory snapshot immutability and commit evidence; SW-G proves the
+package contains deterministic material for the same initial snapshot. Neither
+slice writes run directories, implements filesystem CLI commands or command
+logs, replays, performs the required World IR migration, runs the multi-target
+ten-run matrix, or performs formal cold-agent gates.
