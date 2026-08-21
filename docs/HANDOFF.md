@@ -1,13 +1,13 @@
 # Handoff — state of the repository
 
-Updated 2026-08-21 while the owner-authorized Nomos identity cutover (#31) is
-being implemented after package-boundary PR #30 merged.
+Updated 2026-08-21 after the owner-authorized Nomos identity cutover (#31/#32)
+merged and the GitHub repository became `ConaryLabs/nomos`.
 This file orients a fresh session; it is rewritten at each slice boundary and
 never accumulates history (git has that).
 
 ## Where things stand
 
-- **Nomos is the active project identity on this branch:** contract revision 6
+- **Nomos is the active project identity:** contract revision 6
   and decision 0007 rename the runtime/project to Nomos while retaining The
   Signed World as the thesis name. Active crates use `nomos-*`, the binary is
   `nomos`, authoring source uses `.nomos`, schemas use `nomos.*`, and the fresh
@@ -16,9 +16,11 @@ never accumulates history (git has that).
   prototype-era history unless explicitly called current.
   The mechanical implementation is commit `7c0ca31`; its full author proof,
   old-to-new golden relationship, and classified legacy-name audit are recorded
-  under `docs/evaluation/runs/identity/2026-08-21-nomos-cutover/`. PR CI, the
-  Luna max exact-head rerun, repository rename, and post-merge CI remain
-  pending.
+  under `docs/evaluation/runs/identity/2026-08-21-nomos-cutover/`. GPT-5.6 Luna
+  max reran exact PR head `ec4e270` green; PR CI run `32526065565` passed. PR
+  #32 merged as `6b803e1`, issue #31 closed, the repository and description were
+  renamed, and post-merge CI run `32526851179` passed under
+  `https://github.com/ConaryLabs/nomos`.
 
 - **Contract revision 3 is owner-authorized:** decision 0003 pins the canonical
   escape profile, ASCII identifier and field-name grammar, isolated `xtask`,
@@ -55,8 +57,8 @@ never accumulates history (git has that).
   SW-C now satisfies the repository's non-author rule. This was not a formal
   cold-agent run and does not upgrade whole-Gate-K status.
 - **Issue #5 is disposed by PR #6.** Acceptance 3 remains only partially
-  covered: IR expansion is proved, but the active observable `nomos inspect` command
-  still requires complete packages and projections.
+  covered: IR expansion is proved, but the active observable `nomos inspect`
+  command still requires complete packages and projections.
 - **Issue #4 is closed:** revision 3 merged in PR #13.
 - **The whole-kernel cold roster is predeclared:** Gemini 3.7 Flash High through
   `agy` is the formal cold author; DeepSeek V4 Pro through direct Reasonix is the
@@ -110,18 +112,13 @@ never accumulates history (git has that).
 
 ## What is next
 
-Finish **issue #31 — adopt Nomos as the project identity** under decision 0007.
-Complete the active-name audit, freeze the fresh Nomos golden evidence, obtain
-the exact-head Luna max rerun, merge the identity slice, rename the GitHub
-repository, and verify post-merge CI under the new repository identity.
+Resolve **issue #24 — type forensic provenance before stable World IR
+promotion**. Then continue SW-F runtime state, replay, the required
+`nomos.world_ir@1` to `@2` movement migration, package/command orchestration,
+explanations, the determinism matrix, and formal cold-agent gates.
 
-Do not pull #24 typed forensic provenance into this package-boundary repair.
-Resolve #24 before stable World IR promotion or `explain-*`. Issue #17 remains
-a formal cold-author tooling blocker, not a blocker for implementation.
-
-After #31: resolve #24 at its stated boundary, then continue SW-F runtime state,
-replay, migration v1→v2, package/command orchestration, explanations, the
-  determinism matrix, and formal cold-agent gates under Nomos names.
+Issue #17 remains a formal cold-author tooling blocker, not a blocker for
+semantic implementation.
 
 ## How to prove the current branch
 
