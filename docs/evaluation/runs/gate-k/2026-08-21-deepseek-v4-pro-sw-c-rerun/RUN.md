@@ -33,6 +33,12 @@ session identifier. It was not exposed inside the subject's conversational
 context, so the subject correctly reported that limitation rather than
 inventing an identifier.
 
+The client version, build commit/target, maximum-effort launch setting, and
+operator identity come from the operator's launch command and preflight
+`reasonix version --json`; Reasonix did not repeat those fields in this run's
+export. The provider route and exact model are export-backed by `modelRef` and
+the session identifier.
+
 ## Environment
 
 ```text
@@ -80,6 +86,15 @@ machine-local and contains large repetitive token and test-progress events, so
 this durable record preserves the exact prompt, complete final response content
 normalized to Markdown, ordered command ledger, and result/checker metadata
 instead. No secret or credential is included.
+
+Reasonix's final harness-level `completion_summary` was `verdict: uncertain`,
+`mutations: 4`, `checks_passed: 0`, `review: passed`, with gaps
+`stale_verification` and `unverified_change`; `constraint_degraded` was false.
+That heuristic classified proof commands as possible mutations and did not
+recognize them as checks. It is preserved here because omitting an ugly harness
+field would make this receipt dishonest. It does not override the command exit
+statuses or the directly observed clean Git tree before and after, which are the
+declared non-author criteria.
 
 The run used 134,746 input tokens, of which 120,960 were cache reads, and 4,916
 output tokens. Reasonix reported an estimated complete cost of USD 0.02149356.
