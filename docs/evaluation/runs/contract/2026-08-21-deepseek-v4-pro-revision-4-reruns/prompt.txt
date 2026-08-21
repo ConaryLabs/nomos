@@ -1,0 +1,29 @@
+=== Receipt-bearing proposal head ===
+
+Act as a fresh-family non-author rerun checker for exact commit
+de7ce44d5751e3e46d7eec87449099455d284d1c on branch
+contract/world-ir-construction-lineage in /home/peter/signed-world, draft PR #16.
+Do not edit files, commit, push, use network tools, or spawn subagents. Read the
+contract, decision 0004, the complete Opus receipt, and the full diff/history
+against main. Verify the receipt-bearing head accurately records the Opus PASS,
+all three prior failures, issue/PR numbers, effective revision 3 versus proposed
+revision 4, construction schema identity, frozen full-byte hash guard, and
+evidence limits. Search for stale or contradictory identity/authority claims.
+Run separately: git status --short --branch; git rev-parse HEAD; cargo fmt --all
+-- --check; cargo clippy --workspace --all-targets --locked -- -D warnings;
+cargo test --workspace --locked; cargo xtask boundary; git status --short
+--branch. Report exact identity, environment, counts, commands, findings, and
+PASS or FAIL.
+
+=== Owner-authorization head ===
+
+Final non-author authorization-head rerun for exact commit
+2f754a64b75ff5ea07da750daee62fcc387f0d11 on branch
+contract/world-ir-construction-lineage, PR #16. Do not edit, commit, push, use
+network tools, or spawn subagents. Read the contract, decision 0004, HANDOFF,
+the review receipt, and the diff from parent de7ce44. Verify Peter Permenter's
+explicit approval is recorded without changing the approved amendment wording,
+revision 4 becomes effective only on merge, revision 3 remains effective until
+then, evidence limits are honest, and no proposed/effective marker is stale or
+contradictory. Run the same exact proof commands and report PASS or FAIL only
+with zero actionable findings and a clean tree.

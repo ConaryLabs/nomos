@@ -1,0 +1,17 @@
+=== Attempt 1 ===
+
+Act as a fresh-family non-author rerun checker for exact commit
+de7ce44d5751e3e46d7eec87449099455d284d1c on branch
+contract/world-ir-construction-lineage. Inspect the repository, run the four
+proof commands, and report PASS or FAIL. Invoked with `--mode plan`.
+
+=== Attempt 2 ===
+
+You are the fresh-family non-author rerun checker. Execute this verification
+now; do not merely identify your model. Inspect exact commit de7ce44, run the
+four proof commands, and report PASS or FAIL. Invoked without plan mode.
+
+=== Attempt 3 preflight ===
+
+Run pwd in the terminal now and report the exact output. Do not answer with your
+model name.
