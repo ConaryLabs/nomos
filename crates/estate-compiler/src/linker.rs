@@ -47,13 +47,13 @@ pub(crate) fn link(document: &SourceDocument) -> Result<WorldIr, Diagnostic> {
         receipts.extend(entity_receipts);
     }
 
-    Ok(WorldIr::new(
+    WorldIr::new(
         document.schema().value().clone(),
         catalog_values.into_iter().collect(),
         entities,
         relations,
         receipts,
-    ))
+    )
 }
 
 fn declare_catalog_values(
@@ -283,7 +283,7 @@ fn link_entity(
     }
 
     let id = source.id().value().clone();
-    let expansion = catalog::expand(kind, &id);
+    let expansion = catalog::expand(kind, &id)?;
     let credential = fields.credential.map(|value| value.value().clone());
     let receipts = entity_receipts(source, anchor, fields.credential);
     Ok((

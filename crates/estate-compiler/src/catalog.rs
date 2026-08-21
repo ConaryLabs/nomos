@@ -1,6 +1,6 @@
 //! The sealed three-kind Gate K primitive catalog.
 
-use estate_core::{ClaimRef, EntityId, Ident, NamespaceId, PrimitiveKindId};
+use estate_core::{ClaimRef, Diagnostic, EntityId, Ident, NamespaceId, PrimitiveKindId};
 use estate_schema::{
     CapabilityKind, ClaimActivation, ClaimTemplate, ClaimValue, MachineTemplate, PrimitiveExpansion,
 };
@@ -21,7 +21,10 @@ pub(crate) fn lookup(id: &PrimitiveKindId) -> Option<ApprovedKind> {
     }
 }
 
-pub(crate) fn expand(kind: ApprovedKind, entity: &EntityId) -> PrimitiveExpansion {
+pub(crate) fn expand(
+    kind: ApprovedKind,
+    entity: &EntityId,
+) -> Result<PrimitiveExpansion, Diagnostic> {
     match kind {
         ApprovedKind::Door => door(entity),
         ApprovedKind::Water => water(entity),
@@ -29,7 +32,7 @@ pub(crate) fn expand(kind: ApprovedKind, entity: &EntityId) -> PrimitiveExpansio
     }
 }
 
-fn door(entity: &EntityId) -> PrimitiveExpansion {
+fn door(entity: &EntityId) -> Result<PrimitiveExpansion, Diagnostic> {
     let access = machine(entity, "access", &["locked", "closed", "open"], "locked");
     let integrity = machine(
         entity,
@@ -72,7 +75,7 @@ fn door(entity: &EntityId) -> PrimitiveExpansion {
     )
 }
 
-fn water(entity: &EntityId) -> PrimitiveExpansion {
+fn water(entity: &EntityId) -> Result<PrimitiveExpansion, Diagnostic> {
     PrimitiveExpansion::new(
         [
             CapabilityKind::Region,
@@ -90,7 +93,7 @@ fn water(entity: &EntityId) -> PrimitiveExpansion {
     )
 }
 
-fn light(entity: &EntityId) -> PrimitiveExpansion {
+fn light(entity: &EntityId) -> Result<PrimitiveExpansion, Diagnostic> {
     PrimitiveExpansion::new(
         [
             CapabilityKind::Machine,

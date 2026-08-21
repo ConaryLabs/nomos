@@ -130,26 +130,44 @@ impl CanonicalValue {
     /// Builds an object from field/value pairs.
     ///
     /// Ordering is imposed by the container, so the pairs may arrive in any
-    /// order and the encoded bytes are identical either way. A repeated field
-    /// name keeps the last value.
-    #[must_use]
-    pub fn object(fields: impl IntoIterator<Item = (FieldName, Self)>) -> Self {
-        Self::Object(fields.into_iter().collect())
+    /// order and the encoded bytes are identical either way.
+    ///
+    /// # Errors
+    ///
+    /// Returns `EK0304` when a field name occurs more than once. Duplicate
+    /// semantic identity is never resolved by selecting one value.
+    pub fn object(fields: impl IntoIterator<Item = (FieldName, Self)>) -> Result<Self, Diagnostic> {
+        let mut object = BTreeMap::new();
+        for (name, value) in fields {
+            if object.insert(name.clone(), value).is_some() {
+                return Err(Diagnostic::new(
+                    codes::CANONICAL_DUPLICATE_IDENTITY,
+                    format!("canonical object field `{name}` occurs more than once"),
+                )
+                .with_repair(RepairClass::RemoveDuplicateDeclaration));
+            }
+        }
+        Ok(Self::Object(object))
     }
 
     /// Builds an object from field-name literals.
     ///
     /// # Panics
     ///
-    /// Panics when a literal is not a legal field name; see
-    /// [`FieldName::declared`].
+    /// Panics when a literal is not a legal field name or when the same literal
+    /// occurs more than once. Declared fields are kernel source, so either case
+    /// is a developer bug rather than a rejected world.
     #[must_use]
     pub fn object_declared(fields: impl IntoIterator<Item = (&'static str, Self)>) -> Self {
-        Self::object(
-            fields
-                .into_iter()
-                .map(|(name, value)| (FieldName::declared(name), value)),
-        )
+        let mut object = BTreeMap::new();
+        for (name, value) in fields {
+            let name = FieldName::declared(name);
+            assert!(
+                object.insert(name.clone(), value).is_none(),
+                "duplicate declared canonical field `{name}`"
+            );
+        }
+        Self::Object(object)
     }
 
     /// The canonical bytes of this value.
@@ -199,12 +217,26 @@ impl CanonicalValue {
 /// Section 7 requires entity collections to be arrays ordered by stable entity
 /// ID and machine collections to be arrays ordered by canonical namespace ID.
 /// This is that rule as a function: the caller supplies `(id, value)` pairs in
-/// any order, and the array comes back in ascending ID order. A repeated ID
-/// keeps the last value, which makes duplicate identity impossible to encode.
-#[must_use]
-pub fn keyed_array<K: Ord>(items: impl IntoIterator<Item = (K, CanonicalValue)>) -> CanonicalValue {
-    let ordered: BTreeMap<K, CanonicalValue> = items.into_iter().collect();
-    CanonicalValue::Array(ordered.into_values().collect())
+/// any order, and the array comes back in ascending ID order.
+///
+/// # Errors
+///
+/// Returns `EK0304` when an ID occurs more than once. Stable ordering must not
+/// conceal duplicate semantic identity.
+pub fn keyed_array<K: Ord>(
+    items: impl IntoIterator<Item = (K, CanonicalValue)>,
+) -> Result<CanonicalValue, Diagnostic> {
+    let mut ordered = BTreeMap::new();
+    for (id, value) in items {
+        if ordered.insert(id, value).is_some() {
+            return Err(Diagnostic::new(
+                codes::CANONICAL_DUPLICATE_IDENTITY,
+                "a canonical keyed collection contains the same stable ID more than once",
+            )
+            .with_repair(RepairClass::RemoveDuplicateDeclaration));
+        }
+    }
+    Ok(CanonicalValue::Array(ordered.into_values().collect()))
 }
 
 /// The canonical bytes of a value.

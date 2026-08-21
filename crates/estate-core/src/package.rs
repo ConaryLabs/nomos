@@ -44,7 +44,7 @@
 //!   and every member's size and hash, and refuses any file in the package root
 //!   that the manifest does not declare.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -237,6 +237,7 @@ impl WorldPackage {
     ///   is evidence and is never written over.
     /// - `EK0302` or `EK0303` when a member's bytes are not canonical.
     /// - `EK0407` when the filesystem refuses the write.
+    /// - `EK0408` when the same member name is supplied more than once.
     pub fn write(
         root: &Path,
         members: impl IntoIterator<Item = (MemberName, Vec<u8>)>,
@@ -253,7 +254,17 @@ impl WorldPackage {
             .with_repair(RepairClass::WriteToNewOutputPath));
         }
 
-        let members: BTreeMap<MemberName, Vec<u8>> = members.into_iter().collect();
+        let mut unique_members = BTreeMap::new();
+        for (name, bytes) in members {
+            if unique_members.insert(name.clone(), bytes).is_some() {
+                return Err(Diagnostic::new(
+                    codes::PACKAGE_MEMBER_DUPLICATE,
+                    format!("package member `{name}` is supplied more than once"),
+                )
+                .with_repair(RepairClass::RemoveDuplicateDeclaration));
+            }
+        }
+        let members = unique_members;
         for (name, bytes) in &members {
             parse_canonical(bytes).map_err(|diagnostic| {
                 Diagnostic::new(
@@ -474,8 +485,16 @@ fn decode_manifest(bytes: &[u8]) -> Result<PackageManifest, Diagnostic> {
         return Err(manifest_invalid("manifest has no `members` array"));
     };
     let mut members = Vec::with_capacity(rows.len());
+    let mut names = BTreeSet::new();
     for row in rows {
-        members.push(decode_member(row)?);
+        let member = decode_member(row)?;
+        if !names.insert(member.name.clone()) {
+            return Err(manifest_invalid(format!(
+                "manifest member `{}` occurs more than once",
+                member.name
+            )));
+        }
+        members.push(member);
     }
 
     let Some(CanonicalValue::Text(recorded)) = field("package_digest") else {

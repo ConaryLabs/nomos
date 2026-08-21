@@ -353,6 +353,7 @@ impl Diagnostic {
             fields.push((FieldName::declared("span"), span_value));
         }
         CanonicalValue::object(fields)
+            .expect("diagnostic construction supplies each canonical field once")
     }
 }
 
@@ -392,6 +393,8 @@ pub mod codes {
     pub const CANONICAL_MALFORMED: DiagnosticCode = DiagnosticCode::new("EK0302");
     /// Bytes parse as JSON but violate the canonical byte profile.
     pub const CANONICAL_NOT_CANONICAL: DiagnosticCode = DiagnosticCode::new("EK0303");
+    /// A canonical builder received one semantic field or stable ID twice.
+    pub const CANONICAL_DUPLICATE_IDENTITY: DiagnosticCode = DiagnosticCode::new("EK0304");
 
     /// A package output directory already exists.
     pub const PACKAGE_OUTPUT_EXISTS: DiagnosticCode = DiagnosticCode::new("EK0401");
@@ -407,6 +410,8 @@ pub mod codes {
     pub const PACKAGE_MEMBER_NAME_INVALID: DiagnosticCode = DiagnosticCode::new("EK0406");
     /// Reading or writing the package failed for an environment reason.
     pub const PACKAGE_IO: DiagnosticCode = DiagnosticCode::new("EK0407");
+    /// A package writer received the same member name more than once.
+    pub const PACKAGE_MEMBER_DUPLICATE: DiagnosticCode = DiagnosticCode::new("EK0408");
 
     /// Every code this crate owns, for well-formedness and uniqueness tests.
     pub const ALL: &[DiagnosticCode] = &[
@@ -419,6 +424,7 @@ pub mod codes {
         FIELD_NAME_UNSUPPORTED,
         CANONICAL_MALFORMED,
         CANONICAL_NOT_CANONICAL,
+        CANONICAL_DUPLICATE_IDENTITY,
         PACKAGE_OUTPUT_EXISTS,
         PACKAGE_MEMBER_MISSING,
         PACKAGE_MEMBER_HASH_MISMATCH,
@@ -426,5 +432,6 @@ pub mod codes {
         PACKAGE_MANIFEST_INVALID,
         PACKAGE_MEMBER_NAME_INVALID,
         PACKAGE_IO,
+        PACKAGE_MEMBER_DUPLICATE,
     ];
 }
