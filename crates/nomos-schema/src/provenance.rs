@@ -59,14 +59,6 @@ pub enum FactIdentity {
 }
 
 impl FactIdentity {
-    /// Stable fact-path key used only for canonical collection ordering.
-    ///
-    /// Semantic consumers use the enum and never parse this display key.
-    #[must_use]
-    pub fn canonical_key(&self) -> String {
-        self.to_string()
-    }
-
     /// Canonical structured identity.
     #[must_use]
     pub fn to_canonical(&self) -> CanonicalValue {
@@ -446,9 +438,16 @@ impl FactOwnershipReceipt {
                 return Err(duplicate_identity("provenance projection consumer"));
             }
         }
+        if derivation.is_empty() {
+            return Err(Diagnostic::new(
+                codes::PROVENANCE_DERIVATION_INVALID,
+                "a provenance receipt requires at least one derivation step",
+            )
+            .with_repair(RepairClass::RebuildFromSource));
+        }
         let mut unique_steps = BTreeSet::new();
-        for step in &derivation {
-            if !unique_steps.insert(step.clone()) {
+        for step in derivation {
+            if !unique_steps.insert(step) {
                 return Err(duplicate_identity("provenance derivation step"));
             }
         }
@@ -458,7 +457,7 @@ impl FactOwnershipReceipt {
             declared_at,
             resolved_to,
             consumers: unique_consumers,
-            derivation,
+            derivation: unique_steps.into_iter().collect(),
         })
     }
 
@@ -542,6 +541,8 @@ impl FactOwnershipReceipt {
     pub(crate) fn validate(
         &self,
         facts: &BTreeSet<FactIdentity>,
+        entities: &BTreeSet<EntityId>,
+        relations: &BTreeSet<FactIdentity>,
         catalog_values: &BTreeSet<CatalogValueId>,
         primitives: &BTreeSet<PrimitiveKindId>,
     ) -> Result<(), Diagnostic> {
@@ -589,6 +590,22 @@ impl FactOwnershipReceipt {
                 }
             }
         }
+        if !self.fact_exists_in_world(entities, relations) {
+            return Err(Diagnostic::new(
+                codes::PROVENANCE_FACT_REFERENCE_MISSING,
+                format!(
+                    "receipt names fact `{}` absent from the compiled world",
+                    self.fact
+                ),
+            )
+            .with_span(self.declared_at.clone())
+            .with_repair(RepairClass::RebuildFromSource));
+        }
+        if let ResolvedFactValue::CatalogValue(value) = &self.resolved_to
+            && !catalog_values.contains(value)
+        {
+            return Err(missing_input(&self.fact, value, &self.declared_at));
+        }
         Ok(())
     }
 
@@ -611,6 +628,20 @@ impl FactOwnershipReceipt {
                 },
             ) => fact_subject == subject && fact_kind == kind && fact_object == object,
             _ => false,
+        }
+    }
+
+    fn fact_exists_in_world(
+        &self,
+        entities: &BTreeSet<EntityId>,
+        relations: &BTreeSet<FactIdentity>,
+    ) -> bool {
+        match &self.fact {
+            FactIdentity::EntityIdentity(entity)
+            | FactIdentity::EntitySpatialAnchor(entity)
+            | FactIdentity::EntitySpatialBinding(entity)
+            | FactIdentity::EntityCredential(entity) => entities.contains(entity),
+            FactIdentity::Relation { .. } => relations.contains(&self.fact),
         }
     }
 }

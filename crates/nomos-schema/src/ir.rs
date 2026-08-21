@@ -555,18 +555,36 @@ impl WorldIr {
         catalog_values.sort();
         entities.sort_by(|left, right| left.id.cmp(&right.id));
         relations.sort_by_key(IrRelation::stable_key);
-        ownership_receipts.sort_by_key(|receipt| receipt.fact().canonical_key());
+        ownership_receipts.sort_by(|left, right| left.fact().cmp(right.fact()));
         let facts = ownership_receipts
             .iter()
             .map(|receipt| receipt.fact().clone())
             .collect::<BTreeSet<FactIdentity>>();
         let catalog_value_set = catalog_values.iter().cloned().collect::<BTreeSet<_>>();
+        let entity_ids = entities
+            .iter()
+            .map(|entity| entity.id().clone())
+            .collect::<BTreeSet<_>>();
+        let relation_facts = relations
+            .iter()
+            .map(|relation| FactIdentity::Relation {
+                subject: relation.subject().clone(),
+                kind: relation.kind().clone(),
+                object: relation.object().clone(),
+            })
+            .collect::<BTreeSet<_>>();
         let primitives = entities
             .iter()
             .map(|entity| entity.primitive().clone())
             .collect::<BTreeSet<_>>();
         for receipt in &ownership_receipts {
-            receipt.validate(&facts, &catalog_value_set, &primitives)?;
+            receipt.validate(
+                &facts,
+                &entity_ids,
+                &relation_facts,
+                &catalog_value_set,
+                &primitives,
+            )?;
         }
         Ok(Self {
             schema: construction_world_ir_schema(),
@@ -648,7 +666,7 @@ impl WorldIr {
                 keyed_array(
                     self.ownership_receipts
                         .iter()
-                        .map(|receipt| (receipt.fact().canonical_key(), receipt.to_canonical())),
+                        .map(|receipt| (receipt.fact().clone(), receipt.to_canonical())),
                 )
                 .expect("WorldIr validates unique ownership facts"),
             ),

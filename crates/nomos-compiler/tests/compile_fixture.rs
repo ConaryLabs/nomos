@@ -132,12 +132,12 @@ fn ownership_receipts_name_graph_lattice_and_linker_authority() {
 }
 
 #[test]
-fn typed_ownership_facts_use_canonical_fact_path_order() {
+fn typed_ownership_facts_use_canonical_typed_order() {
     let ir = compile();
     let actual = ir
         .ownership_receipts()
         .iter()
-        .map(|receipt| receipt.fact().canonical_key())
+        .map(|receipt| receipt.fact().clone())
         .collect::<Vec<_>>();
     let mut expected = actual.clone();
     expected.sort();

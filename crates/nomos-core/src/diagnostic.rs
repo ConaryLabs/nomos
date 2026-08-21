@@ -476,7 +476,7 @@ pub mod codes {
     /// A resolved movement disposition violates its nonempty/positive invariant.
     pub const MOVEMENT_DISPOSITION_INVALID: DiagnosticCode = DiagnosticCode::new("EK0909");
 
-    /// A provenance derivation names a fact absent from the receipt graph.
+    /// A provenance record names a fact absent from the receipt graph or world.
     pub const PROVENANCE_FACT_REFERENCE_MISSING: DiagnosticCode = DiagnosticCode::new("EK1001");
     /// A provenance fact carries a resolved value incompatible with its class.
     pub const PROVENANCE_VALUE_INVALID: DiagnosticCode = DiagnosticCode::new("EK1002");

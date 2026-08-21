@@ -25,8 +25,14 @@ Each receipt contains:
 Derivation inputs distinguish references to canonical facts, approved
 primitive kinds, and declared catalog values. `WorldIr::new` verifies every
 fact edge against the complete receipt set and every primitive/catalog input
-against the compiled world. This makes a causal edge directly navigable without
+against the compiled world. It also verifies that each receipt root names an
+actual entity or relation and that each resolved catalog value was declared.
+This makes a causal edge directly navigable without
 parsing a label such as `binding/typed_lattice`.
+
+Fact collections order by the typed `FactIdentity` value. Derivation steps and
+their inputs also use typed canonical order. Human-readable `Display` output is
+not an ordering key and cannot move canonical bytes.
 
 The producer and pass vocabularies are closed. Unknown producer IDs fail with
 `EK1003`, unknown pass IDs with `EK1004`, and unsupported typed combinations
