@@ -1,8 +1,8 @@
 # Handoff — state of the repository
 
-Updated 2026-08-21 for owner-authorized contract revision 4. This file orients
-a fresh session; it is rewritten at each slice boundary and never accumulates
-history (git has that).
+Updated 2026-08-21 after the owner-disposed GPT Pro architecture checkpoint.
+This file orients a fresh session; it is rewritten at each slice boundary and
+never accumulates history (git has that).
 
 ## Where things stand
 
@@ -16,9 +16,18 @@ history (git has that).
   PR CI, and post-merge CI run `32507602324` are green. Local receipts live
   under `docs/evaluation/runs/contract/` and `docs/evaluation/runs/ci/`. Issue
   #15 is closed.
-- **SW-B is merged (#3):** six kernel crates plus isolated `xtask`, Rust 1.97.1,
-  zero third-party crates, deterministic core primitives, immutable package
-  mechanics, boundary enforcement, and green CI on main.
+- **Rust 1.98.0 is current (#19/#20):** PR #20 advanced the live toolchain pin
+  and workspace MSRV, passed author proof and CI, then received a GPT-5.6 Luna
+  max non-author rerun against merge commit `feacad0`. The original SW-B
+  receipts correctly remain on Rust 1.97.1. The workspace still has seven local
+  lockfile entries and no third-party crates.
+- **The dependency policy is explicit (#23):** owner-authorized decision 0005
+  keeps Gate K at zero third-party dependencies for offline reproducibility and
+  a small audit surface. It is temporary through Gate K, not inherited law for
+  later renderer, signing, network, asset, or platform work.
+- **SW-B is merged (#3):** six kernel crates plus isolated `xtask`, deterministic
+  core primitives, package foundations, boundary enforcement, and green CI on
+  main. Its original evidence used Rust 1.97.1.
 - **SW-C is implemented by PR #6:** source-language decision 0002, the
   exact `fixtures/gaol.estate`, source AST and Canonical World IR construction
   schemas, typed lattice bindings, parser, distinct typed symbol tables, the
@@ -46,19 +55,28 @@ history (git has that).
   local failure record is under `docs/evaluation/runs/tooling/`.
 - **CI uses `actions/checkout@v7` (#11):** PR and post-merge verification passed
   without the Node 20 compatibility annotation.
+- **The GPT Pro architecture checkpoint is owner-disposed (#25):** review of
+  clean `main` at `feacad0` found the project on target, endorsed SW-D's scope,
+  and filed #21–#24. This was architecture fuzzing, not a formal Gate K run.
 
 ## What is next
 
-Pause for the owner-requested holistic **GPT Pro architecture review** declared
-in `docs/review/2026-08-21-gpt-pro-checkpoint.md`. Fix or file every resulting
-finding before starting the next implementation slice. This review is an
-architecture checkpoint, not a formal Gate K cold-author or cold-debug run.
+Implement **SW-D issue #14 — namespace-machine transitions, typed interactions,
+deterministic phase order, and atomic transaction preparation**. Its first
+isolated commit resolves **#21** so duplicate canonical fields, stable IDs,
+package members, machine namespaces, and claim references fail closed before
+SW-D adds transition signatures and interaction identities.
 
-After that disposition, implement **SW-D issue #14 — namespace-machine
-transitions, typed interactions, deterministic phase order, and atomic
-transaction preparation**. The schemas now contain machine and claim templates;
-SW-D must add executable transition and interaction semantics without moving
-command-time truth into the compiler.
+Then implement #14 exactly as scoped. The schemas already contain machine and
+claim templates; SW-D adds executable transition and interaction semantics
+without moving command-time truth into the compiler. It also separates planned
+schema ownership from artifacts actually emitted: after SW-D only the
+simulation projection is implemented.
+
+Do not pull #22 package hardening or #24 typed forensic provenance sideways into
+SW-D. Resolve #22 before package/CLI/migration evidence and #24 before stable
+World IR promotion or `explain-*`. Issue #17 remains a formal cold-author
+tooling blocker, not a blocker for semantic implementation.
 
 Then: SW-E (effective-fact resolution, `MovementDisposition`, projections),
 SW-F (runtime state, replay, migration v1→v2, `explain-*`), complete command
@@ -73,8 +91,9 @@ cargo test --workspace --locked
 cargo xtask boundary
 ```
 
-The SW-C and revision-4 author/non-author reruns passed all four commands.
-Revision 4 PR and post-merge CI are green. Still unproven: Linux aarch64
+The SW-C, revision-4, and Rust-1.98 maintenance author/non-author reruns passed
+all four commands. Revision 4 and Rust 1.98 PR/post-merge CI are green. Still
+unproven: Linux aarch64
 release, ten runs per target, the complete `estate` command surface, complete
 package projections, runtime semantics, migration/replay, and formal cold-agent
 gates. The contract also requires a final explicit schema-ownership

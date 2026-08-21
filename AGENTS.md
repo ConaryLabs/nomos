@@ -39,6 +39,10 @@ is authority for any other project.
 - **Measure budgets; never assume them.** Build time, peak disk, validation
   latency, replay throughput, and package size are numbers in the record, not
   adjectives in a meeting.
+- **Gate K stays dependency-free by decision, not superstition.** No third-party
+  dependency enters the workspace before Gate K is disposed. This is the
+  temporary policy in `docs/decisions/0005-gate-k-dependency-policy.md`, not a
+  permanent claim that later gates should reimplement mature libraries.
 - **Cold review is fuzzing, not authority.** A different model family may attack
   design or code under `docs/review/`; a human owner decides what matters. Use
   `docs/evaluation/COLD_AGENT_PROTOCOL.md` for formal cold-author and cold-debug
