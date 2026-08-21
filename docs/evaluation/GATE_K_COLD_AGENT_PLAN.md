@@ -84,8 +84,12 @@ assumption:
   `deepseek-v4-pro` and `deepseek-pro/deepseek-v4-pro`.
 
 Client versions may change before the formal runs. Each `plan.json` records the
-then-current version, exact invocation, resolved model, and provider. A model
-alias, silent fallback, or unresolved identifier makes the run inconclusive.
+then-current version, exact invocation, resolved model, and provider. A route
+that cannot resolve the exact subject during preflight blocks launch. If a
+formal invocation proceeds under an unexpected model or silent fallback, the
+attempt fails. If export loss prevents post-run identity confirmation despite a
+correct preflight and runtime label, the attempt is inconclusive. Neither case
+permits an unreported retry.
 The operator preflights the exact route before formal invocation. During the
 formal invocation, the harness must record resolved identity before the first
 model response or tool call and confirm it again in the exported result. A
