@@ -1,9 +1,10 @@
-//! Authoring source and Canonical World IR schemas.
+//! Authoring source and Canonical World IR construction schemas.
 //!
-//! `KERNEL.md` section 4 makes this crate the single owner of the Canonical
-//! World IR type. The compiler consumes [`SourceDocument`] and produces
-//! [`WorldIr`]; projection and runtime crates cannot name either because the
-//! dependency graph denies them access to this crate.
+//! `KERNEL.md` section 4 assigns this crate the single ownership boundary for
+//! Canonical World IR types. The current [`WorldIr`] is an incomplete
+//! construction snapshot. The compiler consumes [`SourceDocument`] and
+//! produces that snapshot; projection and runtime crates cannot name either
+//! because the dependency graph denies them access to this crate.
 
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]
@@ -30,24 +31,29 @@ pub fn source_schema() -> SchemaId {
     SchemaId::new("estate.source", 1).expect("the source schema id is a valid literal")
 }
 
-/// The Canonical World IR schema.
+/// The incomplete Canonical World IR construction schema.
 ///
-/// Section 6 requires one real v1-to-v2 migration of this schema, changing the
-/// movement representation. Version 1 remains current until that later slice.
+/// Contract revision 4 separates pre-Gate construction snapshots from the
+/// stable `estate.world_ir@1` to `estate.world_ir@2` migration line. SW-C owns
+/// construction version 1.
 #[must_use]
-pub fn world_ir_schema() -> SchemaId {
-    SchemaId::new("estate.world_ir", 1).expect("the world IR schema id is a valid literal")
+pub fn construction_world_ir_schema() -> SchemaId {
+    SchemaId::new("estate.world_ir.construction", 1)
+        .expect("the construction world IR schema id is a valid literal")
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{source_schema, world_ir_schema};
+    use super::{construction_world_ir_schema, source_schema};
 
     #[test]
     fn owned_schemas_are_distinct_and_versioned_from_one() {
-        assert_ne!(source_schema().name(), world_ir_schema().name());
+        assert_ne!(
+            source_schema().name(),
+            construction_world_ir_schema().name()
+        );
         assert_eq!(source_schema().version(), 1);
-        assert_eq!(world_ir_schema().version(), 1);
+        assert_eq!(construction_world_ir_schema().version(), 1);
     }
 
     #[test]
@@ -55,6 +61,12 @@ mod tests {
         assert_eq!(
             source_schema().to_canonical().to_canonical_bytes(),
             br#"{"name":"estate.source","version":1}"#.to_vec()
+        );
+        assert_eq!(
+            construction_world_ir_schema()
+                .to_canonical()
+                .to_canonical_bytes(),
+            br#"{"name":"estate.world_ir.construction","version":1}"#.to_vec()
         );
     }
 }

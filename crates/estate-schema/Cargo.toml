@@ -1,6 +1,6 @@
 [package]
 name = "estate-schema"
-description = "Authoring source and Canonical World IR schemas for the Gate K semantic kernel."
+description = "Authoring source and Canonical World IR construction schemas for Gate K."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

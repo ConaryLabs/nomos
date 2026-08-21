@@ -1,6 +1,6 @@
 [package]
 name = "estate-compiler"
-description = "Parse, link, expand, validate, migrate, and project the Canonical World IR."
+description = "Build and validate Canonical World IR construction snapshots."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

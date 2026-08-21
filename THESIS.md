@@ -10,8 +10,8 @@ applies_to_the_mortal_estate: No, unless separately adopted by an explicit proje
 authors: Claude Fable 5 and GPT-5.6 Pro, in adversarial review, with Peter Permenter as owner and referee
 date: 2026-08-21
 revision: 2
-contract_revision: 3
-decision_record: docs/decisions/0003-contract-profile-closure.md
+contract_revision: 4
+decision_record: docs/decisions/0004-world-ir-construction-lineage.md
 ---
 
 # The Signed World
@@ -40,6 +40,8 @@ records the owner-authorized repair from revision 1 to revision 2.
 [docs/decisions/0003-contract-profile-closure.md](docs/decisions/0003-contract-profile-closure.md)
 records the owner-authorized revision 3 closure of the canonical-profile and
 workspace-evidence gaps found by SW-B.
+[docs/decisions/0004-world-ir-construction-lineage.md](docs/decisions/0004-world-ir-construction-lineage.md)
+records the owner-authorized revision 4 construction-lineage repair.
 
 Contract changes follow `AGENTS.md`. Contradictions and falsified assumptions may
 be repaired explicitly; criteria may not be silently weakened because code
@@ -616,7 +618,7 @@ settled before production save compatibility.
 
 ## 12. Versioned boundaries
 
-The Canonical World IR is constitutional from the first commit:
+The Canonical World IR lineage is constitutional from the first commit:
 
 - explicit schema version;
 - canonical serialization;
@@ -624,6 +626,10 @@ The Canonical World IR is constitutional from the first commit:
 - fixture coverage;
 - compatibility receipts;
 - build failure on silent incompatible change.
+
+Incomplete pre-Gate snapshots use their own
+`estate.world_ir.construction@N` lineage and obey every rule above. They are
+never stable packages or substitutes for the required World IR migration.
 
 It is not also the save format, replay format, packet protocol, renderer package,
 and live memory layout. The constitution should not regulate sewer-pipe

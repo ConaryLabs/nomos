@@ -16,7 +16,7 @@
 //! not a review comment:
 //!
 //! ```compile_fail
-//! let _ = estate_schema::world_ir_schema();
+//! let _ = estate_schema::construction_world_ir_schema();
 //! ```
 //!
 //! ```compile_fail

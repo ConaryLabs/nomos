@@ -27,7 +27,7 @@ pub fn parse_source(source: &str, path: SourcePath) -> Result<SourceDocument, Di
 }
 
 /// Resolves names, enforces ownership, expands approved primitives, and emits
-/// Canonical World IR.
+/// a Canonical World IR construction snapshot.
 ///
 /// # Errors
 ///
@@ -51,14 +51,14 @@ pub fn compile_source(source: &str, path: SourcePath) -> Result<WorldIr, Diagnos
 pub fn consumed_schemas() -> Vec<SchemaId> {
     vec![
         estate_schema::source_schema(),
-        estate_schema::world_ir_schema(),
+        estate_schema::construction_world_ir_schema(),
     ]
 }
 
 /// The schemas this compiler writes.
 #[must_use]
 pub fn produced_schemas() -> Vec<SchemaId> {
-    let mut schemas = vec![estate_schema::world_ir_schema()];
+    let mut schemas = vec![estate_schema::construction_world_ir_schema()];
     schemas.extend(estate_projection::all_schemas());
     schemas
 }

@@ -132,10 +132,27 @@ fn ownership_receipts_name_graph_lattice_and_linker_authority() {
 
 #[test]
 fn world_ir_bytes_are_canonical_and_repeatable() {
-    let first = compile().to_canonical_bytes();
+    let ir = compile();
+    assert_eq!(ir.schema(), &estate_schema::construction_world_ir_schema());
+    assert_eq!(
+        ir.schema().name().to_string(),
+        "estate.world_ir.construction"
+    );
+    assert_eq!(ir.schema().version(), 1);
+    let first = ir.to_canonical_bytes();
     let second = compile().to_canonical_bytes();
     assert_eq!(first, second);
     assert!(is_canonical(&first));
+    let encoded_schema = br#""schema":{"name":"estate.world_ir.construction","version":1}"#;
+    assert!(
+        first
+            .windows(encoded_schema.len())
+            .any(|window| window == encoded_schema)
+    );
+    assert_eq!(
+        estate_core::hash::Sha256Digest::of_bytes(&first).to_hex(),
+        include_str!("golden/gaol-world-ir-construction-v1.sha256").trim()
+    );
     assert!(!first.ends_with(b"\n"));
 }
 

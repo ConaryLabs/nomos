@@ -7,8 +7,8 @@ applies_to: KERNEL.md sections 1, 2, 4, 9; acceptance 1-3 and 11
 
 # Gate K source compiler
 
-SW-C turns one `estate.source@1` file into typed Canonical World IR. The public
-library path is:
+SW-C turns one `estate.source@1` file into a typed Canonical World IR
+construction snapshot. The public library path is:
 
 ```rust
 estate_compiler::compile_source(source, repository_relative_path)
@@ -29,7 +29,8 @@ records why that language was chosen.
 5. Enforce primitive-specific field and binding shapes.
 6. Expand the sealed three-kind catalog into capability bundles, typed machine
    templates, and typed claim activation expressions.
-7. Emit stable fact-ownership receipts and Canonical World IR bytes.
+7. Emit stable fact-ownership receipts and canonical construction-snapshot
+   bytes under `estate.world_ir.construction@1`.
 
 Parser failures use `EK05xx`; linker and ownership failures use `EK06xx`.
 Every source rejection carries a repository-relative span and a legal repair
@@ -64,6 +65,8 @@ SW-C corrected the narrower SW-B naming before it became serialized behavior.
 - the door, water, and light expand into inspectable typed IR;
 - source maps and ownership receipts survive canonical encoding;
 - repeated compilation of the same bytes produces identical canonical IR;
+- a frozen SHA-256 fixture pins every construction-v1 canonical byte, so a
+  shape change without a schema-version change fails the build;
 - relevant ownership and cross-reference mutations fail with stable codes and
   source spans.
 
@@ -76,5 +79,6 @@ Issue #5 records that scope split.
 
 Typed interactions, resolver plans, composition/coherence rules, projections,
 runtime transactions, package compilation, migration, replay, explanations,
-and cold-agent gates belong to later slices. Canonical World IR will grow those
-contracted fields before Gate K can pass.
+and cold-agent gates belong to later slices. Each incompatible incomplete shape
+increments the `estate.world_ir.construction@N` version. Stable
+`estate.world_ir@1` begins only when the contracted schema is complete.
