@@ -1,0 +1,68 @@
+{
+  "schema": "signed-world.non-author-command-ledger.v1",
+  "commands": [
+    {
+      "sequence": 1,
+      "command": "git rev-parse HEAD; git status --short --branch; echo \"---\"; rustc --version --verbose; echo \"---\"; cargo --version --verbose; echo \"---\"; uname -a",
+      "state": "completed",
+      "exit_code": 0,
+      "result": "Exact target commit; main; clean tree; Rust 1.97.1; Fedora 44 x86_64 environment recorded."
+    },
+    {
+      "sequence": 2,
+      "command": "cargo fmt --all -- --check; echo \"EXIT_CODE=$?\"",
+      "state": "completed",
+      "exit_code": 0,
+      "result": "EXIT_CODE=0"
+    },
+    {
+      "sequence": 3,
+      "command": "cargo clippy --workspace --all-targets --locked -- -D warnings; echo \"EXIT_CODE=$?\"",
+      "state": "not_run",
+      "exit_code": null,
+      "result": "Reasonix preflight rejected the trailing echo because it could mask the verifier exit status."
+    },
+    {
+      "sequence": 4,
+      "command": "cargo clippy --workspace --all-targets --locked -- -D warnings",
+      "state": "completed",
+      "exit_code": 0,
+      "result": "All six kernel crates checked; zero warnings."
+    },
+    {
+      "sequence": 5,
+      "command": "cargo test --workspace --locked",
+      "state": "completed",
+      "exit_code": 0,
+      "result": "All suites passed: 72 unit/integration tests plus doctests; zero failures."
+    },
+    {
+      "sequence": 6,
+      "command": "cargo xtask boundary",
+      "state": "completed",
+      "exit_code": 0,
+      "result": "boundary: clean"
+    },
+    {
+      "sequence": 7,
+      "command": "git rev-parse HEAD; git status --short --branch",
+      "state": "completed",
+      "exit_code": 0,
+      "result": "Target commit unchanged; main; clean tree."
+    },
+    {
+      "sequence": 8,
+      "command": "cargo fmt --all -- --check",
+      "state": "completed",
+      "exit_code": 0,
+      "result": "Standalone formatting proof passed."
+    },
+    {
+      "sequence": 9,
+      "command": "git rev-parse HEAD; git status --short --branch",
+      "state": "completed",
+      "exit_code": 0,
+      "result": "Target commit unchanged; main; clean tree."
+    }
+  ]
+}

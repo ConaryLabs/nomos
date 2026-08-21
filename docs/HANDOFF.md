@@ -1,6 +1,6 @@
 # Handoff — state of the repository
 
-Updated 2026-08-21 for the owner disposition on SW-C PR #6. This file orients a
+Updated 2026-08-21 for the deferred SW-C non-author rerun. This file orients a
 fresh session; it is rewritten at each slice boundary and never accumulates
 history (git has that).
 
@@ -16,10 +16,13 @@ history (git has that).
   lattice bindings, parser, distinct typed symbol tables, the sealed
   three-primitive expansion catalog, ownership linker/receipts, and mutation
   tests. The implementation commit is `be5576d`.
-- **Owner disposition:** Peter explicitly authorized merging PR #6 without the
-  required non-author rerun on 2026-08-21. The merge is authorized; SW-C is not
-  green until a later non-author receipt records the commit, commands,
-  environment, result, and reviewer. CI and author proof do not substitute.
+- **Non-author disposition:** Peter explicitly authorized merging PR #6 before
+  its non-author rerun. DeepSeek V4 Pro then reran the complete proof through
+  direct Reasonix at max effort against merge commit `4ec25e5`; all four
+  commands passed with a clean tree before and after. The durable receipt is
+  under `docs/evaluation/runs/gate-k/2026-08-21-deepseek-v4-pro-sw-c-rerun/`.
+  SW-C now satisfies the repository's non-author rule. This was not a formal
+  cold-agent run and does not upgrade whole-Gate-K status.
 - **Issue #5 is disposed by PR #6.** Acceptance 3 remains only partially
   covered: IR expansion is proved, but the observable `estate inspect` command
   still requires complete packages and projections.
@@ -31,11 +34,7 @@ history (git has that).
 
 ## What is next
 
-First, obtain the deferred non-author rerun of the merged SW-C commit. Author
-proof and CI do not satisfy the repository's non-author rule; the explicit
-owner merge disposition did not call the slice green.
-
-After SW-C, implement **SW-D — namespace-machine transitions, typed
+Implement **SW-D — namespace-machine transitions, typed
 interactions, deterministic phase order, and atomic transaction preparation**.
 The schemas now contain machine and claim templates; SW-D must add executable
 transition and interaction semantics without moving command-time truth into the
@@ -54,9 +53,10 @@ cargo test --workspace --locked
 cargo xtask boundary
 ```
 
-The SW-C author rerun passed all four commands. Still unproven: Linux aarch64
-release, ten runs per target, the complete `estate` command surface, complete
-package projections, runtime semantics, migration/replay, and cold-agent gates.
+The SW-C author and non-author reruns passed all four commands. Still unproven:
+Linux aarch64 release, ten runs per target, the complete `estate` command
+surface, complete package projections, runtime semantics, migration/replay, and
+formal cold-agent gates.
 
 ## Open owner points
 

@@ -1,0 +1,35 @@
+You are the independent non-author checker for the signed-world SW-C implementation. You did not author this repository change. Work only in /home/peter/signed-world.
+
+This is a verification-only run. Do not edit, create, delete, move, format, commit, push, comment, or otherwise mutate any file, Git ref, GitHub object, configuration, or external state. Do not use web search, persisted project memory, another model, or a subagent. Read repository instructions as needed, then run the proof yourself.
+
+Required target:
+- merged commit must be exactly 4ec25e595f5bcc6052af730d8c830c94749608b2
+- branch must be main
+- worktree must be clean before and after
+
+Record these environment facts from commands:
+- git rev-parse HEAD
+- git status --short --branch
+- rustc --version --verbose
+- cargo --version --verbose
+- uname -a
+
+Run each proof command and observe its exit status:
+1. cargo fmt --all -- --check
+2. cargo clippy --workspace --all-targets --locked -- -D warnings
+3. cargo test --workspace --locked
+4. cargo xtask boundary
+
+Then rerun:
+- git rev-parse HEAD
+- git status --short --branch
+
+Your final response must state:
+- exact Reasonix/provider model identity you were invoked as, to the extent visible;
+- whether you complied with the no-memory/no-web/no-other-model/no-mutation constraints;
+- exact commit, branch, clean-tree result, environment facts;
+- each proof command and pass/fail;
+- final commit/tree state;
+- verdict PASS only if every required fact and command passed exactly; otherwise FAIL or INCONCLUSIVE with the precise reason.
+
+Do not infer success from CI or prior logs. Run the proof.
