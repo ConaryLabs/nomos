@@ -49,6 +49,7 @@ pub(crate) fn link(document: &SourceDocument) -> Result<WorldIr, Diagnostic> {
     }
 
     let movement_resolver = crate::resolver::construction_plan(&entities)?;
+    let light_resolver = crate::resolver::light_construction_plan(&entities)?;
     Ok(WorldIr::new(
         document.schema().value().clone(),
         catalog_values.into_iter().collect(),
@@ -56,7 +57,8 @@ pub(crate) fn link(document: &SourceDocument) -> Result<WorldIr, Diagnostic> {
         relations,
         receipts,
     )?
-    .with_movement_resolver(movement_resolver))
+    .with_movement_resolver(movement_resolver)
+    .with_light_resolver(light_resolver))
 }
 
 fn declare_catalog_values(

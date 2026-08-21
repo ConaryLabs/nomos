@@ -11,6 +11,7 @@
 #![warn(missing_debug_implementations)]
 
 mod ir;
+mod light;
 mod provenance;
 mod resolver;
 mod source;
@@ -23,6 +24,7 @@ pub use ir::{
     CapabilityKind, ClaimActivation, ClaimTemplate, ClaimValue, IrEntity, IrRelation,
     MachineTemplate, PrimitiveExpansion, WorldIr,
 };
+pub use light::{LightCompositionLaw, LightResolverPlan, LightResolverSubject};
 pub use provenance::{
     DerivationInput, DerivationPass, DerivationProducer, DerivationStep, FactIdentity, FactOwner,
     FactOwnershipReceipt, ProjectionConsumer, ResolvedFactValue,
@@ -51,12 +53,11 @@ pub fn source_schema() -> SchemaId {
 /// Contract revision 6 closes the prototype `estate.*` epoch and starts the
 /// Nomos construction lineage at version 1. Version 2 replaces stringly
 /// ownership receipts with typed fact identities, values, consumers, and
-/// derivation edges. The shape includes the transition,
-/// interaction, composition, coherence, and resolver work completed through
-/// SW-E; it is not compatible with a prototype construction snapshot.
+/// derivation edges. Version 3 adds the closed light-union resolver plan used
+/// by SW-F. The shape is not compatible with a prototype construction snapshot.
 #[must_use]
 pub fn construction_world_ir_schema() -> SchemaId {
-    SchemaId::new("nomos.world_ir.construction", 2)
+    SchemaId::new("nomos.world_ir.construction", 3)
         .expect("the construction world IR schema id is a valid literal")
 }
 
@@ -71,7 +72,7 @@ mod tests {
             construction_world_ir_schema().name()
         );
         assert_eq!(source_schema().version(), 1);
-        assert_eq!(construction_world_ir_schema().version(), 2);
+        assert_eq!(construction_world_ir_schema().version(), 3);
     }
 
     #[test]
@@ -84,7 +85,7 @@ mod tests {
             construction_world_ir_schema()
                 .to_canonical()
                 .to_canonical_bytes(),
-            br#"{"name":"nomos.world_ir.construction","version":2}"#.to_vec()
+            br#"{"name":"nomos.world_ir.construction","version":3}"#.to_vec()
         );
     }
 }

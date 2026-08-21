@@ -4,9 +4,10 @@ use nomos_core::{ClaimRef, EntityId, Ident, NamespaceId, SourcePath, SourceSpan}
 use nomos_projection::{
     Command, CommandArgument, CommandRequirement, CommandTransition, LatticeCell,
     MachineDefinition, MovementClaim, MovementConnectivity, MovementDisposition,
-    MovementResolverPlan, MovementSubject, ProjectedActivation, SimulationPlan,
+    MovementResolverPlan, MovementSubject, ProjectedActivation, ProjectedEntity, RuntimeBinding,
+    SimulationPlan,
 };
-use nomos_sim::{SimulationState, prepare_transaction, resolve_movement};
+use nomos_sim::{SimulationState, commit_transaction, prepare_transaction, resolve_movement};
 
 fn ident(value: &str) -> Ident {
     Ident::new(value).unwrap()
@@ -123,7 +124,7 @@ fn missing_activation_references_fail_instead_of_becoming_false() {
     let state = SimulationState::initialize(&plan).unwrap();
     let before = state.to_canonical_bytes();
     let original = state.clone();
-    let rejected = prepare_transaction(
+    let rejected = commit_transaction(
         &plan,
         &state,
         &Command::new(
@@ -242,6 +243,8 @@ fn invalid_projected_connectivity_fails_atomically() {
             .unwrap();
     let plan = SimulationPlan::new(vec![machine], Vec::new())
         .unwrap()
+        .with_entities(vec![projected_entity(vec![machine_namespace.clone()])])
+        .unwrap()
         .with_movement_resolver(resolver);
     let state = SimulationState::initialize(&plan).unwrap();
     let before = state.to_canonical_bytes();
@@ -327,9 +330,24 @@ fn plan_with(machines: Vec<MachineDefinition>, claims: Vec<MovementClaim>) -> Si
     let resolver =
         MovementResolverPlan::new(ident("ground"), 1, true, true, true, true, vec![subject])
             .unwrap();
+    let namespaces = machines
+        .iter()
+        .map(|machine| machine.namespace().clone())
+        .collect();
     SimulationPlan::new(machines, Vec::new())
         .unwrap()
+        .with_entities(vec![projected_entity(namespaces)])
+        .unwrap()
         .with_movement_resolver(resolver)
+}
+
+fn projected_entity(machines: Vec<NamespaceId>) -> ProjectedEntity {
+    ProjectedEntity::new(
+        entity("subject"),
+        RuntimeBinding::Cell(LatticeCell::new(0, 0, 0)),
+        machines,
+    )
+    .unwrap()
 }
 
 fn span() -> SourceSpan {

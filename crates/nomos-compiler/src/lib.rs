@@ -17,7 +17,7 @@ mod projection;
 mod resolver;
 
 use nomos_core::{Diagnostic, SchemaId, SourcePath};
-pub use nomos_projection::{NavigationPlan, SimulationPlan};
+pub use nomos_projection::{DiagnosticsPlan, NavigationPlan, PersistencePlan, SimulationPlan};
 use nomos_schema::{SourceDocument, WorldIr};
 
 /// Parses source schema version 1 without resolving cross-references.
@@ -69,6 +69,33 @@ pub fn compile_navigation_plan(ir: &WorldIr) -> Result<NavigationPlan, Diagnosti
     projection::navigation_plan(ir)
 }
 
+/// Emits the implemented persistence projection from construction IR.
+///
+/// # Errors
+///
+/// Returns a stable resolver or projection diagnostic. No partial artifact is returned.
+pub fn compile_persistence_plan(ir: &WorldIr) -> Result<PersistencePlan, Diagnostic> {
+    projection::persistence_plan(ir)
+}
+
+/// Emits the implemented diagnostics projection from construction IR.
+///
+/// # Errors
+///
+/// Returns a stable resolver or projection diagnostic. No partial artifact is returned.
+pub fn compile_diagnostics_plan(ir: &WorldIr) -> Result<DiagnosticsPlan, Diagnostic> {
+    projection::diagnostics_plan(ir)
+}
+
+/// Verifies that every implemented light consumer received one typed plan.
+///
+/// # Errors
+///
+/// Returns `EK0912` when independently emitted projections disagree.
+pub fn validate_light_projections(ir: &WorldIr) -> Result<(), Diagnostic> {
+    projection::validate_all_light_projections(ir)
+}
+
 /// The schemas this compiler reads.
 #[must_use]
 pub fn consumed_schemas() -> Vec<SchemaId> {
@@ -85,6 +112,8 @@ pub fn produced_schemas() -> Vec<SchemaId> {
         nomos_schema::construction_world_ir_schema(),
         nomos_projection::simulation_schema(),
         nomos_projection::navigation_schema(),
+        nomos_projection::persistence_schema(),
+        nomos_projection::diagnostics_schema(),
     ]
 }
 
@@ -110,8 +139,8 @@ mod tests {
         assert!(consumed.contains(&nomos_schema::source_schema()));
         assert!(produced.contains(&nomos_projection::simulation_schema()));
         assert!(produced.contains(&nomos_projection::navigation_schema()));
-        assert!(!produced.contains(&nomos_projection::persistence_schema()));
-        assert!(!produced.contains(&nomos_projection::diagnostics_schema()));
+        assert!(produced.contains(&nomos_projection::persistence_schema()));
+        assert!(produced.contains(&nomos_projection::diagnostics_schema()));
         for projection in nomos_projection::all_schemas() {
             assert!(planned_output_schemas().contains(&projection));
             assert!(!consumed.contains(&projection));

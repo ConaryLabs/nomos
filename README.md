@@ -16,11 +16,11 @@ any renderer is built.
 ## Status
 
 - **Architecture status:** exploratory and non-authoritative
-- **Implementation status:** implemented through SW-E: foundations, source and
-  construction IR, compiled transitions, shared simulation/navigation ground
-  movement projection, and immutable transaction preparation with effective
-  before/after movement facts; construction IR provenance is typed and
-  forensically navigable; no command surface or committed runtime snapshots
+- **Implementation status:** implemented through SW-F: foundations, source and
+  construction IR, compiled transitions, shared movement and light resolution,
+  simulation/navigation/persistence/diagnostics projections, and immutable
+  runtime-state commit evidence with canonical hashes and typed causal receipts;
+  no filesystem command surface, package assembly, replay, or migration
 - **Contract revision:** 6, owner-authorized in decision 0007
 - **Scope:** greenfield / vacuum architecture exercise
 - **Effect on other projects:** none unless separately adopted by an explicit
@@ -74,10 +74,12 @@ it.
    manifest/member verification, and the revision-5 evidence boundary.
 17. [docs/provenance.md](docs/provenance.md) — typed fact identities, resolved
     values, causal inputs, and the boundary between semantics and display text.
-18. [docs/review/2026-08-21-founding-review.md](docs/review/2026-08-21-founding-review.md)
+18. [docs/runtime.md](docs/runtime.md) — compiler-owned light union, immutable
+    runtime snapshots, state hashes, atomic commit, and typed causal receipts.
+19. [docs/review/2026-08-21-founding-review.md](docs/review/2026-08-21-founding-review.md)
    — the condensed primary record of the founding adversarial review, written
    in the originating session, with its provenance limits stated.
-19. [docs/review/2026-08-21-founding-review-synthesis.md](docs/review/2026-08-21-founding-review-synthesis.md)
+20. [docs/review/2026-08-21-founding-review-synthesis.md](docs/review/2026-08-21-founding-review-synthesis.md)
     — the contract-revision-2 edited synthesis of that review.
 
 ## Layout

@@ -11,13 +11,13 @@ SW-E proves that effective movement is composed from compiler-owned semantics,
 not hard-coded door behavior in the runtime. The boundary is:
 
 ```text
-nomos-schema WorldIr construction@2 (Nomos epoch)
+nomos-schema WorldIr construction@3 (Nomos epoch)
   -> nomos-compiler resolver validation and projection
   -> nomos-projection shared MovementResolverPlan@1
   -> nomos-sim command-time effective facts
 ```
 
-The same resolver value is embedded in `nomos.projection.simulation@2` and
+The same resolver value is embedded in `nomos.projection.simulation@3` and
 `nomos.projection.navigation@1`. A canonical-byte equality test prevents those
 two consumers from acquiring different movement laws.
 
@@ -69,7 +69,8 @@ claim. These results are computed from the projected activation expressions;
 
 ## Evidence boundary
 
-SW-E covers ground movement only. It does not resolve light, commit or hash a
-runtime snapshot, replay or migrate state, write package artifacts, implement
-CLI commands or explanations, or complete the multi-target/formal cold-agent
-Gate K evidence.
+SW-E's resolver remains ground-movement-only. SW-F now carries its before/after
+facts into committed typed receipts alongside light facts; the movement plan
+and navigation schema do not change. Replay, migration, package artifacts,
+filesystem CLI commands, explanations, and the multi-target/formal cold-agent
+evidence remain open.

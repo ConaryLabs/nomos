@@ -3,10 +3,12 @@
 use nomos_core::{CatalogValueId, EntityId, Ident, NamespaceId};
 use nomos_projection::{
     CausalEdge, Command, CommandArgument, CommandRequirement, CommandTransition, EventHandler,
-    EventPayload, MachineDefinition, Phase, SimulationPlan,
+    EventPayload, LatticeCell, MachineDefinition, Phase, ProjectedEntity, RuntimeBinding,
+    SimulationPlan,
 };
 use nomos_sim::{
-    SimulationState, TransitionCause, prepare_transaction, prepare_transaction_with_budget,
+    SimulationState, TransitionCause, commit_transaction, commit_transaction_with_budget,
+    prepare_transaction,
 };
 
 fn ident(value: &str) -> Ident {
@@ -246,7 +248,7 @@ fn missing_event_targets_and_handlers_discard_the_staged_local_change() {
         let state = SimulationState::initialize(&plan).unwrap();
         let original = state.clone();
         let before = state.to_canonical_bytes();
-        let rejected = prepare_transaction(
+        let rejected = commit_transaction(
             &plan,
             &state,
             &command(
@@ -268,7 +270,7 @@ fn transition_budget_stops_a_malicious_cyclic_projection_atomically() {
     let state = SimulationState::initialize(&plan).unwrap();
     let original = state.clone();
     let before = state.to_canonical_bytes();
-    let rejected = prepare_transaction_with_budget(
+    let rejected = commit_transaction_with_budget(
         &plan,
         &state,
         &command(
@@ -344,18 +346,20 @@ fn gate_plan() -> SimulationPlan {
         )],
         Vec::new(),
     );
-    SimulationPlan::new(
-        vec![access, integrity, combustion, ward, emission],
-        vec![CausalEdge::new(
-            namespace("north_gate", "combustion"),
-            ident("burning"),
-            Phase::Causal,
-            namespace("north_gate", "integrity"),
-            ident("apply_damage"),
-            fire_damage(),
-        )],
+    complete_plan(
+        SimulationPlan::new(
+            vec![access, integrity, combustion, ward, emission],
+            vec![CausalEdge::new(
+                namespace("north_gate", "combustion"),
+                ident("burning"),
+                Phase::Causal,
+                namespace("north_gate", "integrity"),
+                ident("apply_damage"),
+                fire_damage(),
+            )],
+        )
+        .unwrap(),
     )
-    .unwrap()
 }
 
 fn broken_event_plan(missing_target: bool) -> SimulationPlan {
@@ -376,18 +380,20 @@ fn broken_event_plan(missing_target: bool) -> SimulationPlan {
             Vec::new(),
         ));
     }
-    SimulationPlan::new(
-        machines,
-        vec![CausalEdge::new(
-            namespace("source", "machine"),
-            ident("b"),
-            Phase::Causal,
-            namespace("target", "machine"),
-            ident("handle"),
-            fire_damage(),
-        )],
+    complete_plan(
+        SimulationPlan::new(
+            machines,
+            vec![CausalEdge::new(
+                namespace("source", "machine"),
+                ident("b"),
+                Phase::Causal,
+                namespace("target", "machine"),
+                ident("handle"),
+                fire_damage(),
+            )],
+        )
+        .unwrap(),
     )
-    .unwrap()
 }
 
 fn cyclic_plan() -> SimulationPlan {
@@ -402,28 +408,52 @@ fn cyclic_plan() -> SimulationPlan {
             handler_from("flip", "b", "a"),
         ],
     );
-    SimulationPlan::new(
-        vec![machine],
-        vec![
-            CausalEdge::new(
-                machine_namespace.clone(),
-                ident("a"),
-                Phase::Causal,
-                machine_namespace.clone(),
-                ident("flip"),
-                fire_damage(),
-            ),
-            CausalEdge::new(
-                machine_namespace.clone(),
-                ident("b"),
-                Phase::Causal,
-                machine_namespace,
-                ident("flip"),
-                fire_damage(),
-            ),
-        ],
+    complete_plan(
+        SimulationPlan::new(
+            vec![machine],
+            vec![
+                CausalEdge::new(
+                    machine_namespace.clone(),
+                    ident("a"),
+                    Phase::Causal,
+                    machine_namespace.clone(),
+                    ident("flip"),
+                    fire_damage(),
+                ),
+                CausalEdge::new(
+                    machine_namespace.clone(),
+                    ident("b"),
+                    Phase::Causal,
+                    machine_namespace,
+                    ident("flip"),
+                    fire_damage(),
+                ),
+            ],
+        )
+        .unwrap(),
     )
-    .unwrap()
+}
+
+fn complete_plan(plan: SimulationPlan) -> SimulationPlan {
+    let mut by_entity = std::collections::BTreeMap::<EntityId, Vec<NamespaceId>>::new();
+    for machine in plan.machines() {
+        by_entity
+            .entry(machine.namespace().entity().clone())
+            .or_default()
+            .push(machine.namespace().clone());
+    }
+    let entities = by_entity
+        .into_iter()
+        .map(|(entity, machines)| {
+            ProjectedEntity::new(
+                entity,
+                RuntimeBinding::Cell(LatticeCell::new(0, 0, 0)),
+                machines,
+            )
+            .unwrap()
+        })
+        .collect();
+    plan.with_entities(entities).unwrap()
 }
 
 fn machine(

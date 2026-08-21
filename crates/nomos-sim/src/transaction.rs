@@ -4,13 +4,13 @@ use std::collections::{BTreeMap, VecDeque};
 
 use nomos_core::canonical::keyed_array;
 use nomos_core::id::StableId;
-use nomos_core::{CanonicalValue, Diagnostic, Ident, NamespaceId};
+use nomos_core::{CanonicalValue, Diagnostic, EntityId, Ident, NamespaceId, SchemaId, StateHash};
 use nomos_projection::{
     CausalEdge, Command, CommandArgument, CommandRequirement, EventPayload, MachineDefinition,
-    Phase, ResolvedMovementFacts, SimulationPlan,
+    Phase, ResolvedLightFacts, ResolvedMovementFacts, RuntimeBinding, SimulationPlan,
 };
 
-use crate::resolve_movement;
+use crate::{resolve_light, resolve_movement};
 
 /// Default last-defense transition budget for one prepared transaction.
 pub const DEFAULT_TRANSITION_BUDGET: usize = 64;
@@ -18,7 +18,38 @@ pub const DEFAULT_TRANSITION_BUDGET: usize = 64;
 /// Immutable namespace-machine state consumed by transaction preparation.
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct SimulationState {
+    schema: SchemaId,
+    tick: u64,
+    entities: Vec<RuntimeEntityState>,
     machines: BTreeMap<NamespaceId, Ident>,
+}
+
+/// One authoritative runtime entity identity and lattice binding.
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct RuntimeEntityState {
+    id: EntityId,
+    binding: RuntimeBinding,
+}
+
+impl RuntimeEntityState {
+    /// Stable entity ID.
+    #[must_use]
+    pub const fn id(&self) -> &EntityId {
+        &self.id
+    }
+
+    /// Authoritative lattice binding.
+    #[must_use]
+    pub const fn binding(&self) -> &RuntimeBinding {
+        &self.binding
+    }
+
+    fn to_canonical(&self) -> CanonicalValue {
+        CanonicalValue::object_declared([
+            ("binding", self.binding.to_canonical()),
+            ("id", self.id.to_canonical()),
+        ])
+    }
 }
 
 impl SimulationState {
@@ -80,7 +111,53 @@ impl SimulationState {
                 ));
             }
         }
-        Ok(Self { machines })
+        let projected_namespaces = plan
+            .entities()
+            .iter()
+            .flat_map(|entity| entity.machines().iter().cloned())
+            .collect::<std::collections::BTreeSet<_>>();
+        let machine_namespaces = machines
+            .keys()
+            .cloned()
+            .collect::<std::collections::BTreeSet<_>>();
+        if projected_namespaces != machine_namespaces {
+            return Err(Diagnostic::new(
+                nomos_core::diagnostic::codes::RUNTIME_STATE_INVALID,
+                "projected entity machine ownership does not match the simulation machine set",
+            ));
+        }
+        let entities = plan
+            .entities()
+            .iter()
+            .map(|entity| RuntimeEntityState {
+                id: entity.id().clone(),
+                binding: entity.binding().clone(),
+            })
+            .collect();
+        Ok(Self {
+            schema: crate::runtime_state_schema(),
+            tick: 0,
+            entities,
+            machines,
+        })
+    }
+
+    /// Runtime-state schema identity.
+    #[must_use]
+    pub const fn schema(&self) -> &SchemaId {
+        &self.schema
+    }
+
+    /// Authoritative deterministic tick.
+    #[must_use]
+    pub const fn tick(&self) -> u64 {
+        self.tick
+    }
+
+    /// Authoritative entities in stable ID order.
+    #[must_use]
+    pub fn entities(&self) -> &[RuntimeEntityState] {
+        &self.entities
     }
 
     /// Current state of one namespace machine.
@@ -92,17 +169,64 @@ impl SimulationState {
     /// Canonical bytes useful for proving an input state remained unchanged.
     #[must_use]
     pub fn to_canonical_bytes(&self) -> Vec<u8> {
-        keyed_array(self.machines.iter().map(|(namespace, state)| {
+        self.to_canonical().to_canonical_bytes()
+    }
+
+    /// SHA-256 identity of the canonical runtime-state envelope only.
+    #[must_use]
+    pub fn state_hash(&self) -> StateHash {
+        StateHash::of_envelope(&self.to_canonical())
+    }
+
+    /// Verifies a recorded state hash against this exact snapshot.
+    ///
+    /// # Errors
+    ///
+    /// Returns `EK0810` when the digest does not match.
+    pub fn verify_hash(&self, expected: StateHash) -> Result<(), Diagnostic> {
+        let actual = self.state_hash();
+        if actual != expected {
+            return Err(Diagnostic::new(
+                nomos_core::diagnostic::codes::RUNTIME_STATE_HASH_MISMATCH,
+                format!("recorded state hash `{expected}` does not match `{actual}`"),
+            ));
+        }
+        Ok(())
+    }
+
+    pub(crate) fn set_tick(&mut self, tick: u64) {
+        self.tick = tick;
+    }
+
+    pub(crate) fn to_canonical(&self) -> CanonicalValue {
+        CanonicalValue::object_declared([
+            ("counters", CanonicalValue::Array(Vec::new())),
             (
-                namespace.clone(),
-                CanonicalValue::object_declared([
-                    ("namespace", namespace.to_canonical()),
-                    ("state", CanonicalValue::text(state.as_str())),
-                ]),
-            )
-        }))
-        .expect("SimulationState has unique namespace keys")
-        .to_canonical_bytes()
+                "entities",
+                keyed_array(
+                    self.entities
+                        .iter()
+                        .map(|entity| (entity.id.clone(), entity.to_canonical())),
+                )
+                .expect("SimulationState has unique entity keys"),
+            ),
+            (
+                "machines",
+                keyed_array(self.machines.iter().map(|(namespace, state)| {
+                    (
+                        namespace.clone(),
+                        CanonicalValue::object_declared([
+                            ("namespace", namespace.to_canonical()),
+                            ("state", CanonicalValue::text(state.as_str())),
+                        ]),
+                    )
+                }))
+                .expect("SimulationState has unique namespace keys"),
+            ),
+            ("scheduled_events", CanonicalValue::Array(Vec::new())),
+            ("schema", self.schema.to_canonical()),
+            ("tick", CanonicalValue::Uint(self.tick)),
+        ])
     }
 }
 
@@ -169,6 +293,8 @@ pub struct PreparedTransaction {
     steps: Vec<TransitionStep>,
     movement_before: ResolvedMovementFacts,
     movement_after: ResolvedMovementFacts,
+    light_before: ResolvedLightFacts,
+    light_after: ResolvedLightFacts,
 }
 
 impl PreparedTransaction {
@@ -194,6 +320,18 @@ impl PreparedTransaction {
     #[must_use]
     pub const fn movement_after(&self) -> &ResolvedMovementFacts {
         &self.movement_after
+    }
+
+    /// Effective light facts before the initiating local transition.
+    #[must_use]
+    pub const fn light_before(&self) -> &ResolvedLightFacts {
+        &self.light_before
+    }
+
+    /// Effective light facts after local and causal settlement.
+    #[must_use]
+    pub const fn light_after(&self) -> &ResolvedLightFacts {
+        &self.light_after
     }
 
     /// Consumes the preparation and returns its staged state.
@@ -239,6 +377,7 @@ pub fn prepare_transaction_with_budget(
 ) -> Result<PreparedTransaction, Diagnostic> {
     validate_current_state(plan, current)?;
     let movement_before = resolve_movement(plan, current)?;
+    let light_before = resolve_light(plan, current)?;
     let machine = find_machine(plan, command.namespace()).ok_or_else(|| {
         Diagnostic::new(
             nomos_core::diagnostic::codes::RUNTIME_TARGET_MISSING,
@@ -378,11 +517,14 @@ pub fn prepare_transaction_with_budget(
     }
 
     let movement_after = resolve_movement(plan, &after)?;
+    let light_after = resolve_light(plan, &after)?;
     Ok(PreparedTransaction {
         after,
         steps,
         movement_before,
         movement_after,
+        light_before,
+        light_after,
     })
 }
 
@@ -390,6 +532,26 @@ fn validate_current_state(
     plan: &SimulationPlan,
     current: &SimulationState,
 ) -> Result<(), Diagnostic> {
+    if current.schema != crate::runtime_state_schema() {
+        return Err(Diagnostic::new(
+            nomos_core::diagnostic::codes::RUNTIME_STATE_INVALID,
+            "current state does not name the supported runtime-state schema",
+        ));
+    }
+    if current.entities.len() != plan.entities().len()
+        || current
+            .entities
+            .iter()
+            .zip(plan.entities())
+            .any(|(state, projected)| {
+                state.id() != projected.id() || state.binding() != projected.binding()
+            })
+    {
+        return Err(Diagnostic::new(
+            nomos_core::diagnostic::codes::RUNTIME_STATE_INVALID,
+            "current state entity identities or lattice bindings do not match the simulation plan",
+        ));
+    }
     if current.machines.len() != plan.machines().len() {
         return Err(Diagnostic::new(
             nomos_core::diagnostic::codes::RUNTIME_STATE_INVALID,

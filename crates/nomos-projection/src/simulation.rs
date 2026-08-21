@@ -7,7 +7,8 @@ use nomos_core::{
     CanonicalValue, CatalogValueId, Diagnostic, Ident, NamespaceId, RepairClass, SchemaId,
 };
 
-use crate::{MovementResolverPlan, simulation_schema};
+use crate::state::sort_entities;
+use crate::{LightResolverPlan, MovementResolverPlan, ProjectedEntity, simulation_schema};
 
 /// An external command's compiled input requirement.
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
@@ -422,9 +423,11 @@ impl CausalEdge {
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct SimulationPlan {
     schema: SchemaId,
+    entities: Vec<ProjectedEntity>,
     machines: Vec<MachineDefinition>,
     causal_edges: Vec<CausalEdge>,
     movement_resolver: MovementResolverPlan,
+    light_resolver: LightResolverPlan,
 }
 
 impl SimulationPlan {
@@ -455,10 +458,22 @@ impl SimulationPlan {
         causal_edges.sort_by_key(CausalEdge::stable_key);
         Ok(Self {
             schema: simulation_schema(),
+            entities: Vec::new(),
             machines,
             causal_edges,
             movement_resolver: MovementResolverPlan::empty_gate_k(),
+            light_resolver: LightResolverPlan::empty_gate_k(),
         })
+    }
+
+    /// Attaches compiler-projected entity identities and lattice bindings.
+    ///
+    /// # Errors
+    ///
+    /// Returns a stable diagnostic when one entity occurs twice.
+    pub fn with_entities(mut self, entities: Vec<ProjectedEntity>) -> Result<Self, Diagnostic> {
+        self.entities = sort_entities(entities)?;
+        Ok(self)
     }
 
     /// Attaches the compiler-projected shared movement resolver plan.
@@ -468,10 +483,23 @@ impl SimulationPlan {
         self
     }
 
+    /// Attaches the compiler-projected shared light resolver plan.
+    #[must_use]
+    pub fn with_light_resolver(mut self, light_resolver: LightResolverPlan) -> Self {
+        self.light_resolver = light_resolver;
+        self
+    }
+
     /// Projection schema identity.
     #[must_use]
     pub const fn schema(&self) -> &SchemaId {
         &self.schema
+    }
+
+    /// Runtime entities in stable ID order.
+    #[must_use]
+    pub fn entities(&self) -> &[ProjectedEntity] {
+        &self.entities
     }
 
     /// Runtime machines in stable namespace order.
@@ -492,6 +520,12 @@ impl SimulationPlan {
         &self.movement_resolver
     }
 
+    /// Shared effective-light resolver plan.
+    #[must_use]
+    pub const fn light_resolver(&self) -> &LightResolverPlan {
+        &self.light_resolver
+    }
+
     /// Canonical projection bytes.
     #[must_use]
     pub fn to_canonical_bytes(&self) -> Vec<u8> {
@@ -505,6 +539,16 @@ impl SimulationPlan {
                         .collect(),
                 ),
             ),
+            (
+                "entities",
+                CanonicalValue::Array(
+                    self.entities
+                        .iter()
+                        .map(ProjectedEntity::to_canonical)
+                        .collect(),
+                ),
+            ),
+            ("light_resolver", self.light_resolver.to_canonical()),
             (
                 "machines",
                 CanonicalValue::Array(
