@@ -1,7 +1,7 @@
 # Handoff — state of the repository
 
-Updated 2026-08-22 after SW-F merged through issue #35 / PR #38 and SW-G
-received an issue-first boundary in #40.
+Updated 2026-08-22 after SW-G merged through issue #40 / PR #42. No next
+semantic implementation slice is currently filed.
 This file orients a fresh session; it is rewritten at each slice boundary and
 never accumulates history (git has that).
 
@@ -136,22 +136,35 @@ never accumulates history (git has that).
   semantic or test defects and reran exact head `e1b20845` green with a clean
   tree before and after. PR CI run `32533855605` passed; PR #38 merged as
   `b5ea3b2`, issue #35 closed, and post-merge CI run `32535564970` passed.
+- **SW-G is merged (#40/#42):** stable `nomos.world_ir@1` is a distinct
+  authoritative artifact promoted from preserved construction evidence. All
+  four public projection compilers consume stable IR. The compiler assembles
+  the exact seven semantic members, `nomos-core` alone emits `manifest.json`,
+  and the semantic opener verifies schemas, ownership, compiler receipts,
+  initialization material, and cross-projection agreement. Reopened package
+  bytes reproduce the exact initial `nomos.runtime_state@1` snapshot without
+  source or construction IR. Stable-IR fixture digest
+  `555017cf5e13a33b4bb5b18bae14b7577fd1fc38abf89b1f6f475874600fa493`
+  and complete-package manifest digest
+  `f1af0cc92ea44fd09ba93815bb99cc6c24517b56888f39be33a9d47b1299bab7`
+  are frozen. The implementation head is `f200b4e`; its author proof and
+  focused release SW-G suite passed. GPT-5.6 Luna max independently audited and
+  reran the exact head with no findings and a clean tree before and after. PR
+  CI run `32537565881` passed; PR #42 merged as `0863750`, issue #40 closed,
+  and post-merge CI run `32537995524` passed.
 
 ## What is next
 
-Implement **issue #40 — SW-G: promote stable World IR v1 and assemble complete
-packages**. The slice creates `nomos.world_ir@1` without relabelling preserved
-construction evidence, compiles all four projections from stable IR, and binds
-the exact canonical member set into the existing immutable package boundary.
-
-Issue #40 explicitly stops before filesystem CLI orchestration, run-directory
-artifacts, replay, the required v1-to-v2 movement migration, direct v2 runtime
-loading, the multi-target determinism matrix, budget evidence, and formal
-cold-agent gates. Those remain later issue-first slices rather than hidden
-additions to package compilation.
+No next semantic implementation slice is currently filed. Start by creating an
+issue with falsifiable acceptance and an explicit boundary; do not infer a new
+slice from this handoff. The remaining post-SW-G work includes the filesystem
+CLI surface, run-directory artifacts, replay, the required stable v1-to-v2
+movement migration, direct v2 runtime loading/refusal evidence, the Linux
+aarch64 and ten-run matrix, measured Gate K budgets, final schema-ownership
+review, and the formal cold-agent gates.
 
 Issue #17 remains a formal cold-author tooling blocker, not a blocker for
-semantic implementation.
+ordinary issue-first semantic implementation.
 
 ## How to prove the current branch
 
@@ -162,17 +175,15 @@ cargo test --workspace --locked
 cargo xtask boundary
 ```
 
-SW-F's author proof, Luna max exact-head rerun, PR CI, and post-merge CI passed
-all four commands; the focused release SW-F test also passed. SW-D's and issue
-#24's author proof, final non-author reruns, PR CI, and post-merge CI passed as
-recorded. Earlier SW-C, revision-4, and Rust-1.98 maintenance author/non-author
-reruns also passed.
+SW-G's author proof, Luna max exact-head rerun, PR CI, and post-merge CI passed
+all four commands; the focused release SW-G test also passed. SW-F, SW-D, and
+issue #24 have the same author/non-author/CI chain as recorded above. Earlier
+SW-C, revision-4, and Rust-1.98 maintenance reruns also passed.
 Still unproven: Linux aarch64 release, ten runs per target, the complete
-`nomos` command surface, stable World IR, complete package assembly,
-migration/replay, budget evidence, and formal cold-agent gates. The contract
-also requires a
-final explicit schema-ownership source-review receipt after the Gate K schema
-set stabilizes; that final receipt does not exist yet.
+`nomos` command surface, migration/replay, measured Gate K budgets, and formal
+cold-agent gates. The contract also requires a final explicit schema-ownership
+source-review receipt after the Gate K schema set stabilizes; that final
+receipt does not exist yet.
 
 ## Remaining evidence points
 
