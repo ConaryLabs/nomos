@@ -1,6 +1,6 @@
 # Handoff — state of the repository
 
-Updated 2026-08-21 on the SW-E issue #28 implementation branch.
+Updated 2026-08-21 after SW-E merged and package-boundary issue #22 began.
 This file orients a fresh session; it is rewritten at each slice boundary and
 never accumulates history (git has that).
 
@@ -78,14 +78,22 @@ never accumulates history (git has that).
   claim activation after complete local/causal settlement and exposes immutable
   before/after facts. The exact fixture proves two initial gate blockers, ward
   survival after opening or destruction, base cost `1` after unsealing, and
-  water cost `3`. The four-command author proof passes; exact-head non-author
-  and CI evidence are pending.
+  water cost `3`. GPT-5.6 Luna max found and verified fixes for stale projection
+  documentation and invalid-connectivity validation, then reran exact head
+  `6dda1d0` green. PR #29 and post-merge CI run `32521857686` passed; merge
+  commit `dacfaef` is clean on main. Issue #28 is closed.
+- **Contract revision 5 is in progress for #22:** decision 0006 replaces the
+  unmanifested package `receipts/` subtree with canonical hashed
+  `compiler-receipts.json`; runtime causal receipts remain only in run outputs.
+  It also defines same-filesystem staged publication and exact filesystem and
+  manifest verification. Revision 4 remains effective until this branch merges.
 
 ## What is next
 
-Finish **SW-E issue #28**: run the complete author proof, obtain the exact-head
-GPT-5.6 Luna max non-author rerun, merge after CI, and record the resulting
-evidence.
+Implement **issue #22 — seal the WorldPackage evidence boundary** under decision
+0006. Harden atomic publication, exact manifest decoding, canonical member
+validation, ordering, and filesystem entry-type checks before SW-F relies on
+packages.
 
 Do not pull #22 package hardening or #24 typed forensic provenance sideways into
 SW-E. Resolve #22 before package/CLI/migration evidence and #24 before stable

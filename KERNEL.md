@@ -1,10 +1,10 @@
 ---
 title: The executable semantic kernel
-status: In progress through SW-C
+status: In progress through SW-E
 gate: K
-contract_revision: 4
-supersedes_contract_revision: 3
-decision_record: docs/decisions/0004-world-ir-construction-lineage.md
+contract_revision: 5
+supersedes_contract_revision: 4
+decision_record: docs/decisions/0006-package-evidence-boundary.md
 ---
 
 # The executable semantic kernel
@@ -253,11 +253,30 @@ build/gaol.world/
   persistence.json
   diagnostics.json
   schemas.json
-  receipts/
+  compiler-receipts.json
 ```
 
 A deterministic archive format may come later. Gate K deliberately favors
 `ls`, `cat`, and `diff`.
+
+Every package entry is a regular file at the package root. `manifest.json`
+declares and hashes every other entry, including `compiler-receipts.json`.
+Compiler, linker, validation, and invariant receipts that describe the build
+live in that canonical member. Runtime causal receipts live only in the
+separate run output below. No unmanifested file or directory is permitted
+inside a verified package.
+
+The writer validates all inputs, writes and verifies a complete package in a
+fresh sibling staging directory on the same filesystem, then publishes it with
+one rename. Failure removes the staging directory and leaves the requested
+destination absent; an existing destination is never replaced or merged into.
+This atomic-publication claim is limited to the supported local-filesystem,
+single-publisher boundary.
+
+On open, manifest objects have exact schema-declared fields, member rows are
+unique and strictly ordered, and every declared member is revalidated as
+canonical bytes with the recorded size and digest. Symlinks, special files,
+undeclared files, and directories are refused.
 
 Runtime execution writes a separate run directory:
 

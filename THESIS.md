@@ -10,8 +10,8 @@ applies_to_the_mortal_estate: No, unless separately adopted by an explicit proje
 authors: Claude Fable 5 and GPT-5.6 Pro, in adversarial review, with Peter Permenter as owner and referee
 date: 2026-08-21
 revision: 2
-contract_revision: 4
-decision_record: docs/decisions/0004-world-ir-construction-lineage.md
+contract_revision: 5
+decision_record: docs/decisions/0006-package-evidence-boundary.md
 ---
 
 # The Signed World
@@ -42,6 +42,8 @@ records the owner-authorized revision 3 closure of the canonical-profile and
 workspace-evidence gaps found by SW-B.
 [docs/decisions/0004-world-ir-construction-lineage.md](docs/decisions/0004-world-ir-construction-lineage.md)
 records the owner-authorized revision 4 construction-lineage repair.
+[docs/decisions/0006-package-evidence-boundary.md](docs/decisions/0006-package-evidence-boundary.md)
+records the owner-authorized revision 5 package-evidence repair.
 
 Contract changes follow `AGENTS.md`. Contradictions and falsified assumptions may
 be repaired explicitly; criteria may not be silently weakened because code
@@ -695,10 +697,10 @@ garbage remains garbage with excellent paperwork.
 
 ### Immutable package, separate state
 
-Commands never edit the package. Runtime snapshots, command logs, causal
-receipts, saves, and replays are separate versioned artifacts. Migration creates
-a new package. This keeps the signed input available as evidence and makes
-reproduction possible.
+Commands never edit the package. Compiler/build receipts are canonical hashed
+package members; runtime snapshots, command logs, causal receipts, saves, and
+replays are separate versioned artifacts. Migration creates a new package. This
+keeps the signed input available as evidence and makes reproduction possible.
 
 ### Development and release binaries
 
