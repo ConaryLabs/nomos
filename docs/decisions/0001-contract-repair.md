@@ -69,18 +69,23 @@ accepts the resulting loss of comparability.
 
 ## Amendments
 
-### A1. Canonical fixture
+### A1. Canonical base fixture
 
 **Prior:** one door, water region, and light were declared, while examples also
 used `gaoler_key` and a magical seal without defining whether they were entities
-or primitives.
+or primitives. The later cold-author criterion also added a second door without
+stating whether that expanded the primitive catalog.
 
-**Replacement:** the fixture contains exactly three world primitives:
-`north_gate`, `flooded_section`, and `brazier_02`.
-`credential/gaoler_key` is a catalog value in a separate typed symbol table.
-The second blocking claim is the door-local `ward` machine.
+**Replacement:** the base fixture contains exactly three world primitive
+instances across three primitive kinds: `north_gate`, `flooded_section`, and
+`brazier_02`. `credential/gaoler_key` is a catalog value in a separate typed
+symbol table. The second blocking claim is the door-local `ward` machine. The
+formal cold-author run uses an isolated fixture copy and may add a second door
+instance of the already-approved door kind; it does not add a fourth primitive
+kind or expand Gate K's semantic scope.
 
-**Reason:** remove dangling references and the implicit fourth primitive.
+**Reason:** remove dangling references, the implicit magical-seal primitive, and
+the instance-versus-kind ambiguity in the cold-author proof.
 
 **Evidence effect:** none; no implementation evidence existed.
 
@@ -92,7 +97,8 @@ The second blocking claim is the door-local `ward` machine.
 agreement, and explanation. The light must prove a local state transition,
 effective emission change, persistence/diagnostic updates, and causal receipt.
 
-**Reason:** three declared primitives must be proof subjects rather than decor.
+**Reason:** three declared primitive kinds must be proof subjects rather than
+decor.
 
 **Evidence effect:** none.
 
@@ -151,8 +157,9 @@ overwrites its input.
 domain, ordering, overflow, and environment unspecified.
 
 **Replacement:** Gate K defines a canonical UTF-8 JSON profile, SHA-256 state
-hash, included/excluded fields, stable ordering, checked arithmetic, pinned
-Rust/dependency requirements, an initial target matrix, and RNG stream isolation.
+hash, included/excluded fields, unambiguous object/collection ordering, checked
+arithmetic, pinned Rust/dependency requirements, an initial target matrix, and
+RNG stream isolation.
 
 **Reason:** determinism claims require an exact byte and execution contract.
 

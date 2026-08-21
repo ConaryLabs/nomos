@@ -24,9 +24,10 @@ They may be corrected only through the amendment process in `AGENTS.md` and a
 new owner-authorized decision record. Contract repair is allowed; weakening a
 criterion because an implementation failed it is not.
 
-## 1. Exact fixture
+## 1. Exact base fixture
 
-One source file describes exactly three world primitives:
+One source file describes exactly three world primitive instances in the base
+fixture:
 
 ```text
 Room contents:
@@ -37,6 +38,12 @@ Room contents:
 Catalog values:
   credential/gaoler_key
 ```
+
+These are three primitive **kinds** and three instances in the base fixture.
+The formal cold-author evaluation operates on an isolated copy and may add one
+second `primitive/iron_barred_door` instance. That produces four instances while
+preserving the same three approved primitive kinds; it does not expand the
+catalog or Gate K's semantic scope.
 
 `credential/gaoler_key` is a catalog credential value, not a world entity and
 not a fourth primitive. References to catalog values are resolved by their own
@@ -338,9 +345,9 @@ manifests use canonical bytes.
 - display: lowercase hexadecimal;
 - hash domain: canonical bytes of the versioned authoritative runtime-state
   envelope only;
-- entities ordered by stable entity ID;
-- machine namespaces ordered by canonical namespace ID;
-- fields inside each schema emitted in declared schema order.
+- object members use the canonical key ordering above;
+- entity collections are arrays ordered by stable entity ID;
+- machine collections are arrays ordered by canonical namespace ID.
 
 Included:
 
@@ -368,7 +375,7 @@ error; no authoritative arithmetic wraps implicitly.
 ### Execution matrix
 
 The proof uses a pinned Rust toolchain and committed dependency lockfile. The
-same command log runs ten times on each available target in this initial matrix:
+same command log runs ten times on each target in this initial matrix:
 
 ```text
 Linux x86_64 debug
@@ -377,8 +384,9 @@ Linux aarch64 release
 ```
 
 All runs must produce identical semantic state hashes. If the available CI
-cannot provide one target, the missing target is recorded as unproved; it is not
-silently called green.
+cannot provide one target, the missing target is recorded as unproved; Gate K is
+not called green until the matrix is completed or an owner-authorized contract
+revision changes it.
 
 ### RNG isolation
 
@@ -513,9 +521,9 @@ coverage, and observable behavior rather than crate confetti.
 
 Gate K passes only when all of the following are observed, not asserted:
 
-1. **Source is understandable.** The fixture fits on one normal screen and a
-   reader who has not seen the thesis can identify the three primitives and
-   credential value.
+1. **Source is understandable.** The base fixture fits on one normal screen and
+   a reader who has not seen the thesis can identify the three instances, three
+   primitive kinds, and credential value.
 2. **Typed references resolve.** Entity and catalog namespaces are distinct;
    `credential/gaoler_key` resolves without becoming a fourth entity.
 3. **Primitives expand.** `inspect` prints each primitive's capability bundle,
@@ -555,8 +563,9 @@ Gate K passes only when all of the following are observed, not asserted:
     claim satisfies acceptance.
 17. **Cold author succeeds.** Under
     `docs/evaluation/COLD_AGENT_PROTOCOL.md`, a model from a different family
-    adds a second approved door to the fixture and reaches a clean compile
-    without editing kernel source or unrelated packages.
+    adds a second instance of the approved door kind to an isolated fixture copy
+    and reaches a clean compile without editing kernel source, adding a primitive
+    kind, or changing unrelated packages.
 18. **Cold debugger succeeds.** Under the same protocol, a different-family
     model receives a seeded failing replay and names the true cause using docs,
     CLI, packages, and forensic output without reading kernel source.
@@ -567,8 +576,11 @@ Gate K passes only when all of the following are observed, not asserted:
 
 No `wgpu`. No window. No renderer. No network. No audio playback. No Workbench
 UI. No hot-reload daemon. No asset pipeline. No arbitrary scene tree. No plugin
-system. No fourth world primitive. No recurring-effect scheduler. No production
+system. No fourth primitive kind. No recurring-effect scheduler. No production
 save compatibility policy beyond the one migration fixture. No visual claim.
+
+The cold-author evaluation may add a second instance of an existing approved
+kind in its isolated copy; that is an authoring proof, not a catalog expansion.
 
 Passing Gate K proves only that the semantic architecture is coherent enough to
 deserve the next experiment. It does not prove that the game will look good,
