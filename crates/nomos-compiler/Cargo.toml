@@ -1,0 +1,15 @@
+[package]
+name = "nomos-compiler"
+description = "Build and validate Canonical World IR construction snapshots."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+# KERNEL.md section 10: nomos-compiler -> nomos-core, nomos-schema, nomos-projection.
+[dependencies]
+nomos-core.workspace = true
+nomos-projection.workspace = true
+nomos-schema.workspace = true

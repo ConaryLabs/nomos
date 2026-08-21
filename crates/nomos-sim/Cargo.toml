@@ -1,0 +1,15 @@
+[package]
+name = "nomos-sim"
+description = "Runtime state, command transactions, replay, and effective-fact resolution."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+# KERNEL.md section 10: nomos-sim -> nomos-core, nomos-projection only.
+# Depending on nomos-schema or the source parser is named as forbidden.
+[dependencies]
+nomos-core.workspace = true
+nomos-projection.workspace = true

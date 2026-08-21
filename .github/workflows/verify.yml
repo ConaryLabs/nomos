@@ -63,7 +63,7 @@ jobs:
         run: |
           set -euo pipefail
           hashes() {
-            cargo test --locked -p estate-core --test determinism "$@" \
+            cargo test --locked -p nomos-core --test determinism "$@" \
               -- --nocapture --test-threads=1 | grep '^HASH ' | sort
           }
           hashes > debug-1.txt

@@ -1,0 +1,23 @@
+[package]
+name = "nomos-cli"
+description = "The nomos command-line surface and artifact orchestration."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+# KERNEL.md section 10:
+# nomos-cli -> nomos-core, nomos-compiler, nomos-sim, nomos-projection.
+# nomos-schema is deliberately absent: the CLI orchestrates artifacts, it does
+# not read authoring schemas directly.
+[dependencies]
+nomos-core.workspace = true
+nomos-compiler.workspace = true
+nomos-projection.workspace = true
+nomos-sim.workspace = true
+
+[[bin]]
+name = "nomos"
+path = "src/main.rs"

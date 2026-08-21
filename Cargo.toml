@@ -1,12 +1,12 @@
 [workspace]
 resolver = "3"
 members = [
-    "crates/estate-core",
-    "crates/estate-schema",
-    "crates/estate-projection",
-    "crates/estate-compiler",
-    "crates/estate-sim",
-    "crates/estate-cli",
+    "crates/nomos-core",
+    "crates/nomos-schema",
+    "crates/nomos-projection",
+    "crates/nomos-compiler",
+    "crates/nomos-sim",
+    "crates/nomos-cli",
     "xtask",
 ]
 
@@ -17,18 +17,18 @@ version = "0.0.0"
 edition = "2024"
 rust-version = "1.98.0"
 license = "MIT"
-repository = "https://github.com/ConaryLabs/signed-world"
+repository = "https://github.com/ConaryLabs/nomos"
 publish = false
 
 # The only permitted dependency edges are the ones in KERNEL.md section 10.
 # They are declared once here so a member cannot invent a path dependency
 # quietly, and `cargo xtask boundary` proves the resolved graph matches.
 [workspace.dependencies]
-estate-core = { path = "crates/estate-core" }
-estate-schema = { path = "crates/estate-schema" }
-estate-projection = { path = "crates/estate-projection" }
-estate-compiler = { path = "crates/estate-compiler" }
-estate-sim = { path = "crates/estate-sim" }
+nomos-core = { path = "crates/nomos-core" }
+nomos-schema = { path = "crates/nomos-schema" }
+nomos-projection = { path = "crates/nomos-projection" }
+nomos-compiler = { path = "crates/nomos-compiler" }
+nomos-sim = { path = "crates/nomos-sim" }
 
 # Lean build profile: KERNEL.md acceptance 16 measures peak disk, so debug
 # builds carry line tables only instead of full DWARF.

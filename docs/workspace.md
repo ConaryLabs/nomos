@@ -14,27 +14,27 @@ This document says where they live and how to run the proof. Contract revision
 ## Crate map
 
 ```text
-crates/estate-core        stable IDs, canonical bytes, hashing, checked
+crates/nomos-core        stable IDs, canonical bytes, hashing, checked
                           arithmetic, diagnostics, world packages
-crates/estate-schema      authoring source and Canonical World IR construction
+crates/nomos-schema      authoring source and Canonical World IR construction
                           schemas
-crates/estate-projection  simulation/navigation/persistence/diagnostics
+crates/nomos-projection  simulation/navigation/persistence/diagnostics
                           projection schemas
-crates/estate-compiler    parse, link, expand, validate, migrate, project
-crates/estate-sim         runtime state, command transactions, replay,
+crates/nomos-compiler    parse, link, expand, validate, migrate, project
+crates/nomos-sim         runtime state, command transactions, replay,
                           effective-fact resolution
-crates/estate-cli         the `estate` command surface and orchestration
+crates/nomos-cli         the `nomos` command surface and orchestration
 xtask                     workspace tooling; the boundary checker
 ```
 
 Edges, verbatim from section 10:
 
 ```text
-estate-schema      -> estate-core
-estate-projection  -> estate-core
-estate-compiler    -> estate-core, estate-schema, estate-projection
-estate-sim         -> estate-core, estate-projection
-estate-cli         -> estate-core, estate-compiler, estate-sim, estate-projection
+nomos-schema      -> nomos-core
+nomos-projection  -> nomos-core
+nomos-compiler    -> nomos-core, nomos-schema, nomos-projection
+nomos-sim         -> nomos-core, nomos-projection
+nomos-cli         -> nomos-core, nomos-compiler, nomos-sim, nomos-projection
 ```
 
 No crate in the workspace has a third-party dependency. `Cargo.lock` contains
@@ -58,7 +58,7 @@ disk/time budgets. To run the determinism step locally:
 
 ```bash
 hashes() {
-  cargo test --locked -p estate-core --test determinism "$@" \
+  cargo test --locked -p nomos-core --test determinism "$@" \
     -- --nocapture --test-threads=1 | grep '^HASH ' | sort
 }
 hashes > /tmp/debug.txt
@@ -92,7 +92,7 @@ planted-violation receipt is produced without disturbing this one.
 Section 10 also forbids canonical schema types from being defined in more than
 one crate. That is a property of the source, not of the dependency graph, and
 `cargo metadata` cannot see it. The Canonical World IR construction type is
-defined in `estate-schema`; every crate that must not see it lacks the edge that
+defined in `nomos-schema`; every crate that must not see it lacks the edge that
 would let it. The checker proves the missing edges. Local schema-ID uniqueness
 tests, compile-fail boundary doctests, and the compiler crossing test support
 the explicit source-review receipt required by revision 3. None of those checks
@@ -105,25 +105,25 @@ is claimed as a semantic-uniqueness proof by itself.
 Contract revision 3 declares six kernel crates plus `xtask`. `xtask`
 builds no kernel artifact and is not reachable from any kernel crate. It exists
 as a separate member for one reason: the boundary checker must not sit inside
-the graph it checks. As a subcommand of `estate-cli` its own dependencies would
+the graph it checks. As a subcommand of `nomos-cli` its own dependencies would
 be inside the kernel graph, and the forbidden list would need exceptions carved
 for the checker — precisely the shape of hole this project is trying not to
 have. The `tooling-isolation` rule proves the separation holds, and the
 `membership` rule means an eighth member cannot be added quietly.
 
-### The world package writer lives in `estate-core`
+### The world package writer lives in `nomos-core`
 
 A package is a directory of named canonical byte members with a hashed
-manifest. That is canonical bytes and hashing, which is `estate-core`'s charter.
-It also has to be reachable from more crates than `estate-projection` is:
-`world-ir.json` and `schemas.json` are `estate-schema` artifacts, and
-`estate-schema` may depend only on `estate-core`. Putting the writer in
-`estate-projection` would either strand the schema crate or require an edge
+manifest. That is canonical bytes and hashing, which is `nomos-core`'s charter.
+It also has to be reachable from more crates than `nomos-projection` is:
+`world-ir.json` and `schemas.json` are `nomos-schema` artifacts, and
+`nomos-schema` may depend only on `nomos-core`. Putting the writer in
+`nomos-projection` would either strand the schema crate or require an edge
 section 10 forbids.
 
 The module knows nothing about member *meaning*. It enforces names, bytes,
 hashes, and immutability. What `simulation.json` must contain stays in
-`estate-projection`.
+`nomos-projection`.
 
 Contract revision 5 closes the directory boundary around that generic layer.
 Writes use a verified sibling staging directory and one same-filesystem rename;
@@ -137,7 +137,7 @@ supported local-filesystem/single-publisher limit and the evidence still absent.
 
 The state hash is the constitutional identity of authoritative state, and
 `docs/thesis-open-questions.md` records the signature threat model as open.
-Implementing SHA-256 in `estate-core` — 110 lines, proved against the published
+Implementing SHA-256 in `nomos-core` — 110 lines, proved against the published
 FIPS 180-4 vectors including the multi-block and padding-boundary cases —
 removes third-party code from the hash domain entirely, and lets the whole
 workspace build and test with no network access, which the cold-agent protocol
@@ -183,7 +183,7 @@ Decoders read integers through a helper that accepts either.
 
 ### The frozen fixture is not the runtime-state schema
 
-`crates/estate-core/tests/golden/hash-domain-fixture.json` and the hash literal
+`crates/nomos-core/tests/golden/hash-domain-fixture.json` and the hash literal
 in `tests/determinism.rs` are frozen forever. The fixture is *shaped* like the
 Gate K initial state so it exercises entity ordering, namespace ordering,
 integer costs, and a catalog reference — but it carries its own schema name. If
@@ -203,5 +203,5 @@ measure yet and are recorded as not-applicable rather than as passing. The CI
 - The section 7 execution matrix. CI proves x86_64 debug and release; **Linux
   aarch64 release is unproved**, and the ten-runs-per-target count is not
   implemented. Gate K is not green until both exist.
-- Everything from `estate validate` onward: section 8's command surface, the
+- Everything from `nomos validate` onward: section 8's command surface, the
   v1-to-v2 migration, the mutation suite, and the cold-agent gates.

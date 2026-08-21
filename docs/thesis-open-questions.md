@@ -10,8 +10,8 @@ These are recorded rather than answered through more free-floating architecture.
 A question becomes a decision only with code and evidence or an owner-authorized
 record.
 
-The prior ledger's authoring-source-language question was resolved by decision
-0002 and implemented in SW-C, so it is intentionally absent here.
+The prior ledger's authoring-source-language and project-naming questions were
+resolved by decisions 0002 and 0007, so they are intentionally absent here.
 
 - **Minimal capability basis:** exact orthogonal set after Gate K and Gate 1.
 - **Composition-law catalog:** all combining, exclusive, and conflicting facts.
@@ -36,4 +36,3 @@ The prior ledger's authoring-source-language question was resolved by decision
 - **Fixed-point precision:** scale, overflow bounds, and subcell resolution.
 - **Rendering projection for local environment interactions:** lattice-derived
   versus mesh-informed cover, climbing, and line of sight.
-- **Naming:** `signed-world` is a working name; the wall sentence owns the idea.

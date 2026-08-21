@@ -10,11 +10,14 @@ applies_to_the_mortal_estate: No, unless separately adopted by an explicit proje
 authors: Claude Fable 5 and GPT-5.6 Pro, in adversarial review, with Peter Permenter as owner and referee
 date: 2026-08-21
 revision: 2
-contract_revision: 5
-decision_record: docs/decisions/0006-package-evidence-boundary.md
+contract_revision: 6
+decision_record: docs/decisions/0007-adopt-nomos-identity.md
 ---
 
 # The Signed World
+
+**Nomos** is the project and runtime attempting to prove this thesis. **The Signed
+World** remains the architectural argument; revision 6 does not rename it.
 
 > **The agent names the thing. Namespaces own state. Capabilities define
 > obligations. The resolver composes effective facts. Projection compilers own
@@ -23,27 +26,24 @@ decision_record: docs/decisions/0006-package-evidence-boundary.md
 
 ## 0. How to read this
 
-This is a design thesis written in a vacuum: if the primary author of a game's
-content and much of its tooling is a large language model, what runtime
-architecture plays to that author's strengths and fences its weaknesses?
+This is a design thesis written in a vacuum: if the primary author of a game's content and much
+of its tooling is a large language model, what runtime plays to its strengths and fences its weaknesses?
 
-It is greenfield, not historically isolated. It deliberately ignores existing
-implementation commitments while carrying forward lessons about consistency,
-latency, provenance, and proof. The phrase “clean” in the provenance sections
-means a controlled source zone; it does not claim the architecture exercise was
-created without prior project knowledge.
+It is greenfield, not historically isolated. It deliberately ignores existing implementation
+commitments while carrying forward lessons about consistency, latency, provenance, and proof.
+The phrase “clean” in the provenance sections means a controlled source zone; it does not claim
+the architecture exercise was created without prior project knowledge.
 
 This document is not an implementation specification and binds no other
 project. [KERNEL.md](KERNEL.md) is the first executable acceptance contract.
-[docs/decisions/0001-contract-repair.md](docs/decisions/0001-contract-repair.md)
-records the owner-authorized repair from revision 1 to revision 2.
-[docs/decisions/0003-contract-profile-closure.md](docs/decisions/0003-contract-profile-closure.md)
-records the owner-authorized revision 3 closure of the canonical-profile and
-workspace-evidence gaps found by SW-B.
-[docs/decisions/0004-world-ir-construction-lineage.md](docs/decisions/0004-world-ir-construction-lineage.md)
-records the owner-authorized revision 4 construction-lineage repair.
-[docs/decisions/0006-package-evidence-boundary.md](docs/decisions/0006-package-evidence-boundary.md)
-records the owner-authorized revision 5 package-evidence repair.
+[Decision 0001](docs/decisions/0001-contract-repair.md) records the revision-2 repair.
+[Decision 0003](docs/decisions/0003-contract-profile-closure.md) records the revision-3
+canonical-profile and workspace-evidence closure found by SW-B.
+[Decision 0004](docs/decisions/0004-world-ir-construction-lineage.md) records the
+revision-4 construction-lineage repair.
+[Decision 0006](docs/decisions/0006-package-evidence-boundary.md) records the revision-5
+package-evidence repair. [Decision 0007](docs/decisions/0007-adopt-nomos-identity.md)
+records the revision-6 Nomos identity and construction-epoch repair.
 
 Contract changes follow `AGENTS.md`. Contradictions and falsified assumptions may
 be repaired explicitly; criteria may not be silently weakened because code
@@ -299,7 +299,7 @@ Every build emits fact-ownership receipts:
 {
   "fact": "entity.north_gate.spatial_binding",
   "owner": "world_linker",
-  "declared_at": "rooms/gaol.estate:42",
+  "declared_at": "rooms/gaol.nomos:42",
   "resolved_to": "face(cell(5,0,0),north)",
   "consumers": ["render", "simulation", "navigation"],
   "derivation": ["primitive/iron_barred_door", "binding/face_anchor"]
@@ -630,7 +630,7 @@ The Canonical World IR lineage is constitutional from the first commit:
 - build failure on silent incompatible change.
 
 Incomplete pre-Gate snapshots use their own
-`estate.world_ir.construction@N` lineage and obey every rule above. They are
+`nomos.world_ir.construction@N` lineage and obey every rule above. They are
 never stable packages or substitutes for the required World IR migration.
 
 It is not also the save format, replay format, packet protocol, renderer package,
@@ -670,7 +670,7 @@ Gate K defines one actual v1-to-v2 movement migration. Production migration
 identity, content-version compatibility, and save evolution remain later proof
 obligations.
 
-## 13. The signed-world package
+## 13. The Nomos package
 
 “Signed world” is a build concept, not wall poetry.
 
@@ -707,7 +707,7 @@ keeps the signed input available as evidence and makes reproduction possible.
 Hot reload is a separate development binary, not a release flag:
 
 ```text
-estate-devd
+nomos-devd
   watcher
   incremental compiler
   dev-signed package swapping
@@ -715,7 +715,7 @@ estate-devd
   instrumentation
   forensic overlays
 
-estate-runtime
+nomos-runtime
   sealed package loading
   no compiler
   no watcher

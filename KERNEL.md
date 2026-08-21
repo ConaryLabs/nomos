@@ -2,12 +2,17 @@
 title: The executable semantic kernel
 status: In progress through SW-E
 gate: K
-contract_revision: 5
-supersedes_contract_revision: 4
-decision_record: docs/decisions/0006-package-evidence-boundary.md
+contract_revision: 6
+supersedes_contract_revision: 5
+decision_record: docs/decisions/0007-adopt-nomos-identity.md
 ---
 
 # The executable semantic kernel
+
+Nomos is the project and runtime that implements this contract. The Signed
+World remains the architectural thesis that Nomos tests. Contract revision 6
+replaces the former working project, crate, CLI, source-extension, and active
+schema identities without changing their semantic responsibilities.
 
 Gate K is the first executable artifact after the thesis. It proves the semantic
 machine without graphics, networking, audio playback, hot reload, or an asset
@@ -225,7 +230,7 @@ The ownership rule is precise:
 
 > Every projection compiler consumes the Canonical World IR. Runtime subsystems
 > consume only their own versioned projection artifacts. No subsystem reparses
-> `.estate` source or independently invents semantic meaning.
+> `.nomos` source or independently invents semantic meaning.
 
 Gate K emits these projections as JSON:
 
@@ -329,7 +334,7 @@ parsing/deserialization alone never implies compatibility.
 ### Construction lineage
 
 Before the complete Gate K Canonical World IR exists, incomplete build
-snapshots use `estate.world_ir.construction@N`. They are canonical, versioned
+snapshots use `nomos.world_ir.construction@N`. They are canonical, versioned
 evidence, but they are not valid Gate K packages and cannot satisfy the stable
 migration below. An incomplete build cannot emit a valid package, and a
 construction snapshot cannot occupy its `world-ir.json` member. The lineage
@@ -337,7 +342,7 @@ begins at construction version 1. Every incompatible construction change
 increments `N` and requires a migration or an explicit construction epoch
 break.
 
-Stable `estate.world_ir@1` is assigned only when the section 4 schema is
+Stable `nomos.world_ir@1` is assigned only when the section 4 schema is
 complete and includes the v1 movement representation. Construction versions
 must not be relabelled as stable versions.
 
@@ -460,34 +465,34 @@ random sequences.
 ## 8. Command surface
 
 ```text
-estate validate fixtures/gaol.estate
+nomos validate fixtures/gaol.nomos
 
-estate compile fixtures/gaol.estate \
+nomos compile fixtures/gaol.nomos \
   --out build/gaol.world/
 
-estate inspect build/gaol.world/
+nomos inspect build/gaol.world/
 
-estate run build/gaol.world/ \
+nomos run build/gaol.world/ \
   --commands fixtures/gaol.commands \
   --out runs/gaol/
 
-estate command build/gaol.world/ \
+nomos command build/gaol.world/ \
   --state runs/current/final-state.json \
   "unlock north_gate with credential/gaoler_key" \
   --out runs/after-unlock/
 
-estate explain-entity build/gaol.world/ north_gate
-estate explain-entity build/gaol.world/ flooded_section
-estate explain-entity build/gaol.world/ brazier_02
+nomos explain-entity build/gaol.world/ north_gate
+nomos explain-entity build/gaol.world/ flooded_section
+nomos explain-entity build/gaol.world/ brazier_02
 
-estate explain-transition runs/gaol/ north_gate --tick 4
-estate explain-transition runs/gaol/ brazier_02 --tick 7
+nomos explain-transition runs/gaol/ north_gate --tick 4
+nomos explain-transition runs/gaol/ brazier_02 --tick 7
 
-estate replay build/gaol.world/ \
+nomos replay build/gaol.world/ \
   --log fixtures/gaol.replay \
   --out runs/replay/
 
-estate migrate build/gaol-v1.world/ \
+nomos migrate build/gaol-v1.world/ \
   --to 2 \
   --out build/gaol-v2.world/
 ```
@@ -539,12 +544,12 @@ Gate K uses one Rust workspace containing six kernel crates and one isolated
 tooling member:
 
 ```text
-estate-core        stable IDs, deterministic primitives, canonical bytes, hashing, diagnostics
-estate-schema      authoring and Canonical World IR construction schemas
-estate-projection  versioned simulation/navigation/persistence/diagnostic schemas
-estate-compiler    parse, link, expand, validate, migrate, and project
-estate-sim         runtime state, command transactions, replay, effective-fact resolution
-estate-cli         command-line surface and artifact orchestration
+nomos-core        stable IDs, deterministic primitives, canonical bytes, hashing, diagnostics
+nomos-schema      authoring and Canonical World IR construction schemas
+nomos-projection  versioned simulation/navigation/persistence/diagnostic schemas
+nomos-compiler    parse, link, expand, validate, migrate, and project
+nomos-sim         runtime state, command transactions, replay, effective-fact resolution
+nomos-cli         command-line surface and artifact orchestration
 xtask              workspace tooling; dependency-boundary proof only
 ```
 
@@ -555,21 +560,21 @@ listed kernel crate is missing or an undeclared workspace member appears.
 Permitted dependency edges:
 
 ```text
-estate-schema      -> estate-core
-estate-projection  -> estate-core
-estate-compiler    -> estate-core, estate-schema, estate-projection
-estate-sim         -> estate-core, estate-projection
-estate-cli         -> estate-core, estate-compiler, estate-sim, estate-projection
+nomos-schema      -> nomos-core
+nomos-projection  -> nomos-core
+nomos-compiler    -> nomos-core, nomos-schema, nomos-projection
+nomos-sim         -> nomos-core, nomos-projection
+nomos-cli         -> nomos-core, nomos-compiler, nomos-sim, nomos-projection
 ```
 
 Forbidden:
 
 - dependency cycles;
-- `estate-sim` depending on `estate-schema` or the source parser;
+- `nomos-sim` depending on `nomos-schema` or the source parser;
 - any `wgpu`, windowing, renderer, audio, networking, watcher, or hot-reload
   dependency anywhere in Gate K;
 - canonical schema types defined in more than one crate;
-- runtime subsystems parsing `.estate` files.
+- runtime subsystems parsing `.nomos` files.
 
 Cargo-metadata automation proves workspace membership, permitted dependency
 edges, cycles, forbidden dependencies, and tooling isolation. It cannot infer

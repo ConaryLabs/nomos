@@ -1,10 +1,24 @@
 # Handoff — state of the repository
 
-Updated 2026-08-21 after SW-E merged and package-boundary issue #22 began.
+Updated 2026-08-21 while the owner-authorized Nomos identity cutover (#31) is
+being implemented after package-boundary PR #30 merged.
 This file orients a fresh session; it is rewritten at each slice boundary and
 never accumulates history (git has that).
 
 ## Where things stand
+
+- **Nomos is the active project identity on this branch:** contract revision 6
+  and decision 0007 rename the runtime/project to Nomos while retaining The
+  Signed World as the thesis name. Active crates use `nomos-*`, the binary is
+  `nomos`, authoring source uses `.nomos`, schemas use `nomos.*`, and the fresh
+  construction epoch begins at `nomos.world_ir.construction@1`. References to
+  `signed-world`, `estate-*`, `.estate`, and `estate.*` below describe immutable
+  prototype-era history unless explicitly called current.
+  The mechanical implementation is commit `7c0ca31`; its full author proof,
+  old-to-new golden relationship, and classified legacy-name audit are recorded
+  under `docs/evaluation/runs/identity/2026-08-21-nomos-cutover/`. PR CI, the
+  Luna max exact-head rerun, repository rename, and post-merge CI remain
+  pending.
 
 - **Contract revision 3 is owner-authorized:** decision 0003 pins the canonical
   escape profile, ASCII identifier and field-name grammar, isolated `xtask`,
@@ -41,7 +55,7 @@ never accumulates history (git has that).
   SW-C now satisfies the repository's non-author rule. This was not a formal
   cold-agent run and does not upgrade whole-Gate-K status.
 - **Issue #5 is disposed by PR #6.** Acceptance 3 remains only partially
-  covered: IR expansion is proved, but the observable `estate inspect` command
+  covered: IR expansion is proved, but the active observable `nomos inspect` command
   still requires complete packages and projections.
 - **Issue #4 is closed:** revision 3 merged in PR #13.
 - **The whole-kernel cold roster is predeclared:** Gemini 3.7 Flash High through
@@ -82,32 +96,32 @@ never accumulates history (git has that).
   documentation and invalid-connectivity validation, then reran exact head
   `6dda1d0` green. PR #29 and post-merge CI run `32521857686` passed; merge
   commit `dacfaef` is clean on main. Issue #28 is closed.
-- **Contract revision 5 is in progress for #22:** decision 0006 replaces the
+- **Contract revision 5 is merged (#22/#30):** decision 0006 replaces the
   unmanifested package `receipts/` subtree with canonical hashed
   `compiler-receipts.json`; runtime causal receipts remain only in run outputs.
   It also defines same-filesystem staged publication and exact filesystem and
-  manifest verification. The implementation and four-command author proof are
-  green on `feature/package-boundary-22`. The first GPT-5.6 Luna max pass on
+  manifest verification. The first GPT-5.6 Luna max pass on
   `c70b5bf` found a trailing-separator root-symlink bypass and an unstated
   path-based reader race boundary. Both are repaired: roots are lexically
   normalized before entry checks, the regression test covers both spellings,
   and revision 5 now explicitly requires a caller-owned quiescent package tree.
-  A replacement exact-head Luna rerun is pending. Revision 4 remains effective
-  until this branch merges.
+  The replacement Luna rerun and PR CI passed exact head `5f65978`; post-merge
+  CI run `32525028043` passed merge commit `0eb50b7`. Issue #22 is closed.
 
 ## What is next
 
-Finish **issue #22 — seal the WorldPackage evidence boundary** under decision
-0006 by obtaining the replacement exact-head non-author rerun, merging PR #30,
-and confirming post-merge CI before SW-F relies on packages.
+Finish **issue #31 — adopt Nomos as the project identity** under decision 0007.
+Complete the active-name audit, freeze the fresh Nomos golden evidence, obtain
+the exact-head Luna max rerun, merge the identity slice, rename the GitHub
+repository, and verify post-merge CI under the new repository identity.
 
 Do not pull #24 typed forensic provenance into this package-boundary repair.
 Resolve #24 before stable World IR promotion or `explain-*`. Issue #17 remains
 a formal cold-author tooling blocker, not a blocker for implementation.
 
-After #22: resolve #24 at its stated boundary, then continue SW-F runtime state,
+After #31: resolve #24 at its stated boundary, then continue SW-F runtime state,
 replay, migration v1→v2, package/command orchestration, explanations, the
-determinism matrix, and formal cold-agent gates.
+  determinism matrix, and formal cold-agent gates under Nomos names.
 
 ## How to prove the current branch
 
@@ -122,7 +136,7 @@ SW-D's author proof, Luna max non-author rerun, PR CI, and post-merge CI passed
 all four commands plus the x86_64 debug/release determinism comparison. Earlier
 SW-C, revision-4, and Rust-1.98 maintenance author/non-author reruns also passed.
 Still unproven: Linux aarch64 release, ten runs per target, the complete
-`estate` command surface, persistence and diagnostics projections, light
+`nomos` command surface, persistence and diagnostics projections, light
 resolution, committed runtime semantics, migration/replay, and formal
 cold-agent gates. The contract also requires a
 final explicit schema-ownership source-review receipt after the Gate K schema

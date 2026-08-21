@@ -3,7 +3,7 @@
 //! This is deliberately *not* the kernel's canonical reader. `cargo metadata`
 //! is ordinary JSON with whitespace and unsorted keys, and it is tool input
 //! rather than authoritative state, so the strict reader would rightly refuse
-//! it. Keeping this parser here rather than borrowing `estate-core` also keeps
+//! it. Keeping this parser here rather than borrowing `nomos-core` also keeps
 //! the boundary checker outside the dependency graph it checks.
 
 use std::collections::BTreeMap;

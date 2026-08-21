@@ -4,8 +4,8 @@ Read [README.md](README.md), then [THESIS.md](THESIS.md), then
 [KERNEL.md](KERNEL.md). For changes to the acceptance contract, also read the
 latest record under `docs/decisions/`.
 
-This repository is the thesis and, later, the kernel that tests it. Nothing here
-is authority for any other project.
+Nomos is the project/runtime; The Signed World is the thesis it tests. Nothing
+here is authority for any other project.
 
 ## Working rules
 

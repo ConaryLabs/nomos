@@ -1,4 +1,4 @@
-//! Workspace tooling for signed-world.
+//! Workspace tooling for nomos.
 //!
 //! ```text
 //! cargo xtask boundary [--manifest-path <path/to/Cargo.toml>]
@@ -170,12 +170,12 @@ mod tests {
                 .expect("permitted edges name only kernel crates")
         };
         let order = [
-            "estate-core",
-            "estate-schema",
-            "estate-projection",
-            "estate-compiler",
-            "estate-sim",
-            "estate-cli",
+            "nomos-core",
+            "nomos-schema",
+            "nomos-projection",
+            "nomos-compiler",
+            "nomos-sim",
+            "nomos-cli",
         ];
         for (crate_name, dependencies) in PERMITTED_EDGES {
             for dependency in dependencies {
@@ -209,6 +209,6 @@ mod tests {
         assert_eq!(forbidden_category("wgpu"), Some("renderer"));
         assert_eq!(forbidden_category("tokio-tungstenite"), Some("networking"));
         assert_eq!(forbidden_category("bevy_ecs"), Some("engine"));
-        assert_eq!(forbidden_category("estate-core"), None);
+        assert_eq!(forbidden_category("nomos-core"), None);
     }
 }
