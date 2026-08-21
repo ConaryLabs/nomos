@@ -1,8 +1,8 @@
 # Handoff — state of the repository
 
-Updated 2026-08-21 for the deferred SW-C non-author rerun. This file orients a
-fresh session; it is rewritten at each slice boundary and never accumulates
-history (git has that).
+Updated 2026-08-21 for the Gate K cold-agent roster. This file orients a fresh
+session; it is rewritten at each slice boundary and never accumulates history
+(git has that).
 
 ## Where things stand
 
@@ -27,10 +27,12 @@ history (git has that).
   covered: IR expansion is proved, but the observable `estate inspect` command
   still requires complete packages and projections.
 - **Issue #4 remains open** for the four SW-B contract underspecifications.
-- **Issue #7 records the cold-agent roster problem:** SW-B is Claude-authored
-  and SW-C is GPT-authored, so GPT is no longer eligible as the formal cold
-  author for the SW-C authoring interface. A third family is the cleanest
-  whole-kernel subject unless the owner predeclares slice-specific eligibility.
+- **The whole-kernel cold roster is predeclared:** Gemini 3.7 Flash High through
+  `agy` is the formal cold author; DeepSeek V4 Pro through direct Reasonix is the
+  formal cold debugger; each independently checks the other's output. The plan
+  and invalidation rules are in `docs/evaluation/GATE_K_COLD_AGENT_PLAN.md`.
+- **CI uses `actions/checkout@v7` (#11):** PR and post-merge verification passed
+  without the Node 20 compatibility annotation.
 
 ## What is next
 
@@ -61,5 +63,5 @@ formal cold-agent gates.
 ## Open owner points
 
 From #4 / decision 0001: SHA-256 plus the canonical JSON profile; Linux
-x86_64/aarch64 matrix; cold-agent default budgets and zero-hint rule. From #7:
-the eligible cold-family roster after mixed-family implementation authorship.
+x86_64/aarch64 matrix; cold-agent default budgets and zero-hint rule. The
+eligible cold-family roster is resolved; the formal runs remain unperformed.
