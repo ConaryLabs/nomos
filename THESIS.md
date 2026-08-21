@@ -10,11 +10,16 @@ applies_to_the_mortal_estate: No, unless separately adopted by an explicit proje
 authors: Claude Fable 5 and GPT-5.6 Pro, in adversarial review, with Peter Permenter as owner and referee
 date: 2026-08-21
 revision: 2
-contract_revision: 5
-decision_record: docs/decisions/0006-package-evidence-boundary.md
+contract_revision: 6
+decision_record: docs/decisions/0007-adopt-nomos-identity.md
 ---
 
 # The Signed World
+
+**Nomos** is the project and runtime attempting to prove this thesis. **The
+Signed World** remains the name of the architectural argument. Contract revision
+6 records the identity cutover and the explicit pre-Gate construction epoch
+break; it does not rename this thesis.
 
 > **The agent names the thing. Namespaces own state. Capabilities define
 > obligations. The resolver composes effective facts. Projection compilers own
@@ -44,6 +49,9 @@ workspace-evidence gaps found by SW-B.
 records the owner-authorized revision 4 construction-lineage repair.
 [docs/decisions/0006-package-evidence-boundary.md](docs/decisions/0006-package-evidence-boundary.md)
 records the owner-authorized revision 5 package-evidence repair.
+[docs/decisions/0007-adopt-nomos-identity.md](docs/decisions/0007-adopt-nomos-identity.md)
+records the owner-authorized revision 6 Nomos identity and construction-epoch
+repair.
 
 Contract changes follow `AGENTS.md`. Contradictions and falsified assumptions may
 be repaired explicitly; criteria may not be silently weakened because code
@@ -299,7 +307,7 @@ Every build emits fact-ownership receipts:
 {
   "fact": "entity.north_gate.spatial_binding",
   "owner": "world_linker",
-  "declared_at": "rooms/gaol.estate:42",
+  "declared_at": "rooms/gaol.nomos:42",
   "resolved_to": "face(cell(5,0,0),north)",
   "consumers": ["render", "simulation", "navigation"],
   "derivation": ["primitive/iron_barred_door", "binding/face_anchor"]
@@ -630,7 +638,7 @@ The Canonical World IR lineage is constitutional from the first commit:
 - build failure on silent incompatible change.
 
 Incomplete pre-Gate snapshots use their own
-`estate.world_ir.construction@N` lineage and obey every rule above. They are
+`nomos.world_ir.construction@N` lineage and obey every rule above. They are
 never stable packages or substitutes for the required World IR migration.
 
 It is not also the save format, replay format, packet protocol, renderer package,
@@ -670,7 +678,7 @@ Gate K defines one actual v1-to-v2 movement migration. Production migration
 identity, content-version compatibility, and save evolution remain later proof
 obligations.
 
-## 13. The signed-world package
+## 13. The Nomos package
 
 “Signed world” is a build concept, not wall poetry.
 
@@ -707,7 +715,7 @@ keeps the signed input available as evidence and makes reproduction possible.
 Hot reload is a separate development binary, not a release flag:
 
 ```text
-estate-devd
+nomos-devd
   watcher
   incremental compiler
   dev-signed package swapping
@@ -715,7 +723,7 @@ estate-devd
   instrumentation
   forensic overlays
 
-estate-runtime
+nomos-runtime
   sealed package loading
   no compiler
   no watcher
