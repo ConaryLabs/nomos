@@ -1,15 +1,17 @@
 ---
-title: The Signed World — an LLM-native game engine thesis
+title: The Signed World — an LLM-native game runtime thesis
 status: Exploratory design thesis
 authority: Non-authoritative
-scope: Clean-room / vacuum architecture exercise
+scope: Greenfield / vacuum architecture exercise
 implementation_commitment: None
-supersedes: Nothing
+supersedes: Thesis revision 1
 superseded_by: Nothing
 applies_to_the_mortal_estate: No, unless separately adopted by an explicit project decision
-authors: Claude Fable 5 and GPT Pro, in adversarial review, with Peter Permenter as owner and referee
+authors: Claude Fable 5 and GPT-5.6 Pro, in adversarial review, with Peter Permenter as owner and referee
 date: 2026-08-21
-revision: 1
+revision: 2
+contract_revision: 2
+decision_record: docs/decisions/0001-contract-repair.md
 ---
 
 # The Signed World
@@ -21,89 +23,139 @@ revision: 1
 
 ## 0. How to read this
 
-This is a design thesis written in a vacuum: *if the primary author of a game's
-content and much of its tooling is a large language model, what engine
-architecture plays to that author's strengths and fences its weaknesses?* It
-takes no history as given and commits nobody to anything. It was produced by two
-model families arguing, with a human deciding which findings mattered; §20
-records the path, because the reasoning is more durable than the diagram.
+This is a design thesis written in a vacuum: if the primary author of a game's
+content and much of its tooling is a large language model, what runtime
+architecture plays to that author's strengths and fences its weaknesses?
 
-It is not a spec. Nothing here is implemented. §22 says what would have to be
-true before any project adopted it.
+It is greenfield, not historically isolated. It deliberately ignores existing
+implementation commitments while carrying forward lessons about consistency,
+latency, provenance, and proof. The phrase “clean” in the provenance sections
+means a controlled source zone; it does not claim the architecture exercise was
+created without prior project knowledge.
 
-Lessons drawn from real projects are stated as lessons, not as history.
+This document is not an implementation specification and binds no other
+project. [KERNEL.md](KERNEL.md) is the first executable acceptance contract.
+[docs/decisions/0001-contract-repair.md](docs/decisions/0001-contract-repair.md)
+records the owner-authorized repair from revision 1 to revision 2.
+
+Contract changes follow `AGENTS.md`. Contradictions and falsified assumptions may
+be repaired explicitly; criteria may not be silently weakened because code
+failed them.
+
+The founding review is recorded twice: a condensed primary record written in
+the originating session (`docs/review/2026-08-21-founding-review.md`, with its
+provenance limits stated) and the contract-revision-2 synthesis
+(`docs/review/2026-08-21-founding-review-synthesis.md`).
 
 ---
 
 ## 1. Executive thesis
 
 An LLM is good at text that compiles and bad at pixels that match. It is good at
-naming a thing and bad at remembering the eight places that thing must be
-registered. It is good at reasoning over a deterministic replay and bad at
-reasoning over frame-rate-dependent physics. It can read anything it can `cat`
-and debug anything it can name.
+naming a thing and bad at remembering the eight systems in which that thing must
+be registered. It is good at following a deterministic event chain and bad at
+explaining frame-rate-dependent accidents. It can read anything it can `cat` and
+debug anything it can name.
 
-So the engine should be built so that:
+So the runtime should be built around these rules:
 
-1. **The agent authors intent in a small, typed, fail-closed language.** Nouns
-   from an approved catalog, bounded parameters, discrete addresses. Never a raw
-   transform, never a raw shader, never a pixel.
-2. **A compiler owns every consequence.** A declared door becomes collision,
-   navigation, animation, audio, persistence, replication, and diagnostics
-   without the author touching any of them.
-3. **One canonical, versioned world model is the shared truth**, and every
-   subsystem projects from it. No subsystem reinterprets the source.
-4. **The runtime is deterministic and server-authoritative**, so a replay is a
-   proof and a bug is an event chain.
-5. **Every visible and behavioral result is traceable to a source line**, and
-   the engine can produce a machine-generated argument for why it happened.
-6. **Nothing ships that the compiler did not sign**, and the signature carries
-   provenance, promotion state, schema compatibility, and invariant receipts.
-7. **The whole claim is tested by strangers**: a different model family authors
-   and debugs from the docs alone, and a clean machine reproduces every proof.
+1. **The agent authors intent in a small, typed, fail-closed language.** Content
+   uses approved nouns, bounded parameters, and discrete addresses. It does not
+   author raw transforms, shaders, arbitrary scripts, or final pixels.
+2. **Approved primitives expand into a sealed capability basis.** A door is not
+   eight hand-maintained subsystem registrations. It is one primitive whose
+   capabilities declare the obligations every subsystem must honor.
+3. **Capabilities own contracts; projection compilers own consequences.** A
+   capability contains no renderer, navigation, networking, or persistence
+   implementation. Each projection compiler translates the same semantic fact
+   into its subsystem's versioned artifact.
+4. **One Canonical World IR is the shared semantic truth.** Projection compilers
+   consume it. Runtime subsystems consume their own derived projection formats.
+   No subsystem reparses source or invents a second meaning.
+5. **State stays in small namespace-local machines.** Products exist
+   mathematically but are never flattened into an unreadable mega-table.
+   Machines interact only through declared derived formulas or typed events.
+6. **Effective facts are resolved from the whole current state.** Local
+   transitions identify affected claims; final movement, visibility, emission,
+   and other facts are composed at transaction time, then checked for
+   cross-capability coherence.
+7. **The runtime is deterministic and server-authoritative.** A replay is a
+   proof, a bug is an event chain, and authoritative state has one clock.
+8. **Compiled worlds are immutable signed evidence.** Mutable runtime state,
+   command logs, migrations, and receipts are separate versioned artifacts.
+9. **Every result is traceable.** The system can produce a machine-generated
+   argument for why an entity blocked, moved, emitted light, persisted, or
+   changed.
+10. **The claim is tested by strangers.** A different model family must author
+    and debug from the docs and CLI alone, and a clean machine must reproduce the
+    proof.
 
-This is not an art-consistency solution. It is an engine designed to stop an LLM
-from producing locally plausible pieces that fail to form a coherent game.
+This is broader than art consistency. It is an architecture intended to stop an
+LLM from producing locally plausible pieces that fail to form a coherent game.
 
 ## 2. Goals and non-goals
 
-**Goals**
+### Goals
 
-- Consistency by construction: the vocabulary *is* the style.
+- Consistency by construction: the approved vocabulary is the style.
 - Cross-system coherence by construction: one semantic edit, all consequences.
-- Authoring latency in seconds; full proof in minutes; never the reverse.
-- Explainability across every subsystem, not only pixels.
-- Reproducibility from a manifest on a clean machine.
-- Provenance as an enforced process boundary.
+- Authoring feedback in seconds; complete proof in minutes; never the reverse.
+- Deterministic, inspectable runtime behavior.
+- Explainability across simulation, navigation, persistence, networking, audio,
+  and rendering.
+- Reproducibility from versioned manifests and immutable artifacts.
+- Provenance as an enforced process boundary, not a hopeful comment.
+- A command surface an agent can operate with `ls`, `cat`, `diff`, and structured
+  JSON.
+- Falsifiable gates before expensive systems are built.
 
-**Non-goals**
+### Non-goals
 
-- A general-purpose engine. No arbitrary scene tree, rigid-body physics, user
-  scripts, universal material graph, open plugin system, freeform transform
-  hierarchies, or an editor that mutates canonical content.
-- Replacing human taste. Gate 0 (§17) is a human saying yes to a target pack.
-- Supporting any game other than the one whose ontology it is built around.
-  Call it an engine internally; architecturally it is *one game's runtime*.
+- A general-purpose engine.
+- Arbitrary scene trees or transform hierarchies.
+- General rigid-body physics.
+- User-authored runtime scripts.
+- A universal material graph or open plugin system.
+- An editor that silently mutates canonical content.
+- Replacing human taste.
+- Supporting games whose ontology differs from the adopting game's ontology.
+- Treating a cryptographic signature as proof that content is desirable or
+  policy-compliant.
+
+Call it an engine internally if that keeps everyone's hair shiny.
+Architecturally it should be one game's runtime, aggressively refusing to solve
+problems that game does not have.
 
 ## 3. The canonical pipeline
 
+There are two distinct phases. Revision 1 blurred them under the phrase
+“capability resolution.” Revision 2 does not.
+
+### Compile time: prepare claims, machines, and projections
+
 ```text
-Authoring source (semantic, human-readable, symbolic IDs)
+Authoring source
       │
       ▼
-Primitive expansion          — nouns from the approved catalog expand to capability bundles
+Typed name resolution       — entity, catalog, region, machine, and relation namespaces
       │
       ▼
-Capability resolution        — state-indexed claims composed by each capability's algebra
+Primitive expansion         — approved nouns become capability claim templates
       │
       ▼
-Fact ownership + cross-reference validation   — one owner per fact class; dangling IDs fail
+Machine compilation         — small namespace-local machines and typed transitions
       │
       ▼
-State-space compilation      — per-namespace machines, interactions, transition tables
+Interaction compilation     — derived formulas and causal event edges
       │
       ▼
-Canonical World IR           — versioned, canonically serialized, the shared truth
+Resolver compilation        — composition laws and cross-capability invariants
+      │
+      ▼
+Ownership/link validation   — one owner per fact; dangling and smuggled facts fail
+      │
+      ▼
+Canonical World IR          — versioned semantic truth plus resolver plan
       │
       ├──► Simulation projection
       ├──► Navigation projection
@@ -114,25 +166,61 @@ Canonical World IR           — versioned, canonically serialized, the shared t
       └──► Diagnostic / provenance projection
 ```
 
-The Canonical World IR contains the spatial lattice, the relationship graph,
-stable identities, resolved capabilities, state machines and transition tables,
-source mappings, provenance, and compiler/schema versions.
+The compiler may precompute dependency sets, affected facts, candidate
+consequences, transition-local work, and static projection structures. It may
+not assume the final effective consequence of a local transition without the
+rest of the current state.
 
-**Every subsystem consumes the IR. None independently parses the source.**
-Letting the renderer and the simulator each read the room language would
-produce two religions within a dozen commits.
+### Command time: resolve effective facts
 
-The IR is the engine's center. The compiler is one producer of it. The server
-executes it, the renderer draws it, the Workbench explains it.
+```text
+validate command
+      │
+      ▼
+apply local machine transition
+      │
+      ▼
+emit typed causal events
+      │
+      ▼
+settle declared interactions in fixed order
+      │
+      ▼
+resolve effective capability facts from all active claims
+      │
+      ▼
+apply cross-capability coherence rules
+      │
+      ▼
+compare before / after effective facts
+      │
+      ▼
+derive subsystem deltas
+      │
+      ▼
+commit runtime state atomically
+      │
+      ▼
+write receipts and publish external effects
+```
+
+The Canonical World IR is the architecture's center. The compiler produces it;
+projection compilers translate it; the server executes derived runtime forms;
+the renderer draws a rendering projection; the Workbench explains all of them.
+
+**Every projection compiler consumes the Canonical World IR. Runtime subsystems
+consume only their versioned projection artifacts. No subsystem independently
+parses the authoring language.**
 
 ## 4. The typed lattice and the world graph
 
-Agents never author floats. Spatial facts live on a common **lattice**;
-relational and temporal facts live in a **graph**; stable entity IDs stitch
-them.
+Agents do not author arbitrary floats. Spatial facts live on a common typed
+lattice. Relational and temporal facts live in a graph. Stable IDs stitch them.
 
-**Lattice** — topology, occupancy, surfaces, regions, portals, elevation,
-spatial affordances. Addresses are discrete and typed:
+### Lattice
+
+The lattice owns topology, occupancy, surfaces, regions, portals, elevation,
+spatial affordances, and legal anchors.
 
 ```text
 cell(12, 8, 0)
@@ -144,23 +232,33 @@ path(main_patrol_route)
 room(old_chapel)
 ```
 
-**Graph** — identity, ownership, state machines, encounters, quests, factions,
-triggers, dependencies, narrative relations. "The gaoler owns this key" and
-"these two encounters are mutually exclusive" are graph edges; encoding them as
-cell properties is conceptual tax fraud.
+Authored placement uses cells, faces, edges, sockets, regions, discrete
+orientation enums, elevation steps, approved footprints, and rational subcell
+anchors where a primitive explicitly permits them.
 
-The runtime may use fixed-point coordinates for moving actors and float
-matrices for rendering. The authoring language exposes neither except wrapped
-in bounded semantic types (`elevation = step(1)`, `facing = southwest`,
-`anchor = cell(4, 7, 0).center`).
+### Graph
 
-Voxels — or any grid-based volume — are the *source topology* of the lattice,
-not the appearance. See §17.
+The graph owns identity, ownership, state machines, encounters, factions,
+quests, triggers, dependencies, inventory relations, and narrative relations.
+“The gaoler owns this key” and “these encounters are mutually exclusive” are
+graph edges. Encoding them as decorative cell properties would be tidy in the
+same way that putting tax records in the cutlery drawer is tidy.
+
+### Linker
+
+The linker owns cross-domain bindings. Content may declare that an entity is
+anchored to a face, but neither lattice nor graph stores a second homemade copy
+of the resolved relationship.
+
+The runtime may use fixed-point subcell positions and float rendering matrices.
+The authoring language exposes neither directly.
+
+Voxel or grid volume data describes source topology, not appearance. A renderer
+may compile it into broad stylized meshes rather than cubes.
 
 ## 5. The fact-ownership constitution
 
-Two authorities drift unless one pass owns every cross-reference. Every fact
-class has exactly one declared canonical owner:
+Every fact class has one canonical owner:
 
 ```text
 spatial.anchor             -> lattice
@@ -173,18 +271,22 @@ state.machine              -> graph
 entity.spatial_binding     -> linker-derived
 navigation.connectivity    -> projection-derived
 render.transform           -> projection-derived
+runtime.effective_fact     -> resolver-derived
 ```
 
-Content may declare an entity's lattice anchor through the sanctioned binding
-syntax; the **linker** owns the resolved relationship. Neither side stores a
-second copy.
+Content may not supply a derived fact. Projection code may not claim canonical
+ownership. The compiler fails on:
 
-The compiler fails on: duplicate authorities for one fact; dangling entity IDs;
-a relation encoded as a cell property; an authored transform posing as spatial
-truth; graph state contradicting lattice topology; an illegal capability
-combination; a derived fact supplied by content.
+- duplicate authorities;
+- dangling typed IDs;
+- a relation smuggled into a lattice cell;
+- a raw transform posing as spatial truth;
+- graph state contradicting lattice topology;
+- an illegal capability combination;
+- a derived fact supplied by source;
+- a subsystem projection attempting to redefine semantics.
 
-Every build emits a **fact-ownership receipt** per fact:
+Every build emits fact-ownership receipts:
 
 ```json
 {
@@ -192,293 +294,337 @@ Every build emits a **fact-ownership receipt** per fact:
   "owner": "world_linker",
   "declared_at": "rooms/gaol.estate:42",
   "resolved_to": "face(cell(5,0,0),north)",
-  "consumers": ["render", "sim", "nav"],
-  "derivation": ["primitive:iron_barred_door", "binding:face_anchor"]
+  "consumers": ["render", "simulation", "navigation"],
+  "derivation": ["primitive/iron_barred_door", "binding/face_anchor"]
 }
 ```
 
-Diagnostics are structured, with stable codes, source spans, and legal repairs.
-"Invalid scene" is not a diagnostic; it is the compiler sulking.
+Diagnostics have stable codes, source spans, rejected facts, and legal repair
+classes. “Invalid scene” is not a diagnostic. It is the compiler sulking.
 
-```json
-{
-  "code": "E_WORLD_041",
-  "message": "Spatial occupancy is owned by the lattice",
-  "source": "rooms/gaol.estate:48:9",
-  "illegal_fact": "entity.north_gate.graph.position",
-  "legal_repairs": [
-    "Bind the entity to a cell, face, edge, region, or socket",
-    "Remove the graph position field"
-  ]
-}
-```
-
-Every invariant has a mutation test: inject the violation, assert the code.
+Each invariant has a mutation test: inject the violation and assert the stable
+rejection code.
 
 ## 6. Primitives and the capability basis
 
-Three layers, with sharply different change rates:
+Three layers change at different rates:
 
 ```text
-Engine capability basis      — tiny, closed, sealed, heavily tested, rarely changed
+Engine capability basis      — small, sealed, heavily tested, rarely changed
         ↓
-Approved primitive catalog   — extensible through the promotion process
+Approved primitive catalog   — extensible through promotion
         ↓
-World content                — instantiates approved primitives; uses nouns
+World content                — instantiates approved nouns with bounded parameters
 ```
 
-A content author writes:
+A room author writes:
 
 ```text
 door north_gate {
     anchor = face(cell(5, 0, 0), north)
     archetype = iron_barred
-    initial_state = locked
-    key = gaoler_key
+    initial_access = locked
+    credential = credential/gaoler_key
 }
 ```
 
-An engine author defined `iron_barred` once, from capabilities:
+An engine author defines `primitive/iron_barred_door` once from typed machines,
+claims, interactions, lifecycle policy, and presentation references.
+
+The room author cannot forget collision, navigation, persistence, audio,
+replication, or diagnostics because those consequences do not belong to room
+content.
+
+### Why capabilities
+
+If each primitive independently emits into eight subsystems, fifty primitives
+create four hundred bespoke emitters and four hundred places to forget a
+consequence. With a small capability basis, each projection compiler implements
+its consequence per capability family. A new primitive is a new approved bundle,
+not a new switch statement in every subsystem.
+
+### Contract versus consequence
+
+A `Portal` capability contains no renderer, navigation, collision, persistence,
+or networking code. It declares a typed semantic obligation. Projection
+compilers own the subsystem-specific artifacts.
+
+Capabilities are primarily a compile-time semantic language. A static blocker
+may compile into a collision bitset, navigation update plan, and visibility
+boundary. The runtime does not need to carry a philosophical `Blocks` object for
+emotional support.
+
+### Content cannot assemble arbitrary capability soup
+
+Normal content instantiates approved primitives. Capability-bundle authoring is
+an engine/catalog operation subject to promotion fixtures and review. This
+prevents every room from inventing a slightly different door constitution.
+
+## 7. Capability namespaces, algebra, and coherence
+
+The basis is not one flat trait bag. Capabilities live in typed namespaces:
 
 ```text
-primitive iron_barred_door {
-    topology { portal(axis = normal) }
-    machines { access = lockable_door; integrity = breakable_iron }
+topology
+  Occupies
+  Boundary
+  Portal
+  Region
 
-    affordances {
-        blocks(movement.ground)                 when access != open and integrity != destroyed
-        occludes(vision.normal, amount = 0.80)  when access != open and integrity != destroyed
-        traversable(movement.ground, cost = 1)  when access == open or integrity == destroyed
-        interactable {
-            unlock(key) -> access.unlock
-            open        -> access.open
-            close       -> access.close
-        }
-    }
+affordance
+  Blocks<movement_channel>
+  TraversalCost<locomotion_mode>
+  Occludes<sense_channel>
+  Supports<load_class>
+  Interactable<verb_set>
+  Contains<inventory_kind>
+  Damages<damage_channel>
 
-    lifecycle {
-        persisted(scope = world, fields = [access, integrity])
-        replicated(fields = [access, integrity])
-        authority = server
-    }
+state
+  Machine<state_schema>
+  Trigger<event_schema>
 
-    presentation {
-        visual = iron_barred_door
-        transition_audio = iron_door
-    }
-}
+lifecycle
+  Authority
+  Persisted
+  Replicated
+  Lifetime
+
+presentation
+  Visual
+  EmitsLight
+  EmitsAudio
+  EmitsEffect
 ```
 
-The primitive passes the promotion suite once. Content agents use it safely
-forever, and cannot omit persistence, navigation, or collision, because those
-decisions are not theirs to make.
+The exact basis emerges from Gate K and Gate 1 rather than architectural fiat.
+The target is a minimal orthogonal basis with one owner, one meaning, and a
+known consumer set per capability.
 
-**Why a capability layer at all.** If every primitive independently emitted into
-eight subsystems, fifty primitives would mean four hundred hand-written
-emitters, each a place to forget something. With ~a dozen capabilities, each
-subsystem emits *per capability*, never per primitive. A new primitive is a new
-bundle and zero new emitters. Cross-system correctness becomes a property of a
-handful of capabilities that can be tested exhaustively.
+Absence means absence. `Occludes(none)` is suspicious; omit the capability.
+Negative traits tend to become three-valued logic and, eventually, a small
+demon.
 
-**Capabilities own contracts and obligations. Projection compilers own the
-consequences.** A `Portal` capability contains no rendering, navigation,
-collision, persistence, or networking code. It declares a typed fact; each
-projection compiler understands that fact and emits its own artifact.
+### Per-capability composition
 
-Capabilities are primarily a **compile-time semantic language**. They need not
-become one-for-one runtime components; a static `Blocks<ground>` claim may
-compile into a collision bitset, a navigation edge state, and a visibility
-boundary, with no philosophical `Blocks` object carried at runtime for emotional
-support.
-
-## 7. Capability namespaces and composition laws
-
-The basis is not a flat bag. A flat bag permits type-correct gibberish — a
-replicated audio emitter that owns a key and occludes swimming. Capabilities are
-divided into typed namespaces:
+Independent sources may make overlapping claims. Each capability type declares
+its algebra:
 
 ```text
-topology      Occupies · Boundary · Portal · Region
-affordance    Blocks<movement_channel> · Traversable<locomotion_mode> · Occludes<sense_channel>
-              Supports<load_class> · Interactable<verb_set> · Contains<inventory_kind> · Damages<damage_channel>
-state         Machine<state_schema> · Trigger<event_schema>
-lifecycle     Authority · Persisted · Replicated · Lifetime
-presentation  Visual · EmitsLight · EmitsAudio · EmitsEffect
+Blocks<channel>       -> any active claim
+TraversalCost<mode>   -> declared cost composition
+Occludes<sense>       -> bounded composition
+EmitsAudio            -> union
+Authority             -> exactly one
+Persisted             -> compatible union or error
 ```
 
-The exact basis emerges from the vertical slice (§18), not from fiat. The goal
-is a minimal orthogonal basis in which every capability has one owner, one
-meaning, and a known consumer set.
+Some combine. Some require one owner. Some conflict and fail.
 
-**Absence means absence.** `Occludes(none)` is suspicious; omit the capability.
-Negative traits become three-valued logic and, eventually, a small demon.
+### Cross-capability coherence
 
-**Composition laws.** Independent machines (§8) will emit overlapping claims —
-`access.closed` claims `Blocks<ground>`, a magical seal also claims
-`Blocks<ground>`, `integrity.destroyed` means the doorway is breached. Each
-capability type therefore declares how claims combine:
+Per-capability algebra alone can still produce nonsense:
 
 ```text
-Blocks<channel>       composition = any_active_claim
-Traversable<mode>     composition = minimum_legal_cost
-Occludes<sense>       composition = bounded_sum
-EmitsAudio            composition = union
-Authority             composition = exactly_one
-Persisted             composition = compatible_union_or_error
+Blocks<ground>      = true
+Traversable<ground> = cost(1)
+Portal              = open
 ```
 
-Some combine. Some require exactly one owner. Some conflict and fail
-compilation. Without declared algebra, escaping state explosion only produces
-"which trait wins" soup.
+Simulation and navigation are not allowed to choose their favorite answer.
+Where facts are mutually exclusive, the resolver emits a composite effective
+fact. Gate K uses:
+
+```text
+MovementDisposition<ground> =
+    Blocked { reasons }
+  | Traversable { cost, reasons }
+```
+
+Any blocker wins over traversal cost; an open portal does not guarantee a valid
+route; traversal requires lattice connectivity. Unresolved contradiction fails
+closed with a stable diagnostic.
+
+The larger engine will need similar coherence rules for visibility, cover,
+containment, authority, and lifecycle. Each one must be explicit and tested.
 
 ## 8. Per-namespace state machines
 
-A door that is also damageable and burnable is a product state. Flattening the
-product into one table produces an arbitrary script written in a very stupid
-notation, and nobody can read why `burning_locked_damaged → open` does what it
-does. So:
+A lockable, damageable, burnable, warded door has a product state. Flattening it
+into one table creates entries such as `burning_locked_damaged_sealed`, which is
+an arbitrary script written in a particularly stupid notation.
+
+Keep machines separate:
 
 ```text
-access:      locked · closed · open
-integrity:   intact · damaged · destroyed
-combustion:  cold · burning · spent
+access:      locked | closed | open
+integrity:   intact | damaged | destroyed
+combustion:  cold | burning | spent
+ward:        sealed | unsealed
 ```
 
-The combined state exists mathematically. It is never flattened or authored as
-one table. Each machine is small, and each transition is explicit:
+The product exists mathematically. It is never authored or stored as one giant
+state enum.
+
+Each transition is local and explicit:
 
 ```text
-unlock(key) : locked -> closed
-open        : closed -> open
-close       : open   -> closed
+access.unlock(credential) : locked -> closed
+access.open               : closed -> open
+access.close              : open -> closed
+integrity.apply_damage    : intact -> damaged -> destroyed
+combustion.ignite         : cold -> burning
+ward.unseal               : sealed -> unsealed
 ```
 
-The compiler precomputes subsystem deltas per legal transition:
+A local transition does not own final subsystem deltas. Opening a door normally
+removes one movement blocker. If a ward still blocks, the effective movement
+fact does not change.
+
+The compiler may precompute which claims and resolver dependencies a transition
+can affect. The command-time resolver decides the final before/after facts from
+the complete state.
+
+## 9. Cross-machine interactions and atomic transactions
+
+Machines own state. Resolvers own effective facts.
+
+Interactions have two forms.
+
+### Pure derived interactions
+
+They calculate effective facts without lying about another machine's state:
 
 ```text
-closed -> open
-  simulation:   disable blocker
-  navigation:   activate portal
-  rendering:    play approved opening animation
-  audio:        emit iron_door.open
-  persistence:  state = open
-  network:      replicate state transition
-  diagnostics:  record cause, actor, source primitive, tick
+portal_open = access == open OR integrity == destroyed
+blocks_ground = ward == sealed OR NOT portal_open
 ```
 
-The runtime executes a compiled transition table. It does not run a door script.
+A destroyed closed door remains `access.closed` and `integrity.destroyed`. Its
+passage is breached. That distinction matters for repair, rendering,
+persistence, and explanation.
 
-## 9. Cross-machine interactions and transaction resolution
+### Causal interactions
 
-**Machines own state. Capability resolvers own effective facts.**
-
-Interactions have exactly two forms.
-
-**Pure derived interactions** change effective capabilities without mutating
-another machine:
+They issue typed events to another machine:
 
 ```text
-portal_open   = access == open OR integrity == destroyed
-blocks_ground = magical_seal == active OR NOT portal_open
+combustion.on_enter(burning)
+  -> integrity.apply_damage(fire, 2)
+
+integrity.on_enter(destroyed)
+  -> container.release_contents
 ```
 
-Destroying the door does not lie by setting `access = open`. The door remains
-closed and destroyed; its effective topology is breached. That distinction
-matters for repair, rendering, persistence, and explanation.
+No machine directly writes another machine's state. The target machine validates
+and owns its transition.
 
-**Causal interactions** issue a typed command to another machine:
+Every causal edge declares trigger semantics such as `on_enter`, `on_exit`,
+`on_command`, or an explicitly scheduled pulse. There is no implicit “while
+true” behavior. Gate K proves `on_enter`; recurring scheduling remains an open
+production question.
 
-```text
-combustion.burning   -> integrity.apply_damage(fire, 2)
-integrity.destroyed  -> container.release_contents
-```
+A command transaction:
 
-No machine writes another machine's state. It emits a typed event; the target
-decides whether that event produces a legal transition.
+1. validates the command;
+2. applies its local transition;
+3. emits typed events;
+4. settles interactions in deterministic phase order;
+5. resolves all affected effective facts;
+6. enforces cross-capability coherence;
+7. rejects ambiguity, illegal writes, or cycles;
+8. commits the complete authoritative result atomically;
+9. derives projection deltas and causal receipts;
+10. publishes external effects after commit.
 
-Every external command resolves as **one deterministic state transaction**:
-
-1. Apply the machine-local transition.
-2. Emit typed effects.
-3. Evaluate declared interactions in a fixed phase order.
-4. Resolve capability claims through their composition laws.
-5. Reject conflicts, cycles, or ambiguous writes.
-6. Commit the complete result atomically.
-7. Emit subsystem deltas and a causal receipt.
-
-The compiler rejects interaction cycles unless a capability explicitly defines
-fixed-point behavior. The runtime carries a transition budget as a last line of
+The compiler rejects interaction cycles unless a future capability explicitly
+defines fixed-point behavior. The runtime retains a transition budget as a last
 defense, because eventually somebody builds a torch that lights itself when
 extinguished.
 
 ## 10. Deterministic, server-authoritative simulation
 
-Fixed-tick, server-authoritative. Not peer lockstep.
+The intended game model is fixed-tick and server-authoritative, not peer
+lockstep.
 
-The server receives typed commands — `move_toward(cell(8,4))`,
-`attack(entity(goblin_17))`, `open(entity(north_gate))` — validates them, and
-executes them at deterministic ticks. Clients render authoritative state.
-
-Authoritative state uses integer grid coordinates, fixed-point subcell positions
-and timings, stable entity ordering, canonical serialization, deterministic
-system scheduling, deterministic pathfinding tie-breaking, and explicit event
-ordering. Rendering and cosmetic particles use floats; neither enters a state
-hash.
-
-**No single global RNG.** A new random call in an ambient-sound system must not
-alter next Tuesday's critical-hit sequence. Use keyed or counter-based streams
-derived from `(world_seed, tick, system_id, entity_id, event_sequence)`; combat,
-loot, encounters, decoration, and cosmetics each get their own.
-
-A replay is `content_manifest + initial_snapshot + ordered command log +
-periodic expected state hashes`, and the debugging surface is semantic:
+The server receives typed commands:
 
 ```text
-estate replay reports/door_regression.replay
-estate trace --tick 1840 --entity north_gate
-estate explain-state north_gate
+move_toward(cell(8,4))
+attack(entity/goblin_17)
+open(entity/north_gate)
+cast(spell/fireball, cell(12,9))
 ```
 
-**Zero authoritative client prediction** for a deliberate-tempo tactical game.
-Commands are acknowledged (`Move accepted · executes on pulse 1841`); the
-client interpolates between confirmed beats; path and target previews are local
-UI; nothing speculative moves, damages, or changes inventory. There is no second
-clock trying to be helpful. A fixed pulse turns latency from an implementation
-embarrassment into part of the interaction grammar.
+It validates and executes them on deterministic ticks.
 
-## 11. Symbolic IDs in source, content addresses in builds
+Authoritative state uses:
 
-Authored files are not hash soup. Agents need stable semantic names in
-ordinary version-controlled files with canonical formatting and meaningful
-diffs:
+- integer lattice coordinates;
+- fixed-point subcell positions and timing where needed;
+- checked arithmetic;
+- stable identity and ordering;
+- canonical serialization;
+- deterministic system scheduling;
+- deterministic pathfinding tie-breaking;
+- explicit event phase order;
+- isolated RNG streams.
+
+Rendering and cosmetic particles may use floats; neither enters authoritative
+state hashes.
+
+### No global RNG stream
+
+A harmless new ambient event must not alter next Tuesday's critical hit. Random
+streams are keyed by semantic scope, including a stream ID and a local
+occurrence counter. The algorithm and key schema are versioned. Gate K contains
+no randomness and therefore cannot accidentally claim to have proved more.
+
+### No authoritative client prediction for a deliberate-pulse game
+
+Clients may preview paths and targets and interpolate between confirmed states.
+They do not speculatively move actors, apply damage, or change inventory.
+Commands can visibly queue for an authoritative pulse. The design has one clock
+and one opinion about where the goblin is.
+
+## 11. Symbolic source IDs and content-addressed builds
+
+Authored source uses stable semantic names:
 
 ```text
 material/wet_keep_stone
 primitive/iron_barred_door
 room/flooded_guard_post
 actor/gaoler
+credential/gaoler_key
 ```
 
-The compiler resolves those into a content-addressed build graph, and a build
-manifest records source hashes, compiler/schema/catalog versions, generated
-artifact hashes, runtime compatibility, and the dependency graph. That gives
-reproducibility, caching, deduplication, content negotiation, and forensic
-provenance without making anyone edit references that resemble a stolen
-catalytic converter's serial number.
+The compiler resolves them into a content-addressed dependency graph. Build
+manifests record source hashes, compiler/schema/catalog versions, projection
+hashes, runtime compatibility, and provenance closure.
 
-## 12. Versioning: the IR and its derived boundaries
+This gives caching, deduplication, reproducibility, and content negotiation
+without making authors edit references that resemble the serial number from a
+stolen catalytic converter.
 
-The Canonical World IR is constitutional from the first commit: explicit schema
-version, canonical serialization, migration support, fixture coverage,
-compatibility receipts, and a build failure on any silent schema change. This
-is the one place where "no compatibility layers during prototype" does not
-apply — the IR is not an internal contract.
+Symbolic names are not automatically persistent identities. What survives a
+rename, file move, split, or merge is an explicit open question and must be
+settled before production save compatibility.
 
-But the IR is **not** also the save format, replay format, network protocol,
-renderer package, and live simulation layout. Coupling every boundary to every
-other boundary means a renderer-only field forces a network migration and a
-provenance change invalidates saves. The constitution should not regulate sewer
-pipe diameters.
+## 12. Versioned boundaries
+
+The Canonical World IR is constitutional from the first commit:
+
+- explicit schema version;
+- canonical serialization;
+- migration support;
+- fixture coverage;
+- compatibility receipts;
+- build failure on silent incompatible change.
+
+It is not also the save format, replay format, packet protocol, renderer package,
+and live memory layout. The constitution should not regulate sewer-pipe
+diameters.
 
 ```text
 Authoring Source Schema
@@ -486,75 +632,100 @@ Authoring Source Schema
         ▼
 Canonical World IR
         │
-        ├──► Simulation Projection IR
-        ├──► Navigation Projection IR
-        ├──► Rendering Projection IR
-        ├──► Audio Projection IR
-        └──► Diagnostic Projection IR
+        ├──► Simulation Projection Schema
+        ├──► Navigation Projection Schema
+        ├──► Rendering Projection Schema
+        ├──► Audio Projection Schema
+        ├──► Persistence Projection Schema
+        └──► Diagnostic Projection Schema
 
 Runtime State Schema
         ├──► Save Schema
-        ├──► Replay Schema
+        ├──► Replay / Command Log Schema
         └──► Network Protocol Schema
 ```
 
-Each derived contract has its own version and migration rule and evolves at its
-own rate. Enforced from the beginning:
+Rules:
 
-- Every checked-in schema has a version.
-- Every persisted artifact names its schema version.
-- Every incompatible change requires a migration or an explicit, recorded epoch
-  break (permitted before release; never implicit).
-- No compatibility is implied merely because two structures happen to
-  deserialize.
+- every persisted artifact declares schema and version;
+- each boundary evolves at its own rate;
+- incompatible change requires migration or recorded epoch break;
+- successful deserialization does not imply semantic compatibility;
+- projection compilers consume Canonical World IR;
+- runtime subsystems consume projections, not source or Canonical World IR;
+- migrations write new artifacts and preserve old evidence.
+
+Gate K defines one actual v1-to-v2 movement migration. Production migration
+identity, content-version compatibility, and save evolution remain later proof
+obligations.
 
 ## 13. The signed-world package
 
-"Signed world" is a build concept, not wall poetry. A release package includes:
-the Canonical World IR; projection artifacts; source-map index; content
-dependency graph; provenance closure; schema, compiler, primitive-catalog, and
-capability-basis versions/hashes; state-machine definitions; replay
-compatibility version; validation receipt; artifact hashes; and, for
-distributed builds, a cryptographic signature.
+“Signed world” is a build concept, not wall poetry.
 
-The release runtime refuses: unresolved source; unpromoted primitives;
-laboratory transforms; prohibited provenance; incompatible schemas; missing
-projection artifacts; failed invariants; modified packages without a valid
-manifest.
+A release package includes:
 
-A valid signature alone is insufficient — the policy also verifies
-capability-basis version, compiler version, provenance closure, promotion state,
-schema compatibility, invariant receipts, and the absence of development taints.
-A beautifully signed pile of debug garbage is garbage with excellent paperwork.
+- Canonical World IR;
+- versioned projection artifacts;
+- source-map index;
+- dependency graph;
+- provenance closure;
+- schema, compiler, catalog, and capability-basis versions;
+- machine and resolver definitions needed by the runtime;
+- replay-compatibility version;
+- validation and invariant receipts;
+- artifact hashes;
+- a cryptographic signature when distribution requires one.
 
-**Development vs release binaries.** Hot reload is a separate binary, not a
-flag:
+The runtime refuses unresolved source, unpromoted primitives, laboratory
+transforms, prohibited provenance, incompatible schemas, missing projections,
+failed invariants, modified artifacts, and forbidden development taints.
+
+A valid signature alone is insufficient. A beautifully signed pile of debug
+garbage remains garbage with excellent paperwork.
+
+### Immutable package, separate state
+
+Commands never edit the package. Runtime snapshots, command logs, causal
+receipts, saves, and replays are separate versioned artifacts. Migration creates
+a new package. This keeps the signed input available as evidence and makes
+reproduction possible.
+
+### Development and release binaries
+
+Hot reload is a separate development binary, not a release flag:
 
 ```text
-estate-devd     file watching · incremental compiler · dev-signed packages · package swapping
-                render capture · instrumentation · forensic overlays · live inspection
+estate-devd
+  watcher
+  incremental compiler
+  dev-signed package swapping
+  render capture
+  instrumentation
+  forensic overlays
 
-estate-runtime  sealed package loading · no compiler · no watcher · no source parser
-                no package replacement · no development RPC · no laboratory primitives
+estate-runtime
+  sealed package loading
+  no compiler
+  no watcher
+  no source parser
+  no package replacement
+  no development RPC
+  no laboratory primitives
 ```
 
-Development packages carry an ephemeral development signature and explicit
-taints (`hot_reloadable`, `unapproved_content`, `debug_provenance`). Release
-binaries accept only release-policy manifests, and CI proves from the build
-graph that the release binary links none of the development machinery.
+CI proves the release dependency graph contains none of the development loader,
+compiler, watcher, or mutation APIs.
 
-**No raw transforms in shippable content.** Not discouraged — gone. Authored
-placement uses cells, faces, edges, sockets, regions, discrete orientations,
-elevation steps, approved footprints, and rational subcell anchors where
-unavoidable. The compiler produces the transform. A primitive-development
-laboratory exists because someone has to create primitives; anything authored
-through it carries `NON_SHIPPABLE: contains unpromoted laboratory content`. It
-renders, it tests, it cannot enter a release package.
+### No raw transforms in shippable content
+
+Not discouraged—absent. Primitive development may use a tainted laboratory.
+Anything produced there is explicitly non-shippable until promoted through
+fixtures and review.
 
 ## 14. Provenance and process taint
 
-A hash proves identity; it says nothing about lineage. Every source node carries
-provenance:
+A hash proves identity, not lineage. Every source node carries provenance:
 
 ```text
 provenance {
@@ -566,62 +737,65 @@ provenance {
 }
 ```
 
-Reference-only or private material lives in a different namespace and toolchain
-boundary (`zone = private_reference`, `permitted_builds = [research]`). Taint
-propagates through derivation; the release linker computes the full dependency
-closure and refuses forbidden zones.
+Reference-only material lives in a separate namespace and storage/tool boundary:
 
-The enforceable boundary: separate storage roots, separate compiler
-namespaces, recorded generation inputs, immutable provenance edges, release
-policy checks, manifests showing the closure. It cannot prove what once passed
-through a human brain. It can prevent reference material from wandering into
-shipping assets wearing a fake moustache.
+```text
+provenance {
+    zone = private_reference
+    permitted_builds = [research]
+}
+```
 
-**Lesson carried:** provenance is tainted by *process*, not only by payload. A
-workflow that makes reference material the first step of authoring taints
-everything authored under it even where the output reads clean. The clean-break
-line is drawn before the first asset, not retrofitted.
+Taint propagates through declared derivation. The release linker computes the
+full closure and refuses prohibited zones.
 
-**Generated raster is source material, not a shipping asset.** Portraits,
-icons, decals, distant scenery — fine. Every visual input passes through a style
-compiler that remaps to approved colors, enforces value ranges, normalizes
-contrast, applies the common edge treatment, resizes to legal dimensions,
-checks alpha, rejects inappropriate detail frequency, and attaches semantic
-metadata. The governing rule is *every visual input must compile into the
-project's visual language* — more useful than banning a medium.
+The enforceable boundary includes separate roots, compiler namespaces, recorded
+inputs, immutable provenance edges, policy checks, and manifests. It cannot
+prove what passed through a human brain. Reality remains offensively analog. It
+can prevent reference material from wandering into shipping assets wearing a
+fake moustache.
+
+### Governed raster
+
+Raster is permitted as source material for portraits, icons, decals, signs,
+distant scenery, and similar uses. It is not automatically a shipping asset.
+The style compiler normalizes palette, values, contrast, edges, dimensions,
+alpha behavior, detail frequency, masks, and semantic metadata.
+
+Every visual input must compile into the project's visual language.
 
 ## 15. Iteration lanes
 
-**A content edit must never require compiling the engine.** The proof loop's
-latency is an architectural property; two art directions in one real project
-died before taste got a vote because full builds sat in the iteration path.
+A content edit must never require compiling the engine. Feedback latency is an
+architectural property.
 
 ```text
-Content lane   rooms, encounters, primitive instances, material parameters, rig selections
-               parse → type-check → incremental compile → hot-load → capture diagnostics
-               no cargo rebuild, no shader rebuild unless the variant is new
-               target: validation immediate; contact sheet in seconds
+Content lane
+  rooms, encounters, primitive instances, bounded material parameters
+  parse -> type-check -> incremental compile -> hot-load -> capture diagnostics
+  no Cargo rebuild; no shader rebuild unless a genuinely new variant exists
 
-Catalog lane   primitive definitions, material families, machine templates, capability bundles
-               broader fixture suites; no unrelated runtime crate rebuilds
+Catalog lane
+  primitive definitions, machine templates, material families, capability bundles
+  broader fixture suite; no unrelated runtime rebuild
 
-Engine lane    capabilities, projection compilers, renderer, networking, simulation
-               slow is acceptable; rare during content work
+Engine lane
+  capability basis, resolver, projection compilers, renderer, network, simulation
+  slower is acceptable because it is rare during content work
 ```
 
 The dependency graph and cache enforce the lanes physically. The fast lane is
-defined by what it *excludes*; the complete lane by running everything. Neither
-drifts toward the other. A long-running daemon holds the runtime, GPU
-resources, and catalog indexes in memory while packages hot-reload.
+defined by what it excludes. The complete lane is defined by running everything.
+Neither is allowed to drift into the other.
 
 ## 16. Measured budgets
 
-"Seems fast enough" has had several opportunities to stab a real project and
-used all of them. Budgets live in source control and CI records regressions:
+Budgets live in source control and CI records regressions:
 
 ```text
 validate_room_p95_ms
 compile_room_p95_ms
+command_transaction_p95_ms
 render_contact_sheet_p95_ms
 incremental_cache_size_mb
 full_build_time_s
@@ -630,228 +804,274 @@ release_package_size_mb
 replay_throughput_ticks_per_s
 ```
 
-Disk, build time, and capture time are measured, not assumed — a single lean
-Rust test build can leave 6 GiB where a default one leaves 21, and a CI runner
-does not care which you expected.
+Gate K records build time, peak disk, validation latency, command latency, and
+replay throughput. Later visual gates add capture time and package size.
+
+“Seems fast enough” is not evidence. Software has repeatedly demonstrated that
+it will use any unmeasured budget as a food source.
 
 ## 17. Gate 0 — the visual target pack
 
-Engine output cannot determine whether the engine's intended output is
-desirable; that is circular. And the throwaway renderer built to make a hero
-image becomes the engine, because it always does.
+Engine output cannot determine whether the engine's intended output is desirable.
+That is circular. One hero image is also insufficient because it can hide the
+actual camera distance, overlapping actors, UI, darkness, animation, and visual
+noise.
 
-So Gate 0 produces a **visual target pack** in any convenient medium — painted
-mockup, Blender scene, image-generation composite, hand-edited concept,
-temporary commercial renderer, cardboard and spite — containing:
+Gate 0 produces a target pack in any convenient medium:
 
-1. A hero environment frame.
-2. A normal gameplay frame at actual camera distance.
-3. Actor scale and silhouette references.
-4. A combat frame with several overlapping actors.
-5. One restrained spell effect.
-6. One underground or low-light variant.
-7. One UI-overlay frame.
-8. A small material and palette sheet.
-9. An animation or motion timing strip.
-10. Explicit visual invariants — and explicit non-invariants.
+1. hero environment frame;
+2. normal gameplay frame at actual camera distance;
+3. actor scale and silhouette references;
+4. combat frame with overlapping actors;
+5. one restrained spell effect;
+6. underground or low-light variant;
+7. UI-overlay frame;
+8. material and palette sheet;
+9. animation or motion timing strip;
+10. explicit invariants and explicit non-invariants.
+
+Example invariants:
 
 ```text
-camera:     fixed oblique; no dramatic perspective distortion
-materials:  broad value groups; restrained texture frequency; visible bevel response
-lighting:   readable silhouettes; no crushed interactables; fixed shadow-softness family
-palette:    environment subordinate to actors; effects may briefly exceed environment saturation
-animation:  deliberate cadence; no excessive idle motion
+camera
+  fixed oblique; restrained perspective
+
+materials
+  broad value groups; restrained texture frequency; visible bevel response
+
+lighting
+  readable silhouettes; interactables not crushed; fixed shadow-softness family
+
+palette
+  environment subordinate to actors; effects may briefly exceed its saturation
+
+animation
+  deliberate cadence; limited idle noise
 ```
 
-Recording what does *not* need to survive matters: without it, the renderer
-spends three weeks reproducing a decorative crack nobody cared about.
+A human says: yes, this is the game we want to look at for hundreds of hours.
+Until then, no visual primitive expansion. Twenty rooms in a bad style merely
+prove the runtime can manufacture regret at industrial scale.
 
-A human says: *yes, this is the game we want to look at for several hundred
-hours.* Until then, no procedural expansion — twenty rooms in a bad style proves
-only that the engine can manufacture regret at industrial scale. Any code used
-to create Gate 0 lives in a quarantined prototype area or separate repository;
-the durable artifacts are the pack, its provenance, the extracted rules, and the
-approval receipt.
+Temporary code used to make the pack stays quarantined. The durable artifacts
+are the pack, provenance, extracted visual rules, and approval receipt. A
+throwaway renderer does not graduate by squatting there long enough.
 
-**The representation this thesis expects to pass Gate 0 for a tactical RPG:**
-voxel-authored, mesh-rendered. Cells and surfaces compile into broad extruded
-walls, bevelled corners, arches, vaults, trim, columns, stairs, roof sections,
-terrain transitions, damaged variants. The visual stack enforces a restrained
-oblique camera, stable world scale, vertex-color families, tiny approved
-atlases, low internal resolution, palette quantization, controlled dithering,
-fixed shadow behavior, discrete light rigs, fog and depth grading, bounded
-outlines, approved silhouette ranges. Characters are typed skeletal assemblies
-(rig, proportions, head family, outfit, locomotion set, sockets), not sculpted.
-Spells and particles use a bounded effect DSL. Semantic nouns and bounded
-parameters in; renderer-controlled pixels out.
+### Expected tactical-RPG representation
 
-**Procedural generation, three kinds, three verdicts.** *Deterministic
-derivation* (a declared gabled roof or water region produces its only legal
-geometry, joins, shoreline, movement cost, audio, overlays) — encouraged;
-asking the agent to author every roof cell creates more inconsistency, not
-less. *Bounded seeded variation* (approved rules choose among legal, fixture-
-rendered alternatives under density and clearance limits) — sparingly, for
-secondary texture. *Open-ended synthesis* ("fill this with whatever looks
-ruined") — nowhere in shipping content. That is where oatmeal gets tenure.
+The current thesis expects voxel- or lattice-authored environments rendered as
+stylized meshes:
 
-## 18. The proof gates
+- broad extruded walls;
+- beveled corners;
+- arches, vaults, trim, stairs, roofs, and terrain transitions;
+- restrained oblique camera;
+- stable world scale;
+- vertex-color families and tiny approved atlases;
+- low internal resolution;
+- palette quantization and controlled dithering;
+- fixed shadow behavior;
+- discrete light rigs;
+- bounded outlines, fog, and depth grading.
 
-**Gate 0 — visual thesis.** The target pack (§17), human-approved.
+Characters use typed skeletal assemblies—rig, proportions, head family, outfit,
+locomotion, sockets—rather than a fresh sculpt for every guard. Effects use a
+bounded effect language.
 
-**Gate 1 — system thesis.** Three cross-system primitives, proven end to end:
+### Procedural generation
 
-- A **door**: opening alters mesh and animation, collision, navigation, audio,
-  interaction state, network state, persistence.
-- **Water**: a region declaration alters rendering, shoreline geometry,
-  movement, navigation cost, sound, applicable effects, diagnostics.
-- An **extinguishable light**: placing or extinguishing it alters renderer
-  lighting, visibility rules where gameplay uses them, audio/animation where
-  applicable, replicated and saved state, forensic renders.
+Three kinds, three verdicts:
 
-**Gate 2 — vocabulary thesis.** A knowledgeable author creates twenty distinct
-rooms (guard station, flooded passage, shrine, barracks, storage, collapsed
-hallway, prison, ritual chamber, kitchen, abandoned checkpoint…) from one
-approved kit: one construction family, ~20 props, three light rigs, one water
-and one fog treatment, one camera, one body rig, a small equipment set, one post
-stack. No renderer changes, no new capabilities, no arbitrary transforms.
-Pass/fail: twenty clearly different places that unmistakably belong to one game.
+- **Deterministic derivation:** encouraged. A declared roof or water region
+  produces its legal geometry, joins, movement effects, audio, and diagnostics.
+- **Bounded seeded variation:** sparingly, for secondary texture under approved
+  fixtures, density limits, and clearance rules.
+- **Open-ended synthesis:** nowhere in shipping content. That is where oatmeal
+  gets tenure.
 
-**Gate 3 — cold-author thesis.** A new agent, from a *different model family*
-than any that helped design the system, receives only the authoring docs, the
-content schema, the primitive catalog, example fixtures, and the CLI, plus a
-room brief, and authors room 21. Measure: time to first valid compile; validation
-cycles; compiler errors; human interventions; attempted forbidden escape
-hatches; time to accepted visual result; whether anything outside the room
-package changed. An "LLM-native" language that works only for the model whose
-fingerprints are on it is a private dialect with a marketing department.
+## 18. Proof gates
 
-**Gate 4 — cold-debug thesis.** Seed a defect (a door that blocks navigation
-after opening; a light whose saved state differs from replicated state; a water
-region with the wrong traversal cost). A cold agent gets the failing replay and
-the forensic tools and must locate and repair the real cause without engine
-source access. That proves the explanation system works rather than producing
-diagnostic wallpaper.
+### Gate K — semantic preflight
 
-**Gate 5 — reproducibility thesis.** A clean machine or container rebuilds the
-package from the manifest, runs the replay suite, captures the pinned renders,
-and reaches the expected state hashes and perceptual thresholds. Nothing is
-green until a stranger reproduces it.
+Before visual machinery, prove the renderer-free kernel in `KERNEL.md`:
 
-Acceptance across the gates:
+- exact three-primitive fixture;
+- typed entity and catalog namespaces;
+- namespace-local machines;
+- capability claim preparation and command-time effective resolution;
+- cross-capability coherence;
+- deterministic state and replay hashes;
+- immutable package and separate runtime state;
+- one real migration;
+- useful explanations;
+- cold author, cold debugger, and non-author rerun.
 
-1. Twenty visually distinct rooms from one kit.
-2. No renderer or catalog edits while authoring them.
-3. No arbitrary transforms in content.
-4. One semantic edit produces every required cross-system change.
-5. The scenario replays to identical authoritative state hashes.
-6. Every visible and behavioral result is traceable to source.
-7. Browser and native renderers consume the same compiled package.
-8. A cold author and a cold debugger succeed from the docs alone.
+Passing Gate K means the semantic architecture deserves another experiment. It
+does not authorize a renderer.
 
-## 19. Forensics, explainability, and the visual proof ladder
+### Gate 0 — visual thesis
 
-`explain-pixel` is table stakes; the full engine answers "why" across every
-subsystem:
+Human-approved target pack from section 17. Required before renderer work.
+
+### Gate 1 — cross-system thesis
+
+Prove three primitives end to end once visual and additional runtime systems
+exist:
+
+- door: visual state, collision, navigation, audio, interaction, network,
+  persistence, diagnostics;
+- water: rendering, shoreline, movement, navigation cost, sound, effects,
+  diagnostics;
+- extinguishable light: lighting, visibility where applicable, audio/animation,
+  replication, persistence, forensic renders.
+
+### Gate 2 — vocabulary thesis
+
+A knowledgeable author creates twenty distinct rooms from one approved kit with
+no renderer changes, no new capabilities, and no raw transforms. They must be
+clearly different and unmistakably one game.
+
+### Gate 3 — cold-author thesis
+
+A different model family receives only the approved author packet and CLI and
+authors room 21. Record time to first valid compile, validation cycles, errors,
+human intervention, forbidden escape attempts, time to visual acceptance, and
+files changed.
+
+### Gate 4 — cold-debug thesis
+
+A different-family model receives a seeded failing replay and forensic tools. It
+must identify the true semantic cause without reading engine source.
+
+### Gate 5 — reproducibility thesis
+
+A clean machine or container rebuilds from the manifest, runs the replay suite,
+captures pinned renders, and reaches expected hashes and perceptual thresholds.
+
+Formal cold-agent runs follow
+`docs/evaluation/COLD_AGENT_PROTOCOL.md`. Model diversity is design fuzzing, not
+decision authority.
+
+## 19. Forensics, explanation, and the visual proof ladder
+
+The runtime should answer semantic “why” questions:
 
 ```text
-estate explain-pixel scene.guard_post 612 344
 estate explain-entity north_gate
 estate explain-transition north_gate --tick 4
-estate why-blocked guard_04 --destination cell(8, 4)
+estate why-blocked guard_04 --destination cell(8,4)
 estate why-visible thief_02 --to guard_04
 estate trace-event combat_18842
 estate explain-material wet_keep_stone
 estate explain-save north_gate
 estate explain-replication goblin_17
+estate explain-pixel scene/guard_post 612 344
 ```
 
-A result cites source file and line, semantic primitive, compiler passes
-involved, generated IDs, active state, rules that fired, dependencies, tick and
-event sequence. The agent never merely learns that something failed; it receives
-a machine-generated argument for why. Conventional tools expose implementation
-state; this exposes semantic causality.
+A result cites source, primitive, compiler passes, generated IDs, active machine
+state, claims, effective facts, rules fired, dependencies, tick, and event
+sequence.
 
-Every render ships a **contact sheet**: beauty, neutral-lit, silhouette,
-material-ID, entity-ID, depth, normals, light-only, navigation, collision,
-annotated warnings. A multimodal reviewer sees the room and the forensic report
-and can connect "that corner looks wrong" to an entity, a rule, and a source
-line.
+Conventional tools expose implementation state. This exposes semantic causality.
 
-**Visual testing is a ladder, not a pixel diff.** Byte-identical screenshots
-across machines are fantasy bureaucrat bait; browser, OS, font, and GPU
-differences move pixels.
+### Render contact sheet
 
-1. Structural assertions — permitted materials only, correct projection and
-   camera, no missing assets, no illegal scales, valid navigation, no collision
-   holes, legal light count, deterministic placement.
-2. Image statistics — palette compliance, luminance distribution, contrast
-   around interactables, edge density, occupied screen area, repetition
-   frequency.
-3. Perceptual comparison — tolerant diff, masked dynamic regions, a pinned
-   software-rendering runner, approved reference fixtures. Byte-identical only
-   on the pinned runner.
+Every formal render produces:
+
+- beauty;
+- neutral-lit;
+- silhouette;
+- material ID;
+- entity ID;
+- depth;
+- normals;
+- light-only;
+- navigation;
+- collision;
+- annotated warnings.
+
+### Visual proof ladder
+
+1. Structural assertions.
+2. Image statistics.
+3. Perceptual comparison on a pinned runner.
 4. Multimodal review over the contact sheet.
 
-Goldens are receipts. They are not taste.
+Byte-identical pixels are required only where a pinned deterministic runner can
+actually promise them. Across arbitrary machines, they are fantasy bureaucrat
+bait. Goldens are receipts. They are not taste.
 
-**Cold-model review is design fuzzing, not decision authority.** The review
-packet is blind — no transcript, no intended conclusions, no hints at disputed
-points; only the design, requirements, constraints, and rubric. The reviewer
-hunts hidden coupling, unowned facts, impossible migrations, capability
-overlap, machine cycles, authoring escape hatches, performance traps,
-unverifiable claims, and places where the design requires taste but pretends to
-require logic. A human decides which findings matter. Models are excellent at
-attacking textual systems and will also object to gravity given enough tokens.
-
-## 20. Rejected alternatives and resolved disagreements
-
-The path matters more than the diagram. In order of resolution:
+## 20. Resolved disagreements
 
 | Position A | Position B | Resolution | Why |
 | --- | --- | --- | --- |
-| Browser/WebGL + TypeScript as the engine center | Godot + custom content compiler | **Rust + `wgpu` custom runtime; browser for the Workbench only** | Both initial positions optimized the wrong boundary. The agent should know the authoring language, not the backend; the renderer is plumbing. A greenfield LLM-first runtime is more coherent than teaching Godot to tolerate a foreign government. |
-| "Zero raster; everything is code" | Governed raster is fine | **Governed raster** | Raster did not cause the failures; ungoverned raster production did. The style compiler is the fence. |
-| Byte-identical screenshot goldens | Tiered visual proof ladder | **Ladder** | Pixels move across machines; structure, statistics, perceptual diff on a pinned runner, then multimodal review. |
-| "The compiler is the engine" | The normalized IR is the engine's center | **IR at the center** | Otherwise the compiler grows a renderer, a simulation, a network stack, and a small municipal government. |
-| One grid layer for everything | Typed lattice + world graph | **Lattice + graph, one owner per fact class** | Ownership and quest state as voxels is conceptual tax fraud; two authorities without a constitution drift by Thursday. |
-| Per-primitive emitters into every subsystem | A sealed capability basis | **Capabilities** | N primitives × M subsystems is a very long switch statement; ~12 capabilities × M subsystems is testable. The load-bearing abstraction. |
-| Capabilities own consequences | Capabilities own contracts; projection compilers own consequences | **The latter** | Keeps the capability layer from becoming the same municipal government with a cleaner badge. |
-| Flat capability bag | Typed namespaces with composition laws | **Namespaces + algebra** | A flat bag permits type-correct gibberish; overlapping claims need declared composition or become "which trait wins" soup. |
-| One machine per entity (product states) | One machine per namespace, declared interactions | **Per-namespace machines** | Flattened products are a script in a stupid notation. Pure derived vs causal interactions; no machine writes another's state. |
-| "Raw transforms should feel embarrassing" | No raw transforms in shippable content; tainted laboratory | **Gone from content; laboratory tainted** | An escape hatch an LLM can reach, it will reach at 2 a.m. |
-| Procedural handles secondary variation broadly | Three kinds: derivation, bounded variation, open synthesis | **Derivation encouraged; variation sparingly; synthesis never** | Mostly terminology; deterministic derivation is semantic compilation, not oatmeal. |
-| Lockstep deterministic simulation | Server-authoritative fixed tick | **Server-authoritative** | Persistent online game; clients render confirmed state. |
-| Narrow client prediction | Zero authoritative prediction | **Zero** | Deliberate tempo; a prediction is a second clock with its own opinion about the goblin. |
-| One universal IR as save/replay/net format | Versioned derived boundaries off the IR | **Derived boundaries** | The constitution should not regulate sewer pipe diameters. |
-| One crate | One workspace, hard-bounded crates | **Workspace** | The server must never link `wgpu`; crate boundaries make the ownership rule physical. |
-| Gate 0 is engine output | Gate 0 is one target image | Gate 0 is a **target pack** | Engine output is circular; one hero image hides the hard parts; a temporary renderer becomes the engine. |
-| Hot reload behind a flag | Separate dev binary | **Separate binary, proven unlinked** | A flag is a code path; the release runtime must not contain the loader. |
+| Browser/WebGL + TypeScript as engine center | Godot + content compiler | Rust + `wgpu` custom runtime; browser Workbench later | The agent-facing language is the product; backend popularity is the wrong boundary. |
+| Zero raster | Governed raster | Governed raster | Ungoverned production caused drift; the style compiler is the fence. |
+| Byte-identical screenshots everywhere | Tiered visual proof | Tiered ladder | Structure, statistics, pinned perceptual comparison, then multimodal review. |
+| Compiler is the engine | Canonical IR is the center | IR at the center | Prevents the compiler from becoming a renderer, server, and small municipality. |
+| One grid for everything | Lattice plus graph | Lattice + graph + linker | Spatial and relational facts need different owners. |
+| Per-primitive subsystem emitters | Sealed capability basis | Capabilities | N primitives × M systems is a very long switch statement. |
+| Capabilities own consequences | Projection compilers own consequences | Capabilities own contracts; projections own consequences | Keeps capability definitions semantic and testable. |
+| Flat capability bag | Typed namespaces and algebra | Namespaces + composition | Prevents type-correct gibberish and ambiguous winners. |
+| Per-capability algebra is sufficient | Cross-capability coherence required | Composite effective facts/invariants | Simulation and navigation cannot choose different truths. |
+| One machine per entity | One machine per namespace | Namespace-local machines | Avoids product-state explosion. |
+| Precompute final deltas per transition | Resolve from whole current state | Precompute dependencies; resolve effective facts at command time | A ward can keep a door blocked after `open`. |
+| Raw transforms discouraged | Raw transforms impossible in content | Removed; tainted laboratory only | An escape hatch an agent can reach will be reached at 2 a.m. |
+| Broad procedural generation | Derivation / bounded variation / synthesis split | Derivation encouraged, variation sparing, synthesis forbidden | Deterministic geometry is compilation; “decorate freely” is oatmeal. |
+| Peer lockstep | Server-authoritative fixed tick | Server-authoritative | Persistent game, one authoritative clock. |
+| Narrow prediction | Zero authoritative prediction | Zero for deliberate pulses | No second clock with an opinion about the goblin. |
+| One universal IR for save/replay/network | Versioned derived boundaries | Independent schemas | The constitution does not regulate sewer pipes. |
+| Mutable `.world` command target | Immutable package + separate state | Immutable evidence | Replays and migrations need the original input intact. |
+| One crate | Hard-bounded workspace | Workspace | Build graph enforces ownership and keeps renderer out of server/sim. |
+| `~1,000 lines` acceptance | Structural boundaries and measured budgets | Remove line quota | Line quotas encourage crate confetti, not architecture. |
+| Gate 0 before every executable artifact | Semantic kernel first | Gate K before Gate 0; Gate 0 before renderer | Cheap semantic falsification without allowing visual machinery to start. |
+| Founding record is verbatim | It was condensed | Edited synthesis with explicit provenance | A provenance-focused project cannot mislabel its own founding evidence. |
+| “Clean-room” architecture exercise | Prior lessons were imported | Greenfield / vacuum | Clean zones remain a provenance concept, not a false historical claim. |
+| Hot reload behind a flag | Separate development binary | Separate binary, proven unlinked | A flag is still a release code path. |
 
 ## 21. Open questions
 
-- The exact minimal orthogonal capability basis. Emerges from Gate 1; §7 is a
-  candidate, not a decree.
-- The composition-law catalog: which capabilities combine, which require
-  exactly one owner, which conflict. Decided per capability with a rejection
-  test each.
-- Fixed-point precision and subcell resolution for moving actors.
-- Whether the rendering projection is voxel-mesh (§17) for characters' local
-  environment interactions (cover, climbing) or purely lattice-derived.
-- Incremental compilation granularity: per room, per package, per primitive?
-- The cold-author model roster and how often it rotates.
-- Naming. The repository is `signed-world` for now; the wall sentence owns the
-  idea, not the name.
+These are recorded rather than answered through more free-floating architecture.
+A question becomes a decision only with code/evidence or an owner-authorized
+record.
+
+- **Minimal capability basis:** exact orthogonal set after Gate K and Gate 1.
+- **Composition-law catalog:** all combining, exclusive, and conflicting facts.
+- **Stable identity:** what survives rename, move, split, merge, and migration.
+- **Event timing beyond `on_enter`:** pulse, interval, and scheduler semantics.
+- **Canonical encoding beyond Gate K:** whether the kernel profile remains the
+  production format or becomes a fixture-only epoch.
+- **Cross-capability invariants:** movement is first; visibility, cover,
+  containment, authority, and lifecycle remain.
+- **Authoring source language:** custom grammar versus an existing structured
+  format. Gate K requires a recorded choice before parser implementation.
+- **Incremental compilation granularity:** room, package, primitive, or graph
+  slice.
+- **Migration identity:** how migrations preserve stable entities and behavior.
+- **Cold-agent roster:** models, rotation cadence, access, and cost controls.
+- **Signature threat model:** corruption, supply-chain integrity, hostile clients,
+  signer policy, and trust-root rotation.
+- **Deterministic parallelism:** which phases may parallelize without affecting
+  authoritative ordering.
+- **Save compatibility across content versions:** schema compatibility does not
+  guarantee primitive semantics remained equivalent.
+- **Fixed-point precision:** scale, overflow bounds, and subcell resolution.
+- **Rendering projection for local environment interactions:** lattice-derived
+  versus mesh-informed cover, climbing, and line of sight.
+- **Naming:** `signed-world` is a working name; the wall sentence owns the idea.
 
 ## 22. Adoption criteria
 
-This thesis applies to no project until all of the following are true:
+This thesis applies to no game project until all of the following are true:
 
-1. The executable semantic kernel (see `KERNEL.md`) passes its acceptance
-   criteria, including a cold author and a cold debugger.
+1. Gate K passes `KERNEL.md`, including cold-author, cold-debug, determinism,
+   migration, and non-author rerun evidence.
 2. Gate 0 has a human-approved target pack for the adopting game.
-3. Gate 1's three primitives are proven end to end.
-4. The adopting project records the adoption as an explicit decision, with the
-   migration or epoch break it implies, in its own authority documents.
+3. Gate 1's three primitives are proven end to end in the intended runtime.
+4. The adopting project records an explicit decision in its own authority tree,
+   including migration or epoch-break consequences.
+5. The adopting project accepts the measured cost of the custom runtime rather
+   than treating previous effort as an argument.
 
-Until then: exploratory, non-authoritative, and — per its own rule — not to be
-extended with further free-floating architecture until something compiles.
+Until then: exploratory, non-authoritative, and not to be extended with more
+ornamental architecture merely because Markdown is cheaper than a compiler.

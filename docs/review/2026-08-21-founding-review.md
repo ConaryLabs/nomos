@@ -1,9 +1,27 @@
-# Founding adversarial review — 2026-08-20/21
+# Founding adversarial review — 2026-08-20/21 (primary record)
 
-The exchange that produced THESIS.md, verbatim. Two model families (Claude
+The exchange that produced THESIS.md revision 1. Two model families (Claude
 Fable 5, via Claude Code; GPT Pro, via ChatGPT) with Peter Permenter relaying
 and refereeing. Preserved because the reasoning is more durable than the
-diagram. Light formatting only; no content edited.
+diagram.
+
+**Provenance, stated exactly.** Every entry in this file was written by Fable
+(Claude) in the Claude Code session on 2026-08-21, from the exchange as it
+appeared there: Peter's prompts as typed; GPT's four replies as Peter pasted
+them; Fable's four replies as Fable wrote them. **Both models' entries are
+condensed**, not verbatim — GPT 1 and GPT 2 are abridged substantially (lists
+shortened, some sections summarised), GPT 3 and 4 and all Fable entries
+moderately. Every position, concession, pushback, and example that shaped the
+thesis is preserved; conversational framing and repetition were cut. No entry
+was written by the other model. The full GPT originals exist only in Peter's
+ChatGPT session. Model identities beyond "a Claude model via Claude Code" and
+"a GPT model via ChatGPT" are not independently verified here.
+
+This file is the primary record and is not edited further. The edited
+synthesis that accompanies contract revision 2 is
+[2026-08-21-founding-review-synthesis.md](2026-08-21-founding-review-synthesis.md);
+the contract decision it informed is
+[docs/decisions/0001-contract-repair.md](../decisions/0001-contract-repair.md).
 
 Order: Peter's question → Fable 1 → GPT 1 → Fable 2 (vacuum reset) → GPT 2 →
 Fable 3 → GPT 3 → Fable 4 → GPT 4 (final).
