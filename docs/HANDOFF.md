@@ -70,7 +70,7 @@ never accumulates history (git has that).
   object fields, stable keyed arrays, package members/manifest rows,
   machine/claim identities, transitions, and interactions fail closed instead
   of retaining a final duplicate.
-- **SW-E is implemented on `feature/sw-e-28`:** construction IR advances to
+- **SW-E is merged (#28/#29):** construction IR advances to
   `estate.world_ir.construction@3` with explicit movement composition,
   coherence, connectivity, and resolver subjects. Simulation advances to `@2`,
   navigation begins at `@1`, and both receive one byte-identical typed resolver
@@ -87,15 +87,19 @@ never accumulates history (git has that).
   `compiler-receipts.json`; runtime causal receipts remain only in run outputs.
   It also defines same-filesystem staged publication and exact filesystem and
   manifest verification. The implementation and four-command author proof are
-  green on `feature/package-boundary-22`; exact-head Luna/CI evidence is pending.
-  Revision 4 remains effective until this branch merges.
+  green on `feature/package-boundary-22`. The first GPT-5.6 Luna max pass on
+  `c70b5bf` found a trailing-separator root-symlink bypass and an unstated
+  path-based reader race boundary. Both are repaired: roots are lexically
+  normalized before entry checks, the regression test covers both spellings,
+  and revision 5 now explicitly requires a caller-owned quiescent package tree.
+  A replacement exact-head Luna rerun is pending. Revision 4 remains effective
+  until this branch merges.
 
 ## What is next
 
-Implement **issue #22 — seal the WorldPackage evidence boundary** under decision
-0006. Harden atomic publication, exact manifest decoding, canonical member
-validation, ordering, and filesystem entry-type checks before SW-F relies on
-packages.
+Finish **issue #22 — seal the WorldPackage evidence boundary** under decision
+0006 by obtaining the replacement exact-head non-author rerun, merging PR #30,
+and confirming post-merge CI before SW-F relies on packages.
 
 Do not pull #24 typed forensic provenance into this package-boundary repair.
 Resolve #24 before stable World IR promotion or `explain-*`. Issue #17 remains

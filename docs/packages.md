@@ -61,10 +61,18 @@ destination.
 - every member matches its recorded size and SHA-256 digest; and
 - every hash-valid member independently parses as canonical bytes.
 
-The reader inspects entry types without following symlinks before reading.
-Tests cover root, manifest, and member symlinks, declared and undeclared
-directories, canonical unknown fields with recomputed digests, duplicate and
-unsorted rows, and noncanonical members whose hashes were maliciously updated.
+The reader lexically normalizes trailing separators and inspects entry types
+without following existing final-component symlinks before reading. Tests cover
+root spellings with and without a trailing separator, manifest and member
+symlinks, declared and undeclared directories, canonical unknown fields with
+recomputed digests, duplicate and unsorted rows, and noncanonical members whose
+hashes were maliciously updated.
+
+The caller must own a quiescent package tree for the duration of `open`; an
+external process concurrently replacing entries is outside this path-based
+integrity boundary. This verifier does not claim to be a hostile-filesystem
+sandbox or authenticity mechanism. That limitation is explicit because SHA-256
+binds bytes but supplies neither access control nor provenance.
 
 ## Evidence limits
 

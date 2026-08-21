@@ -278,6 +278,12 @@ unique and strictly ordered, and every declared member is revalidated as
 canonical bytes with the recorded size and digest. Symlinks, special files,
 undeclared files, and directories are refused.
 
+Verification requires a caller-owned, quiescent package tree on the supported
+local filesystem: no external process may replace entries while `open` runs.
+This path-based integrity check is not a race-safe hostile-filesystem sandbox or
+an authenticity mechanism. Existing symlinks are refused without following
+their final component, including root paths spelled with trailing separators.
+
 Runtime execution writes a separate run directory:
 
 ```text

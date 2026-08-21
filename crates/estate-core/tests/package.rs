@@ -388,6 +388,14 @@ fn symlinked_roots_manifests_and_members_are_rejected_without_following() {
             .as_str(),
         "EK0409"
     );
+    let linked_root_with_separator = PathBuf::from(format!("{}/", linked_root.display()));
+    assert_eq!(
+        WorldPackage::open(&linked_root_with_separator)
+            .unwrap_err()
+            .code()
+            .as_str(),
+        "EK0409"
+    );
 
     let linked_manifest = fresh_path("linked-manifest");
     WorldPackage::write(&linked_manifest, simple_members()).unwrap();

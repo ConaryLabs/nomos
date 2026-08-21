@@ -46,7 +46,8 @@
 //! - **Verified reads.** [`WorldPackage::open`] recomputes the manifest digest
 //!   and every member's size and hash, revalidates canonical bytes, and refuses
 //!   unknown fields, non-regular entries, or anything the manifest does not
-//!   declare.
+//!   declare. The caller owns a quiescent package tree while verification runs;
+//!   this path-based reader is not a hostile-filesystem sandbox.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
@@ -259,6 +260,8 @@ impl WorldPackage {
         members: impl IntoIterator<Item = (MemberName, Vec<u8>)>,
         fail_after_member_writes: Option<usize>,
     ) -> Result<Self, Diagnostic> {
+        let normalized_root = lexical_path(root);
+        let root = normalized_root.as_path();
         require_absent_destination(root)?;
         let mut unique_members = BTreeMap::new();
         for (name, bytes) in members {
@@ -353,7 +356,13 @@ impl WorldPackage {
     /// - `EK0409` when the root, manifest, or a member is not the required
     ///   directory/regular-file entry type.
     /// - `EK0410` when a hash-valid member is not canonical semantic bytes.
+    ///
+    /// The caller must prevent concurrent external mutation of the package tree
+    /// during verification. Existing symlinks are rejected, but this API is not
+    /// a race-safe hostile-filesystem sandbox.
     pub fn open(root: &Path) -> Result<Self, Diagnostic> {
+        let root = lexical_path(root);
+        let root = root.as_path();
         require_package_root(root)?;
         let manifest_path = root.join(MANIFEST_FILE);
         require_manifest_file(&manifest_path)?;
@@ -505,6 +514,10 @@ fn require_absent_destination(root: &Path) -> Result<(), Diagnostic> {
         Err(error) if error.kind() == ErrorKind::NotFound => Ok(()),
         Err(error) => Err(io_failure(root, &error)),
     }
+}
+
+fn lexical_path(path: &Path) -> PathBuf {
+    path.components().collect()
 }
 
 fn package_parent(root: &Path) -> &Path {

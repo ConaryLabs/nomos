@@ -125,6 +125,14 @@ and digest. The package root contains only the regular `manifest.json` plus its
 declared regular member files; symlinks, special files, and undeclared files or
 directories are refused.
 
+Verification is defined for a caller-owned, quiescent package tree on the
+supported local filesystem. The caller must prevent another process from
+renaming or replacing entries while `open` runs. Path-based verification is not
+a race-safe hostile-filesystem sandbox, authenticity boundary, or substitute
+for the later signing threat-model decision. Inputs already containing symlinks
+are refused without following their final component, including root paths
+spelled with trailing separators.
+
 ### Reason
 
 Sequential writes into the destination can strand a partial path that the
