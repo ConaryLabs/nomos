@@ -19,7 +19,8 @@ any renderer is built.
 - **Implementation status:** implemented through SW-E: foundations, source and
   construction IR, compiled transitions, shared simulation/navigation ground
   movement projection, and immutable transaction preparation with effective
-  before/after movement facts; no command surface or committed runtime snapshots
+  before/after movement facts; construction IR provenance is typed and
+  forensically navigable; no command surface or committed runtime snapshots
 - **Contract revision:** 6, owner-authorized in decision 0007
 - **Scope:** greenfield / vacuum architecture exercise
 - **Effect on other projects:** none unless separately adopted by an explicit
@@ -71,10 +72,12 @@ it.
    shared simulation/navigation movement semantics, and SW-E evidence.
 16. [docs/packages.md](docs/packages.md) — atomic package publication, exact
    manifest/member verification, and the revision-5 evidence boundary.
-17. [docs/review/2026-08-21-founding-review.md](docs/review/2026-08-21-founding-review.md)
+17. [docs/provenance.md](docs/provenance.md) — typed fact identities, resolved
+    values, causal inputs, and the boundary between semantics and display text.
+18. [docs/review/2026-08-21-founding-review.md](docs/review/2026-08-21-founding-review.md)
    — the condensed primary record of the founding adversarial review, written
    in the originating session, with its provenance limits stated.
-18. [docs/review/2026-08-21-founding-review-synthesis.md](docs/review/2026-08-21-founding-review-synthesis.md)
+19. [docs/review/2026-08-21-founding-review-synthesis.md](docs/review/2026-08-21-founding-review-synthesis.md)
     — the contract-revision-2 edited synthesis of that review.
 
 ## Layout

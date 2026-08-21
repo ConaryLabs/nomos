@@ -11,7 +11,7 @@ SW-E proves that effective movement is composed from compiler-owned semantics,
 not hard-coded door behavior in the runtime. The boundary is:
 
 ```text
-nomos-schema WorldIr construction@1 (Nomos epoch)
+nomos-schema WorldIr construction@2 (Nomos epoch)
   -> nomos-compiler resolver validation and projection
   -> nomos-projection shared MovementResolverPlan@1
   -> nomos-sim command-time effective facts

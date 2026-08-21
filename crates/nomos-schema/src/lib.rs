@@ -11,6 +11,7 @@
 #![warn(missing_debug_implementations)]
 
 mod ir;
+mod provenance;
 mod resolver;
 mod source;
 mod spatial;
@@ -19,8 +20,12 @@ mod transition;
 use nomos_core::SchemaId;
 
 pub use ir::{
-    CapabilityKind, ClaimActivation, ClaimTemplate, ClaimValue, FactOwner, FactOwnershipReceipt,
-    IrEntity, IrRelation, MachineTemplate, PrimitiveExpansion, WorldIr,
+    CapabilityKind, ClaimActivation, ClaimTemplate, ClaimValue, IrEntity, IrRelation,
+    MachineTemplate, PrimitiveExpansion, WorldIr,
+};
+pub use provenance::{
+    DerivationInput, DerivationPass, DerivationProducer, DerivationStep, FactIdentity, FactOwner,
+    FactOwnershipReceipt, ProjectionConsumer, ResolvedFactValue,
 };
 pub use resolver::{
     GroundConnectivity, GroundMovementCoherence, MovementCompositionLaw, MovementResolverPlan,
@@ -44,12 +49,14 @@ pub fn source_schema() -> SchemaId {
 /// The incomplete Canonical World IR construction schema.
 ///
 /// Contract revision 6 closes the prototype `estate.*` epoch and starts the
-/// Nomos construction lineage at version 1. The shape includes the transition,
+/// Nomos construction lineage at version 1. Version 2 replaces stringly
+/// ownership receipts with typed fact identities, values, consumers, and
+/// derivation edges. The shape includes the transition,
 /// interaction, composition, coherence, and resolver work completed through
 /// SW-E; it is not compatible with a prototype construction snapshot.
 #[must_use]
 pub fn construction_world_ir_schema() -> SchemaId {
-    SchemaId::new("nomos.world_ir.construction", 1)
+    SchemaId::new("nomos.world_ir.construction", 2)
         .expect("the construction world IR schema id is a valid literal")
 }
 
@@ -64,7 +71,7 @@ mod tests {
             construction_world_ir_schema().name()
         );
         assert_eq!(source_schema().version(), 1);
-        assert_eq!(construction_world_ir_schema().version(), 1);
+        assert_eq!(construction_world_ir_schema().version(), 2);
     }
 
     #[test]
@@ -77,7 +84,7 @@ mod tests {
             construction_world_ir_schema()
                 .to_canonical()
                 .to_canonical_bytes(),
-            br#"{"name":"nomos.world_ir.construction","version":1}"#.to_vec()
+            br#"{"name":"nomos.world_ir.construction","version":2}"#.to_vec()
         );
     }
 }

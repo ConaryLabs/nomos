@@ -1,7 +1,7 @@
 # Handoff — state of the repository
 
-Updated 2026-08-21 after the owner-authorized Nomos identity cutover (#31/#32)
-merged and the GitHub repository became `ConaryLabs/nomos`.
+Updated 2026-08-21 after typed forensic provenance was implemented for issue
+#24 on top of the owner-authorized Nomos identity cutover.
 This file orients a fresh session; it is rewritten at each slice boundary and
 never accumulates history (git has that).
 
@@ -11,7 +11,8 @@ never accumulates history (git has that).
   and decision 0007 rename the runtime/project to Nomos while retaining The
   Signed World as the thesis name. Active crates use `nomos-*`, the binary is
   `nomos`, authoring source uses `.nomos`, schemas use `nomos.*`, and the fresh
-  construction epoch begins at `nomos.world_ir.construction@1`. References to
+  construction epoch began at `nomos.world_ir.construction@1` and its active
+  typed-provenance shape is `nomos.world_ir.construction@2`. References to
   `signed-world`, `estate-*`, `.estate`, and `estate.*` below describe immutable
   prototype-era history unless explicitly called current.
   The mechanical implementation is commit `7c0ca31`; its full author proof,
@@ -109,11 +110,17 @@ never accumulates history (git has that).
   and revision 5 now explicitly requires a caller-owned quiescent package tree.
   The replacement Luna rerun and PR CI passed exact head `5f65978`; post-merge
   CI run `32525028043` passed merge commit `0eb50b7`. Issue #22 is closed.
+- **Typed forensic provenance is implemented (#24):** construction IR advances
+  to `nomos.world_ir.construction@2`. Fact identity, resolved values, projection
+  consumers, derivation producers/passes, and causal inputs are typed. The IR
+  rejects dangling fact edges, unknown producer/pass IDs, incompatible values,
+  unsupported pass ownership, and missing primitive/catalog inputs. Structured
+  canonical data and readable explanations are separate outputs; the actual
+  `nomos explain-*` CLI remains later work.
 
 ## What is next
 
-Resolve **issue #24 — type forensic provenance before stable World IR
-promotion**. Then continue SW-F runtime state, replay, the required
+Continue SW-F runtime state, replay, the required
 `nomos.world_ir@1` to `@2` movement migration, package/command orchestration,
 explanations, the determinism matrix, and formal cold-agent gates.
 

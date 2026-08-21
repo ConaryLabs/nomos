@@ -11,7 +11,7 @@ SW-D makes machine behavior compiler-owned and executable without allowing the
 runtime to read authoring source or Canonical World IR. The boundary is:
 
 ```text
-nomos-schema WorldIr construction@1 (Nomos epoch)
+nomos-schema WorldIr construction@2 (Nomos epoch)
   -> nomos-compiler validation and projection
   -> nomos-projection SimulationPlan@2
   -> nomos-sim immutable transaction preparation

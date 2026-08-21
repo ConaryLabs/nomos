@@ -2,10 +2,11 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use nomos_core::{CatalogValueId, Diagnostic, EntityId, Ident, RepairClass, SourceSpan};
+use nomos_core::{CatalogValueId, Diagnostic, EntityId, RepairClass, SourceSpan};
 use nomos_schema::{
-    Binding, FactOwner, FactOwnershipReceipt, IrEntity, IrRelation, SourceDocument, SourceEntity,
-    SourceField, Spanned, WorldIr,
+    Binding, DerivationInput, DerivationPass, DerivationProducer, DerivationStep, FactIdentity,
+    FactOwner, FactOwnershipReceipt, IrEntity, IrRelation, ProjectionConsumer, ResolvedFactValue,
+    SourceDocument, SourceEntity, SourceField, Spanned, WorldIr,
 };
 
 use crate::catalog::{self, ApprovedKind};
@@ -153,13 +154,32 @@ fn link_relations(
             relation.span().clone(),
         ));
         receipts.push(FactOwnershipReceipt::new(
-            format!("relation.{}.{}.{}", key.0, key.1, key.2),
+            FactIdentity::Relation {
+                subject: key.0.clone(),
+                kind: key.1.clone(),
+                object: key.2.clone(),
+            },
             FactOwner::Graph,
             relation.span().clone(),
-            format!("{} {} {}", key.0, key.1, key.2),
-            idents(&["diagnostics", "persistence", "simulation"]),
-            vec!["source/relation".to_owned()],
-        ));
+            ResolvedFactValue::Relation {
+                subject: key.0.clone(),
+                kind: key.1.clone(),
+                object: key.2.clone(),
+            },
+            consumers(&[
+                ProjectionConsumer::Diagnostics,
+                ProjectionConsumer::Persistence,
+                ProjectionConsumer::Simulation,
+            ]),
+            vec![DerivationStep::new(
+                DerivationProducer::Source,
+                DerivationPass::LinkRelation,
+                [
+                    DerivationInput::Fact(FactIdentity::EntityIdentity(key.0)),
+                    DerivationInput::Fact(FactIdentity::EntityIdentity(key.2)),
+                ],
+            )?],
+        )?);
     }
     Ok((linked, receipts))
 }
@@ -287,7 +307,7 @@ fn link_entity(
     let id = source.id().value().clone();
     let expansion = catalog::expand(kind, &id)?;
     let credential = fields.credential.map(|value| value.value().clone());
-    let receipts = entity_receipts(source, anchor, fields.credential);
+    let receipts = entity_receipts(source, anchor, fields.credential)?;
     Ok((
         IrEntity::new(
             id,
@@ -365,74 +385,91 @@ fn entity_receipts(
     entity: &SourceEntity,
     anchor: &Spanned<Binding>,
     credential: Option<&Spanned<CatalogValueId>>,
-) -> Vec<FactOwnershipReceipt> {
+) -> Result<Vec<FactOwnershipReceipt>, Diagnostic> {
     let id = entity.id().value();
     let primitive = entity.primitive().value();
-    let resolved = binding_string(anchor.value());
+    let binding = anchor.value().clone();
     let mut receipts = vec![
         FactOwnershipReceipt::new(
-            format!("entity.{id}.identity"),
+            FactIdentity::EntityIdentity(id.clone()),
             FactOwner::Graph,
             entity.id().span().clone(),
-            id.to_string(),
-            idents(&["diagnostics", "persistence", "simulation"]),
-            vec!["source/entity".to_owned()],
-        ),
+            ResolvedFactValue::Entity(id.clone()),
+            consumers(&[
+                ProjectionConsumer::Diagnostics,
+                ProjectionConsumer::Persistence,
+                ProjectionConsumer::Simulation,
+            ]),
+            vec![DerivationStep::new(
+                DerivationProducer::Source,
+                DerivationPass::DeclareEntity,
+                Vec::new(),
+            )?],
+        )?,
         FactOwnershipReceipt::new(
-            format!("entity.{id}.spatial_anchor"),
+            FactIdentity::EntitySpatialAnchor(id.clone()),
             FactOwner::Lattice,
             anchor.span().clone(),
-            resolved.clone(),
-            idents(&["diagnostics", "navigation", "simulation"]),
-            vec!["source/anchor".to_owned()],
-        ),
+            ResolvedFactValue::Binding(binding.clone()),
+            consumers(&[
+                ProjectionConsumer::Diagnostics,
+                ProjectionConsumer::Navigation,
+                ProjectionConsumer::Simulation,
+            ]),
+            vec![DerivationStep::new(
+                DerivationProducer::Source,
+                DerivationPass::DeclareSpatialAnchor,
+                [DerivationInput::Fact(FactIdentity::EntityIdentity(
+                    id.clone(),
+                ))],
+            )?],
+        )?,
         FactOwnershipReceipt::new(
-            format!("entity.{id}.spatial_binding"),
+            FactIdentity::EntitySpatialBinding(id.clone()),
             FactOwner::WorldLinker,
             anchor.span().clone(),
-            resolved,
-            idents(&["diagnostics", "navigation", "persistence", "simulation"]),
-            vec![primitive.to_string(), "binding/typed_lattice".to_owned()],
-        ),
+            ResolvedFactValue::Binding(binding),
+            consumers(&[
+                ProjectionConsumer::Diagnostics,
+                ProjectionConsumer::Navigation,
+                ProjectionConsumer::Persistence,
+                ProjectionConsumer::Simulation,
+            ]),
+            vec![DerivationStep::new(
+                DerivationProducer::WorldLinker,
+                DerivationPass::ResolveSpatialBinding,
+                [
+                    DerivationInput::Fact(FactIdentity::EntitySpatialAnchor(id.clone())),
+                    DerivationInput::Primitive(primitive.clone()),
+                ],
+            )?],
+        )?,
     ];
     if let Some(value) = credential {
         receipts.push(FactOwnershipReceipt::new(
-            format!("entity.{id}.credential"),
+            FactIdentity::EntityCredential(id.clone()),
             FactOwner::WorldLinker,
             value.span().clone(),
-            value.value().to_string(),
-            idents(&["diagnostics", "persistence", "simulation"]),
-            vec![primitive.to_string(), "link/catalog_value".to_owned()],
-        ));
+            ResolvedFactValue::CatalogValue(value.value().clone()),
+            consumers(&[
+                ProjectionConsumer::Diagnostics,
+                ProjectionConsumer::Persistence,
+                ProjectionConsumer::Simulation,
+            ]),
+            vec![DerivationStep::new(
+                DerivationProducer::WorldLinker,
+                DerivationPass::ResolveCatalogValue,
+                [
+                    DerivationInput::Fact(FactIdentity::EntityIdentity(id.clone())),
+                    DerivationInput::Primitive(primitive.clone()),
+                    DerivationInput::CatalogValue(value.value().clone()),
+                ],
+            )?],
+        )?);
     }
-    receipts
+    Ok(receipts)
 }
 
-fn binding_string(binding: &Binding) -> String {
-    match binding {
-        Binding::Cell(cell) => format!("cell({},{},{})", cell.x(), cell.y(), cell.z()),
-        Binding::Face { cell, direction } => format!(
-            "face(cell({},{},{}),{})",
-            cell.x(),
-            cell.y(),
-            cell.z(),
-            direction.as_str()
-        ),
-        Binding::Region { min, max } => format!(
-            "region(cell({},{},{}),cell({},{},{}))",
-            min.x(),
-            min.y(),
-            min.z(),
-            max.x(),
-            max.y(),
-            max.z()
-        ),
-    }
-}
-
-fn idents(values: &[&str]) -> Vec<Ident> {
-    values
-        .iter()
-        .map(|value| Ident::new(value).expect("built-in consumer names are legal identifiers"))
-        .collect()
+fn consumers(values: &[ProjectionConsumer]) -> Vec<ProjectionConsumer> {
+    values.to_vec()
 }
