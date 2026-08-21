@@ -8,6 +8,8 @@ language model — and, eventually, the executable kernel that tests it.
 - [KERNEL.md](KERNEL.md) — acceptance criteria for the first artifact, written
   before any code.
 
+**License:** MIT.
+
 **Status:** exploratory, non-authoritative, no implementation commitment. This
 is a clean-room exercise: it takes no project's history as given and binds no
 project until that project records an explicit adoption decision.
