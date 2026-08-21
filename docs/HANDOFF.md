@@ -1,7 +1,7 @@
 # Handoff — state of the repository
 
-Updated 2026-08-21 after typed forensic provenance was implemented for issue
-#24 on top of the owner-authorized Nomos identity cutover.
+Updated 2026-08-22 after typed forensic provenance merged through issue #24 / PR
+#34 and SW-F received an issue-first boundary in #35.
 This file orients a fresh session; it is rewritten at each slice boundary and
 never accumulates history (git has that).
 
@@ -110,19 +110,33 @@ never accumulates history (git has that).
   and revision 5 now explicitly requires a caller-owned quiescent package tree.
   The replacement Luna rerun and PR CI passed exact head `5f65978`; post-merge
   CI run `32525028043` passed merge commit `0eb50b7`. Issue #22 is closed.
-- **Typed forensic provenance is implemented (#24):** construction IR advances
-  to `nomos.world_ir.construction@2`. Fact identity, resolved values, projection
-  consumers, derivation producers/passes, and causal inputs are typed. The IR
-  rejects dangling fact edges, unknown producer/pass IDs, incompatible values,
-  unsupported pass ownership, and missing primitive/catalog inputs. Structured
-  canonical data and readable explanations are separate outputs; the actual
+- **Typed forensic provenance is merged (#24/#34):** construction IR advances
+  to `nomos.world_ir.construction@2`; its exact fixture golden is
+  `1a977d4f5f5bcbb11e1ae701e6cc1f3d06688707ee98c04a143d10454aeb126a`,
+  while Nomos construction-v1 remains preserved as historical evidence. Fact
+  identity, resolved values, projection consumers, derivation producers/passes,
+  and causal inputs are typed. The IR rejects dangling roots and edges, values
+  that contradict actual entity records, unknown or fact-incompatible passes,
+  non-canonical owners, empty/duplicate derivations, and missing typed inputs.
+  Canonical ordering no longer depends on human-readable `Display` output.
+  Luna max rejected exact heads `9061f68` and `1426451` with real semantic
+  findings; after repair it reviewed and reran final head `7ea49d6` green on
+  Rust 1.98.0. PR CI run `32530844878` passed, PR #34 merged as `1f04fce`, issue
+  #24 closed, and post-merge CI run `32531098740` passed. Structured canonical
+  data and readable explanations are separate outputs; the actual
   `nomos explain-*` CLI remains later work.
 
 ## What is next
 
-Continue SW-F runtime state, replay, the required
-`nomos.world_ir@1` to `@2` movement migration, package/command orchestration,
-explanations, the determinism matrix, and formal cold-agent gates.
+Implement **issue #35 — SW-F: commit runtime state, light facts, hashes, and
+causal receipts**. The slice resolves light through compiler-owned semantics,
+emits persistence/diagnostics projections, commits a new immutable runtime
+snapshot, and produces canonical state hashes and typed causal receipts.
+
+Issue #35 explicitly stops before stable `nomos.world_ir@1`, complete package
+assembly, filesystem CLI orchestration, replay, the required v1-to-v2 movement
+migration, the multi-target determinism matrix, and formal cold-agent gates.
+Those remain later issue-first slices rather than hidden additions to SW-F.
 
 Issue #17 remains a formal cold-author tooling blocker, not a blocker for
 semantic implementation.
@@ -137,8 +151,10 @@ cargo xtask boundary
 ```
 
 SW-D's author proof, Luna max non-author rerun, PR CI, and post-merge CI passed
-all four commands plus the x86_64 debug/release determinism comparison. Earlier
-SW-C, revision-4, and Rust-1.98 maintenance author/non-author reruns also passed.
+all four commands plus the x86_64 debug/release determinism comparison. Issue
+#24's author proof, final Luna max exact-head rerun, PR CI, and post-merge CI
+also passed all four commands. Earlier SW-C, revision-4, and Rust-1.98
+maintenance author/non-author reruns passed as recorded.
 Still unproven: Linux aarch64 release, ten runs per target, the complete
 `nomos` command surface, persistence and diagnostics projections, light
 resolution, committed runtime semantics, migration/replay, and formal
