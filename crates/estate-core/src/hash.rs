@@ -61,7 +61,7 @@ impl Sha256Digest {
             return None;
         }
         let mut digest = [0_u8; 32];
-        for (index, pair) in bytes.chunks_exact(2).enumerate() {
+        for (index, pair) in bytes.as_chunks::<2>().0.iter().enumerate() {
             let high = value_of(pair[0])?;
             let low = value_of(pair[1])?;
             digest[index] = (high << 4) | low;
