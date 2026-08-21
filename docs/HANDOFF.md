@@ -1,13 +1,16 @@
 # Handoff — state of the repository
 
-Updated 2026-08-21 for the Gate K cold-agent roster. This file orients a fresh
+Updated 2026-08-21 for proposed contract revision 3. This file orients a fresh
 session; it is rewritten at each slice boundary and never accumulates history
 (git has that).
 
 ## Where things stand
 
-- **Contract revision 2** is merged (#2): `THESIS.md`, `KERNEL.md`, decision
-  0001, and the cold-agent protocol.
+- **Contract revision 3 is proposed:** decision 0003 pins the canonical escape
+  profile, ASCII identifier and field-name grammar, isolated `xtask`, and the
+  honest evidence boundary for semantic schema ownership. It remains
+  non-authoritative pending owner disposition and merge; revision 2 is the
+  effective merged contract.
 - **SW-B is merged (#3):** six kernel crates plus isolated `xtask`, Rust 1.97.1,
   zero third-party crates, deterministic core primitives, immutable package
   mechanics, boundary enforcement, and green CI on main.
@@ -26,7 +29,8 @@ session; it is rewritten at each slice boundary and never accumulates history
 - **Issue #5 is disposed by PR #6.** Acceptance 3 remains only partially
   covered: IR expansion is proved, but the observable `estate inspect` command
   still requires complete packages and projections.
-- **Issue #4 remains open** for the four SW-B contract underspecifications.
+- **Issue #4 is covered by the proposed revision 3 branch** and remains open
+  until owner disposition and merge.
 - **The whole-kernel cold roster is predeclared:** Gemini 3.7 Flash High through
   `agy` is the formal cold author; DeepSeek V4 Pro through direct Reasonix is the
   formal cold debugger; each independently checks the other's output. The plan
@@ -60,8 +64,9 @@ Linux aarch64 release, ten runs per target, the complete `estate` command
 surface, complete package projections, runtime semantics, migration/replay, and
 formal cold-agent gates.
 
-## Open owner points
+## Open owner point
 
-From #4 / decision 0001: SHA-256 plus the canonical JSON profile; Linux
-x86_64/aarch64 matrix; cold-agent default budgets and zero-hint rule. The
-eligible cold-family roster is resolved; the formal runs remain unperformed.
+Decision 0003 requires owner disposition on its finished replacement wording.
+Linux aarch64 release and the ten-runs-per-target matrix remain evidence gaps,
+not contract-wording questions. The whole-kernel roster and invalidation rules
+are resolved; the formal runs remain unperformed.
