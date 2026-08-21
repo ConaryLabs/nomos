@@ -38,8 +38,11 @@ estate-cli         -> estate-core, estate-compiler, estate-sim, estate-projectio
 ```
 
 No crate in the workspace has a third-party dependency. `Cargo.lock` contains
-seven entries, all of them local. This is a deliberate property, not an accident
-of being early — see "SHA-256 in-crate" below.
+seven entries, all of them local. Decision 0005 makes that a deliberate,
+temporary Gate K constraint: it protects the offline proof and audit surface
+while the semantic kernel is small, but it is not a permanent repository
+constitution. Later gates may admit a dependency only through a separate
+owner-authorized decision and the review criteria in that record.
 
 ## Running the proof
 
@@ -122,7 +125,7 @@ The module knows nothing about member *meaning*. It enforces names, bytes,
 hashes, and immutability. What `simulation.json` must contain stays in
 `estate-projection`.
 
-### SHA-256 in-crate, and no third-party dependencies at all
+### SHA-256 in-crate under the Gate K dependency policy
 
 The state hash is the constitutional identity of authoritative state, and
 `docs/thesis-open-questions.md` records the signature threat model as open.
@@ -132,7 +135,10 @@ removes third-party code from the hash domain entirely, and lets the whole
 workspace build and test with no network access, which the cold-agent protocol
 depends on. If the owner prefers the `sha2` crate, it is a contained swap: the
 `sha256` function is the only thing that would change, and the frozen fixture
-hash would prove the swap changed nothing.
+hash would prove the swap changed nothing. Such a swap is forbidden during Gate
+K under decision 0005. The local implementation is the current integrity/hash
+mechanism; it is not evidence that package signing or adversarial cryptography
+has been solved.
 
 ### Identifiers are ASCII, and that is how NFC is satisfied
 

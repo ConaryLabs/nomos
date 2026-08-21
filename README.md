@@ -38,22 +38,25 @@ it.
 4. [docs/decisions/0004-world-ir-construction-lineage.md](docs/decisions/0004-world-ir-construction-lineage.md)
    — the owner-authorized revision-3 to revision-4 repair separating incomplete
    construction snapshots from the stable World IR migration line.
-5. [docs/decisions/0001-contract-repair.md](docs/decisions/0001-contract-repair.md)
+5. [docs/decisions/0005-gate-k-dependency-policy.md](docs/decisions/0005-gate-k-dependency-policy.md)
+   — the owner-authorized temporary zero-third-party-dependency policy for Gate
+   K; it does not amend contract revision 4 or bind later gates.
+6. [docs/decisions/0001-contract-repair.md](docs/decisions/0001-contract-repair.md)
    — the owner-authorized revision-1 to revision-2 contract repair.
-6. [docs/evaluation/COLD_AGENT_PROTOCOL.md](docs/evaluation/COLD_AGENT_PROTOCOL.md)
+7. [docs/evaluation/COLD_AGENT_PROTOCOL.md](docs/evaluation/COLD_AGENT_PROTOCOL.md)
    — the reproducible cold-author, cold-debug, and cold-review procedure.
-7. [docs/evaluation/GATE_K_COLD_AGENT_PLAN.md](docs/evaluation/GATE_K_COLD_AGENT_PLAN.md)
+8. [docs/evaluation/GATE_K_COLD_AGENT_PLAN.md](docs/evaluation/GATE_K_COLD_AGENT_PLAN.md)
    — the owner-authorized whole-kernel subject roster and eligibility checks.
-8. [docs/workspace.md](docs/workspace.md) — the crate map, how to run the
+9. [docs/workspace.md](docs/workspace.md) — the crate map, how to run the
    proof, and the decisions the first implementation slice had to make.
-9. [docs/authoring.md](docs/authoring.md) — source schema version 1 and the
+10. [docs/authoring.md](docs/authoring.md) — source schema version 1 and the
    approved Gate K authoring vocabulary.
-10. [docs/compiler.md](docs/compiler.md) — parser/linker stages, schema
+11. [docs/compiler.md](docs/compiler.md) — parser/linker stages, schema
    ownership, proof coverage, and limits.
-11. [docs/review/2026-08-21-founding-review.md](docs/review/2026-08-21-founding-review.md)
+12. [docs/review/2026-08-21-founding-review.md](docs/review/2026-08-21-founding-review.md)
    — the condensed primary record of the founding adversarial review, written
    in the originating session, with its provenance limits stated.
-12. [docs/review/2026-08-21-founding-review-synthesis.md](docs/review/2026-08-21-founding-review-synthesis.md)
+13. [docs/review/2026-08-21-founding-review-synthesis.md](docs/review/2026-08-21-founding-review-synthesis.md)
     — the contract-revision-2 edited synthesis of that review.
 
 ## Layout
