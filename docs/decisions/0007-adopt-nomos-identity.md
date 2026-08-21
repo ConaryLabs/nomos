@@ -156,6 +156,20 @@ historical evidence. The implementation freezes a new Nomos construction-v1
 golden hash and a new Nomos hash-domain fixture. The cutover receipt records the
 old-to-new relationship; no old receipt or hash is rewritten.
 
+The identity-bearing golden transitions are:
+
+```text
+estate.world_ir.construction@3
+  528a8730cecd6969120f92ba11e9889d4ea2741db916d9561b866e96d9658925
+nomos.world_ir.construction@1
+  c1322a05806a2d66c634bf0cbdae0620a893a8db8f2088236e29cd8397a2db55
+
+estate.hash_domain_fixture@1
+  09ef5bc23dd2e47109dec91aea083e4f883b3c0ff8e021f86dd127c06c94faf8
+nomos.hash_domain_fixture@1
+  40a8cabed5fd8a036132acf952bdc0a0917199fca6c24e45e941e1227c0dfb12
+```
+
 Semantic parser, linker, ownership, transition, resolver, and transaction tests
 must continue to pass. Any change beyond identity-bearing bytes is outside this
 decision and requires its own disposition.

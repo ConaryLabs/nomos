@@ -11,14 +11,14 @@ SW-E proves that effective movement is composed from compiler-owned semantics,
 not hard-coded door behavior in the runtime. The boundary is:
 
 ```text
-estate-schema WorldIr construction@3
-  -> estate-compiler resolver validation and projection
-  -> estate-projection shared MovementResolverPlan@1
-  -> estate-sim command-time effective facts
+nomos-schema WorldIr construction@1 (Nomos epoch)
+  -> nomos-compiler resolver validation and projection
+  -> nomos-projection shared MovementResolverPlan@1
+  -> nomos-sim command-time effective facts
 ```
 
-The same resolver value is embedded in `estate.projection.simulation@2` and
-`estate.projection.navigation@1`. A canonical-byte equality test prevents those
+The same resolver value is embedded in `nomos.projection.simulation@2` and
+`nomos.projection.navigation@1`. A canonical-byte equality test prevents those
 two consumers from acquiring different movement laws.
 
 ## Composition and coherence
@@ -54,7 +54,7 @@ partial facts.
 
 ## Exact fixture evidence
 
-The compiled `fixtures/gaol.estate` integration proof observes:
+The compiled `fixtures/gaol.nomos` integration proof observes:
 
 | State change | `north_gate` result |
 | --- | --- |
@@ -65,7 +65,7 @@ The compiled `fixtures/gaol.estate` integration proof observes:
 
 `flooded_section` is always traversable at cost `3`, supplied by its region
 claim. These results are computed from the projected activation expressions;
-`estate-sim` contains no door, ward, water, or primitive-catalog branch.
+`nomos-sim` contains no door, ward, water, or primitive-catalog branch.
 
 ## Evidence boundary
 

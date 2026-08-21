@@ -3,48 +3,48 @@
 version = 4
 
 [[package]]
-name = "estate-cli"
+name = "nomos-cli"
 version = "0.0.0"
 dependencies = [
- "estate-compiler",
- "estate-core",
- "estate-projection",
- "estate-sim",
+ "nomos-compiler",
+ "nomos-core",
+ "nomos-projection",
+ "nomos-sim",
 ]
 
 [[package]]
-name = "estate-compiler"
+name = "nomos-compiler"
 version = "0.0.0"
 dependencies = [
- "estate-core",
- "estate-projection",
- "estate-schema",
+ "nomos-core",
+ "nomos-projection",
+ "nomos-schema",
 ]
 
 [[package]]
-name = "estate-core"
+name = "nomos-core"
 version = "0.0.0"
 
 [[package]]
-name = "estate-projection"
+name = "nomos-projection"
 version = "0.0.0"
 dependencies = [
- "estate-core",
+ "nomos-core",
 ]
 
 [[package]]
-name = "estate-schema"
+name = "nomos-schema"
 version = "0.0.0"
 dependencies = [
- "estate-core",
+ "nomos-core",
 ]
 
 [[package]]
-name = "estate-sim"
+name = "nomos-sim"
 version = "0.0.0"
 dependencies = [
- "estate-core",
- "estate-projection",
+ "nomos-core",
+ "nomos-projection",
 ]
 
 [[package]]

@@ -16,10 +16,8 @@ decision_record: docs/decisions/0007-adopt-nomos-identity.md
 
 # The Signed World
 
-**Nomos** is the project and runtime attempting to prove this thesis. **The
-Signed World** remains the name of the architectural argument. Contract revision
-6 records the identity cutover and the explicit pre-Gate construction epoch
-break; it does not rename this thesis.
+**Nomos** is the project and runtime attempting to prove this thesis. **The Signed
+World** remains the architectural argument; revision 6 does not rename it.
 
 > **The agent names the thing. Namespaces own state. Capabilities define
 > obligations. The resolver composes effective facts. Projection compilers own
@@ -28,30 +26,24 @@ break; it does not rename this thesis.
 
 ## 0. How to read this
 
-This is a design thesis written in a vacuum: if the primary author of a game's
-content and much of its tooling is a large language model, what runtime
-architecture plays to that author's strengths and fences its weaknesses?
+This is a design thesis written in a vacuum: if the primary author of a game's content and much
+of its tooling is a large language model, what runtime plays to its strengths and fences its weaknesses?
 
-It is greenfield, not historically isolated. It deliberately ignores existing
-implementation commitments while carrying forward lessons about consistency,
-latency, provenance, and proof. The phrase “clean” in the provenance sections
-means a controlled source zone; it does not claim the architecture exercise was
-created without prior project knowledge.
+It is greenfield, not historically isolated. It deliberately ignores existing implementation
+commitments while carrying forward lessons about consistency, latency, provenance, and proof.
+The phrase “clean” in the provenance sections means a controlled source zone; it does not claim
+the architecture exercise was created without prior project knowledge.
 
 This document is not an implementation specification and binds no other
 project. [KERNEL.md](KERNEL.md) is the first executable acceptance contract.
-[docs/decisions/0001-contract-repair.md](docs/decisions/0001-contract-repair.md)
-records the owner-authorized repair from revision 1 to revision 2.
-[docs/decisions/0003-contract-profile-closure.md](docs/decisions/0003-contract-profile-closure.md)
-records the owner-authorized revision 3 closure of the canonical-profile and
-workspace-evidence gaps found by SW-B.
-[docs/decisions/0004-world-ir-construction-lineage.md](docs/decisions/0004-world-ir-construction-lineage.md)
-records the owner-authorized revision 4 construction-lineage repair.
-[docs/decisions/0006-package-evidence-boundary.md](docs/decisions/0006-package-evidence-boundary.md)
-records the owner-authorized revision 5 package-evidence repair.
-[docs/decisions/0007-adopt-nomos-identity.md](docs/decisions/0007-adopt-nomos-identity.md)
-records the owner-authorized revision 6 Nomos identity and construction-epoch
-repair.
+[Decision 0001](docs/decisions/0001-contract-repair.md) records the revision-2 repair.
+[Decision 0003](docs/decisions/0003-contract-profile-closure.md) records the revision-3
+canonical-profile and workspace-evidence closure found by SW-B.
+[Decision 0004](docs/decisions/0004-world-ir-construction-lineage.md) records the
+revision-4 construction-lineage repair.
+[Decision 0006](docs/decisions/0006-package-evidence-boundary.md) records the revision-5
+package-evidence repair. [Decision 0007](docs/decisions/0007-adopt-nomos-identity.md)
+records the revision-6 Nomos identity and construction-epoch repair.
 
 Contract changes follow `AGENTS.md`. Contradictions and falsified assumptions may
 be repaired explicitly; criteria may not be silently weakened because code

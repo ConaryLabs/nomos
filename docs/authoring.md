@@ -1,4 +1,4 @@
-# Gate K `.estate` authoring reference
+# Gate K `.nomos` authoring reference
 
 Gate K source schema version 1 is a small line-oriented language. It contains
 primitive instances and source-owned facts only. Machines, capability claims,
@@ -8,7 +8,7 @@ compiler.
 ## Grammar
 
 ```text
-schema estate.source@1
+schema nomos.source@1
 catalog <catalog>/<value>
 
 entity <entity_id> <primitive>/<kind>

@@ -16,7 +16,7 @@
 //! 5. tooling reaching into the kernel graph it checks.
 //!
 //! Rule 5 is why the checker is a separate workspace member rather than a
-//! subcommand of `estate-cli`. If it lived inside the kernel, its own JSON and
+//! subcommand of `nomos-cli`. If it lived inside the kernel, its own JSON and
 //! process-spawning dependencies would sit inside the graph it polices, and the
 //! forbidden list would need exceptions for the checker. Section 10 lists the
 //! crates *Gate K uses*; `xtask` builds no kernel artifact, is not reachable
@@ -27,7 +27,7 @@
 //! Section 10 also forbids "canonical schema types defined in more than one
 //! crate". That is not visible in `cargo metadata` — it is a property of the
 //! source, not the graph — and it is enforced structurally instead: the
-//! Canonical World IR type is defined in `estate-schema`, and every crate that
+//! Canonical World IR type is defined in `nomos-schema`, and every crate that
 //! must not see it is missing the edge that would let it. This check proves the
 //! missing edges; SW-C owns the type itself.
 
@@ -37,12 +37,12 @@ use crate::json::Value;
 
 /// The six kernel crates named by section 10.
 pub const KERNEL_CRATES: [&str; 6] = [
-    "estate-core",
-    "estate-schema",
-    "estate-projection",
-    "estate-compiler",
-    "estate-sim",
-    "estate-cli",
+    "nomos-core",
+    "nomos-schema",
+    "nomos-projection",
+    "nomos-compiler",
+    "nomos-sim",
+    "nomos-cli",
 ];
 
 /// Workspace members that are tooling rather than kernel crates.
@@ -50,21 +50,21 @@ pub const TOOLING_CRATES: [&str; 1] = ["xtask"];
 
 /// The permitted edges, verbatim from section 10.
 pub const PERMITTED_EDGES: [(&str, &[&str]); 6] = [
-    ("estate-core", &[]),
-    ("estate-schema", &["estate-core"]),
-    ("estate-projection", &["estate-core"]),
+    ("nomos-core", &[]),
+    ("nomos-schema", &["nomos-core"]),
+    ("nomos-projection", &["nomos-core"]),
     (
-        "estate-compiler",
-        &["estate-core", "estate-schema", "estate-projection"],
+        "nomos-compiler",
+        &["nomos-core", "nomos-schema", "nomos-projection"],
     ),
-    ("estate-sim", &["estate-core", "estate-projection"]),
+    ("nomos-sim", &["nomos-core", "nomos-projection"]),
     (
-        "estate-cli",
+        "nomos-cli",
         &[
-            "estate-core",
-            "estate-compiler",
-            "estate-sim",
-            "estate-projection",
+            "nomos-core",
+            "nomos-compiler",
+            "nomos-sim",
+            "nomos-projection",
         ],
     ),
 ];

@@ -21,7 +21,7 @@ schemas.json
 compiler-receipts.json
 ```
 
-The generic `estate-core::package` layer validates names, canonical bytes,
+The generic `nomos-core::package` layer validates names, canonical bytes,
 hashes, publication, and filesystem structure. It deliberately does not decide
 which semantic members a complete Gate K package requires; later compiler/CLI
 orchestration owns that exact artifact set. When that orchestration lands,

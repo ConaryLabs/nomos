@@ -1,8 +1,12 @@
-# signed-world
+# Nomos
 
-An exploratory design thesis for a game runtime whose primary content and tooling
-author is a large language model, plus the executable semantic kernel intended to
-test that thesis before any renderer is built.
+**Nomos — a semantic game runtime designed for AI authors.**
+
+This repository contains the executable semantic kernel and **The Signed
+World**, the exploratory architectural thesis Nomos is intended to test before
+any renderer is built.
+
+> The agent proposes the world. Nomos supplies the law.
 
 > The agent names the thing. Namespaces own state. Capabilities define
 > obligations. The resolver composes effective facts. Projection compilers own
@@ -16,7 +20,7 @@ test that thesis before any renderer is built.
   construction IR, compiled transitions, shared simulation/navigation ground
   movement projection, and immutable transaction preparation with effective
   before/after movement facts; no command surface or committed runtime snapshots
-- **Contract revision:** 5, owner-authorized in decision 0006
+- **Contract revision:** 6, owner-authorized in decision 0007
 - **Scope:** greenfield / vacuum architecture exercise
 - **Effect on other projects:** none unless separately adopted by an explicit
   decision in that project's own authority records
@@ -33,40 +37,44 @@ it.
    disagreements, and adoption criteria.
 2. [KERNEL.md](KERNEL.md) — the revisioned acceptance contract for Gate K, the
    renderer-free executable semantic kernel.
-3. [docs/decisions/0006-package-evidence-boundary.md](docs/decisions/0006-package-evidence-boundary.md)
+3. [docs/decisions/0007-adopt-nomos-identity.md](docs/decisions/0007-adopt-nomos-identity.md)
+   — the owner-authorized revision-5 to revision-6 identity cutover: Nomos is
+   the project/runtime, The Signed World remains the thesis, and active schemas
+   begin a fresh pre-Gate epoch.
+4. [docs/decisions/0006-package-evidence-boundary.md](docs/decisions/0006-package-evidence-boundary.md)
    — the owner-authorized revision-4 to revision-5 repair sealing package
    receipts, publication, exact manifest decoding, and filesystem entry types.
-4. [docs/decisions/0003-contract-profile-closure.md](docs/decisions/0003-contract-profile-closure.md)
+5. [docs/decisions/0003-contract-profile-closure.md](docs/decisions/0003-contract-profile-closure.md)
    — the owner-authorized revision-2 to revision-3 closure of the canonical
    profile and workspace-evidence contract gaps.
-5. [docs/decisions/0004-world-ir-construction-lineage.md](docs/decisions/0004-world-ir-construction-lineage.md)
+6. [docs/decisions/0004-world-ir-construction-lineage.md](docs/decisions/0004-world-ir-construction-lineage.md)
    — the owner-authorized revision-3 to revision-4 repair separating incomplete
    construction snapshots from the stable World IR migration line.
-6. [docs/decisions/0005-gate-k-dependency-policy.md](docs/decisions/0005-gate-k-dependency-policy.md)
+7. [docs/decisions/0005-gate-k-dependency-policy.md](docs/decisions/0005-gate-k-dependency-policy.md)
    — the owner-authorized temporary zero-third-party-dependency policy for Gate
    K; it does not amend contract revision 4 or bind later gates.
-7. [docs/decisions/0001-contract-repair.md](docs/decisions/0001-contract-repair.md)
+8. [docs/decisions/0001-contract-repair.md](docs/decisions/0001-contract-repair.md)
    — the owner-authorized revision-1 to revision-2 contract repair.
-8. [docs/evaluation/COLD_AGENT_PROTOCOL.md](docs/evaluation/COLD_AGENT_PROTOCOL.md)
+9. [docs/evaluation/COLD_AGENT_PROTOCOL.md](docs/evaluation/COLD_AGENT_PROTOCOL.md)
    — the reproducible cold-author, cold-debug, and cold-review procedure.
-9. [docs/evaluation/GATE_K_COLD_AGENT_PLAN.md](docs/evaluation/GATE_K_COLD_AGENT_PLAN.md)
+10. [docs/evaluation/GATE_K_COLD_AGENT_PLAN.md](docs/evaluation/GATE_K_COLD_AGENT_PLAN.md)
    — the owner-authorized whole-kernel subject roster and eligibility checks.
-10. [docs/workspace.md](docs/workspace.md) — the crate map, how to run the
+11. [docs/workspace.md](docs/workspace.md) — the crate map, how to run the
    proof, and the decisions the first implementation slice had to make.
-11. [docs/authoring.md](docs/authoring.md) — source schema version 1 and the
+12. [docs/authoring.md](docs/authoring.md) — source schema version 1 and the
    approved Gate K authoring vocabulary.
-12. [docs/compiler.md](docs/compiler.md) — parser/linker stages, schema
+13. [docs/compiler.md](docs/compiler.md) — parser/linker stages, schema
    ownership, proof coverage, and limits.
-13. [docs/transitions.md](docs/transitions.md) — compiled command/event
+14. [docs/transitions.md](docs/transitions.md) — compiled command/event
    semantics, causal ordering, and immutable runtime preparation.
-14. [docs/movement.md](docs/movement.md) — compiled claim composition,
+15. [docs/movement.md](docs/movement.md) — compiled claim composition,
    shared simulation/navigation movement semantics, and SW-E evidence.
-15. [docs/packages.md](docs/packages.md) — atomic package publication, exact
+16. [docs/packages.md](docs/packages.md) — atomic package publication, exact
    manifest/member verification, and the revision-5 evidence boundary.
-16. [docs/review/2026-08-21-founding-review.md](docs/review/2026-08-21-founding-review.md)
+17. [docs/review/2026-08-21-founding-review.md](docs/review/2026-08-21-founding-review.md)
    — the condensed primary record of the founding adversarial review, written
    in the originating session, with its provenance limits stated.
-17. [docs/review/2026-08-21-founding-review-synthesis.md](docs/review/2026-08-21-founding-review-synthesis.md)
+18. [docs/review/2026-08-21-founding-review-synthesis.md](docs/review/2026-08-21-founding-review-synthesis.md)
     — the contract-revision-2 edited synthesis of that review.
 
 ## Layout

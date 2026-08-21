@@ -11,14 +11,14 @@ SW-D makes machine behavior compiler-owned and executable without allowing the
 runtime to read authoring source or Canonical World IR. The boundary is:
 
 ```text
-estate-schema WorldIr construction@3
-  -> estate-compiler validation and projection
-  -> estate-projection SimulationPlan@2
-  -> estate-sim immutable transaction preparation
+nomos-schema WorldIr construction@1 (Nomos epoch)
+  -> nomos-compiler validation and projection
+  -> nomos-projection SimulationPlan@2
+  -> nomos-sim immutable transaction preparation
 ```
 
-`estate-projection` depends only on `estate-core`; `estate-sim` depends only on
-that projection and core. Neither crate can name `estate-schema`.
+`nomos-projection` depends only on `nomos-core`; `nomos-sim` depends only on
+that projection and core. Neither crate can name `nomos-schema`.
 
 ## Sealed transition catalog
 
@@ -48,7 +48,7 @@ explicit phase ordinal, source namespace/state, and target namespace/handler.
 
 ## Compiler validation
 
-`estate_compiler::compile_simulation_plan` rejects before returning an artifact:
+`nomos_compiler::compile_simulation_plan` rejects before returning an artifact:
 
 - absent source or target namespaces;
 - absent initial, transition source/target, or `on_enter` states;
@@ -71,8 +71,8 @@ movement disposition, or precomputed subsystem delta.
 The runtime entry points are:
 
 ```rust
-estate_sim::SimulationState::initialize(&plan)
-estate_sim::prepare_transaction(&plan, &current, &command)
+nomos_sim::SimulationState::initialize(&plan)
+nomos_sim::prepare_transaction(&plan, &current, &command)
 ```
 
 Preparation borrows `current`, clones it privately, validates and stages the
