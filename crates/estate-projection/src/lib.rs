@@ -34,15 +34,20 @@
 
 use estate_core::id::SchemaId;
 
+mod movement;
 mod simulation;
 
+pub use movement::{
+    LatticeCell, MovementClaim, MovementConnectivity, MovementDisposition, MovementResolverPlan,
+    MovementSubject, NavigationPlan, ProjectedActivation, ResolvedMovement, ResolvedMovementFacts,
+};
 pub use simulation::{
     CausalEdge, Command, CommandArgument, CommandRequirement, CommandTransition, EventHandler,
     EventPayload, MachineDefinition, Phase, SimulationPlan,
 };
 
 macro_rules! projection_schema {
-    ($($function:ident => $name:literal, $doc:literal;)*) => {
+    ($($function:ident => $name:literal @ $version:literal, $doc:literal;)*) => {
         $(
             #[doc = $doc]
             ///
@@ -52,7 +57,7 @@ macro_rules! projection_schema {
             /// this crate's tests rule out.
             #[must_use]
             pub fn $function() -> SchemaId {
-                SchemaId::new($name, 1).expect("a projection schema id is a valid literal")
+                SchemaId::new($name, $version).expect("a projection schema id is a valid literal")
             }
         )*
 
@@ -65,19 +70,21 @@ macro_rules! projection_schema {
 }
 
 projection_schema! {
-    simulation_schema => "estate.projection.simulation",
+    simulation_schema => "estate.projection.simulation" @ 2,
         "The simulation projection schema.";
-    navigation_schema => "estate.projection.navigation",
+    navigation_schema => "estate.projection.navigation" @ 1,
         "The navigation projection schema.";
-    persistence_schema => "estate.projection.persistence",
+    persistence_schema => "estate.projection.persistence" @ 1,
         "The persistence projection schema.";
-    diagnostics_schema => "estate.projection.diagnostics",
+    diagnostics_schema => "estate.projection.diagnostics" @ 1,
         "The diagnostics projection schema.";
 }
 
 #[cfg(test)]
 mod tests {
-    use super::all_schemas;
+    use super::{
+        all_schemas, diagnostics_schema, navigation_schema, persistence_schema, simulation_schema,
+    };
     use std::collections::BTreeSet;
 
     #[test]
@@ -86,5 +93,9 @@ mod tests {
         assert_eq!(schemas.len(), 4);
         let names: BTreeSet<String> = schemas.iter().map(|id| id.name().to_string()).collect();
         assert_eq!(names.len(), 4, "projection schema names must be distinct");
+        assert_eq!(simulation_schema().version(), 2);
+        assert_eq!(navigation_schema().version(), 1);
+        assert_eq!(persistence_schema().version(), 1);
+        assert_eq!(diagnostics_schema().version(), 1);
     }
 }

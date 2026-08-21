@@ -7,8 +7,10 @@ use estate_core::id::StableId;
 use estate_core::{CanonicalValue, Diagnostic, Ident, NamespaceId};
 use estate_projection::{
     CausalEdge, Command, CommandArgument, CommandRequirement, EventPayload, MachineDefinition,
-    Phase, SimulationPlan,
+    Phase, ResolvedMovementFacts, SimulationPlan,
 };
+
+use crate::resolve_movement;
 
 /// Default last-defense transition budget for one prepared transaction.
 pub const DEFAULT_TRANSITION_BUDGET: usize = 64;
@@ -165,6 +167,8 @@ impl TransitionStep {
 pub struct PreparedTransaction {
     after: SimulationState,
     steps: Vec<TransitionStep>,
+    movement_before: ResolvedMovementFacts,
+    movement_after: ResolvedMovementFacts,
 }
 
 impl PreparedTransaction {
@@ -178,6 +182,18 @@ impl PreparedTransaction {
     #[must_use]
     pub fn steps(&self) -> &[TransitionStep] {
         &self.steps
+    }
+
+    /// Effective movement facts before the initiating local transition.
+    #[must_use]
+    pub const fn movement_before(&self) -> &ResolvedMovementFacts {
+        &self.movement_before
+    }
+
+    /// Effective movement facts after local and causal settlement.
+    #[must_use]
+    pub const fn movement_after(&self) -> &ResolvedMovementFacts {
+        &self.movement_after
     }
 
     /// Consumes the preparation and returns its staged state.
@@ -222,6 +238,7 @@ pub fn prepare_transaction_with_budget(
     budget: usize,
 ) -> Result<PreparedTransaction, Diagnostic> {
     validate_current_state(plan, current)?;
+    let movement_before = resolve_movement(plan, current)?;
     let machine = find_machine(plan, command.namespace()).ok_or_else(|| {
         Diagnostic::new(
             estate_core::diagnostic::codes::RUNTIME_TARGET_MISSING,
@@ -360,7 +377,13 @@ pub fn prepare_transaction_with_budget(
         ));
     }
 
-    Ok(PreparedTransaction { after, steps })
+    let movement_after = resolve_movement(plan, &after)?;
+    Ok(PreparedTransaction {
+        after,
+        steps,
+        movement_before,
+        movement_after,
+    })
 }
 
 fn validate_current_state(

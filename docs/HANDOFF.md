@@ -1,6 +1,6 @@
 # Handoff — state of the repository
 
-Updated 2026-08-21 after SW-D merged and SW-E issue #28 was accepted for work.
+Updated 2026-08-21 on the SW-E issue #28 implementation branch.
 This file orients a fresh session; it is rewritten at each slice boundary and
 never accumulates history (git has that).
 
@@ -70,14 +70,22 @@ never accumulates history (git has that).
   object fields, stable keyed arrays, package members/manifest rows,
   machine/claim identities, transitions, and interactions fail closed instead
   of retaining a final duplicate.
+- **SW-E is implemented on `feature/sw-e-28`:** construction IR advances to
+  `estate.world_ir.construction@3` with explicit movement composition,
+  coherence, connectivity, and resolver subjects. Simulation advances to `@2`,
+  navigation begins at `@1`, and both receive one byte-identical typed resolver
+  plan. `estate-sim` evaluates typed
+  claim activation after complete local/causal settlement and exposes immutable
+  before/after facts. The exact fixture proves two initial gate blockers, ward
+  survival after opening or destruction, base cost `1` after unsealing, and
+  water cost `3`. The four-command author proof passes; exact-head non-author
+  and CI evidence are pending.
 
 ## What is next
 
-Implement **SW-E issue #28 — compiled claim resolution and shared effective
-ground movement facts**. Advance the incomplete construction snapshot to
-`estate.world_ir.construction@3`, project one movement resolver plan into both
-simulation and navigation, and have `estate-sim` resolve typed before/after
-`MovementDisposition<ground>` after local and causal settlement.
+Finish **SW-E issue #28**: run the complete author proof, obtain the exact-head
+GPT-5.6 Luna max non-author rerun, merge after CI, and record the resulting
+evidence.
 
 Do not pull #22 package hardening or #24 typed forensic provenance sideways into
 SW-E. Resolve #22 before package/CLI/migration evidence and #24 before stable
@@ -100,10 +108,10 @@ cargo xtask boundary
 SW-D's author proof, Luna max non-author rerun, PR CI, and post-merge CI passed
 all four commands plus the x86_64 debug/release determinism comparison. Earlier
 SW-C, revision-4, and Rust-1.98 maintenance author/non-author reruns also passed.
-Still unproven: Linux aarch64
-release, ten runs per target, the complete `estate` command surface, complete
-package projections, effective-fact resolution, committed runtime semantics,
-migration/replay, and formal cold-agent gates. The contract also requires a
+Still unproven: Linux aarch64 release, ten runs per target, the complete
+`estate` command surface, persistence and diagnostics projections, light
+resolution, committed runtime semantics, migration/replay, and formal
+cold-agent gates. The contract also requires a
 final explicit schema-ownership source-review receipt after the Gate K schema
 set stabilizes; that final receipt does not exist yet.
 

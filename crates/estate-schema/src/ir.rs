@@ -9,7 +9,10 @@ use estate_core::{
     PrimitiveKindId, RepairClass, SchemaId, SourceSpan,
 };
 
-use crate::{Binding, InteractionDefinition, TransitionDefinition, construction_world_ir_schema};
+use crate::{
+    Binding, InteractionDefinition, MovementResolverPlan, TransitionDefinition,
+    construction_world_ir_schema,
+};
 
 /// A capability in the sealed Gate K basis used by the three approved kinds.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
@@ -609,6 +612,7 @@ pub struct WorldIr {
     entities: Vec<IrEntity>,
     relations: Vec<IrRelation>,
     ownership_receipts: Vec<FactOwnershipReceipt>,
+    movement_resolver: MovementResolverPlan,
 }
 
 impl WorldIr {
@@ -647,7 +651,14 @@ impl WorldIr {
             entities,
             relations,
             ownership_receipts,
+            movement_resolver: MovementResolverPlan::empty_gate_k(),
         })
+    }
+    /// Attaches the compiler-prepared movement resolver plan.
+    #[must_use]
+    pub fn with_movement_resolver(mut self, movement_resolver: MovementResolverPlan) -> Self {
+        self.movement_resolver = movement_resolver;
+        self
     }
     /// IR schema identity.
     #[must_use]
@@ -679,6 +690,11 @@ impl WorldIr {
     pub fn ownership_receipts(&self) -> &[FactOwnershipReceipt] {
         &self.ownership_receipts
     }
+    /// Compiler-prepared ground movement resolver plan.
+    #[must_use]
+    pub const fn movement_resolver(&self) -> &MovementResolverPlan {
+        &self.movement_resolver
+    }
 
     /// Canonical semantic value for this construction snapshot.
     #[must_use]
@@ -702,6 +718,7 @@ impl WorldIr {
                 )
                 .expect("WorldIr validates unique entity IDs"),
             ),
+            ("movement_resolver", self.movement_resolver.to_canonical()),
             (
                 "ownership_receipts",
                 keyed_array(

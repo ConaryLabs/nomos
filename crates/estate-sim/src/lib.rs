@@ -38,8 +38,10 @@
 
 use estate_core::id::SchemaId;
 
+mod resolver;
 mod transaction;
 
+pub use resolver::resolve_movement;
 pub use transaction::{
     DEFAULT_TRANSITION_BUDGET, PreparedTransaction, SimulationState, TransitionCause,
     TransitionStep, prepare_transaction, prepare_transaction_with_budget,

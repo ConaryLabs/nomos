@@ -11,7 +11,7 @@ SW-D makes machine behavior compiler-owned and executable without allowing the
 runtime to read authoring source or Canonical World IR. The boundary is:
 
 ```text
-estate-schema WorldIr construction@2
+estate-schema WorldIr construction@3
   -> estate-compiler validation and projection
   -> estate-projection SimulationPlan@1
   -> estate-sim immutable transaction preparation
@@ -77,8 +77,9 @@ estate_sim::prepare_transaction(&plan, &current, &command)
 Preparation borrows `current`, clones it privately, validates and stages the
 local transition, queues matching state-entry events in projection order, and
 lets each target machine apply its own handler. A successful result contains a
-staged after-state and ordered `Local` then `Causal` transition steps. It is not
-a committed snapshot.
+staged after-state, ordered `Local` then `Causal` transition steps, and
+effective movement facts resolved before and after complete causal settlement.
+It is not a committed snapshot.
 
 Any `EK08xx` failure discards the staged clone. Tests compare both Rust equality
 and canonical state bytes around rejected commands. They cover missing/wrong
@@ -94,8 +95,8 @@ event, and target-owned `integrity → destroyed` staging in deterministic order
 It also proves unlock/open/close/unseal/extinguish local changes and that opening
 does not alter `ward`.
 
-SW-D does not prove final effective facts, `MovementDisposition`, light removal,
-navigation/persistence/diagnostics deltas, committed state, hashes, replay,
-migration, receipts, package/CLI orchestration, the ten-run target matrix, or
-whole-Gate-K cold-agent acceptance. Acceptance 5, 6, and 9 and Gate K remain
-open.
+SW-E now proves the ground `MovementDisposition` facts described in
+[`movement.md`](movement.md). It still does not prove light removal,
+persistence/diagnostics deltas, committed state, hashes, replay, migration,
+receipts, package/CLI orchestration, the ten-run target matrix, or whole-Gate-K
+cold-agent acceptance. Acceptance 5, 6, and 9 and Gate K remain open.

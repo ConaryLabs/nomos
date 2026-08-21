@@ -4,8 +4,9 @@ use estate_core::{
     ClaimRef, EntityId, Ident, NamespaceId, PrimitiveKindId, SourcePath, SourceSpan,
 };
 use estate_schema::{
-    Binding, CapabilityKind, Cell, ClaimActivation, ClaimTemplate, ClaimValue,
-    InteractionDefinition, InteractionPhase, InteractionTrigger, IrEntity, MachineTemplate,
+    Binding, CapabilityKind, Cell, ClaimActivation, ClaimTemplate, ClaimValue, GroundConnectivity,
+    GroundMovementCoherence, InteractionDefinition, InteractionPhase, InteractionTrigger, IrEntity,
+    MachineTemplate, MovementCompositionLaw, MovementResolverPlan, MovementResolverSubject,
     PrimitiveExpansion, TransitionDefinition, TransitionInput, TransitionTrigger, WorldIr,
     source_schema,
 };
@@ -116,4 +117,52 @@ fn duplicate_interaction_identities_fail_before_encoding() {
         .with_interactions(vec![interaction.clone(), interaction])
         .unwrap_err();
     assert_eq!(rejected.code().as_str(), "EK0705");
+}
+
+#[test]
+fn duplicate_resolver_laws_coherence_and_subjects_fail_before_encoding() {
+    let duplicate_law = MovementResolverPlan::new(
+        vec![
+            MovementCompositionLaw::AnyActiveBlocker,
+            MovementCompositionLaw::AnyActiveBlocker,
+        ],
+        vec![GroundMovementCoherence::new(ident("ground"), 1, true).unwrap()],
+        Vec::new(),
+    )
+    .unwrap_err();
+    assert_eq!(duplicate_law.code().as_str(), "EK0901");
+
+    let duplicate_coherence = MovementResolverPlan::new(
+        vec![
+            MovementCompositionLaw::AnyActiveBlocker,
+            MovementCompositionLaw::MaximumActiveCost,
+        ],
+        vec![
+            GroundMovementCoherence::new(ident("ground"), 1, true).unwrap(),
+            GroundMovementCoherence::new(ident("ground"), 2, true).unwrap(),
+        ],
+        Vec::new(),
+    )
+    .unwrap_err();
+    assert_eq!(duplicate_coherence.code().as_str(), "EK0901");
+
+    let subject = MovementResolverSubject::new(
+        EntityId::parse("north_gate").unwrap(),
+        GroundConnectivity::Region {
+            min: Cell::new(0, 0, 0),
+            max: Cell::new(0, 0, 0),
+        },
+        Vec::new(),
+    )
+    .unwrap();
+    let duplicate_subject = MovementResolverPlan::new(
+        vec![
+            MovementCompositionLaw::AnyActiveBlocker,
+            MovementCompositionLaw::MaximumActiveCost,
+        ],
+        vec![GroundMovementCoherence::new(ident("ground"), 1, true).unwrap()],
+        vec![subject.clone(), subject],
+    )
+    .unwrap_err();
+    assert_eq!(duplicate_subject.code().as_str(), "EK0901");
 }

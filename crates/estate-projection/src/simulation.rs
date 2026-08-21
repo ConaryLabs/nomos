@@ -7,7 +7,7 @@ use estate_core::{
     CanonicalValue, CatalogValueId, Diagnostic, Ident, NamespaceId, RepairClass, SchemaId,
 };
 
-use crate::simulation_schema;
+use crate::{MovementResolverPlan, simulation_schema};
 
 /// An external command's compiled input requirement.
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
@@ -424,6 +424,7 @@ pub struct SimulationPlan {
     schema: SchemaId,
     machines: Vec<MachineDefinition>,
     causal_edges: Vec<CausalEdge>,
+    movement_resolver: MovementResolverPlan,
 }
 
 impl SimulationPlan {
@@ -456,7 +457,15 @@ impl SimulationPlan {
             schema: simulation_schema(),
             machines,
             causal_edges,
+            movement_resolver: MovementResolverPlan::empty_gate_k(),
         })
+    }
+
+    /// Attaches the compiler-projected shared movement resolver plan.
+    #[must_use]
+    pub fn with_movement_resolver(mut self, movement_resolver: MovementResolverPlan) -> Self {
+        self.movement_resolver = movement_resolver;
+        self
     }
 
     /// Projection schema identity.
@@ -475,6 +484,12 @@ impl SimulationPlan {
     #[must_use]
     pub fn causal_edges(&self) -> &[CausalEdge] {
         &self.causal_edges
+    }
+
+    /// Shared ground movement resolver plan.
+    #[must_use]
+    pub const fn movement_resolver(&self) -> &MovementResolverPlan {
+        &self.movement_resolver
     }
 
     /// Canonical projection bytes.
@@ -499,6 +514,7 @@ impl SimulationPlan {
                         .collect(),
                 ),
             ),
+            ("movement_resolver", self.movement_resolver.to_canonical()),
             ("schema", self.schema.to_canonical()),
         ])
         .to_canonical_bytes()
