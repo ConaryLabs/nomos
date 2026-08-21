@@ -8,8 +8,9 @@ applies_to: KERNEL.md sections 5, 7, 8, 10; acceptance 12, 15, 16
 # Gate K workspace
 
 `KERNEL.md` section 10 defines the crates and the permitted dependency edges.
-This document says where they live and how to run the proof. Contract revision
-3 pins the implementation choices SW-B originally had to make.
+This document says where they live and how to run the proof. Proposed contract
+revision 3 would pin the implementation choices SW-B originally had to make;
+revision 2 remains effective pending owner disposition.
 
 ## Crate map
 
@@ -85,24 +86,24 @@ planted-violation receipt is produced without disturbing this one.
 
 ### What the checker cannot see
 
-Section 10 also forbids more than one authoritative Rust type or owner crate for
-the same versioned canonical schema identity. That is a property of the source,
-not of the dependency graph, and `cargo metadata` cannot see it. The Canonical
-World IR type is defined in `estate-schema`; every crate that must not see it
-lacks the edge that would let it. The checker proves the missing edges. Local
-schema-ID uniqueness tests, compile-fail boundary doctests, the compiler
-crossing test, and source review supply the separate semantic-ownership
-evidence. The checker deliberately does not claim that evidence as its own.
+Section 10 also forbids canonical schema types from being defined in more than
+one crate. That is a property of the source, not of the dependency graph, and
+`cargo metadata` cannot see it. The Canonical World IR type is defined in
+`estate-schema`; every crate that must not see it lacks the edge that would let
+it. The checker proves the missing edges. Local schema-ID uniqueness tests,
+compile-fail boundary doctests, and the compiler crossing test support the
+explicit source-review receipt required by proposed revision 3. None of those
+checks is claimed as a semantic-uniqueness proof by itself.
 
 ## Contract choices first implemented by SW-B
 
 ### `xtask` is a seventh workspace member
 
-Contract revision 3 declares six kernel crates plus `xtask`. `xtask` builds no
-kernel artifact and is not reachable from any kernel crate. It exists as a
-separate member for one reason: the boundary checker must not sit inside the
-graph it checks. As a subcommand of `estate-cli` its own dependencies would be
-inside the kernel graph, and the forbidden list would need exceptions carved
+Proposed contract revision 3 declares six kernel crates plus `xtask`. `xtask`
+builds no kernel artifact and is not reachable from any kernel crate. It exists
+as a separate member for one reason: the boundary checker must not sit inside
+the graph it checks. As a subcommand of `estate-cli` its own dependencies would
+be inside the kernel graph, and the forbidden list would need exceptions carved
 for the checker — precisely the shape of hole this project is trying not to
 have. The `tooling-isolation` rule proves the separation holds, and the
 `membership` rule means an eighth member cannot be added quietly.
@@ -124,7 +125,7 @@ hashes, and immutability. What `simulation.json` must contain stays in
 ### SHA-256 in-crate, and no third-party dependencies at all
 
 The state hash is the constitutional identity of authoritative state, and
-`THESIS.md` section 21 records the signature threat model as an open question.
+`docs/thesis-open-questions.md` records the signature threat model as open.
 Implementing SHA-256 in `estate-core` — 110 lines, proved against the published
 FIPS 180-4 vectors including the multi-block and padding-boundary cases —
 removes third-party code from the hash domain entirely, and lets the whole
@@ -135,11 +136,11 @@ hash would prove the swap changed nothing.
 
 ### Identifiers are ASCII, and that is how NFC is satisfied
 
-Section 7 requires stable identifier segments and canonical object field names
-to match `[a-z][a-z0-9_]*`. Every character in that ASCII set is NFC-invariant,
-so a validated name is normalized by construction without carrying versioned
-Unicode tables into the hash domain. Composite IDs add only their
-schema-declared separators between validated segments.
+Proposed revision 3 requires stable identifier segments and canonical object
+field names to match `[a-z][a-z0-9_]*`. Every character in that ASCII set is
+NFC-invariant, so a validated name is normalized by construction without
+carrying versioned Unicode tables into the hash domain. Composite IDs add only
+their schema-declared separators between validated segments.
 
 This fails closed rather than silently: both spellings of a composed character
 are refused, so nothing unnormalised can enter an artifact. String *values*
@@ -149,7 +150,7 @@ decision; it does not need this rule relaxed quietly.
 
 ### Escape spelling
 
-Contract revision 3 pins the spelling first implemented by SW-B: `\b \f \n \r
+Proposed revision 3 pins the spelling first implemented by SW-B: `\b \f \n \r
 \t` for those five control code points and `\u00xx` with lowercase hex for every
 other code point below `U+0020`. `\/` is never emitted and is refused on read.
 `U+007F` is not a JSON control character and is emitted raw.

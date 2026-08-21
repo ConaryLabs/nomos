@@ -1,8 +1,9 @@
 ---
 title: The executable semantic kernel
-status: In progress through SW-C
+status: Proposed contract revision 3; Gate K implementation through SW-C
 gate: K
 contract_revision: 3
+effective_contract_revision: 2
 supersedes_contract_revision: 2
 decision_record: docs/decisions/0003-contract-profile-closure.md
 ---
@@ -528,17 +529,18 @@ Forbidden:
 - `estate-sim` depending on `estate-schema` or the source parser;
 - any `wgpu`, windowing, renderer, audio, networking, watcher, or hot-reload
   dependency anywhere in Gate K;
-- more than one authoritative Rust type or owner crate for the same versioned
-  canonical schema identity;
+- canonical schema types defined in more than one crate;
 - runtime subsystems parsing `.estate` files.
 
 Cargo-metadata automation proves workspace membership, permitted dependency
 edges, cycles, forbidden dependencies, and tooling isolation. It cannot infer
-whether two Rust types express the same semantic schema identity. Unique schema
-ownership is therefore evidenced separately by the owner crate named in source,
-local uniqueness tests for its declared schema IDs, compile-fail visibility
-tests at forbidden boundaries, compiler-crossing tests, and source review. The
-boundary checker must not claim semantic type uniqueness from Cargo metadata.
+whether two Rust types duplicate canonical schema semantics. The prohibition on
+cross-crate schema-type duplication therefore also requires an explicit source-
+review receipt that enumerates each canonical schema identity, its owner crate,
+and its authoritative Rust type set, then confirms no second crate defines that
+schema. Local schema-ID uniqueness tests, compile-fail visibility tests at
+forbidden boundaries, and compiler-crossing tests support that review; none is
+misrepresented as a semantic-uniqueness proof by itself.
 
 The old `~1,000 lines` criterion is removed. File length is advisory. Acceptance
 uses dependency boundaries, measured build time, measured peak disk, test
@@ -585,9 +587,8 @@ Gate K passes only when all of the following are observed, not asserted:
     semantic causality rather than only implementation state.
 15. **Workspace boundaries hold.** Automated checks prove the workspace
     membership, dependency graph, cycles, forbidden dependencies, and tooling
-    isolation in section 10. The separate schema-ownership evidence named there
-    proves each versioned canonical schema identity has one authoritative Rust
-    type and owner crate.
+    isolation in section 10. An explicit source-review receipt verifies that no
+    canonical schema type is defined in more than one crate.
 16. **Budgets are measured.** Build time, peak disk, validation latency, command
     latency, and replay throughput are recorded; no unmeasured “fast enough”
     claim satisfies acceptance.

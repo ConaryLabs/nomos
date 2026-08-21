@@ -115,27 +115,43 @@ in more than one crate, while acceptance 15 said automated checks proved the
 dependency graph and forbidden dependency rules. Cargo metadata cannot reveal
 whether two Rust types express the same schema identity.
 
-**Replacement wording:** one authoritative Rust type and one declared owner
-crate own each versioned canonical schema identity. Cargo-metadata automation
+**Replacement wording:** the prohibition remains unchanged: canonical schema
+types may not be defined in more than one crate. Cargo-metadata automation
 proves workspace membership, permitted edges, cycles, forbidden dependencies,
-and tooling isolation. Semantic ownership is evidenced separately by the owner
-crate named in source, local uniqueness tests for its declared schema IDs,
-compile-fail visibility tests at forbidden boundaries, compiler-crossing tests,
-and source review. The boundary checker must not claim to infer semantic type
-uniqueness from the dependency graph.
+and tooling isolation. It cannot infer whether two Rust types duplicate
+canonical schema semantics. Gate K therefore also requires an explicit source-
+review receipt enumerating each canonical schema identity, its owner crate, and
+its authoritative Rust type set, then confirming no second crate defines that
+schema. Local schema-ID uniqueness tests, compile-fail visibility tests at
+forbidden boundaries, and compiler-crossing tests support that review; none is
+claimed as semantic-uniqueness proof by itself.
 
 **Reason:** an acceptance claim must name the evidence that can actually prove
 it. Pretending Cargo metadata understands Rust type semantics would turn a
 review obligation into a false automated receipt.
 
-**Effect on existing evidence:** no dependency or schema owner changes. The
-existing metadata checks, owner-crate tests, compile-fail doctests, and compiler
-crossing tests retain their scope. Revision 3 corrects the claim made about
-them; it does not mark the whole Gate K workspace green.
+**Effect on existing evidence:** no dependency, schema owner, or forbidden
+schema shape changes. The existing metadata checks, owner-crate tests,
+compile-fail doctests, and compiler-crossing tests retain their scope. Revision
+3 corrects the claim made about them and adds an explicit source-review receipt
+obligation; it does not mark the whole Gate K workspace green.
 
 **Owner disposition:** pending.
 
 **New contract revision:** 3.
+
+## Related non-normative record maintenance
+
+`KERNEL.md` previously reported `status: Not started`. The replacement status
+states that revision 3 is proposed pending owner disposition and implementation
+has progressed through SW-C. This repairs stale repository state; it changes no
+acceptance criterion and has no effect on existing evidence.
+
+`THESIS.md` section 21 previously retained the authoring-source-language choice
+as open after decision 0002 and SW-C had resolved it. The live open-question
+ledger now omits that settled question and `docs/thesis-open-questions.md`
+records why. This is thesis-ledger maintenance under decision 0002, not a new
+mechanism or a Gate K contract amendment.
 
 ## Evidence limits preserved
 

@@ -10,7 +10,8 @@ applies_to_the_mortal_estate: No, unless separately adopted by an explicit proje
 authors: Claude Fable 5 and GPT-5.6 Pro, in adversarial review, with Peter Permenter as owner and referee
 date: 2026-08-21
 revision: 2
-contract_revision: 3
+contract_revision: 2
+proposed_contract_revision: 3
 decision_record: docs/decisions/0003-contract-profile-closure.md
 ---
 

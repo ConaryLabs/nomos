@@ -10,6 +10,9 @@ These are recorded rather than answered through more free-floating architecture.
 A question becomes a decision only with code and evidence or an owner-authorized
 record.
 
+The prior ledger's authoring-source-language question was resolved by decision
+0002 and implemented in SW-C, so it is intentionally absent here.
+
 - **Minimal capability basis:** exact orthogonal set after Gate K and Gate 1.
 - **Composition-law catalog:** all combining, exclusive, and conflicting facts.
 - **Stable identity:** what survives rename, move, split, merge, and migration.

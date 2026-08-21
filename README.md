@@ -15,7 +15,8 @@ test that thesis before any renderer is built.
 - **Implementation status:** workspace foundations (SW-B) plus source schema,
   parser, typed name resolution, primitive expansion, and ownership linker
   (SW-C); no command surface or runtime
-- **Contract revision:** 3, proposed in decision 0003 pending owner disposition
+- **Contract revision:** 2 effective; revision 3 proposed in decision 0003
+  pending owner disposition
 - **Scope:** greenfield / vacuum architecture exercise
 - **Effect on other projects:** none unless separately adopted by an explicit
   decision in that project's own authority records

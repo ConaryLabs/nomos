@@ -38,9 +38,9 @@ use crate::diagnostic::{Diagnostic, RepairClass, codes};
 ///
 /// Field names are restricted to `[a-z][a-z0-9_]*`. That is deliberately
 /// narrower than JSON allows: the restricted set
-/// is invariant under Unicode NFC normalisation, so section 7's "identifiers
-/// normalised to NFC before validation" is satisfied structurally rather than
-/// by carrying Unicode tables into the hash domain.
+/// is invariant under Unicode NFC normalization, so section 7's normalization-
+/// by-construction rule is satisfied without carrying Unicode tables into the
+/// hash domain.
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 pub struct FieldName(String);
 
