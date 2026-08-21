@@ -1,6 +1,6 @@
 //! Canonical World IR construction types produced by the ownership linker.
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
 use nomos_core::canonical::keyed_array;
 use nomos_core::id::StableId;
@@ -561,10 +561,15 @@ impl WorldIr {
             .map(|receipt| receipt.fact().clone())
             .collect::<BTreeSet<FactIdentity>>();
         let catalog_value_set = catalog_values.iter().cloned().collect::<BTreeSet<_>>();
-        let entity_ids = entities
+        let entity_records = entities
             .iter()
-            .map(|entity| entity.id().clone())
-            .collect::<BTreeSet<_>>();
+            .map(|entity| {
+                (
+                    entity.id().clone(),
+                    (entity.binding().clone(), entity.credential().cloned()),
+                )
+            })
+            .collect::<BTreeMap<_, _>>();
         let relation_facts = relations
             .iter()
             .map(|relation| FactIdentity::Relation {
@@ -580,7 +585,7 @@ impl WorldIr {
         for receipt in &ownership_receipts {
             receipt.validate(
                 &facts,
-                &entity_ids,
+                &entity_records,
                 &relation_facts,
                 &catalog_value_set,
                 &primitives,

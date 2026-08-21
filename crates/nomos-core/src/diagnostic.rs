@@ -488,6 +488,8 @@ pub mod codes {
     pub const PROVENANCE_DERIVATION_INVALID: DiagnosticCode = DiagnosticCode::new("EK1005");
     /// A typed non-fact provenance input is absent from the compiled world.
     pub const PROVENANCE_INPUT_REFERENCE_MISSING: DiagnosticCode = DiagnosticCode::new("EK1006");
+    /// A provenance fact is assigned to a non-canonical owner.
+    pub const PROVENANCE_OWNER_INVALID: DiagnosticCode = DiagnosticCode::new("EK1007");
 
     /// Every code this crate owns, for well-formedness and uniqueness tests.
     pub const ALL: &[DiagnosticCode] = &[
@@ -543,5 +545,6 @@ pub mod codes {
         PROVENANCE_PASS_UNKNOWN,
         PROVENANCE_DERIVATION_INVALID,
         PROVENANCE_INPUT_REFERENCE_MISSING,
+        PROVENANCE_OWNER_INVALID,
     ];
 }

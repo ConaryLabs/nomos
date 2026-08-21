@@ -1,6 +1,6 @@
 //! Typed forensic provenance for Canonical World IR construction snapshots.
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 
 use nomos_core::diagnostic::codes;
@@ -541,7 +541,7 @@ impl FactOwnershipReceipt {
     pub(crate) fn validate(
         &self,
         facts: &BTreeSet<FactIdentity>,
-        entities: &BTreeSet<EntityId>,
+        entities: &BTreeMap<EntityId, (Binding, Option<CatalogValueId>)>,
         relations: &BTreeSet<FactIdentity>,
         catalog_values: &BTreeSet<CatalogValueId>,
         primitives: &BTreeSet<PrimitiveKindId>,
@@ -557,8 +557,23 @@ impl FactOwnershipReceipt {
             .with_span(self.declared_at.clone())
             .with_repair(RepairClass::RebuildFromSource));
         }
+        if self.owner != canonical_owner(&self.fact) {
+            return Err(Diagnostic::new(
+                codes::PROVENANCE_OWNER_INVALID,
+                format!(
+                    "fact `{}` belongs to `{}`, not `{}`",
+                    self.fact,
+                    canonical_owner(&self.fact).as_str(),
+                    self.owner.as_str()
+                ),
+            )
+            .with_span(self.declared_at.clone())
+            .with_repair(RepairClass::RestoreCanonicalFactOwner));
+        }
         for step in &self.derivation {
-            if !supported_step(step.producer, step.pass) {
+            if !supported_step(step.producer, step.pass)
+                || !fact_accepts_step(&self.fact, step.producer, step.pass)
+            {
                 return Err(Diagnostic::new(
                     codes::PROVENANCE_DERIVATION_INVALID,
                     format!(
@@ -601,6 +616,17 @@ impl FactOwnershipReceipt {
             .with_span(self.declared_at.clone())
             .with_repair(RepairClass::RebuildFromSource));
         }
+        if !self.value_matches_entity_record(entities) {
+            return Err(Diagnostic::new(
+                codes::PROVENANCE_VALUE_INVALID,
+                format!(
+                    "fact `{}` contradicts the compiled entity record",
+                    self.fact
+                ),
+            )
+            .with_span(self.declared_at.clone())
+            .with_repair(RepairClass::RebuildFromSource));
+        }
         if let ResolvedFactValue::CatalogValue(value) = &self.resolved_to
             && !catalog_values.contains(value)
         {
@@ -633,15 +659,36 @@ impl FactOwnershipReceipt {
 
     fn fact_exists_in_world(
         &self,
-        entities: &BTreeSet<EntityId>,
+        entities: &BTreeMap<EntityId, (Binding, Option<CatalogValueId>)>,
         relations: &BTreeSet<FactIdentity>,
     ) -> bool {
         match &self.fact {
             FactIdentity::EntityIdentity(entity)
             | FactIdentity::EntitySpatialAnchor(entity)
             | FactIdentity::EntitySpatialBinding(entity)
-            | FactIdentity::EntityCredential(entity) => entities.contains(entity),
+            | FactIdentity::EntityCredential(entity) => entities.contains_key(entity),
             FactIdentity::Relation { .. } => relations.contains(&self.fact),
+        }
+    }
+
+    fn value_matches_entity_record(
+        &self,
+        entities: &BTreeMap<EntityId, (Binding, Option<CatalogValueId>)>,
+    ) -> bool {
+        match (&self.fact, &self.resolved_to) {
+            (
+                FactIdentity::EntitySpatialAnchor(entity)
+                | FactIdentity::EntitySpatialBinding(entity),
+                ResolvedFactValue::Binding(value),
+            ) => entities
+                .get(entity)
+                .is_some_and(|(binding, _)| binding == value),
+            (FactIdentity::EntityCredential(entity), ResolvedFactValue::CatalogValue(value)) => {
+                entities
+                    .get(entity)
+                    .is_some_and(|(_, credential)| credential.as_ref() == Some(value))
+            }
+            _ => true,
         }
     }
 }
@@ -657,6 +704,47 @@ fn supported_step(producer: DerivationProducer, pass: DerivationPass) -> bool {
         ) | (
             DerivationProducer::WorldLinker,
             DerivationPass::ResolveSpatialBinding | DerivationPass::ResolveCatalogValue
+        )
+    )
+}
+
+fn canonical_owner(fact: &FactIdentity) -> FactOwner {
+    match fact {
+        FactIdentity::EntityIdentity(_) | FactIdentity::Relation { .. } => FactOwner::Graph,
+        FactIdentity::EntitySpatialAnchor(_) => FactOwner::Lattice,
+        FactIdentity::EntitySpatialBinding(_) | FactIdentity::EntityCredential(_) => {
+            FactOwner::WorldLinker
+        }
+    }
+}
+
+fn fact_accepts_step(
+    fact: &FactIdentity,
+    producer: DerivationProducer,
+    pass: DerivationPass,
+) -> bool {
+    matches!(
+        (fact, producer, pass),
+        (
+            FactIdentity::EntityIdentity(_),
+            DerivationProducer::Source,
+            DerivationPass::DeclareEntity
+        ) | (
+            FactIdentity::EntitySpatialAnchor(_),
+            DerivationProducer::Source,
+            DerivationPass::DeclareSpatialAnchor
+        ) | (
+            FactIdentity::EntitySpatialBinding(_),
+            DerivationProducer::WorldLinker,
+            DerivationPass::ResolveSpatialBinding
+        ) | (
+            FactIdentity::EntityCredential(_),
+            DerivationProducer::WorldLinker,
+            DerivationPass::ResolveCatalogValue
+        ) | (
+            FactIdentity::Relation { .. },
+            DerivationProducer::Source,
+            DerivationPass::LinkRelation
         )
     )
 }

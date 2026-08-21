@@ -38,12 +38,16 @@ fn identity_receipt(
     .unwrap()
 }
 
-fn empty_entity(id: EntityId) -> IrEntity {
+fn entity_record(
+    id: EntityId,
+    binding: Binding,
+    credential: Option<nomos_core::CatalogValueId>,
+) -> IrEntity {
     IrEntity::new(
         id,
         PrimitiveKindId::parse("primitive/iron_barred_door").unwrap(),
-        Binding::Cell(Cell::new(0, 0, 0)),
-        None,
+        binding,
+        credential,
         PrimitiveExpansion::new(Vec::new(), Vec::new(), Vec::new()).unwrap(),
         span(),
     )
@@ -160,12 +164,82 @@ fn undeclared_resolved_catalog_value_fails_closed() {
     let rejected = WorldIr::new(
         source_schema(),
         Vec::new(),
-        vec![empty_entity(gate)],
+        vec![entity_record(
+            gate,
+            Binding::Cell(Cell::new(0, 0, 0)),
+            Some(nomos_core::CatalogValueId::parse("credential/ghost_key").unwrap()),
+        )],
         Vec::new(),
         vec![receipt],
     )
     .unwrap_err();
     assert_eq!(rejected.code().as_str(), "EK1006");
+}
+
+#[test]
+fn resolved_binding_and_credential_must_match_the_entity_record() {
+    let gate = entity("north_gate");
+    let binding_receipt = FactOwnershipReceipt::new(
+        FactIdentity::EntitySpatialBinding(gate.clone()),
+        FactOwner::WorldLinker,
+        span(),
+        ResolvedFactValue::Binding(Binding::Cell(Cell::new(9, 0, 0))),
+        [ProjectionConsumer::Simulation],
+        vec![
+            DerivationStep::new(
+                DerivationProducer::WorldLinker,
+                DerivationPass::ResolveSpatialBinding,
+                Vec::new(),
+            )
+            .unwrap(),
+        ],
+    )
+    .unwrap();
+    let rejected_binding = WorldIr::new(
+        source_schema(),
+        Vec::new(),
+        vec![entity_record(
+            gate.clone(),
+            Binding::Cell(Cell::new(0, 0, 0)),
+            None,
+        )],
+        Vec::new(),
+        vec![binding_receipt],
+    )
+    .unwrap_err();
+    assert_eq!(rejected_binding.code().as_str(), "EK1002");
+
+    let actual = nomos_core::CatalogValueId::parse("credential/gaoler_key").unwrap();
+    let wrong = nomos_core::CatalogValueId::parse("credential/spare_key").unwrap();
+    let credential_receipt = FactOwnershipReceipt::new(
+        FactIdentity::EntityCredential(gate.clone()),
+        FactOwner::WorldLinker,
+        span(),
+        ResolvedFactValue::CatalogValue(wrong.clone()),
+        [ProjectionConsumer::Simulation],
+        vec![
+            DerivationStep::new(
+                DerivationProducer::WorldLinker,
+                DerivationPass::ResolveCatalogValue,
+                Vec::new(),
+            )
+            .unwrap(),
+        ],
+    )
+    .unwrap();
+    let rejected_credential = WorldIr::new(
+        source_schema(),
+        vec![actual.clone(), wrong],
+        vec![entity_record(
+            gate,
+            Binding::Cell(Cell::new(0, 0, 0)),
+            Some(actual),
+        )],
+        Vec::new(),
+        vec![credential_receipt],
+    )
+    .unwrap_err();
+    assert_eq!(rejected_credential.code().as_str(), "EK1002");
 }
 
 #[test]
@@ -211,6 +285,62 @@ fn unsupported_typed_producer_pass_pair_fails_closed() {
     )
     .unwrap_err();
     assert_eq!(rejected.code().as_str(), "EK1005");
+}
+
+#[test]
+fn fact_owner_and_fact_specific_pass_mismatches_fail_closed() {
+    let gate = entity("north_gate");
+    let wrong_owner = FactOwnershipReceipt::new(
+        FactIdentity::EntityIdentity(gate.clone()),
+        FactOwner::Lattice,
+        span(),
+        ResolvedFactValue::Entity(gate.clone()),
+        [ProjectionConsumer::Diagnostics],
+        vec![
+            DerivationStep::new(
+                DerivationProducer::Source,
+                DerivationPass::DeclareEntity,
+                Vec::new(),
+            )
+            .unwrap(),
+        ],
+    )
+    .unwrap();
+    let rejected_owner = WorldIr::new(
+        source_schema(),
+        Vec::new(),
+        vec![entity_record(
+            gate.clone(),
+            Binding::Cell(Cell::new(0, 0, 0)),
+            None,
+        )],
+        Vec::new(),
+        vec![wrong_owner],
+    )
+    .unwrap_err();
+    assert_eq!(rejected_owner.code().as_str(), "EK1007");
+
+    let wrong_pass = identity_receipt(
+        FactIdentity::EntityIdentity(gate.clone()),
+        ResolvedFactValue::Entity(gate.clone()),
+        vec![
+            DerivationStep::new(
+                DerivationProducer::Source,
+                DerivationPass::DeclareSpatialAnchor,
+                Vec::new(),
+            )
+            .unwrap(),
+        ],
+    );
+    let rejected_pass = WorldIr::new(
+        source_schema(),
+        Vec::new(),
+        vec![entity_record(gate, Binding::Cell(Cell::new(0, 0, 0)), None)],
+        Vec::new(),
+        vec![wrong_pass],
+    )
+    .unwrap_err();
+    assert_eq!(rejected_pass.code().as_str(), "EK1005");
 }
 
 #[test]

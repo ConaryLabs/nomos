@@ -27,6 +27,8 @@ primitive kinds, and declared catalog values. `WorldIr::new` verifies every
 fact edge against the complete receipt set and every primitive/catalog input
 against the compiled world. It also verifies that each receipt root names an
 actual entity or relation and that each resolved catalog value was declared.
+Spatial and credential values must exactly match the corresponding compiled
+entity record; carrying the right value variant is not sufficient.
 This makes a causal edge directly navigable without
 parsing a label such as `binding/typed_lattice`.
 
@@ -38,7 +40,9 @@ The producer and pass vocabularies are closed. Unknown producer IDs fail with
 `EK1003`, unknown pass IDs with `EK1004`, and unsupported typed combinations
 with `EK1005`. Dangling fact edges fail with `EK1001`; resolved values whose
 type or identity conflicts with the fact fail with `EK1002`; missing typed
-primitive or catalog inputs fail with `EK1006`.
+primitive or catalog inputs fail with `EK1006`; a non-canonical fact owner fails
+with `EK1007`. A typed producer/pass pair must also be valid for its fact class,
+not merely present in the global vocabulary.
 
 ## Structured and readable output
 
