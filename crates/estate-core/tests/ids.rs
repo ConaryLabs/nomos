@@ -48,10 +48,9 @@ fn identifier_validation_is_fail_closed() {
             "`{illegal}` must be refused"
         );
     }
-    // Section 7 requires NFC-normalised identifiers. Refusing every non-ASCII
-    // identifier is how that is guaranteed without a Unicode table: the two
-    // spellings of "é" are both refused rather than one silently normalising
-    // into the other.
+    // Section 7 fixes an NFC-invariant ASCII alphabet. The two spellings of
+    // "é" are both refused rather than one silently normalizing into the
+    // other.
     assert!(EntityId::parse("caf\u{e9}").is_err());
     assert!(EntityId::parse("cafe\u{301}").is_err());
 }

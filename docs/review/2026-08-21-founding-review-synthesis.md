@@ -175,7 +175,8 @@ semantic preflight **Gate K** and keeps the visual target pack as **Gate 0**.
 
 ## Durable resolutions
 
-The authoritative current resolutions are in `THESIS.md` section 20. The most
+The authoritative current resolutions are in the thesis revision 2 companion
+`docs/thesis-forensics-and-disagreements.md`, section 20. The most
 important are:
 
 - Canonical World IR at the center;

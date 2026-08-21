@@ -21,12 +21,8 @@
 //! - no insignificant whitespace;
 //! - no trailing newline.
 //!
-//! # Resolved detail: which escape spelling
-//!
-//! Section 7 requires escaping for quotes, reverse solidus, and control bytes
-//! without choosing between the two-character escape and the six-character
-//! `\u000a` escape. This implementation uses the
-//! two-character forms `\b \f \n \r \t` for those five control bytes and
+//! Section 7 requires the two-character forms `\b \f \n \r \t` for those five
+//! control bytes and
 //! `\u00xx` with lowercase hex digits for every other byte below `0x20`. `\/`
 //! is never emitted and is refused on read. `0x7f` is not a JSON control
 //! character and is emitted as raw UTF-8.
@@ -40,11 +36,11 @@ use crate::diagnostic::{Diagnostic, RepairClass, codes};
 
 /// A canonical object field name.
 ///
-/// Field names are restricted to `[a-z0-9_]+` starting with a lowercase
-/// letter. That is deliberately narrower than JSON allows: the restricted set
-/// is invariant under Unicode NFC normalisation, so section 7's "identifiers
-/// normalised to NFC before validation" is satisfied structurally rather than
-/// by carrying Unicode tables into the hash domain.
+/// Field names are restricted to `[a-z][a-z0-9_]*`. That is deliberately
+/// narrower than JSON allows: the restricted set
+/// is invariant under Unicode NFC normalization, so section 7's normalization-
+/// by-construction rule is satisfied without carrying Unicode tables into the
+/// hash domain.
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 pub struct FieldName(String);
 

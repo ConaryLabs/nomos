@@ -84,12 +84,16 @@ fn integers_are_the_only_numbers_and_have_one_spelling() {
 
 #[test]
 fn strings_escape_only_what_the_profile_requires() {
-    let value = CanonicalValue::text("quote\" slash\\ tab\t nul\u{0} bell\u{7} caf\u{e9} \u{7f}");
+    let value = CanonicalValue::text(
+        "quote\" reverse\\ solidus/ backspace\u{8} formfeed\u{c} newline\n carriage\r \
+         tab\t nul\u{0} bell\u{7} unit_separator\u{1f} caf\u{e9} del\u{7f}",
+    );
     let bytes = value.to_canonical_bytes();
     let text = String::from_utf8(bytes.clone()).unwrap();
     assert_eq!(
         text,
-        "\"quote\\\" slash\\\\ tab\\t nul\\u0000 bell\\u0007 caf\u{e9} \u{7f}\""
+        "\"quote\\\" reverse\\\\ solidus/ backspace\\b formfeed\\f newline\\n carriage\\r \
+         tab\\t nul\\u0000 bell\\u0007 unit_separator\\u001f caf\u{e9} del\u{7f}\""
     );
     // Non-ASCII is emitted as UTF-8, never as an escape.
     assert!(bytes.windows(2).any(|pair| pair == [0xc3, 0xa9]));
@@ -101,7 +105,7 @@ fn the_reader_refuses_everything_the_profile_forbids() {
     let canonical = br#"{"a":1,"b":[true,null]}"#;
     assert!(is_canonical(canonical));
 
-    let rejected: [(&[u8], &str, &str); 8] = [
+    let rejected: [(&[u8], &str, &str); 15] = [
         (b"{\"b\":1,\"a\":2}", "EK0303", "unsorted keys"),
         // The reader never skips whitespace, so this is refused structurally
         // rather than by the re-encode comparison.
@@ -114,6 +118,17 @@ fn the_reader_refuses_everything_the_profile_forbids() {
             "escape where UTF-8 belongs",
         ),
         (b"{\"a\":\"\\/\"}", "EK0303", "escaped solidus"),
+        (b"{\"a\":\"\\u0008\"}", "EK0303", "long backspace escape"),
+        (b"{\"a\":\"\\u000c\"}", "EK0303", "long form-feed escape"),
+        (b"{\"a\":\"\\u000a\"}", "EK0303", "long line-feed escape"),
+        (
+            b"{\"a\":\"\\u000d\"}",
+            "EK0303",
+            "long carriage-return escape",
+        ),
+        (b"{\"a\":\"\\u0009\"}", "EK0303", "long tab escape"),
+        (b"{\"a\":\"\\u001F\"}", "EK0303", "uppercase hex escape"),
+        (b"{\"a\":\"\\u007f\"}", "EK0303", "escaped delete character"),
         (b"{\"a\":1,\"a\":2}", "EK0303", "duplicate key"),
         (b"{\"a\":1}\n", "EK0302", "trailing newline"),
     ];
@@ -137,6 +152,18 @@ fn the_reader_refuses_everything_the_profile_forbids() {
             .as_str(),
         "EK0301"
     );
+}
+
+#[test]
+fn canonical_field_names_use_the_exact_ascii_identifier_shape() {
+    for accepted in ["a", "a0", "a_b", "schema_v2"] {
+        assert_eq!(FieldName::new(accepted).unwrap().as_str(), accepted);
+    }
+
+    for rejected in ["", "0a", "_a", "Alpha", "a-b", "caf\u{e9}", "a\u{e9}"] {
+        let diagnostic = FieldName::new(rejected).unwrap_err();
+        assert_eq!(diagnostic.code().as_str(), "EK0301", "{rejected:?}");
+    }
 }
 
 #[test]

@@ -4,11 +4,10 @@
 //! separator byte. Restricting segments to `[a-z0-9_]` starting with a
 //! lowercase letter buys three things the contract asks for:
 //!
-//! 1. **NFC without Unicode tables.** `KERNEL.md` section 7 requires
-//!    identifiers to be normalised to Unicode NFC before validation. Every
-//!    character in this set is invariant under NFC, so a validated identifier
-//!    is normalised by construction and the hash domain carries no Unicode
-//!    table that could change between library versions.
+//! 1. **NFC without Unicode tables.** `KERNEL.md` section 7 fixes an
+//!    NFC-invariant ASCII alphabet, so a validated identifier is normalized by
+//!    construction and the hash domain carries no Unicode table that could
+//!    change between library versions.
 //! 2. **Ordering that cannot surprise.** See [`SEPARATORS`] below.
 //! 3. **Readable fixtures.** The base fixture identifiers — `north_gate`,
 //!    `flooded_section`, `brazier_02`, `credential/gaoler_key` — all fit.

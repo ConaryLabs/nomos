@@ -66,11 +66,11 @@ is authority for any other project.
 ```text
 README.md          status and reading order
 THESIS.md          exploratory design thesis, currently revision 2
-KERNEL.md          Gate K acceptance contract, currently revision 2
+KERNEL.md          Gate K acceptance contract, currently revision 3
 docs/decisions/    owner-authorized contract and architecture decisions
 docs/evaluation/   reproducible evaluation protocols
 docs/review/       review syntheses, provenance notes, and cold-review records
-docs/workspace.md  crate map, boundary tool, and the decisions SW-B made
+docs/workspace.md  crate map, boundary tool, and pinned workspace choices
 crates/            the six Gate K kernel crates
 xtask/             workspace tooling; the dependency-boundary check
 .github/workflows/ the verification lane

@@ -1,10 +1,10 @@
 ---
 title: The executable semantic kernel
-status: Not started
+status: In progress through SW-C
 gate: K
-contract_revision: 2
-supersedes_contract_revision: 1
-decision_record: docs/decisions/0001-contract-repair.md
+contract_revision: 3
+supersedes_contract_revision: 2
+decision_record: docs/decisions/0003-contract-profile-closure.md
 ---
 
 # The executable semantic kernel
@@ -325,13 +325,25 @@ package presented directly to a v2 runtime without migration is refused.
 Persisted semantic artifacts use UTF-8 JSON under this profile:
 
 - no byte-order mark;
-- identifiers normalized to Unicode NFC before validation;
-- object keys sorted by ascending normalized UTF-8 byte sequence;
+- stable identifier segments and canonical object field names are ASCII and
+  match `[a-z][a-z0-9_]*`;
+- composite stable IDs use only their schema-declared separators between
+  validated segments;
+- the accepted identifier alphabet is invariant under Unicode NFC, so
+  validation establishes normalization by construction; non-ASCII identifiers
+  and field names are refused;
+- object keys sorted by ascending UTF-8 byte sequence of their validated names;
 - arrays emitted in schema-declared semantic order;
 - authoritative numbers are signed or unsigned integers only;
 - integers use base-10 with no leading plus sign or redundant leading zeroes;
-- non-ASCII characters are emitted as UTF-8, not optional `\u` escapes;
-- required JSON escaping is used for quotes, reverse solidus, and control bytes;
+- string values accept any valid UTF-8 and are not normalized or restricted to
+  the identifier alphabet;
+- non-ASCII string characters are emitted as UTF-8, not optional `\u` escapes;
+- quotation mark and reverse solidus use `\"` and `\\`; backspace, form feed,
+  line feed, carriage return, and tab use `\b`, `\f`, `\n`, `\r`, and `\t`;
+- every other code point below `U+0020` uses `\u00xx` with lowercase
+  hexadecimal digits; solidus is emitted raw and `\/` is refused; `U+007F` is
+  emitted raw;
 - booleans and `null` use lowercase JSON spelling;
 - no insignificant whitespace;
 - the hashed byte sequence has no trailing newline.
@@ -483,7 +495,8 @@ projection deltas, tick, source mapping, and resulting state hash.
 
 ## 10. Workspace and dependency boundaries
 
-Gate K uses one Rust workspace with these crates:
+Gate K uses one Rust workspace containing six kernel crates and one isolated
+tooling member:
 
 ```text
 estate-core        stable IDs, deterministic primitives, canonical bytes, hashing, diagnostics
@@ -492,7 +505,12 @@ estate-projection  versioned simulation/navigation/persistence/diagnostic schema
 estate-compiler    parse, link, expand, validate, migrate, and project
 estate-sim         runtime state, command transactions, replay, effective-fact resolution
 estate-cli         command-line surface and artifact orchestration
+xtask              workspace tooling; dependency-boundary proof only
 ```
+
+`xtask` builds no kernel artifact, depends on no kernel crate, and is
+unreachable from every kernel crate. The boundary check fails closed when a
+listed kernel crate is missing or an undeclared workspace member appears.
 
 Permitted dependency edges:
 
@@ -512,6 +530,16 @@ Forbidden:
   dependency anywhere in Gate K;
 - canonical schema types defined in more than one crate;
 - runtime subsystems parsing `.estate` files.
+
+Cargo-metadata automation proves workspace membership, permitted dependency
+edges, cycles, forbidden dependencies, and tooling isolation. It cannot infer
+whether two Rust types duplicate canonical schema semantics. The prohibition on
+cross-crate schema-type duplication therefore also requires an explicit source-
+review receipt that enumerates each canonical schema identity, its owner crate,
+and its authoritative Rust type set, then confirms no second crate defines that
+schema. Local schema-ID uniqueness tests, compile-fail visibility tests at
+forbidden boundaries, and compiler-crossing tests support that review; none is
+misrepresented as a semantic-uniqueness proof by itself.
 
 The old `~1,000 lines` criterion is removed. File length is advisory. Acceptance
 uses dependency boundaries, measured build time, measured peak disk, test
@@ -556,8 +584,10 @@ Gate K passes only when all of the following are observed, not asserted:
     refused.
 14. **Explanations are useful.** Door, water, and light explanations expose
     semantic causality rather than only implementation state.
-15. **Workspace boundaries hold.** Automated checks prove the dependency graph
-    and forbidden dependency rules in section 10.
+15. **Workspace boundaries hold.** Automated checks prove the workspace
+    membership, dependency graph, cycles, forbidden dependencies, and tooling
+    isolation in section 10. An explicit source-review receipt verifies that no
+    canonical schema type is defined in more than one crate.
 16. **Budgets are measured.** Build time, peak disk, validation latency, command
     latency, and replay throughput are recorded; no unmeasured “fast enough”
     claim satisfies acceptance.

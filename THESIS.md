@@ -10,8 +10,8 @@ applies_to_the_mortal_estate: No, unless separately adopted by an explicit proje
 authors: Claude Fable 5 and GPT-5.6 Pro, in adversarial review, with Peter Permenter as owner and referee
 date: 2026-08-21
 revision: 2
-contract_revision: 2
-decision_record: docs/decisions/0001-contract-repair.md
+contract_revision: 3
+decision_record: docs/decisions/0003-contract-profile-closure.md
 ---
 
 # The Signed World
@@ -37,6 +37,9 @@ This document is not an implementation specification and binds no other
 project. [KERNEL.md](KERNEL.md) is the first executable acceptance contract.
 [docs/decisions/0001-contract-repair.md](docs/decisions/0001-contract-repair.md)
 records the owner-authorized repair from revision 1 to revision 2.
+[docs/decisions/0003-contract-profile-closure.md](docs/decisions/0003-contract-profile-closure.md)
+records the owner-authorized revision 3 closure of the canonical-profile and
+workspace-evidence gaps found by SW-B.
 
 Contract changes follow `AGENTS.md`. Contradictions and falsified assumptions may
 be repaired explicitly; criteria may not be silently weakened because code
@@ -954,113 +957,22 @@ decision authority.
 
 ## 19. Forensics, explanation, and the visual proof ladder
 
-The runtime should answer semantic “why” questions:
-
-```text
-estate explain-entity north_gate
-estate explain-transition north_gate --tick 4
-estate why-blocked guard_04 --destination cell(8,4)
-estate why-visible thief_02 --to guard_04
-estate trace-event combat_18842
-estate explain-material wet_keep_stone
-estate explain-save north_gate
-estate explain-replication goblin_17
-estate explain-pixel scene/guard_post 612 344
-```
-
-A result cites source, primitive, compiler passes, generated IDs, active machine
-state, claims, effective facts, rules fired, dependencies, tick, and event
-sequence.
-
-Conventional tools expose implementation state. This exposes semantic causality.
-
-### Render contact sheet
-
-Every formal render produces:
-
-- beauty;
-- neutral-lit;
-- silhouette;
-- material ID;
-- entity ID;
-- depth;
-- normals;
-- light-only;
-- navigation;
-- collision;
-- annotated warnings.
-
-### Visual proof ladder
-
-1. Structural assertions.
-2. Image statistics.
-3. Perceptual comparison on a pinned runner.
-4. Multimodal review over the contact sheet.
-
-Byte-identical pixels are required only where a pinned deterministic runner can
-actually promise them. Across arbitrary machines, they are fantasy bureaucrat
-bait. Goldens are receipts. They are not taste.
+The detailed forensic command surface, contact-sheet layers, and visual proof
+ladder live in
+[docs/thesis-forensics-and-disagreements.md](docs/thesis-forensics-and-disagreements.md#section-19-details--forensics-explanation-and-the-visual-proof-ladder).
+That surface must expose semantic causality, not merely implementation state.
 
 ## 20. Resolved disagreements
 
-| Position A | Position B | Resolution | Why |
-| --- | --- | --- | --- |
-| Browser/WebGL + TypeScript as engine center | Godot + content compiler | Rust + `wgpu` custom runtime; browser Workbench later | The agent-facing language is the product; backend popularity is the wrong boundary. |
-| Zero raster | Governed raster | Governed raster | Ungoverned production caused drift; the style compiler is the fence. |
-| Byte-identical screenshots everywhere | Tiered visual proof | Tiered ladder | Structure, statistics, pinned perceptual comparison, then multimodal review. |
-| Compiler is the engine | Canonical IR is the center | IR at the center | Prevents the compiler from becoming a renderer, server, and small municipality. |
-| One grid for everything | Lattice plus graph | Lattice + graph + linker | Spatial and relational facts need different owners. |
-| Per-primitive subsystem emitters | Sealed capability basis | Capabilities | N primitives × M systems is a very long switch statement. |
-| Capabilities own consequences | Projection compilers own consequences | Capabilities own contracts; projections own consequences | Keeps capability definitions semantic and testable. |
-| Flat capability bag | Typed namespaces and algebra | Namespaces + composition | Prevents type-correct gibberish and ambiguous winners. |
-| Per-capability algebra is sufficient | Cross-capability coherence required | Composite effective facts/invariants | Simulation and navigation cannot choose different truths. |
-| One machine per entity | One machine per namespace | Namespace-local machines | Avoids product-state explosion. |
-| Precompute final deltas per transition | Resolve from whole current state | Precompute dependencies; resolve effective facts at command time | A ward can keep a door blocked after `open`. |
-| Raw transforms discouraged | Raw transforms impossible in content | Removed; tainted laboratory only | An escape hatch an agent can reach will be reached at 2 a.m. |
-| Broad procedural generation | Derivation / bounded variation / synthesis split | Derivation encouraged, variation sparing, synthesis forbidden | Deterministic geometry is compilation; “decorate freely” is oatmeal. |
-| Peer lockstep | Server-authoritative fixed tick | Server-authoritative | Persistent game, one authoritative clock. |
-| Narrow prediction | Zero authoritative prediction | Zero for deliberate pulses | No second clock with an opinion about the goblin. |
-| One universal IR for save/replay/network | Versioned derived boundaries | Independent schemas | The constitution does not regulate sewer pipes. |
-| Mutable `.world` command target | Immutable package + separate state | Immutable evidence | Replays and migrations need the original input intact. |
-| One crate | Hard-bounded workspace | Workspace | Build graph enforces ownership and keeps renderer out of server/sim. |
-| `~1,000 lines` acceptance | Structural boundaries and measured budgets | Remove line quota | Line quotas encourage crate confetti, not architecture. |
-| Gate 0 before every executable artifact | Semantic kernel first | Gate K before Gate 0; Gate 0 before renderer | Cheap semantic falsification without allowing visual machinery to start. |
-| Founding record is verbatim | It was condensed | Edited synthesis with explicit provenance | A provenance-focused project cannot mislabel its own founding evidence. |
-| “Clean-room” architecture exercise | Prior lessons were imported | Greenfield / vacuum | Clean zones remain a provenance concept, not a false historical claim. |
-| Hot reload behind a flag | Separate development binary | Separate binary, proven unlinked | A flag is still a release code path. |
+The full disagreement ledger is preserved in
+[docs/thesis-forensics-and-disagreements.md](docs/thesis-forensics-and-disagreements.md#section-20-ledger--resolved-disagreements).
+Its resolutions remain part of thesis revision 2.
 
 ## 21. Open questions
 
-These are recorded rather than answered through more free-floating architecture.
-A question becomes a decision only with code/evidence or an owner-authorized
-record.
-
-- **Minimal capability basis:** exact orthogonal set after Gate K and Gate 1.
-- **Composition-law catalog:** all combining, exclusive, and conflicting facts.
-- **Stable identity:** what survives rename, move, split, merge, and migration.
-- **Event timing beyond `on_enter`:** pulse, interval, and scheduler semantics.
-- **Canonical encoding beyond Gate K:** whether the kernel profile remains the
-  production format or becomes a fixture-only epoch.
-- **Cross-capability invariants:** movement is first; visibility, cover,
-  containment, authority, and lifecycle remain.
-- **Authoring source language:** custom grammar versus an existing structured
-  format. Gate K requires a recorded choice before parser implementation.
-- **Incremental compilation granularity:** room, package, primitive, or graph
-  slice.
-- **Migration identity:** how migrations preserve stable entities and behavior.
-- **Later-gate cold-agent roster:** Gate K subjects and invalidation rules are
-  predeclared in `docs/evaluation/GATE_K_COLD_AGENT_PLAN.md`; models, rotation
-  cadence, access, and cost controls for later gates remain open.
-- **Signature threat model:** corruption, supply-chain integrity, hostile clients,
-  signer policy, and trust-root rotation.
-- **Deterministic parallelism:** which phases may parallelize without affecting
-  authoritative ordering.
-- **Save compatibility across content versions:** schema compatibility does not
-  guarantee primitive semantics remained equivalent.
-- **Fixed-point precision:** scale, overflow bounds, and subcell resolution.
-- **Rendering projection for local environment interactions:** lattice-derived
-  versus mesh-informed cover, climbing, and line of sight.
-- **Naming:** `signed-world` is a working name; the wall sentence owns the idea.
+The live question ledger is kept in
+[docs/thesis-open-questions.md](docs/thesis-open-questions.md). Questions become
+decisions only through code and evidence or an owner-authorized record.
 
 ## 22. Adoption criteria
 
