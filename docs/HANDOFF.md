@@ -9,11 +9,11 @@ history (git has that).
 - **Contract revision 3 is owner-authorized:** decision 0003 pins the canonical
   escape profile, ASCII identifier and field-name grammar, isolated `xtask`,
   and the honest evidence boundary for semantic schema ownership.
-- **Contract revision 4 is owner-authorized:** issue #15 and decision 0004 correct the
-  incomplete SW-C linker snapshot from `estate.world_ir@1` to separately
-  versioned `estate.world_ir.construction@1`. Peter approved the finished
-  wording and authorized merging draft PR #16, which carries the code, golden
-  construction-byte guard, and non-author review receipt.
+- **Contract revision 4 is merged (#16):** issue #15 and decision 0004 correct
+  the incomplete SW-C linker snapshot from `estate.world_ir@1` to separately
+  versioned `estate.world_ir.construction@1`. The merge commit is `2603a4e`;
+  the full-byte golden guard, Opus 5 review history, exact-head DeepSeek reruns,
+  PR CI, and post-merge CI run `32507602324` are green. Issue #15 is closed.
 - **SW-B is merged (#3):** six kernel crates plus isolated `xtask`, Rust 1.97.1,
   zero third-party crates, deterministic core primitives, immutable package
   mechanics, boundary enforcement, and green CI on main.
@@ -37,20 +37,25 @@ history (git has that).
   `agy` is the formal cold author; DeepSeek V4 Pro through direct Reasonix is the
   formal cold debugger; each independently checks the other's output. The plan
   and invalidation rules are in `docs/evaluation/GATE_K_COLD_AGENT_PLAN.md`.
+- **The `agy` lane is currently broken (#17):** three print-mode prompts,
+  including a `pwd` preflight, were ignored in favor of a canned model greeting.
+  Those attempts have zero evidentiary value. Gemini may not perform the formal
+  cold-author role until #17 proves a working invocation and preflight.
 - **CI uses `actions/checkout@v7` (#11):** PR and post-merge verification passed
   without the Node 20 compatibility annotation.
 
 ## What is next
 
-Complete the authorization-head rerun and CI, then merge **PR #16** and close
-**issue #15 — World IR construction lineage**. It blocks **SW-D implementation
-issue #14** until the owner-authorized repair is merged.
+Pause for the owner-requested holistic **GPT Pro architecture review** of the
+tree through contract revision 4. Fix or file every resulting finding before
+starting the next implementation slice. This review is an architecture
+checkpoint, not a formal Gate K cold-author or cold-debug run.
 
-Then implement **SW-D — namespace-machine transitions, typed
-interactions, deterministic phase order, and atomic transaction preparation**.
-The schemas now contain machine and claim templates; SW-D must add executable
-transition and interaction semantics without moving command-time truth into the
-compiler.
+After that disposition, implement **SW-D issue #14 — namespace-machine
+transitions, typed interactions, deterministic phase order, and atomic
+transaction preparation**. The schemas now contain machine and claim templates;
+SW-D must add executable transition and interaction semantics without moving
+command-time truth into the compiler.
 
 Then: SW-E (effective-fact resolution, `MovementDisposition`, projections),
 SW-F (runtime state, replay, migration v1→v2, `explain-*`), complete command
@@ -65,13 +70,13 @@ cargo test --workspace --locked
 cargo xtask boundary
 ```
 
-The SW-C author and non-author reruns passed all four commands. The revision-4
-authorization head must receive its own exact-head non-author rerun. Still
-unproven: Linux aarch64 release, ten runs per target, the complete `estate`
-command surface, complete package projections, runtime semantics,
-migration/replay, and formal cold-agent gates. The contract also requires a
-final explicit schema-ownership source-review receipt after the Gate K schema
-set stabilizes; that final receipt does not exist yet.
+The SW-C and revision-4 author/non-author reruns passed all four commands.
+Revision 4 PR and post-merge CI are green. Still unproven: Linux aarch64
+release, ten runs per target, the complete `estate` command surface, complete
+package projections, runtime semantics, migration/replay, and formal cold-agent
+gates. The contract also requires a final explicit schema-ownership
+source-review receipt after the Gate K schema set stabilizes; that final receipt
+does not exist yet.
 
 ## Remaining evidence points
 
