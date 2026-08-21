@@ -11,8 +11,9 @@ authors: Claude Fable 5 and GPT-5.6 Pro, in adversarial review, with Peter Perme
 date: 2026-08-21
 revision: 2
 contract_revision: 2
+decision_record: docs/decisions/0001-contract-repair.md
 proposed_contract_revision: 3
-decision_record: docs/decisions/0003-contract-profile-closure.md
+proposed_decision_record: docs/decisions/0003-contract-profile-closure.md
 ---
 
 # The Signed World

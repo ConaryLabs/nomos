@@ -62,7 +62,9 @@ cargo xtask boundary
 The SW-C author and non-author reruns passed all four commands. Still unproven:
 Linux aarch64 release, ten runs per target, the complete `estate` command
 surface, complete package projections, runtime semantics, migration/replay, and
-formal cold-agent gates.
+formal cold-agent gates. Proposed revision 3 also requires a final explicit
+schema-ownership source-review receipt after the Gate K schema set stabilizes;
+that final receipt does not exist yet.
 
 ## Open owner point
 

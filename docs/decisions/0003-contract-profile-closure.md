@@ -158,4 +158,5 @@ mechanism or a Gate K contract amendment.
 Revision 3 does not satisfy the Linux aarch64 release target or the ten-runs-per-
 target determinism matrix. Those remain unproved acceptance work. It also does
 not complete any command surface, runtime, migration, replay, or formal
-cold-agent gate.
+cold-agent gate. The final explicit schema-ownership source-review receipt also
+remains unproved until the Gate K schema set is complete.

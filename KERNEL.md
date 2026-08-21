@@ -2,10 +2,11 @@
 title: The executable semantic kernel
 status: Proposed contract revision 3; Gate K implementation through SW-C
 gate: K
-contract_revision: 3
-effective_contract_revision: 2
-supersedes_contract_revision: 2
-decision_record: docs/decisions/0003-contract-profile-closure.md
+contract_revision: 2
+decision_record: docs/decisions/0001-contract-repair.md
+proposed_contract_revision: 3
+proposed_supersedes_contract_revision: 2
+proposed_decision_record: docs/decisions/0003-contract-profile-closure.md
 ---
 
 # The executable semantic kernel
