@@ -42,9 +42,10 @@ Contract changes follow `AGENTS.md`. Contradictions and falsified assumptions ma
 be repaired explicitly; criteria may not be silently weakened because code
 failed them.
 
-The founding review record is an edited synthesis, not a verbatim transcript.
-Its provenance and limits are stated in
-`docs/review/2026-08-21-founding-review.md`.
+The founding review is recorded twice: a condensed primary record written in
+the originating session (`docs/review/2026-08-21-founding-review.md`, with its
+provenance limits stated) and the contract-revision-2 synthesis
+(`docs/review/2026-08-21-founding-review-synthesis.md`).
 
 ---
 

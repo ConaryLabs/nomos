@@ -26,6 +26,12 @@ is authority for any other project.
   `experiments/` or on an explicitly experimental branch. It is non-authoritative,
   cannot satisfy acceptance, and must be promoted through a clean implementation
   before entering the accepted kernel.
+- **Touching a file over ~1,000 lines means decomposing it in that change.** This
+  is an engineering rule of the shop, not a Gate K acceptance criterion: Gate K
+  is judged on dependency boundaries and observed behaviour, but a routinely
+  read or edited file that has grown past about a thousand lines is
+  reorganised by whoever touches it next, so the tree is set up right for the
+  next author.
 - **Fix or file immediately.** Anything found mid-work is fixed in that change or
   recorded as an issue with evidence and a clear disposition.
 - **Nothing is green until someone other than its author reruns the proof.** The

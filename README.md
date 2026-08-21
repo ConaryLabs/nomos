@@ -35,7 +35,10 @@ it.
 4. [docs/evaluation/COLD_AGENT_PROTOCOL.md](docs/evaluation/COLD_AGENT_PROTOCOL.md)
    — the reproducible cold-author, cold-debug, and cold-review procedure.
 5. [docs/review/2026-08-21-founding-review.md](docs/review/2026-08-21-founding-review.md)
-   — an edited synthesis and provenance note for the founding adversarial review.
+   — the condensed primary record of the founding adversarial review, written
+   in the originating session, with its provenance limits stated.
+6. [docs/review/2026-08-21-founding-review-synthesis.md](docs/review/2026-08-21-founding-review-synthesis.md)
+   — the contract-revision-2 edited synthesis of that review.
 
 ## Gate order
 
