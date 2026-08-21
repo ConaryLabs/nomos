@@ -1,7 +1,7 @@
 # Handoff — state of the repository
 
-Updated 2026-08-22 after typed forensic provenance merged through issue #24 / PR
-#34 and SW-F received an issue-first boundary in #35.
+Updated 2026-08-22 after SW-F merged through issue #35 / PR #38 and SW-G
+received an issue-first boundary in #40.
 This file orients a fresh session; it is rewritten at each slice boundary and
 never accumulates history (git has that).
 
@@ -12,7 +12,7 @@ never accumulates history (git has that).
   Signed World as the thesis name. Active crates use `nomos-*`, the binary is
   `nomos`, authoring source uses `.nomos`, schemas use `nomos.*`, and the fresh
   construction epoch began at `nomos.world_ir.construction@1` and its active
-  typed-provenance shape is `nomos.world_ir.construction@2`. References to
+  light-aware shape is `nomos.world_ir.construction@3`. References to
   `signed-world`, `estate-*`, `.estate`, and `estate.*` below describe immutable
   prototype-era history unless explicitly called current.
   The mechanical implementation is commit `7c0ca31`; its full author proof,
@@ -125,18 +125,30 @@ never accumulates history (git has that).
   #24 closed, and post-merge CI run `32531098740` passed. Structured canonical
   data and readable explanations are separate outputs; the actual
   `nomos explain-*` CLI remains later work.
+- **SW-F is merged (#35/#38):** construction IR advances to
+  `nomos.world_ir.construction@3` and simulation to
+  `nomos.projection.simulation@3`; persistence and diagnostics begin at `@1`.
+  The three light consumers receive one byte-identical compiler-owned union
+  plan. Runtime commands resolve light after complete local/causal settlement,
+  commit a new immutable `nomos.runtime_state@1` snapshot, hash its exact
+  canonical envelope with SHA-256, and emit typed `nomos.causal_receipt@1`
+  evidence. Rejections emit no commit evidence. GPT-5.6 Luna max found no
+  semantic or test defects and reran exact head `e1b20845` green with a clean
+  tree before and after. PR CI run `32533855605` passed; PR #38 merged as
+  `b5ea3b2`, issue #35 closed, and post-merge CI run `32535564970` passed.
 
 ## What is next
 
-Implement **issue #35 — SW-F: commit runtime state, light facts, hashes, and
-causal receipts**. The slice resolves light through compiler-owned semantics,
-emits persistence/diagnostics projections, commits a new immutable runtime
-snapshot, and produces canonical state hashes and typed causal receipts.
+Implement **issue #40 — SW-G: promote stable World IR v1 and assemble complete
+packages**. The slice creates `nomos.world_ir@1` without relabelling preserved
+construction evidence, compiles all four projections from stable IR, and binds
+the exact canonical member set into the existing immutable package boundary.
 
-Issue #35 explicitly stops before stable `nomos.world_ir@1`, complete package
-assembly, filesystem CLI orchestration, replay, the required v1-to-v2 movement
-migration, the multi-target determinism matrix, and formal cold-agent gates.
-Those remain later issue-first slices rather than hidden additions to SW-F.
+Issue #40 explicitly stops before filesystem CLI orchestration, run-directory
+artifacts, replay, the required v1-to-v2 movement migration, direct v2 runtime
+loading, the multi-target determinism matrix, budget evidence, and formal
+cold-agent gates. Those remain later issue-first slices rather than hidden
+additions to package compilation.
 
 Issue #17 remains a formal cold-author tooling blocker, not a blocker for
 semantic implementation.
@@ -150,15 +162,15 @@ cargo test --workspace --locked
 cargo xtask boundary
 ```
 
-SW-D's author proof, Luna max non-author rerun, PR CI, and post-merge CI passed
-all four commands plus the x86_64 debug/release determinism comparison. Issue
-#24's author proof, final Luna max exact-head rerun, PR CI, and post-merge CI
-also passed all four commands. Earlier SW-C, revision-4, and Rust-1.98
-maintenance author/non-author reruns passed as recorded.
+SW-F's author proof, Luna max exact-head rerun, PR CI, and post-merge CI passed
+all four commands; the focused release SW-F test also passed. SW-D's and issue
+#24's author proof, final non-author reruns, PR CI, and post-merge CI passed as
+recorded. Earlier SW-C, revision-4, and Rust-1.98 maintenance author/non-author
+reruns also passed.
 Still unproven: Linux aarch64 release, ten runs per target, the complete
-`nomos` command surface, persistence and diagnostics projections, light
-resolution, committed runtime semantics, migration/replay, and formal
-cold-agent gates. The contract also requires a
+`nomos` command surface, stable World IR, complete package assembly,
+migration/replay, budget evidence, and formal cold-agent gates. The contract
+also requires a
 final explicit schema-ownership source-review receipt after the Gate K schema
 set stabilizes; that final receipt does not exist yet.
 
