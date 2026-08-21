@@ -53,10 +53,17 @@ pub(crate) fn derive_connectivity(binding: &Binding) -> Result<GroundConnectivit
                 second,
             })
         }
-        Binding::Region { min, max } => Ok(GroundConnectivity::Region {
-            min: *min,
-            max: *max,
-        }),
+        Binding::Region { min, max } => {
+            if min.x() > max.x() || min.y() > max.y() || min.z() > max.z() {
+                return Err(connectivity_invalid(
+                    "a ground region requires component-wise minimum coordinates",
+                ));
+            }
+            Ok(GroundConnectivity::Region {
+                min: *min,
+                max: *max,
+            })
+        }
         Binding::Cell(_) => Err(connectivity_invalid(
             "a cell binding does not declare a ground connection or traversable region",
         )),

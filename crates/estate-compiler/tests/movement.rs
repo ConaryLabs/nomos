@@ -184,6 +184,26 @@ fn compiler_rejects_wrong_claim_values_and_connectivity() {
             .as_str(),
         "EK0906"
     );
+
+    let inverted_region = claim_world(
+        ClaimActivation::Always,
+        ClaimValue::Bool(true),
+        Binding::Region {
+            min: Cell::new(2, 0, 0),
+            max: Cell::new(1, 0, 0),
+        },
+        GroundConnectivity::Region {
+            min: Cell::new(2, 0, 0),
+            max: Cell::new(1, 0, 0),
+        },
+    );
+    assert_eq!(
+        compile_navigation_plan(&inverted_region)
+            .unwrap_err()
+            .code()
+            .as_str(),
+        "EK0906"
+    );
 }
 
 #[test]

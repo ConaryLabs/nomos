@@ -1,6 +1,6 @@
 ---
 title: Gate K transitions and transaction preparation
-status: Implementation reference for SW-D
+status: Implementation reference through SW-E
 date: 2026-08-21
 applies_to: KERNEL.md sections 1, 2, 4; acceptance 4-6
 ---
@@ -13,7 +13,7 @@ runtime to read authoring source or Canonical World IR. The boundary is:
 ```text
 estate-schema WorldIr construction@3
   -> estate-compiler validation and projection
-  -> estate-projection SimulationPlan@1
+  -> estate-projection SimulationPlan@2
   -> estate-sim immutable transaction preparation
 ```
 
@@ -60,10 +60,11 @@ These failures use stable `EK07xx` diagnostics. Construction builders also
 reject duplicates before canonical encoding, so stable sorting cannot turn a
 validation defect into last-write-wins behavior.
 
-`SimulationPlan` contains only machine states, initial values, external command
-requirements, internal handlers, typed causal edges, and phase/order data. It
-contains no source AST, World IR type, source span, claim result, movement
-disposition, or precomputed subsystem delta.
+`SimulationPlan` contains machine states, initial values, external command
+requirements, internal handlers, typed causal edges, phase/order data, and the
+SW-E movement resolver: typed claim IDs, activations, values, source spans, and
+connectivity. It contains no source AST, World IR type, resolved claim result,
+movement disposition, or precomputed subsystem delta.
 
 ## Runtime preparation
 

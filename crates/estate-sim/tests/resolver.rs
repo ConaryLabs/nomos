@@ -212,6 +212,49 @@ fn disposition_and_plan_invariants_reject_zero_or_empty_values() {
     );
 }
 
+#[test]
+fn invalid_projected_connectivity_fails_atomically() {
+    let machine_namespace = namespace("subject", "machine");
+    let machine = MachineDefinition::new(
+        machine_namespace.clone(),
+        vec![ident("off"), ident("on")],
+        ident("off"),
+        vec![CommandTransition::new(
+            ident("turn_on"),
+            CommandRequirement::None,
+            ident("off"),
+            ident("on"),
+        )],
+        Vec::new(),
+    )
+    .unwrap();
+    let subject = MovementSubject::new(
+        entity("subject"),
+        MovementConnectivity::Region {
+            min: LatticeCell::new(2, 0, 0),
+            max: LatticeCell::new(1, 0, 0),
+        },
+        Vec::new(),
+    )
+    .unwrap();
+    let resolver =
+        MovementResolverPlan::new(ident("ground"), 1, true, true, true, true, vec![subject])
+            .unwrap();
+    let plan = SimulationPlan::new(vec![machine], Vec::new())
+        .unwrap()
+        .with_movement_resolver(resolver);
+    let state = SimulationState::initialize(&plan).unwrap();
+    let before = state.to_canonical_bytes();
+    let rejected = prepare_transaction(
+        &plan,
+        &state,
+        &Command::new(machine_namespace, ident("turn_on"), CommandArgument::None),
+    )
+    .unwrap_err();
+    assert_eq!(rejected.code().as_str(), "EK0906");
+    assert_eq!(state.to_canonical_bytes(), before);
+}
+
 fn activation_plan() -> SimulationPlan {
     let machine_namespace = namespace("subject", "machine");
     let machine = MachineDefinition::new(

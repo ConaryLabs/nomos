@@ -2,8 +2,8 @@
 
 use estate_core::{Diagnostic, NamespaceId};
 use estate_projection::{
-    MachineDefinition, MovementClaim, MovementDisposition, ProjectedActivation, ResolvedMovement,
-    ResolvedMovementFacts, SimulationPlan,
+    MachineDefinition, MovementClaim, MovementConnectivity, MovementDisposition,
+    ProjectedActivation, ResolvedMovement, ResolvedMovementFacts, SimulationPlan,
 };
 
 use crate::SimulationState;
@@ -35,6 +35,7 @@ pub fn resolve_movement(
 
     let mut facts = Vec::new();
     for subject in resolver.subjects() {
+        validate_connectivity(subject.connectivity())?;
         let mut blockers = Vec::new();
         let mut active_costs = Vec::new();
         for claim in subject.claims() {
@@ -67,6 +68,27 @@ pub fn resolve_movement(
         facts.push(ResolvedMovement::new(subject.entity().clone(), disposition));
     }
     ResolvedMovementFacts::new(facts)
+}
+
+fn validate_connectivity(connectivity: &MovementConnectivity) -> Result<(), Diagnostic> {
+    let valid = match connectivity {
+        MovementConnectivity::FaceAdjacent { first, second } => {
+            let dx = i64::from(first.x()) - i64::from(second.x());
+            let dy = i64::from(first.y()) - i64::from(second.y());
+            first.z() == second.z() && dx.abs() + dy.abs() == 1
+        }
+        MovementConnectivity::Region { min, max } => {
+            min.x() <= max.x() && min.y() <= max.y() && min.z() <= max.z()
+        }
+    };
+    if valid {
+        Ok(())
+    } else {
+        Err(Diagnostic::new(
+            estate_core::diagnostic::codes::RESOLVER_CONNECTIVITY_INVALID,
+            "runtime received invalid projected ground connectivity",
+        ))
+    }
 }
 
 fn activation_is_true(
