@@ -56,3 +56,19 @@ exit: git status --short --branch; cargo fmt --all -- --check; cargo clippy
 full commit and branch, canonical model identity, environment, findings with
 file/line evidence, every command result, clean-tree result, and final PASS or
 FAIL. PASS only with zero actionable findings and all proof commands green.
+
+=== Iteration 4 ===
+
+Final exact-head non-author verification of commit
+090eea880a093ec60a390c760fd40c24e3cd7ed2 on branch
+contract/world-ir-construction-lineage in /home/peter/signed-world. Do not edit,
+commit, push, or use network. Review the complete diff and the three-file
+revision-4 receipt. Verify the only iteration-3 finding is fixed: both recorded
+counts must reproducibly be 73 unit/integration tests plus 10 doctests, with no
+remaining 79 claim. Reconfirm all prior contract, code, golden-fixture,
+authority, and evidence findings remain closed. Run separately: git status
+--short --branch; cargo fmt --all -- --check; cargo clippy --workspace
+--all-targets --locked -- -D warnings; cargo test --workspace --locked; cargo
+xtask boundary; git status --short --branch. Report exact full commit, canonical
+model, command exits and counts, clean tree, any actionable findings, and final
+PASS or FAIL. PASS only if zero actionable findings and all proof commands pass.

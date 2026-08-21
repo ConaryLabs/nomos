@@ -106,3 +106,35 @@ Verdict: **FAIL**.
 
 Operator disposition: corrected both counts from 79 to 73 and preserved the
 failure in the review history.
+
+## Iteration 4 — PASS
+
+Subject: `090eea880a093ec60a390c760fd40c24e3cd7ed2`.
+
+The reviewer reproduced exactly 73 unit/integration tests plus 10 doctests and
+confirmed that every remaining `79` mention describes the corrected historical
+error rather than making a current count claim. It reconfirmed:
+
+- revision 3 remains effective and revision 4 remains proposed;
+- first-commit obligations apply to the construction lineage without weakening;
+- stable `estate.world_ir@1` remains reserved for the required movement line;
+- KERNEL owns general rules while decision 0004 owns SW-D bookkeeping;
+- no stale stable schema identity or API claim remains;
+- the full 5,556-byte construction snapshot hashes to
+  `accd979dbc4d8caea132f757366192b24cdddc723ce5499c3ae5fac0b7d26a2b`;
+- the three-file receipt accurately preserves all failed iterations; and
+- every required command passed on an unchanged tree.
+
+The final command results were:
+
+```text
+cargo fmt --all -- --check                                  exit 0
+cargo clippy --workspace --all-targets --locked -- -D warnings exit 0
+cargo test --workspace --locked                             exit 0
+  73 tests plus 10 doctests, zero failed or ignored
+cargo xtask boundary                                        exit 0
+  boundary: clean
+git status before and after                                 clean
+```
+
+Actionable findings: none. Verdict: **PASS**.

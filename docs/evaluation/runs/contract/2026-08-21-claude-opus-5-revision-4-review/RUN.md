@@ -1,10 +1,12 @@
 # Contract revision 4 non-author review
 
-**Verdict:** in progress after three failed review iterations
+**Verdict:** pass after three failed review iterations
 
 **Date:** 2026-08-21
 
 **Issue / PR:** #15 / not opened yet
+
+**Evaluated commit:** `090eea880a093ec60a390c760fd40c24e3cd7ed2`
 
 **Evaluated branch:** `contract/world-ir-construction-lineage`
 
@@ -21,7 +23,8 @@ formal whole-Gate-K cold-agent subject run.
 - Effort: high.
 - Sessions: `376f2c45-66eb-4250-9946-ae2ad95a67d6`,
   `c663db07-d5bf-48f6-a30e-34b4807c116b`,
-  `839cf8a0-ee49-43f5-8684-1cc9c42ad97d`.
+  `839cf8a0-ee49-43f5-8684-1cc9c42ad97d`,
+  `35253e22-28f5-4a0b-874e-b361bf00e22f`.
 - Operator: Mira.
 - Mode: read-only; no subagents, fallback model, web search, file edits,
   commits, pushes, GitHub writes, or resumed unrelated conversation.
@@ -54,10 +57,15 @@ The failures are part of the evidence and are not normalized away:
    the golden construction fixture, and reran the full proof successfully. It
    found one receipt transcription error: the reproducible unit/integration
    count is 73, not 79. Both incorrect occurrences are corrected here.
+4. `090eea880a093ec60a390c760fd40c24e3cd7ed2` — **pass**. The
+   reviewer reproduced 73 unit/integration tests plus 10 doctests, reconfirmed
+   every prior finding closed, independently matched the 5,556-byte golden
+   construction digest, found no actionable defect, and observed a clean tree
+   before and after all proof commands.
 
-## Proof at the second reviewed head
+## Final-head proof
 
-At `ecc664362eee0dda76a9d721d58813e37e2b8a05`, the reviewer independently ran:
+At `090eea880a093ec60a390c760fd40c24e3cd7ed2`, the reviewer independently ran:
 
 | Command | Result |
 | --- | --- |
@@ -68,7 +76,8 @@ At `ecc664362eee0dda76a9d721d58813e37e2b8a05`, the reviewer independently ran:
 
 The reviewer confirmed exact HEAD and an empty working tree before and after.
 The first run's Cargo commands were denied by its `dontAsk` permission mode;
-that failure is not presented as a rerun.
+that failure is not presented as a rerun. The final clippy run reused valid
+build cache and is not presented as a cold compile.
 
 Environment:
 
@@ -79,7 +88,7 @@ cargo 1.97.1 (c980f4866 2026-06-30)
 Linux 7.1.8-200.fc44.x86_64 x86_64 GNU/Linux, Fedora 44
 ```
 
-## Current repair disposition
+## Final reviewer disposition
 
 - effective/proposed metadata and reading order are unambiguous;
 - exact prior and replacement contract wording is recorded;
@@ -94,12 +103,11 @@ Linux 7.1.8-200.fc44.x86_64 x86_64 GNU/Linux, Fedora 44
 
 The normative KERNEL rule no longer pre-consumes a version for SW-D. Decision
 0004 remains the slice ledger and records its proposed construction-v2 epoch
-break.
+break. The reviewer found no actionable defect and returned **PASS**.
 
 ## Evidence limits
 
-No passing final-head verdict exists yet. A fresh exact-head Opus review must
-verify these repairs. After its transcript and disposition are committed, a
+The passing reviewed commit precedes this receipt-only commit. A
 different-family rerun must verify the receipt-bearing PR head. This review does
 not supply owner disposition, Linux aarch64 execution, the ten-run matrix, or
 any runtime, migration, replay, command-surface, or formal cold-agent evidence.
