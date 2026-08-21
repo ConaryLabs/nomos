@@ -60,9 +60,12 @@ Linux Apollo 7.1.8-200.fc44.x86_64 #1 SMP PREEMPT_DYNAMIC Mon Aug 10 03:35:23 UT
 
 ## CI confirmation
 
-PR run 32486223418 and post-merge main run 32486400921 passed. Their check-run
-annotation endpoints returned empty arrays, confirming that the previous Node
-20 compatibility annotation did not recur with checkout v7.
+PR run 32486223418 and post-merge main run 32486400921 passed. After each run,
+operator Mira queried the GitHub check-run annotations endpoint with `gh api`;
+both returned an empty JSON array. This CI evidence was operator-harvested after
+the model rerun and was not asserted by the Gemini reviewer, whose prompt
+forbade web and CI inference. It confirms that the previous Node 20 compatibility
+annotation did not recur with checkout v7.
 
 ## Evidence limits
 
