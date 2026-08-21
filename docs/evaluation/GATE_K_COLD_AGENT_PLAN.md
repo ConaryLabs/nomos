@@ -1,6 +1,6 @@
 ---
 title: Gate K cold-agent eligibility and roster plan
-status: Owner-authorized before formal runs
+status: Owner-authorized routing; effective on merge
 date: 2026-08-21
 issue: 7
 protocol: docs/evaluation/COLD_AGENT_PROTOCOL.md revision 1
@@ -27,6 +27,10 @@ The implemented kernel has mixed principal authorship:
 - later Gate K implementation is expected to continue through GPT/Codex unless
   a merged record says otherwise.
 
+The SW-C GPT/Codex attribution is owner-supplied provenance recorded by issue
+#7; its implementation commit has no model trailer. The uncertainty cannot
+weaken eligibility because this plan excludes GPT rather than admitting it.
+
 Claude and GPT families are therefore excluded as formal whole-Gate-K subjects.
 They may operate the harness or review evidence only where the protocol permits
 and where they are not adjudicating their own work alone.
@@ -39,15 +43,22 @@ and where they are not adjudicating their own work alone.
 | Cold debugger | DeepSeek V4 Pro through direct Reasonix | Google Gemini 3.7 Flash High through Antigravity `agy` |
 
 The cold author and cold debugger use separate fresh sessions. A checker also
-uses a fresh session and receives only the committed subject output plus the
-published reproduction commands and evidence allowed by protocol section 10.
-No conversation is resumed across roles.
+uses a fresh session. The cold-author checker receives the committed subject
+output plus the published reproduction commands. After the cold-debug subject
+finishes, its checker additionally receives the hidden seeded mutation required
+by protocol section 7 so it can confirm the diagnosis. The hidden mutation is
+never exposed to the subject. No conversation is resumed across roles.
 
 Both selected families have performed evaluation-only reruns in this repository:
 DeepSeek checked the merged SW-C proof, and Gemini checked the checkout-v7 CI
 change. Neither authored or designed Gate K. Those runs do not disqualify a new
 subject under protocol section 2, but their conversations must not be resumed or
 made available to a formal subject.
+
+The receipts are:
+
+- `docs/evaluation/runs/gate-k/2026-08-21-deepseek-v4-pro-sw-c-rerun/`;
+- `docs/evaluation/runs/ci/2026-08-21-gemini-3.7-flash-checkout-v7/`.
 
 The owner and adjudicator is Peter Permenter. The operator may be Mira/Codex,
 but the operator supplies the predeclared packet verbatim and may not coach.
@@ -75,6 +86,11 @@ assumption:
 Client versions may change before the formal runs. Each `plan.json` records the
 then-current version, exact invocation, resolved model, and provider. A model
 alias, silent fallback, or unresolved identifier makes the run inconclusive.
+The operator preflights the exact route before formal invocation. During the
+formal invocation, the harness must record resolved identity before the first
+model response or tool call and confirm it again in the exported result. A
+post-task identity failure is reported against that attempt; it never erases an
+unfavorable subject result or creates an unreported retry.
 
 ## Freshness and tool boundary
 
@@ -117,4 +133,4 @@ Peter authorized direct `agy` with Gemini 3.7 Flash High and the existing direct
 Reasonix/DeepSeek and Claude Code routes for other-family work on 2026-08-21.
 For the whole Gate K formal gates, this record selects Gemini as cold author and
 DeepSeek as cold debugger, with cross-family independent checking as listed
-above.
+above. The roster becomes effective when the owner merges this record.

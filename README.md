@@ -48,7 +48,7 @@ it.
    — the condensed primary record of the founding adversarial review, written
    in the originating session, with its provenance limits stated.
 10. [docs/review/2026-08-21-founding-review-synthesis.md](docs/review/2026-08-21-founding-review-synthesis.md)
-   — the contract-revision-2 edited synthesis of that review.
+    — the contract-revision-2 edited synthesis of that review.
 
 ## Layout
 
