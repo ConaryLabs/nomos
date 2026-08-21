@@ -1,6 +1,6 @@
 # KERNEL.md section 7 requires a pinned toolchain for the determinism proof.
-# This pin records the toolchain the SW-B evidence was produced with.
+# Historical receipts record their exact toolchains; this is the current proof pin.
 [toolchain]
-channel = "1.97.1"
+channel = "1.98.0"
 components = ["rustfmt", "clippy"]
 profile = "minimal"
