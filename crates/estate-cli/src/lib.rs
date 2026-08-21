@@ -89,8 +89,10 @@ pub fn render_rejection(diagnostic: &Diagnostic) -> String {
 mod tests {
     use super::{ExitCode, render_rejection};
     use estate_core::diagnostic::codes;
-    use estate_core::{Diagnostic, EntityId, Ident, NamespaceId, SourcePath};
-    use estate_projection::{Command, CommandArgument};
+    use estate_core::{
+        CatalogValueId, ClaimRef, Diagnostic, EntityId, Ident, NamespaceId, SourcePath,
+    };
+    use estate_projection::{Command, CommandArgument, MovementDisposition};
 
     #[test]
     fn exit_codes_match_kernel_section_8() {
@@ -149,5 +151,133 @@ mod tests {
             prepared.after().machine(&integrity).unwrap().as_str(),
             "destroyed"
         );
+    }
+
+    #[test]
+    fn compiled_fixture_resolves_exact_ground_movement_facts() {
+        let ir = estate_compiler::compile_source(
+            include_str!("../../../fixtures/gaol.estate"),
+            SourcePath::new("fixtures/gaol.estate").unwrap(),
+        )
+        .unwrap();
+        let plan = estate_compiler::compile_simulation_plan(&ir).unwrap();
+        let navigation = estate_compiler::compile_navigation_plan(&ir).unwrap();
+        assert_eq!(
+            plan.movement_resolver().to_canonical_bytes(),
+            navigation.movement_resolver().to_canonical_bytes()
+        );
+
+        let initial = estate_sim::SimulationState::initialize(&plan).unwrap();
+        let initial_facts = estate_sim::resolve_movement(&plan, &initial).unwrap();
+        assert_blocked(
+            initial_facts.get(&entity("north_gate")).unwrap(),
+            &[
+                "north_gate.portal#blocks_ground",
+                "north_gate.ward#blocks_ground",
+            ],
+        );
+        assert_traversable(
+            initial_facts.get(&entity("flooded_section")).unwrap(),
+            3,
+            &["flooded_section.region#traversal_cost_ground"],
+        );
+
+        let access = namespace("north_gate", "access");
+        let unlocked = estate_sim::prepare_transaction(
+            &plan,
+            &initial,
+            &Command::new(
+                access.clone(),
+                ident("unlock"),
+                CommandArgument::Credential(
+                    CatalogValueId::parse("credential/gaoler_key").unwrap(),
+                ),
+            ),
+        )
+        .unwrap()
+        .into_after();
+        let opened = estate_sim::prepare_transaction(
+            &plan,
+            &unlocked,
+            &Command::new(access, ident("open"), CommandArgument::None),
+        )
+        .unwrap();
+        assert_blocked(
+            opened.movement_after().get(&entity("north_gate")).unwrap(),
+            &["north_gate.ward#blocks_ground"],
+        );
+
+        let unsealed = estate_sim::prepare_transaction(
+            &plan,
+            opened.after(),
+            &Command::new(
+                namespace("north_gate", "ward"),
+                ident("unseal"),
+                CommandArgument::None,
+            ),
+        )
+        .unwrap();
+        assert_traversable(
+            unsealed
+                .movement_after()
+                .get(&entity("north_gate"))
+                .unwrap(),
+            1,
+            &[],
+        );
+
+        let ignited = estate_sim::prepare_transaction(
+            &plan,
+            &initial,
+            &Command::new(
+                namespace("north_gate", "combustion"),
+                ident("ignite"),
+                CommandArgument::None,
+            ),
+        )
+        .unwrap();
+        assert_blocked(
+            ignited.movement_after().get(&entity("north_gate")).unwrap(),
+            &["north_gate.ward#blocks_ground"],
+        );
+    }
+
+    fn ident(value: &str) -> Ident {
+        Ident::new(value).unwrap()
+    }
+
+    fn entity(value: &str) -> EntityId {
+        EntityId::parse(value).unwrap()
+    }
+
+    fn namespace(entity_id: &str, local: &str) -> NamespaceId {
+        NamespaceId::new(entity(entity_id), ident(local))
+    }
+
+    fn assert_blocked(disposition: &MovementDisposition, expected: &[&str]) {
+        let MovementDisposition::Blocked { reasons } = disposition else {
+            panic!("expected blocked movement, got {disposition:?}");
+        };
+        let expected: Vec<_> = expected
+            .iter()
+            .map(|reason| ClaimRef::parse(reason).unwrap())
+            .collect();
+        assert_eq!(reasons, &expected);
+    }
+
+    fn assert_traversable(
+        disposition: &MovementDisposition,
+        expected_cost: u32,
+        expected: &[&str],
+    ) {
+        let MovementDisposition::Traversable { cost, reasons } = disposition else {
+            panic!("expected traversable movement, got {disposition:?}");
+        };
+        let expected: Vec<_> = expected
+            .iter()
+            .map(|reason| ClaimRef::parse(reason).unwrap())
+            .collect();
+        assert_eq!(*cost, expected_cost);
+        assert_eq!(reasons, &expected);
     }
 }

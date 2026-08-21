@@ -14,9 +14,10 @@ pub mod diagnostics;
 mod linker;
 mod parser;
 mod projection;
+mod resolver;
 
 use estate_core::{Diagnostic, SchemaId, SourcePath};
-pub use estate_projection::SimulationPlan;
+pub use estate_projection::{NavigationPlan, SimulationPlan};
 use estate_schema::{SourceDocument, WorldIr};
 
 /// Parses source schema version 1 without resolving cross-references.
@@ -58,6 +59,16 @@ pub fn compile_simulation_plan(ir: &WorldIr) -> Result<SimulationPlan, Diagnosti
     projection::simulation_plan(ir)
 }
 
+/// Validates construction-IR movement semantics and emits the navigation plan.
+///
+/// # Errors
+///
+/// Returns a stable `EK09xx` diagnostic for invalid resolver laws, claims,
+/// activations, connectivity, or subject identity.
+pub fn compile_navigation_plan(ir: &WorldIr) -> Result<NavigationPlan, Diagnostic> {
+    projection::navigation_plan(ir)
+}
+
 /// The schemas this compiler reads.
 #[must_use]
 pub fn consumed_schemas() -> Vec<SchemaId> {
@@ -73,6 +84,7 @@ pub fn produced_schemas() -> Vec<SchemaId> {
     vec![
         estate_schema::construction_world_ir_schema(),
         estate_projection::simulation_schema(),
+        estate_projection::navigation_schema(),
     ]
 }
 
@@ -97,7 +109,7 @@ mod tests {
         let produced = produced_schemas();
         assert!(consumed.contains(&estate_schema::source_schema()));
         assert!(produced.contains(&estate_projection::simulation_schema()));
-        assert!(!produced.contains(&estate_projection::navigation_schema()));
+        assert!(produced.contains(&estate_projection::navigation_schema()));
         assert!(!produced.contains(&estate_projection::persistence_schema()));
         assert!(!produced.contains(&estate_projection::diagnostics_schema()));
         for projection in estate_projection::all_schemas() {

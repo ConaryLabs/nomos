@@ -449,6 +449,25 @@ pub mod codes {
     /// Initial or current runtime state does not conform to the projection.
     pub const RUNTIME_STATE_INVALID: DiagnosticCode = DiagnosticCode::new("EK0809");
 
+    /// A resolver-plan collection repeats one stable semantic identity.
+    pub const RESOLVER_DUPLICATE_IDENTITY: DiagnosticCode = DiagnosticCode::new("EK0901");
+    /// A movement claim belongs to an entity other than its resolver subject.
+    pub const RESOLVER_CLAIM_ENTITY_MISMATCH: DiagnosticCode = DiagnosticCode::new("EK0902");
+    /// A claim activation refers to a machine namespace that does not exist.
+    pub const RESOLVER_ACTIVATION_NAMESPACE_MISSING: DiagnosticCode = DiagnosticCode::new("EK0903");
+    /// A claim activation refers to a state absent from its machine.
+    pub const RESOLVER_ACTIVATION_STATE_MISSING: DiagnosticCode = DiagnosticCode::new("EK0904");
+    /// A movement claim value does not match its capability's required type.
+    pub const RESOLVER_CLAIM_VALUE_INVALID: DiagnosticCode = DiagnosticCode::new("EK0905");
+    /// A movement subject has no valid compiler-derived ground connectivity.
+    pub const RESOLVER_CONNECTIVITY_INVALID: DiagnosticCode = DiagnosticCode::new("EK0906");
+    /// A movement resolver plan omits or contradicts required Gate K semantics.
+    pub const RESOLVER_PLAN_INVALID: DiagnosticCode = DiagnosticCode::new("EK0907");
+    /// Runtime claim evaluation cannot resolve a projected namespace or state.
+    pub const RESOLVER_RUNTIME_REFERENCE_MISSING: DiagnosticCode = DiagnosticCode::new("EK0908");
+    /// A resolved movement disposition violates its nonempty/positive invariant.
+    pub const MOVEMENT_DISPOSITION_INVALID: DiagnosticCode = DiagnosticCode::new("EK0909");
+
     /// Every code this crate owns, for well-formedness and uniqueness tests.
     pub const ALL: &[DiagnosticCode] = &[
         IDENT_UNSUPPORTED,
@@ -486,5 +505,14 @@ pub mod codes {
         RUNTIME_EVENT_HANDLER_MISSING,
         RUNTIME_TRANSITION_BUDGET,
         RUNTIME_STATE_INVALID,
+        RESOLVER_DUPLICATE_IDENTITY,
+        RESOLVER_CLAIM_ENTITY_MISMATCH,
+        RESOLVER_ACTIVATION_NAMESPACE_MISSING,
+        RESOLVER_ACTIVATION_STATE_MISSING,
+        RESOLVER_CLAIM_VALUE_INVALID,
+        RESOLVER_CONNECTIVITY_INVALID,
+        RESOLVER_PLAN_INVALID,
+        RESOLVER_RUNTIME_REFERENCE_MISSING,
+        MOVEMENT_DISPOSITION_INVALID,
     ];
 }

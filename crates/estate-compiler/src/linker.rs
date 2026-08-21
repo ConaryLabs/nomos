@@ -47,13 +47,15 @@ pub(crate) fn link(document: &SourceDocument) -> Result<WorldIr, Diagnostic> {
         receipts.extend(entity_receipts);
     }
 
-    WorldIr::new(
+    let movement_resolver = crate::resolver::construction_plan(&entities)?;
+    Ok(WorldIr::new(
         document.schema().value().clone(),
         catalog_values.into_iter().collect(),
         entities,
         relations,
         receipts,
-    )
+    )?
+    .with_movement_resolver(movement_resolver))
 }
 
 fn declare_catalog_values(

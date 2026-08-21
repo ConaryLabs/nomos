@@ -12,10 +12,10 @@ test that thesis before any renderer is built.
 ## Status
 
 - **Architecture status:** exploratory and non-authoritative
-- **Implementation status:** SW-B foundations, SW-C source/linking, and SW-D
-  compiled transitions, simulation projection, and immutable transaction
-  preparation; no command surface, effective-fact resolution, or committed
-  runtime snapshots
+- **Implementation status:** implemented through SW-E: foundations, source and
+  construction IR, compiled transitions, shared simulation/navigation ground
+  movement projection, and immutable transaction preparation with effective
+  before/after movement facts; no command surface or committed runtime snapshots
 - **Contract revision:** 4, owner-authorized in decision 0004
 - **Scope:** greenfield / vacuum architecture exercise
 - **Effect on other projects:** none unless separately adopted by an explicit
@@ -55,11 +55,13 @@ it.
 11. [docs/compiler.md](docs/compiler.md) — parser/linker stages, schema
    ownership, proof coverage, and limits.
 12. [docs/transitions.md](docs/transitions.md) — compiled command/event
-   semantics, causal ordering, runtime preparation, and the SW-D boundary.
-13. [docs/review/2026-08-21-founding-review.md](docs/review/2026-08-21-founding-review.md)
+   semantics, causal ordering, and immutable runtime preparation.
+13. [docs/movement.md](docs/movement.md) — compiled claim composition,
+   shared simulation/navigation movement semantics, and SW-E evidence.
+14. [docs/review/2026-08-21-founding-review.md](docs/review/2026-08-21-founding-review.md)
    — the condensed primary record of the founding adversarial review, written
    in the originating session, with its provenance limits stated.
-14. [docs/review/2026-08-21-founding-review-synthesis.md](docs/review/2026-08-21-founding-review-synthesis.md)
+15. [docs/review/2026-08-21-founding-review-synthesis.md](docs/review/2026-08-21-founding-review-synthesis.md)
     — the contract-revision-2 edited synthesis of that review.
 
 ## Layout

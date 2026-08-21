@@ -1,6 +1,6 @@
 ---
 title: Gate K compiler
-status: Implementation reference through SW-D
+status: Implementation reference through SW-E
 date: 2026-08-21
 applies_to: KERNEL.md sections 1, 2, 4, 9; acceptance 1-3 and 11
 ---
@@ -9,11 +9,14 @@ applies_to: KERNEL.md sections 1, 2, 4, 9; acceptance 1-3 and 11
 
 SW-C turns one `estate.source@1` file into a typed Canonical World IR
 construction snapshot. SW-D validates its executable machine semantics and
-projects a runtime-only simulation plan. The public library paths are:
+projects a runtime-only simulation plan. SW-E adds compiler-owned ground
+movement composition and a shared resolver projected to simulation and
+navigation. The public library paths are:
 
 ```rust
 estate_compiler::compile_source(source, repository_relative_path)
 estate_compiler::compile_simulation_plan(&world_ir)
+estate_compiler::compile_navigation_plan(&world_ir)
 ```
 
 The source language and primitive catalog are documented in
@@ -34,13 +37,19 @@ records why that language was chosen.
    expressions.
 7. Validate transition states, interaction namespaces and handlers, and reject
    every causal cycle before projection.
-8. Emit stable fact-ownership receipts and canonical construction-snapshot
-   bytes under `estate.world_ir.construction@2`.
-9. Resolve entity credentials into command requirements and emit only
-   `estate.projection.simulation@1` as the first implemented projection.
+8. Derive typed ground connectivity and an explicit resolver plan: any active
+   blocker wins; otherwise the maximum active traversal cost wins; otherwise
+   the positive base cost is `1`.
+9. Emit stable fact-ownership receipts and canonical construction-snapshot
+   bytes under `estate.world_ir.construction@3`.
+10. Resolve entity credentials into command requirements and emit
+    `estate.projection.simulation@2` plus `estate.projection.navigation@1` with
+    byte-identical movement resolver plans. Simulation advances independently
+    because its required shape changes; navigation is emitted for the first time.
 
 Parser failures use `EK05xx`; linker and ownership failures use `EK06xx`;
-transition/projection validation uses `EK07xx`.
+transition/projection validation uses `EK07xx`; movement resolver validation
+uses `EK09xx`.
 Every source rejection carries a repository-relative span and a legal repair
 class. The mutation suite plants each ownership/cross-reference violation in
 `KERNEL.md` section 9 that belongs to this slice.
@@ -54,6 +63,7 @@ class. The mutation suite plants each ownership/cross-reference violation in
 - Canonical World IR entities and relations;
 - machine and claim templates;
 - typed command/event transitions and phased causal interactions;
+- typed movement composition, coherence, connectivity, and resolver subjects;
 - fact-ownership receipts.
 
 `estate-compiler` exclusively defines parsing, the sealed primitive catalog,
@@ -84,6 +94,9 @@ SW-C corrected the narrower SW-B naming before it became serialized behavior.
 - `combustion.on_enter(burning)` projects to one causal-phase fire-damage edge;
 - reversed plan insertion produces identical canonical projection bytes;
 - dangling machine/state/handler references and causal cycles fail closed.
+- simulation and navigation receive the same typed ground resolver bytes;
+- dangling claim activations, invalid claim values, mismatched connectivity,
+  duplicate resolver identities, and absent subjects fail closed.
 
 ## Still unproved
 
@@ -92,11 +105,11 @@ The CLI remains intentionally unimplemented. Acceptance item 3's observable
 SW-C proves its expansion/IR half but does not call the criterion satisfied.
 Issue #5 records that scope split.
 
-SW-D does not resolve effective capability facts, compose movement, derive
-subsystem deltas, commit snapshots, hash state, write packages, replay,
-migrate, or implement explanations/CLI commands. Navigation, persistence, and
-diagnostics projection schema names are planned ownership only; the compiler's
-`produced_schemas()` reports only construction IR plus the simulation artifact
-actually implemented. Each incompatible incomplete shape increments the
+SW-E resolves only effective ground movement facts. It does not resolve light,
+commit snapshots, hash state, write packages, replay, migrate, or implement
+explanations/CLI commands. Persistence and diagnostics projection schema names
+remain planned ownership only; `produced_schemas()` reports construction IR,
+simulation, and navigation as the artifacts actually implemented. Each
+incompatible incomplete shape increments the
 `estate.world_ir.construction@N` version. Stable `estate.world_ir@1` begins only
 when the contracted schema is complete.

@@ -1,6 +1,6 @@
 # Handoff — state of the repository
 
-Updated 2026-08-21 on the SW-D implementation branch.
+Updated 2026-08-21 on the SW-E issue #28 implementation branch.
 This file orients a fresh session; it is rewritten at each slice boundary and
 never accumulates history (git has that).
 
@@ -58,34 +58,43 @@ never accumulates history (git has that).
 - **The GPT Pro architecture checkpoint is owner-disposed (#25):** review of
   clean `main` at `feacad0` found the project on target, endorsed SW-D's scope,
   and filed #21–#24. This was architecture fuzzing, not a formal Gate K run.
-- **SW-D is implemented on the current branch (#14):** construction IR advances
-  to `estate.world_ir.construction@2` with typed transitions and one phased
-  causal edge. The compiler emits `estate.projection.simulation@1`, rejects
-  invalid references and cycles, and no longer claims unimplemented projection
+- **SW-D is merged (#14/#27):** construction IR advances to
+  `estate.world_ir.construction@2` with typed transitions and one phased causal
+  edge. The compiler emits `estate.projection.simulation@1`, rejects invalid
+  references and cycles, and no longer claims unimplemented projection
   artifacts. `estate-sim` initializes projected machines and atomically prepares
-  local-then-causal state changes without seeing source or IR.
-- **Issue #21 is the first isolated SW-D commit (`a3be521`):** canonical object
-  fields, stable keyed arrays, package members/manifest rows, machine/claim
-  identities, transitions, and interactions fail closed instead of retaining a
-  final duplicate.
-- **SW-D evidence is not green yet:** the author proof passes locally, but the
-  exact-head non-author rerun and PR CI required before owner merge disposition
-  have not yet been recorded.
+  local-then-causal state changes without seeing source or IR. GPT-5.6 Luna max
+  reviewed and reran exact PR head `ce90aa5`; PR CI run `32517611393` and
+  post-merge run `32518205450` passed. Merge commit `5f5e730` is clean on main.
+- **Issue #21 closed in SW-D's first isolated commit (`a3be521`):** canonical
+  object fields, stable keyed arrays, package members/manifest rows,
+  machine/claim identities, transitions, and interactions fail closed instead
+  of retaining a final duplicate.
+- **SW-E is implemented on `feature/sw-e-28`:** construction IR advances to
+  `estate.world_ir.construction@3` with explicit movement composition,
+  coherence, connectivity, and resolver subjects. Simulation advances to `@2`,
+  navigation begins at `@1`, and both receive one byte-identical typed resolver
+  plan. `estate-sim` evaluates typed
+  claim activation after complete local/causal settlement and exposes immutable
+  before/after facts. The exact fixture proves two initial gate blockers, ward
+  survival after opening or destruction, base cost `1` after unsealing, and
+  water cost `3`. The four-command author proof passes; exact-head non-author
+  and CI evidence are pending.
 
 ## What is next
 
-Finish **SW-D issue #14**: run the exact-head non-author proof, obtain green PR
-CI, and leave merge disposition to the owner. Do not call the slice green before
-both exist.
+Finish **SW-E issue #28**: run the complete author proof, obtain the exact-head
+GPT-5.6 Luna max non-author rerun, merge after CI, and record the resulting
+evidence.
 
 Do not pull #22 package hardening or #24 typed forensic provenance sideways into
-SW-D. Resolve #22 before package/CLI/migration evidence and #24 before stable
+SW-E. Resolve #22 before package/CLI/migration evidence and #24 before stable
 World IR promotion or `explain-*`. Issue #17 remains a formal cold-author
 tooling blocker, not a blocker for semantic implementation.
 
-After SW-D merges: SW-E (effective-fact resolution, `MovementDisposition`, projections),
-SW-F (runtime state, replay, migration v1→v2, `explain-*`), complete command
-surface/package orchestration, determinism matrix, and formal cold-agent gates.
+After SW-E: SW-F (runtime state, replay, migration v1→v2, `explain-*`), complete
+command surface/package orchestration, determinism matrix, and formal cold-agent
+gates.
 
 ## How to prove the current branch
 
@@ -96,15 +105,15 @@ cargo test --workspace --locked
 cargo xtask boundary
 ```
 
-The current SW-D author run passes all four commands locally. Its non-author and
-PR CI evidence are still pending. Earlier SW-C, revision-4, and Rust-1.98
-maintenance author/non-author reruns passed all four commands. Revision 4 and
-Rust 1.98 PR/post-merge CI are green. Still unproven: Linux aarch64
-release, ten runs per target, the complete `estate` command surface, complete
-package projections, effective-fact resolution, committed runtime semantics,
-migration/replay, and formal cold-agent gates. The contract also requires a final explicit schema-ownership
-source-review receipt after the Gate K schema set stabilizes; that final receipt
-does not exist yet.
+SW-D's author proof, Luna max non-author rerun, PR CI, and post-merge CI passed
+all four commands plus the x86_64 debug/release determinism comparison. Earlier
+SW-C, revision-4, and Rust-1.98 maintenance author/non-author reruns also passed.
+Still unproven: Linux aarch64 release, ten runs per target, the complete
+`estate` command surface, persistence and diagnostics projections, light
+resolution, committed runtime semantics, migration/replay, and formal
+cold-agent gates. The contract also requires a
+final explicit schema-ownership source-review receipt after the Gate K schema
+set stabilizes; that final receipt does not exist yet.
 
 ## Remaining evidence points
 

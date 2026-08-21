@@ -11,6 +11,7 @@
 #![warn(missing_debug_implementations)]
 
 mod ir;
+mod resolver;
 mod source;
 mod spatial;
 mod transition;
@@ -20,6 +21,10 @@ use estate_core::SchemaId;
 pub use ir::{
     CapabilityKind, ClaimActivation, ClaimTemplate, ClaimValue, FactOwner, FactOwnershipReceipt,
     IrEntity, IrRelation, MachineTemplate, PrimitiveExpansion, WorldIr,
+};
+pub use resolver::{
+    GroundConnectivity, GroundMovementCoherence, MovementCompositionLaw, MovementResolverPlan,
+    MovementResolverSubject,
 };
 pub use source::{
     ForbiddenFactOwner, SourceDocument, SourceEntity, SourceField, SourceRelation, Spanned,
@@ -39,12 +44,12 @@ pub fn source_schema() -> SchemaId {
 /// The incomplete Canonical World IR construction schema.
 ///
 /// Contract revision 4 separates pre-Gate construction snapshots from the
-/// stable `estate.world_ir@1` to `estate.world_ir@2` migration line. SW-C owns
-/// SW-D advances the construction lineage to version 2 because transition and
-/// interaction definitions change the snapshot shape.
+/// stable `estate.world_ir@1` to `estate.world_ir@2` migration line. SW-E
+/// advances the construction lineage to version 3 because composition,
+/// coherence, and resolver preparation change the snapshot shape.
 #[must_use]
 pub fn construction_world_ir_schema() -> SchemaId {
-    SchemaId::new("estate.world_ir.construction", 2)
+    SchemaId::new("estate.world_ir.construction", 3)
         .expect("the construction world IR schema id is a valid literal")
 }
 
@@ -59,7 +64,7 @@ mod tests {
             construction_world_ir_schema().name()
         );
         assert_eq!(source_schema().version(), 1);
-        assert_eq!(construction_world_ir_schema().version(), 2);
+        assert_eq!(construction_world_ir_schema().version(), 3);
     }
 
     #[test]
@@ -72,7 +77,7 @@ mod tests {
             construction_world_ir_schema()
                 .to_canonical()
                 .to_canonical_bytes(),
-            br#"{"name":"estate.world_ir.construction","version":2}"#.to_vec()
+            br#"{"name":"estate.world_ir.construction","version":3}"#.to_vec()
         );
     }
 }
