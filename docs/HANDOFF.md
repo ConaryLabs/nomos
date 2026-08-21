@@ -13,7 +13,9 @@ history (git has that).
   the incomplete SW-C linker snapshot from `estate.world_ir@1` to separately
   versioned `estate.world_ir.construction@1`. The merge commit is `2603a4e`;
   the full-byte golden guard, Opus 5 review history, exact-head DeepSeek reruns,
-  PR CI, and post-merge CI run `32507602324` are green. Issue #15 is closed.
+  PR CI, and post-merge CI run `32507602324` are green. Local receipts live
+  under `docs/evaluation/runs/contract/` and `docs/evaluation/runs/ci/`. Issue
+  #15 is closed.
 - **SW-B is merged (#3):** six kernel crates plus isolated `xtask`, Rust 1.97.1,
   zero third-party crates, deterministic core primitives, immutable package
   mechanics, boundary enforcement, and green CI on main.
@@ -40,16 +42,17 @@ history (git has that).
 - **The `agy` lane is currently broken (#17):** three print-mode prompts,
   including a `pwd` preflight, were ignored in favor of a canned model greeting.
   Those attempts have zero evidentiary value. Gemini may not perform the formal
-  cold-author role until #17 proves a working invocation and preflight.
+  cold-author role until #17 proves a working invocation and preflight. The
+  local failure record is under `docs/evaluation/runs/tooling/`.
 - **CI uses `actions/checkout@v7` (#11):** PR and post-merge verification passed
   without the Node 20 compatibility annotation.
 
 ## What is next
 
-Pause for the owner-requested holistic **GPT Pro architecture review** of the
-tree through contract revision 4. Fix or file every resulting finding before
-starting the next implementation slice. This review is an architecture
-checkpoint, not a formal Gate K cold-author or cold-debug run.
+Pause for the owner-requested holistic **GPT Pro architecture review** declared
+in `docs/review/2026-08-21-gpt-pro-checkpoint.md`. Fix or file every resulting
+finding before starting the next implementation slice. This review is an
+architecture checkpoint, not a formal Gate K cold-author or cold-debug run.
 
 After that disposition, implement **SW-D issue #14 — namespace-machine
 transitions, typed interactions, deterministic phase order, and atomic
