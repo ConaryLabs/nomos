@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use std::sync::atomic::{AtomicU32, Ordering};
 
 use estate_core::canonical::read::parse_canonical;
-use estate_core::package::{MANIFEST_FILE, MemberName, RECEIPTS_DIR, WorldPackage};
+use estate_core::package::{COMPILER_RECEIPTS_FILE, MANIFEST_FILE, MemberName, WorldPackage};
 use estate_core::{CanonicalValue, FieldName, Sha256Digest};
 
 static COUNTER: AtomicU32 = AtomicU32::new(0);
@@ -30,6 +30,11 @@ fn member(name: &str) -> MemberName {
 fn simple_members() -> Vec<(MemberName, Vec<u8>)> {
     vec![
         (
+            member(COMPILER_RECEIPTS_FILE),
+            CanonicalValue::object_declared([("receipts", CanonicalValue::Array(vec![]))])
+                .to_canonical_bytes(),
+        ),
+        (
             member("world-ir.json"),
             CanonicalValue::object_declared([("tick", CanonicalValue::Uint(0))])
                 .to_canonical_bytes(),
@@ -48,8 +53,14 @@ fn a_written_package_is_inspectable_with_ordinary_file_tools() {
     let package = WorldPackage::write(&path, simple_members()).unwrap();
 
     assert!(path.join(MANIFEST_FILE).is_file());
-    assert!(path.join(RECEIPTS_DIR).is_dir());
+    assert!(path.join(COMPILER_RECEIPTS_FILE).is_file());
     assert!(path.join("world-ir.json").is_file());
+    assert!(
+        fs::read_dir(&path)
+            .unwrap()
+            .all(|entry| entry.unwrap().file_type().unwrap().is_file()),
+        "a verified package has no unmanifested subtree"
+    );
 
     // Members are ordered by member name in the manifest, not by write order.
     let names: Vec<String> = package
@@ -58,7 +69,10 @@ fn a_written_package_is_inspectable_with_ordinary_file_tools() {
         .iter()
         .map(|record| record.name().to_string())
         .collect();
-    assert_eq!(names, vec!["simulation.json", "world-ir.json"]);
+    assert_eq!(
+        names,
+        vec!["compiler-receipts.json", "simulation.json", "world-ir.json"]
+    );
 
     // The manifest itself is canonical, so `sha256sum` on a member file
     // reproduces the recorded digest byte for byte.
@@ -76,6 +90,23 @@ fn a_written_package_is_inspectable_with_ordinary_file_tools() {
             .unwrap()
             .to_canonical_bytes(),
         CanonicalValue::object_declared([("tick", CanonicalValue::Uint(0))]).to_canonical_bytes()
+    );
+}
+
+#[test]
+fn package_bytes_and_digest_ignore_input_insertion_order() {
+    let forward_path = fresh_path("forward-order");
+    let reverse_path = fresh_path("reverse-order");
+    let forward_members = simple_members();
+    let mut reverse_members = forward_members.clone();
+    reverse_members.reverse();
+
+    let forward = WorldPackage::write(&forward_path, forward_members).unwrap();
+    let reverse = WorldPackage::write(&reverse_path, reverse_members).unwrap();
+    assert_eq!(forward.manifest(), reverse.manifest());
+    assert_eq!(
+        fs::read(forward_path.join(MANIFEST_FILE)).unwrap(),
+        fs::read(reverse_path.join(MANIFEST_FILE)).unwrap()
     );
 }
 
@@ -242,6 +273,161 @@ fn duplicate_manifest_rows_fail_even_with_a_recomputed_digest() {
 }
 
 #[test]
+fn manifest_rows_must_be_in_canonical_member_name_order() {
+    let path = fresh_path("unsorted-manifest");
+    WorldPackage::write(&path, simple_members()).unwrap();
+    rewrite_manifest(&path, |fields| {
+        let CanonicalValue::Array(rows) = fields
+            .get_mut(&FieldName::declared("members"))
+            .expect("writer emits member rows")
+        else {
+            panic!("manifest members are an array")
+        };
+        rows.swap(0, 1);
+    });
+
+    let rejected = WorldPackage::open(&path).unwrap_err();
+    assert_eq!(rejected.code().as_str(), "EK0405");
+    assert!(rejected.message().contains("canonical member-name order"));
+}
+
+#[test]
+fn manifest_schema_and_member_rows_reject_canonical_unknown_fields() {
+    for (label, mutate) in [
+        (
+            "manifest-unknown",
+            add_manifest_unknown as fn(&mut std::collections::BTreeMap<FieldName, CanonicalValue>),
+        ),
+        ("schema-unknown", add_schema_unknown),
+        ("row-unknown", add_row_unknown),
+    ] {
+        let path = fresh_path(label);
+        WorldPackage::write(&path, simple_members()).unwrap();
+        rewrite_manifest(&path, mutate);
+        let rejected = WorldPackage::open(&path).unwrap_err();
+        assert_eq!(rejected.code().as_str(), "EK0405");
+        assert!(rejected.message().contains("fields must be exactly"));
+    }
+}
+
+#[test]
+fn hash_valid_but_noncanonical_member_bytes_are_rejected() {
+    let path = fresh_path("noncanonical-open");
+    WorldPackage::write(&path, simple_members()).unwrap();
+    let bytes = br#"{ "tick": 0 }"#.to_vec();
+    fs::write(path.join("world-ir.json"), &bytes).unwrap();
+    rewrite_manifest(&path, |fields| {
+        let CanonicalValue::Array(rows) = fields
+            .get_mut(&FieldName::declared("members"))
+            .expect("writer emits member rows")
+        else {
+            panic!("manifest members are an array")
+        };
+        let CanonicalValue::Object(row) = rows
+            .iter_mut()
+            .find(|row| {
+                matches!(
+                    row,
+                    CanonicalValue::Object(fields)
+                        if fields.get(&FieldName::declared("name"))
+                            == Some(&CanonicalValue::text("world-ir.json"))
+                )
+            })
+            .expect("world IR row exists")
+        else {
+            panic!("member row is an object")
+        };
+        row.insert(
+            FieldName::declared("sha256"),
+            CanonicalValue::text(Sha256Digest::of_bytes(&bytes).to_hex()),
+        );
+        row.insert(
+            FieldName::declared("size"),
+            CanonicalValue::Uint(bytes.len() as u64),
+        );
+    });
+
+    let rejected = WorldPackage::open(&path).unwrap_err();
+    assert_eq!(rejected.code().as_str(), "EK0410");
+    assert!(rejected.message().contains("world-ir.json"));
+}
+
+#[test]
+fn directories_are_never_package_members_or_unmanifested_subtrees() {
+    let declared = fresh_path("declared-directory");
+    WorldPackage::write(&declared, simple_members()).unwrap();
+    fs::remove_file(declared.join("world-ir.json")).unwrap();
+    fs::create_dir(declared.join("world-ir.json")).unwrap();
+    assert_eq!(
+        WorldPackage::open(&declared).unwrap_err().code().as_str(),
+        "EK0409"
+    );
+
+    let undeclared = fresh_path("undeclared-directory");
+    WorldPackage::write(&undeclared, simple_members()).unwrap();
+    fs::create_dir(undeclared.join("receipts")).unwrap();
+    assert_eq!(
+        WorldPackage::open(&undeclared).unwrap_err().code().as_str(),
+        "EK0409"
+    );
+}
+
+#[cfg(unix)]
+#[test]
+fn symlinked_roots_manifests_and_members_are_rejected_without_following() {
+    use std::os::unix::fs::symlink;
+
+    let real = fresh_path("real-package");
+    WorldPackage::write(&real, simple_members()).unwrap();
+    let linked_root = fresh_path("linked-root");
+    symlink(&real, &linked_root).unwrap();
+    assert_eq!(
+        WorldPackage::open(&linked_root)
+            .unwrap_err()
+            .code()
+            .as_str(),
+        "EK0409"
+    );
+
+    let linked_manifest = fresh_path("linked-manifest");
+    WorldPackage::write(&linked_manifest, simple_members()).unwrap();
+    let outside_manifest = fresh_path("outside-manifest");
+    fs::rename(linked_manifest.join(MANIFEST_FILE), &outside_manifest).unwrap();
+    symlink(&outside_manifest, linked_manifest.join(MANIFEST_FILE)).unwrap();
+    assert_eq!(
+        WorldPackage::open(&linked_manifest)
+            .unwrap_err()
+            .code()
+            .as_str(),
+        "EK0409"
+    );
+
+    let linked_member = fresh_path("linked-member");
+    WorldPackage::write(&linked_member, simple_members()).unwrap();
+    let outside_member = fresh_path("outside-member");
+    fs::rename(linked_member.join("world-ir.json"), &outside_member).unwrap();
+    symlink(&outside_member, linked_member.join("world-ir.json")).unwrap();
+    assert_eq!(
+        WorldPackage::open(&linked_member)
+            .unwrap_err()
+            .code()
+            .as_str(),
+        "EK0409"
+    );
+
+    let broken_output = fresh_path("broken-output-link");
+    symlink("missing-target", &broken_output).unwrap();
+    let rejected = WorldPackage::write(&broken_output, simple_members()).unwrap_err();
+    assert_eq!(rejected.code().as_str(), "EK0401");
+    assert!(
+        fs::symlink_metadata(&broken_output)
+            .unwrap()
+            .file_type()
+            .is_symlink()
+    );
+}
+
+#[test]
 fn member_names_are_constrained() {
     assert!(MemberName::new("world-ir.json").is_ok());
     assert!(MemberName::new("schemas.json").is_ok());
@@ -260,4 +446,69 @@ fn member_names_are_constrained() {
             "`{illegal}` must be refused"
         );
     }
+}
+
+fn rewrite_manifest(
+    package: &std::path::Path,
+    mutate: impl FnOnce(&mut std::collections::BTreeMap<FieldName, CanonicalValue>),
+) {
+    let manifest_path = package.join(MANIFEST_FILE);
+    let CanonicalValue::Object(mut fields) =
+        parse_canonical(&fs::read(&manifest_path).unwrap()).unwrap()
+    else {
+        panic!("writer emits an object manifest")
+    };
+    mutate(&mut fields);
+    let body = CanonicalValue::object_declared([
+        (
+            "members",
+            fields
+                .get(&FieldName::declared("members"))
+                .expect("manifest has members")
+                .clone(),
+        ),
+        (
+            "schema",
+            fields
+                .get(&FieldName::declared("schema"))
+                .expect("manifest has schema")
+                .clone(),
+        ),
+    ]);
+    fields.insert(
+        FieldName::declared("package_digest"),
+        CanonicalValue::text(Sha256Digest::of_canonical(&body).to_hex()),
+    );
+    fs::write(
+        manifest_path,
+        CanonicalValue::Object(fields).to_canonical_bytes(),
+    )
+    .unwrap();
+}
+
+fn add_manifest_unknown(fields: &mut std::collections::BTreeMap<FieldName, CanonicalValue>) {
+    fields.insert(FieldName::declared("extra"), CanonicalValue::Bool(true));
+}
+
+fn add_schema_unknown(fields: &mut std::collections::BTreeMap<FieldName, CanonicalValue>) {
+    let CanonicalValue::Object(schema) = fields
+        .get_mut(&FieldName::declared("schema"))
+        .expect("manifest has schema")
+    else {
+        panic!("manifest schema is an object")
+    };
+    schema.insert(FieldName::declared("extra"), CanonicalValue::Bool(true));
+}
+
+fn add_row_unknown(fields: &mut std::collections::BTreeMap<FieldName, CanonicalValue>) {
+    let CanonicalValue::Array(rows) = fields
+        .get_mut(&FieldName::declared("members"))
+        .expect("manifest has member rows")
+    else {
+        panic!("manifest members are an array")
+    };
+    let CanonicalValue::Object(row) = &mut rows[0] else {
+        panic!("member row is an object")
+    };
+    row.insert(FieldName::declared("extra"), CanonicalValue::Bool(true));
 }

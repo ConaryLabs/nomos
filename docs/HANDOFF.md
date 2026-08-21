@@ -86,7 +86,9 @@ never accumulates history (git has that).
   unmanifested package `receipts/` subtree with canonical hashed
   `compiler-receipts.json`; runtime causal receipts remain only in run outputs.
   It also defines same-filesystem staged publication and exact filesystem and
-  manifest verification. Revision 4 remains effective until this branch merges.
+  manifest verification. The implementation and four-command author proof are
+  green on `feature/package-boundary-22`; exact-head Luna/CI evidence is pending.
+  Revision 4 remains effective until this branch merges.
 
 ## What is next
 
@@ -95,14 +97,13 @@ Implement **issue #22 — seal the WorldPackage evidence boundary** under decisi
 validation, ordering, and filesystem entry-type checks before SW-F relies on
 packages.
 
-Do not pull #22 package hardening or #24 typed forensic provenance sideways into
-SW-E. Resolve #22 before package/CLI/migration evidence and #24 before stable
-World IR promotion or `explain-*`. Issue #17 remains a formal cold-author
-tooling blocker, not a blocker for semantic implementation.
+Do not pull #24 typed forensic provenance into this package-boundary repair.
+Resolve #24 before stable World IR promotion or `explain-*`. Issue #17 remains
+a formal cold-author tooling blocker, not a blocker for implementation.
 
-After SW-E: SW-F (runtime state, replay, migration v1→v2, `explain-*`), complete
-command surface/package orchestration, determinism matrix, and formal cold-agent
-gates.
+After #22: resolve #24 at its stated boundary, then continue SW-F runtime state,
+replay, migration v1→v2, package/command orchestration, explanations, the
+determinism matrix, and formal cold-agent gates.
 
 ## How to prove the current branch
 

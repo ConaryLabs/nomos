@@ -412,6 +412,10 @@ pub mod codes {
     pub const PACKAGE_IO: DiagnosticCode = DiagnosticCode::new("EK0407");
     /// A package writer received the same member name more than once.
     pub const PACKAGE_MEMBER_DUPLICATE: DiagnosticCode = DiagnosticCode::new("EK0408");
+    /// A package root, manifest, or member has a forbidden filesystem entry type.
+    pub const PACKAGE_ENTRY_TYPE_INVALID: DiagnosticCode = DiagnosticCode::new("EK0409");
+    /// A manifest-declared member is not canonical semantic bytes.
+    pub const PACKAGE_MEMBER_NON_CANONICAL: DiagnosticCode = DiagnosticCode::new("EK0410");
 
     /// A transition refers to a source machine namespace that does not exist.
     pub const TRANSITION_SOURCE_NAMESPACE_MISSING: DiagnosticCode = DiagnosticCode::new("EK0701");
@@ -488,6 +492,8 @@ pub mod codes {
         PACKAGE_MEMBER_NAME_INVALID,
         PACKAGE_IO,
         PACKAGE_MEMBER_DUPLICATE,
+        PACKAGE_ENTRY_TYPE_INVALID,
+        PACKAGE_MEMBER_NON_CANONICAL,
         TRANSITION_SOURCE_NAMESPACE_MISSING,
         INTERACTION_TARGET_NAMESPACE_MISSING,
         TRANSITION_STATE_MISSING,

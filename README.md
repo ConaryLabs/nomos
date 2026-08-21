@@ -61,10 +61,12 @@ it.
    semantics, causal ordering, and immutable runtime preparation.
 14. [docs/movement.md](docs/movement.md) — compiled claim composition,
    shared simulation/navigation movement semantics, and SW-E evidence.
-15. [docs/review/2026-08-21-founding-review.md](docs/review/2026-08-21-founding-review.md)
+15. [docs/packages.md](docs/packages.md) — atomic package publication, exact
+   manifest/member verification, and the revision-5 evidence boundary.
+16. [docs/review/2026-08-21-founding-review.md](docs/review/2026-08-21-founding-review.md)
    — the condensed primary record of the founding adversarial review, written
    in the originating session, with its provenance limits stated.
-16. [docs/review/2026-08-21-founding-review-synthesis.md](docs/review/2026-08-21-founding-review-synthesis.md)
+17. [docs/review/2026-08-21-founding-review-synthesis.md](docs/review/2026-08-21-founding-review-synthesis.md)
     — the contract-revision-2 edited synthesis of that review.
 
 ## Layout

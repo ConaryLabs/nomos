@@ -12,7 +12,7 @@
 //!   persistence.json
 //!   diagnostics.json
 //!   schemas.json
-//!   receipts/
+//!   compiler-receipts.json
 //! ```
 //!
 //! # Why this lives in `estate-core`
@@ -37,17 +37,23 @@
 //! - **Immutability (acceptance 12).** [`WorldPackage::write`] refuses to write
 //!   into a path that already exists, of any kind. Nothing here can overwrite,
 //!   merge into, or append to an existing package.
+//! - **Atomic publication.** A complete sibling staging directory is verified
+//!   before one same-filesystem rename publishes it. Failed writes remove their
+//!   staging path and leave the requested destination absent.
 //! - **Canonical members.** Every member is checked against the canonical byte
 //!   profile before the directory is created, so a package cannot hold a member
 //!   that would hash differently after a round trip.
 //! - **Verified reads.** [`WorldPackage::open`] recomputes the manifest digest
-//!   and every member's size and hash, and refuses any file in the package root
-//!   that the manifest does not declare.
+//!   and every member's size and hash, revalidates canonical bytes, and refuses
+//!   unknown fields, non-regular entries, or anything the manifest does not
+//!   declare.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 use std::fs;
+use std::io::{self, ErrorKind};
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use crate::canonical::read::parse_canonical;
 use crate::canonical::{CanonicalValue, FieldName};
@@ -58,8 +64,10 @@ use crate::id::SchemaId;
 /// The manifest file name.
 pub const MANIFEST_FILE: &str = "manifest.json";
 
-/// The receipts subdirectory required by section 5.
-pub const RECEIPTS_DIR: &str = "receipts";
+/// The canonical, manifest-hashed compiler/build receipt member from section 5.
+pub const COMPILER_RECEIPTS_FILE: &str = "compiler-receipts.json";
+
+static STAGING_COUNTER: AtomicU64 = AtomicU64::new(0);
 
 /// The name and version of the manifest schema itself.
 ///
@@ -84,7 +92,7 @@ impl MemberName {
     /// # Errors
     ///
     /// Returns `EK0406` when the name is not `[a-z0-9]([a-z0-9-]*[a-z0-9])?.json`,
-    /// or when it collides with the manifest or receipts entries.
+    /// or when it collides with the manifest entry.
     pub fn new(name: &str) -> Result<Self, Diagnostic> {
         let reject = |reason: &str| {
             Err(Diagnostic::new(
@@ -227,9 +235,10 @@ pub struct WorldPackage {
 impl WorldPackage {
     /// Writes a new package directory.
     ///
-    /// Members are validated as canonical bytes first, then the directory is
-    /// created. `receipts/` is created empty; its contents belong to the
-    /// runtime slice that produces receipts.
+    /// Members are validated as canonical bytes before filesystem mutation. A
+    /// complete sibling staging directory is written and verified before one
+    /// same-filesystem rename publishes it. The supported atomicity boundary is
+    /// a local filesystem with one publisher for the requested destination.
     ///
     /// # Errors
     ///
@@ -242,18 +251,15 @@ impl WorldPackage {
         root: &Path,
         members: impl IntoIterator<Item = (MemberName, Vec<u8>)>,
     ) -> Result<Self, Diagnostic> {
-        if root.exists() {
-            return Err(Diagnostic::new(
-                codes::PACKAGE_OUTPUT_EXISTS,
-                format!(
-                    "`{}` already exists; compiled packages are immutable evidence \
-                     and are never written over",
-                    root.display()
-                ),
-            )
-            .with_repair(RepairClass::WriteToNewOutputPath));
-        }
+        Self::write_internal(root, members, None)
+    }
 
+    fn write_internal(
+        root: &Path,
+        members: impl IntoIterator<Item = (MemberName, Vec<u8>)>,
+        fail_after_member_writes: Option<usize>,
+    ) -> Result<Self, Diagnostic> {
+        require_absent_destination(root)?;
         let mut unique_members = BTreeMap::new();
         for (name, bytes) in members {
             if unique_members.insert(name.clone(), bytes).is_some() {
@@ -291,22 +297,46 @@ impl WorldPackage {
             digest,
         };
 
-        fs::create_dir_all(root).map_err(|error| io_failure(root, &error))?;
-        fs::create_dir(root.join(RECEIPTS_DIR))
-            .map_err(|error| io_failure(&root.join(RECEIPTS_DIR), &error))?;
-        for (name, bytes) in &members {
-            let path = root.join(name.as_str());
-            fs::write(&path, bytes).map_err(|error| io_failure(&path, &error))?;
-        }
-        let manifest_path = root.join(MANIFEST_FILE);
-        fs::write(&manifest_path, manifest.to_canonical().to_canonical_bytes())
-            .map_err(|error| io_failure(&manifest_path, &error))?;
+        let parent = package_parent(root);
+        fs::create_dir_all(parent).map_err(|error| io_failure(parent, &error))?;
+        let staging = create_staging_directory(root)?;
+        let staged_result = (|| {
+            for (written, (name, bytes)) in members.iter().enumerate() {
+                if fail_after_member_writes == Some(written) {
+                    return Err(io_failure(
+                        &staging.join(name.as_str()),
+                        &io::Error::other("injected package-write failure"),
+                    ));
+                }
+                let path = staging.join(name.as_str());
+                fs::write(&path, bytes).map_err(|error| io_failure(&path, &error))?;
+            }
+            let manifest_path = staging.join(MANIFEST_FILE);
+            fs::write(&manifest_path, manifest.to_canonical().to_canonical_bytes())
+                .map_err(|error| io_failure(&manifest_path, &error))?;
 
-        Ok(Self {
-            root: root.to_path_buf(),
-            manifest,
-            members,
-        })
+            let mut verified = Self::open(&staging)?;
+            require_absent_destination(root)?;
+            fs::rename(&staging, root).map_err(|error| publication_failure(root, &error))?;
+            verified.root = root.to_path_buf();
+            Ok(verified)
+        })();
+
+        match staged_result {
+            Ok(package) => Ok(package),
+            Err(diagnostic) => {
+                cleanup_staging(&staging).map_err(|cleanup| {
+                    Diagnostic::new(
+                        codes::PACKAGE_IO,
+                        format!(
+                            "package write failed ({diagnostic}); staging cleanup also failed: {}",
+                            cleanup.message()
+                        ),
+                    )
+                })?;
+                Err(diagnostic)
+            }
+        }
     }
 
     /// Opens a package, verifying the manifest digest and every member.
@@ -320,8 +350,13 @@ impl WorldPackage {
     /// - `EK0404` when the package root holds a file the manifest does not
     ///   declare.
     /// - `EK0407` when the filesystem refuses the read.
+    /// - `EK0409` when the root, manifest, or a member is not the required
+    ///   directory/regular-file entry type.
+    /// - `EK0410` when a hash-valid member is not canonical semantic bytes.
     pub fn open(root: &Path) -> Result<Self, Diagnostic> {
+        require_package_root(root)?;
         let manifest_path = root.join(MANIFEST_FILE);
+        require_manifest_file(&manifest_path)?;
         let manifest_bytes =
             fs::read(&manifest_path).map_err(|error| io_failure(&manifest_path, &error))?;
         let manifest = decode_manifest(&manifest_bytes)?;
@@ -336,11 +371,26 @@ impl WorldPackage {
         for entry in entries {
             let entry = entry.map_err(|error| io_failure(root, &error))?;
             let file_name = entry.file_name();
-            let name = file_name.to_string_lossy();
-            if name == MANIFEST_FILE || name == RECEIPTS_DIR {
+            let Some(name) = file_name.to_str() else {
+                return Err(Diagnostic::new(
+                    codes::PACKAGE_MEMBER_UNDECLARED,
+                    "package entry name is not valid UTF-8",
+                )
+                .with_repair(RepairClass::RemoveUndeclaredMember));
+            };
+            let file_type = entry
+                .file_type()
+                .map_err(|error| io_failure(&entry.path(), &error))?;
+            if !file_type.is_file() {
+                return Err(entry_type_invalid(
+                    &entry.path(),
+                    "package entries must be regular files",
+                ));
+            }
+            if name == MANIFEST_FILE {
                 continue;
             }
-            let declared_here = MemberName::new(&name)
+            let declared_here = MemberName::new(name)
                 .ok()
                 .is_some_and(|member| declared.contains_key(&member));
             if !declared_here {
@@ -355,15 +405,20 @@ impl WorldPackage {
         let mut members = BTreeMap::new();
         for record in &manifest.members {
             let path = root.join(record.name.as_str());
-            let bytes = fs::read(&path).map_err(|_| {
-                Diagnostic::new(
-                    codes::PACKAGE_MEMBER_MISSING,
-                    format!(
-                        "member `{}` is declared by the manifest but could not be read",
-                        record.name
-                    ),
-                )
-                .with_repair(RepairClass::RebuildFromSource)
+            require_member_file(&path, &record.name)?;
+            let bytes = fs::read(&path).map_err(|error| {
+                if error.kind() == ErrorKind::NotFound {
+                    Diagnostic::new(
+                        codes::PACKAGE_MEMBER_MISSING,
+                        format!(
+                            "member `{}` is declared by the manifest but could not be read",
+                            record.name
+                        ),
+                    )
+                    .with_repair(RepairClass::RebuildFromSource)
+                } else {
+                    io_failure(&path, &error)
+                }
             })?;
             if bytes.len() as u64 != record.size || Sha256Digest::of_bytes(&bytes) != record.digest
             {
@@ -381,6 +436,17 @@ impl WorldPackage {
                 .with_repair(RepairClass::RebuildFromSource),
                 );
             }
+            parse_canonical(&bytes).map_err(|diagnostic| {
+                Diagnostic::new(
+                    codes::PACKAGE_MEMBER_NON_CANONICAL,
+                    format!(
+                        "member `{}` is hash-valid but not canonical: {}",
+                        record.name,
+                        diagnostic.message()
+                    ),
+                )
+                .with_repair(RepairClass::RebuildFromSource)
+            })?;
             members.insert(record.name.clone(), bytes);
         }
 
@@ -426,6 +492,139 @@ impl WorldPackage {
     }
 }
 
+fn require_absent_destination(root: &Path) -> Result<(), Diagnostic> {
+    match fs::symlink_metadata(root) {
+        Ok(_) => Err(Diagnostic::new(
+            codes::PACKAGE_OUTPUT_EXISTS,
+            format!(
+                "`{}` already exists; compiled packages are immutable evidence and are never written over",
+                root.display()
+            ),
+        )
+        .with_repair(RepairClass::WriteToNewOutputPath)),
+        Err(error) if error.kind() == ErrorKind::NotFound => Ok(()),
+        Err(error) => Err(io_failure(root, &error)),
+    }
+}
+
+fn package_parent(root: &Path) -> &Path {
+    root.parent()
+        .filter(|parent| !parent.as_os_str().is_empty())
+        .unwrap_or_else(|| Path::new("."))
+}
+
+fn create_staging_directory(root: &Path) -> Result<PathBuf, Diagnostic> {
+    let Some(file_name) = root.file_name() else {
+        return Err(Diagnostic::new(
+            codes::PACKAGE_IO,
+            format!("`{}` has no package directory name", root.display()),
+        ));
+    };
+    let parent = package_parent(root);
+    for _ in 0..64 {
+        let counter = STAGING_COUNTER.fetch_add(1, Ordering::Relaxed);
+        let name = format!(
+            ".{}.staging-{}-{counter}",
+            file_name.to_string_lossy(),
+            std::process::id()
+        );
+        let staging = parent.join(name);
+        match fs::create_dir(&staging) {
+            Ok(()) => return Ok(staging),
+            Err(error) if error.kind() == ErrorKind::AlreadyExists => continue,
+            Err(error) => return Err(io_failure(&staging, &error)),
+        }
+    }
+    Err(Diagnostic::new(
+        codes::PACKAGE_IO,
+        format!(
+            "could not allocate a fresh sibling staging directory for `{}`",
+            root.display()
+        ),
+    ))
+}
+
+fn cleanup_staging(staging: &Path) -> Result<(), Diagnostic> {
+    match fs::remove_dir_all(staging) {
+        Ok(()) => Ok(()),
+        Err(error) if error.kind() == ErrorKind::NotFound => Ok(()),
+        Err(error) => Err(io_failure(staging, &error)),
+    }
+}
+
+fn publication_failure(root: &Path, error: &io::Error) -> Diagnostic {
+    match fs::symlink_metadata(root) {
+        Ok(_) => Diagnostic::new(
+            codes::PACKAGE_OUTPUT_EXISTS,
+            format!(
+                "`{}` appeared before package publication and was left untouched",
+                root.display()
+            ),
+        )
+        .with_repair(RepairClass::WriteToNewOutputPath),
+        Err(_) => io_failure(root, error),
+    }
+}
+
+fn require_package_root(root: &Path) -> Result<(), Diagnostic> {
+    let metadata = match fs::symlink_metadata(root) {
+        Ok(metadata) => metadata,
+        Err(error) if error.kind() == ErrorKind::NotFound => {
+            return Err(manifest_invalid("package root is missing"));
+        }
+        Err(error) => return Err(io_failure(root, &error)),
+    };
+    if metadata.file_type().is_dir() {
+        Ok(())
+    } else {
+        Err(entry_type_invalid(
+            root,
+            "a world package root must be a directory and not a symlink",
+        ))
+    }
+}
+
+fn require_manifest_file(path: &Path) -> Result<(), Diagnostic> {
+    match fs::symlink_metadata(path) {
+        Ok(metadata) if metadata.file_type().is_file() => Ok(()),
+        Ok(_) => Err(entry_type_invalid(
+            path,
+            "the package manifest must be a regular file",
+        )),
+        Err(error) if error.kind() == ErrorKind::NotFound => {
+            Err(manifest_invalid("package manifest is missing"))
+        }
+        Err(error) => Err(io_failure(path, &error)),
+    }
+}
+
+fn require_member_file(path: &Path, name: &MemberName) -> Result<(), Diagnostic> {
+    match fs::symlink_metadata(path) {
+        Ok(metadata) if metadata.file_type().is_file() => Ok(()),
+        Ok(_) => Err(entry_type_invalid(
+            path,
+            "manifest-declared members must be regular files",
+        )),
+        Err(error) if error.kind() == ErrorKind::NotFound => Err(Diagnostic::new(
+            codes::PACKAGE_MEMBER_MISSING,
+            format!("member `{name}` is declared by the manifest but is missing"),
+        )
+        .with_repair(RepairClass::RebuildFromSource)),
+        Err(error) => Err(io_failure(path, &error)),
+    }
+}
+
+fn entry_type_invalid(path: &Path, reason: &str) -> Diagnostic {
+    Diagnostic::new(
+        codes::PACKAGE_ENTRY_TYPE_INVALID,
+        format!(
+            "`{}` has an invalid package entry type: {reason}",
+            path.display()
+        ),
+    )
+    .with_repair(RepairClass::RebuildFromSource)
+}
+
 fn io_failure(path: &Path, error: &std::io::Error) -> Diagnostic {
     Diagnostic::new(codes::PACKAGE_IO, format!("`{}`: {error}", path.display()))
 }
@@ -455,11 +654,13 @@ fn decode_manifest(bytes: &[u8]) -> Result<PackageManifest, Diagnostic> {
     let CanonicalValue::Object(fields) = &value else {
         return Err(manifest_invalid("manifest is not an object"));
     };
+    require_exact_fields(fields, &["members", "package_digest", "schema"], "manifest")?;
     let field = |name: &'static str| fields.get(&FieldName::declared(name));
 
     let Some(CanonicalValue::Object(schema_fields)) = field("schema") else {
         return Err(manifest_invalid("manifest has no `schema` object"));
     };
+    require_exact_fields(schema_fields, &["name", "version"], "manifest schema")?;
     let (Some(CanonicalValue::Text(schema_name)), Some(schema_version)) = (
         schema_fields.get(&FieldName::declared("name")),
         schema_fields
@@ -486,6 +687,7 @@ fn decode_manifest(bytes: &[u8]) -> Result<PackageManifest, Diagnostic> {
     };
     let mut members = Vec::with_capacity(rows.len());
     let mut names = BTreeSet::new();
+    let mut previous: Option<MemberName> = None;
     for row in rows {
         let member = decode_member(row)?;
         if !names.insert(member.name.clone()) {
@@ -494,6 +696,18 @@ fn decode_manifest(bytes: &[u8]) -> Result<PackageManifest, Diagnostic> {
                 member.name
             )));
         }
+        if let Some(prior) = &previous {
+            match member.name.cmp(prior) {
+                std::cmp::Ordering::Less => {
+                    return Err(manifest_invalid(format!(
+                        "manifest member `{}` is out of canonical member-name order",
+                        member.name
+                    )));
+                }
+                std::cmp::Ordering::Equal | std::cmp::Ordering::Greater => {}
+            }
+        }
+        previous = Some(member.name.clone());
         members.push(member);
     }
 
@@ -521,6 +735,7 @@ fn decode_member(row: &CanonicalValue) -> Result<MemberRecord, Diagnostic> {
     let CanonicalValue::Object(fields) = row else {
         return Err(manifest_invalid("a manifest member row is not an object"));
     };
+    require_exact_fields(fields, &["name", "sha256", "size"], "manifest member row")?;
     let (Some(CanonicalValue::Text(name)), Some(CanonicalValue::Text(digest)), Some(size)) = (
         fields.get(&FieldName::declared("name")),
         fields.get(&FieldName::declared("sha256")),
@@ -537,4 +752,68 @@ fn decode_member(row: &CanonicalValue) -> Result<MemberRecord, Diagnostic> {
         size,
         digest,
     })
+}
+
+fn require_exact_fields(
+    fields: &BTreeMap<FieldName, CanonicalValue>,
+    expected: &[&str],
+    context: &str,
+) -> Result<(), Diagnostic> {
+    let exact = fields.len() == expected.len()
+        && expected
+            .iter()
+            .all(|name| fields.keys().any(|field| field.as_str() == *name));
+    if exact {
+        return Ok(());
+    }
+    let actual = fields
+        .keys()
+        .map(FieldName::as_str)
+        .collect::<Vec<_>>()
+        .join(", ");
+    Err(manifest_invalid(format!(
+        "{context} fields must be exactly [{}]; found [{actual}]",
+        expected.join(", ")
+    )))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{MemberName, WorldPackage};
+    use crate::CanonicalValue;
+    use std::fs;
+    use std::path::PathBuf;
+
+    #[test]
+    fn an_injected_mid_write_failure_cleans_staging_and_never_publishes() {
+        let parent = PathBuf::from(option_env!("CARGO_TARGET_TMPDIR").unwrap_or("target/tmp"))
+            .join("package-faults")
+            .join(std::process::id().to_string());
+        fs::create_dir_all(&parent).unwrap();
+        let root = parent.join("injected.world");
+        let members = ["alpha.json", "beta.json"].map(|name| {
+            (
+                MemberName::new(name).unwrap(),
+                CanonicalValue::object_declared([("value", CanonicalValue::Uint(1))])
+                    .to_canonical_bytes(),
+            )
+        });
+
+        let rejected = WorldPackage::write_internal(&root, members, Some(1)).unwrap_err();
+        assert_eq!(rejected.code().as_str(), "EK0407");
+        assert!(
+            !root.exists(),
+            "a partial destination must never be visible"
+        );
+        assert!(
+            fs::read_dir(&parent).unwrap().all(|entry| {
+                !entry
+                    .unwrap()
+                    .file_name()
+                    .to_string_lossy()
+                    .contains(".staging-")
+            }),
+            "a failed publication must remove its sibling staging directory"
+        );
+    }
 }
