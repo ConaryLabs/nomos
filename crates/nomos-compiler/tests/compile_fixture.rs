@@ -152,12 +152,12 @@ fn world_ir_bytes_are_canonical_and_repeatable() {
         ir.schema().name().to_string(),
         "nomos.world_ir.construction"
     );
-    assert_eq!(ir.schema().version(), 2);
+    assert_eq!(ir.schema().version(), 3);
     let first = ir.to_canonical_bytes();
     let second = compile().to_canonical_bytes();
     assert_eq!(first, second);
     assert!(is_canonical(&first));
-    let encoded_schema = br#""schema":{"name":"nomos.world_ir.construction","version":2}"#;
+    let encoded_schema = br#""schema":{"name":"nomos.world_ir.construction","version":3}"#;
     assert!(
         first
             .windows(encoded_schema.len())
@@ -165,7 +165,7 @@ fn world_ir_bytes_are_canonical_and_repeatable() {
     );
     assert_eq!(
         nomos_core::hash::Sha256Digest::of_bytes(&first).to_hex(),
-        include_str!("golden/gaol-world-ir-nomos-construction-v2.sha256").trim()
+        include_str!("golden/gaol-world-ir-nomos-construction-v3.sha256").trim()
     );
     assert!(!first.ends_with(b"\n"));
 }

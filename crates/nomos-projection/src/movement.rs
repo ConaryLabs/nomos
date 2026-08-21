@@ -44,7 +44,7 @@ impl LatticeCell {
         self.z
     }
 
-    fn to_canonical(self) -> CanonicalValue {
+    pub(crate) fn to_canonical(self) -> CanonicalValue {
         CanonicalValue::object_declared([
             ("x", CanonicalValue::Int(i64::from(self.x))),
             ("y", CanonicalValue::Int(i64::from(self.y))),
@@ -124,7 +124,7 @@ impl ProjectedActivation {
         }
     }
 
-    fn to_canonical(&self) -> CanonicalValue {
+    pub(crate) fn to_canonical(&self) -> CanonicalValue {
         match self {
             Self::Always => {
                 CanonicalValue::object_declared([("kind", CanonicalValue::text("always"))])

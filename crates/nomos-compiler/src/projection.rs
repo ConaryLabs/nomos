@@ -4,19 +4,24 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use nomos_core::{ClaimRef, Diagnostic, EntityId, Ident, NamespaceId};
 use nomos_projection::{
-    CausalEdge, CommandRequirement, CommandTransition, EventHandler, EventPayload, LatticeCell,
-    MachineDefinition, MovementClaim, MovementConnectivity,
-    MovementResolverPlan as ProjectedMovementResolverPlan, MovementSubject, NavigationPlan, Phase,
-    ProjectedActivation, SimulationPlan,
+    CausalEdge, CommandRequirement, CommandTransition, DiagnosticsPlan, EventHandler, EventPayload,
+    LatticeCell, LightClaim, LightProjectionConsumer,
+    LightResolverPlan as ProjectedLightResolverPlan, LightSubject, MachineDefinition,
+    MovementClaim, MovementConnectivity, MovementResolverPlan as ProjectedMovementResolverPlan,
+    MovementSubject, NavigationPlan, PersistencePlan, Phase, ProjectedActivation,
+    ProjectedDirection, ProjectedEntity, RuntimeBinding, SimulationPlan,
+    validate_light_projection_agreement,
 };
 use nomos_schema::{
-    CapabilityKind, ClaimActivation, ClaimTemplate, ClaimValue, GroundConnectivity,
-    InteractionPhase, MovementCompositionLaw, TransitionDefinition, TransitionInput,
-    TransitionTrigger, WorldIr,
+    Binding, CapabilityKind, ClaimActivation, ClaimTemplate, ClaimValue, Direction,
+    GroundConnectivity, InteractionPhase, LightCompositionLaw, MovementCompositionLaw,
+    ProjectionConsumer, TransitionDefinition, TransitionInput, TransitionTrigger, WorldIr,
 };
 
 pub(crate) fn simulation_plan(ir: &WorldIr) -> Result<SimulationPlan, Diagnostic> {
     let movement_resolver = movement_plan(ir)?;
+    let light_resolver = light_plan(ir)?;
+    let entities = project_entities(ir, false)?;
     let mut machines = Vec::new();
     let mut edges = Vec::new();
 
@@ -74,7 +79,10 @@ pub(crate) fn simulation_plan(ir: &WorldIr) -> Result<SimulationPlan, Diagnostic
         }
     }
 
-    let plan = SimulationPlan::new(machines, edges)?.with_movement_resolver(movement_resolver);
+    let plan = SimulationPlan::new(machines, edges)?
+        .with_entities(entities)?
+        .with_movement_resolver(movement_resolver)
+        .with_light_resolver(light_resolver);
     validate_references(&plan)?;
     reject_cycles(&plan)?;
     Ok(plan)
@@ -82,6 +90,210 @@ pub(crate) fn simulation_plan(ir: &WorldIr) -> Result<SimulationPlan, Diagnostic
 
 pub(crate) fn navigation_plan(ir: &WorldIr) -> Result<NavigationPlan, Diagnostic> {
     Ok(NavigationPlan::new(movement_plan(ir)?))
+}
+
+pub(crate) fn persistence_plan(ir: &WorldIr) -> Result<PersistencePlan, Diagnostic> {
+    PersistencePlan::new(project_entities(ir, true)?, light_plan(ir)?)
+}
+
+pub(crate) fn diagnostics_plan(ir: &WorldIr) -> Result<DiagnosticsPlan, Diagnostic> {
+    DiagnosticsPlan::new(project_entities(ir, false)?, light_plan(ir)?)
+}
+
+pub(crate) fn validate_all_light_projections(ir: &WorldIr) -> Result<(), Diagnostic> {
+    let simulation = simulation_plan(ir)?;
+    let persistence = persistence_plan(ir)?;
+    let diagnostics = diagnostics_plan(ir)?;
+    validate_light_projection_agreement(simulation.light_resolver(), &persistence, &diagnostics)
+}
+
+fn light_plan(ir: &WorldIr) -> Result<ProjectedLightResolverPlan, Diagnostic> {
+    validate_light_resolver_shape(ir)?;
+    let machines: BTreeMap<&NamespaceId, &nomos_schema::MachineTemplate> = ir
+        .entities()
+        .iter()
+        .flat_map(|entity| entity.expansion().machines())
+        .map(|machine| (machine.namespace(), machine))
+        .collect();
+    let entities: BTreeMap<&EntityId, &nomos_schema::IrEntity> = ir
+        .entities()
+        .iter()
+        .map(|entity| (entity.id(), entity))
+        .collect();
+    let consumers = ir
+        .light_resolver()
+        .consumers()
+        .iter()
+        .map(|consumer| match consumer {
+            ProjectionConsumer::Diagnostics => LightProjectionConsumer::Diagnostics,
+            ProjectionConsumer::Persistence => LightProjectionConsumer::Persistence,
+            ProjectionConsumer::Simulation => LightProjectionConsumer::Simulation,
+            ProjectionConsumer::Navigation => unreachable!("shape validation rejects navigation"),
+        })
+        .collect();
+    let mut subjects = Vec::new();
+    for subject in ir.light_resolver().subjects() {
+        let entity = entities.get(subject.entity()).ok_or_else(|| {
+            Diagnostic::new(
+                nomos_core::diagnostic::codes::LIGHT_RESOLVER_PLAN_INVALID,
+                format!(
+                    "light resolver subject `{}` has no world entity",
+                    subject.entity()
+                ),
+            )
+        })?;
+        let claims: BTreeMap<&ClaimRef, &ClaimTemplate> = entity
+            .expansion()
+            .claims()
+            .iter()
+            .map(|claim| (claim.id(), claim))
+            .collect();
+        let expected: BTreeSet<ClaimRef> = claims
+            .values()
+            .filter(|claim| claim.capability() == CapabilityKind::EmitsLight)
+            .map(|claim| claim.id().clone())
+            .collect();
+        let declared: BTreeSet<ClaimRef> = subject.claims().iter().cloned().collect();
+        if declared != expected {
+            return Err(Diagnostic::new(
+                nomos_core::diagnostic::codes::LIGHT_RESOLVER_PLAN_INVALID,
+                format!(
+                    "light resolver subject `{}` does not name exactly its light claims",
+                    subject.entity()
+                ),
+            ));
+        }
+        let mut projected_claims = Vec::new();
+        for claim_ref in subject.claims() {
+            let claim = claims.get(claim_ref).ok_or_else(|| {
+                Diagnostic::new(
+                    nomos_core::diagnostic::codes::LIGHT_RESOLVER_PLAN_INVALID,
+                    format!("light claim `{claim_ref}` does not exist"),
+                )
+            })?;
+            validate_activation(claim.activation(), &machines)?;
+            let ClaimValue::Bool(value) = claim.value() else {
+                return Err(invalid_light_claim(claim.id()));
+            };
+            if !value {
+                return Err(invalid_light_claim(claim.id()));
+            }
+            projected_claims.push(LightClaim::new(
+                claim.id().clone(),
+                project_activation(claim.activation()),
+                *value,
+                entity.source_span().clone(),
+            ));
+        }
+        subjects.push(LightSubject::new(
+            subject.entity().clone(),
+            projected_claims,
+        )?);
+    }
+    ProjectedLightResolverPlan::new(true, consumers, subjects)
+}
+
+fn validate_light_resolver_shape(ir: &WorldIr) -> Result<(), Diagnostic> {
+    let plan = ir.light_resolver();
+    if plan.law() != LightCompositionLaw::Union {
+        return Err(Diagnostic::new(
+            nomos_core::diagnostic::codes::LIGHT_RESOLVER_PLAN_INVALID,
+            "light resolver must compose active claims by union",
+        ));
+    }
+    let expected_consumers: BTreeSet<_> = [
+        ProjectionConsumer::Diagnostics,
+        ProjectionConsumer::Persistence,
+        ProjectionConsumer::Simulation,
+    ]
+    .into_iter()
+    .collect();
+    if plan.consumers().iter().copied().collect::<BTreeSet<_>>() != expected_consumers {
+        return Err(Diagnostic::new(
+            nomos_core::diagnostic::codes::LIGHT_RESOLVER_PLAN_INVALID,
+            "light resolver must name exactly simulation, persistence, and diagnostics consumers",
+        ));
+    }
+    let expected_subjects: BTreeSet<EntityId> = ir
+        .entities()
+        .iter()
+        .filter(|entity| {
+            entity
+                .expansion()
+                .claims()
+                .iter()
+                .any(|claim| claim.capability() == CapabilityKind::EmitsLight)
+        })
+        .map(|entity| entity.id().clone())
+        .collect();
+    let declared_subjects: BTreeSet<EntityId> = plan
+        .subjects()
+        .iter()
+        .map(|subject| subject.entity().clone())
+        .collect();
+    if expected_subjects != declared_subjects {
+        return Err(Diagnostic::new(
+            nomos_core::diagnostic::codes::LIGHT_RESOLVER_PLAN_INVALID,
+            "light resolver subjects do not match entities with light claims",
+        ));
+    }
+    Ok(())
+}
+
+fn invalid_light_claim(claim: &ClaimRef) -> Diagnostic {
+    Diagnostic::new(
+        nomos_core::diagnostic::codes::LIGHT_CLAIM_INVALID,
+        format!("light claim `{claim}` must supply the positive boolean value `true`"),
+    )
+}
+
+fn project_entities(
+    ir: &WorldIr,
+    persisted_only: bool,
+) -> Result<Vec<ProjectedEntity>, Diagnostic> {
+    ir.entities()
+        .iter()
+        .filter(|entity| {
+            !persisted_only
+                || entity
+                    .expansion()
+                    .capabilities()
+                    .contains(&CapabilityKind::Persisted)
+        })
+        .map(|entity| {
+            ProjectedEntity::new(
+                entity.id().clone(),
+                project_binding(entity.binding()),
+                entity
+                    .expansion()
+                    .machines()
+                    .iter()
+                    .map(|machine| machine.namespace().clone())
+                    .collect(),
+            )
+        })
+        .collect()
+}
+
+fn project_binding(binding: &Binding) -> RuntimeBinding {
+    match binding {
+        Binding::Cell(cell) => RuntimeBinding::Cell(project_cell(*cell)),
+        Binding::Face { cell, direction } => RuntimeBinding::Face {
+            cell: project_cell(*cell),
+            direction: match direction {
+                Direction::North => ProjectedDirection::North,
+                Direction::East => ProjectedDirection::East,
+                Direction::South => ProjectedDirection::South,
+                Direction::West => ProjectedDirection::West,
+                Direction::Up => ProjectedDirection::Up,
+                Direction::Down => ProjectedDirection::Down,
+            },
+        },
+        Binding::Region { min, max } => RuntimeBinding::Region {
+            min: project_cell(*min),
+            max: project_cell(*max),
+        },
+    }
 }
 
 fn movement_plan(ir: &WorldIr) -> Result<ProjectedMovementResolverPlan, Diagnostic> {

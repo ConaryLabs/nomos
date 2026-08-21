@@ -1,9 +1,12 @@
-//! Command-time evaluation of compiler-projected movement claims.
+//! Command-time evaluation of compiler-projected effective-fact claims.
+
+use std::collections::BTreeSet;
 
 use nomos_core::{Diagnostic, NamespaceId};
 use nomos_projection::{
-    MachineDefinition, MovementClaim, MovementConnectivity, MovementDisposition,
-    ProjectedActivation, ResolvedMovement, ResolvedMovementFacts, SimulationPlan,
+    LightProjectionConsumer, MachineDefinition, MovementClaim, MovementConnectivity,
+    MovementDisposition, ProjectedActivation, ResolvedLight, ResolvedLightFacts, ResolvedMovement,
+    ResolvedMovementFacts, SimulationPlan,
 };
 
 use crate::SimulationState;
@@ -68,6 +71,64 @@ pub fn resolve_movement(
         facts.push(ResolvedMovement::new(subject.entity().clone(), disposition));
     }
     ResolvedMovementFacts::new(facts)
+}
+
+/// Resolves effective light facts from immutable projected state.
+///
+/// # Errors
+///
+/// Returns a stable `EK09xx` diagnostic when the plan contradicts the Gate K
+/// union law, carries a negative claim, or has a dangling activation.
+pub fn resolve_light(
+    plan: &SimulationPlan,
+    state: &SimulationState,
+) -> Result<ResolvedLightFacts, Diagnostic> {
+    let resolver = plan.light_resolver();
+    let expected_consumers: BTreeSet<_> = [
+        LightProjectionConsumer::Diagnostics,
+        LightProjectionConsumer::Persistence,
+        LightProjectionConsumer::Simulation,
+    ]
+    .into_iter()
+    .collect();
+    if !resolver.union_active()
+        || resolver
+            .consumers()
+            .iter()
+            .copied()
+            .collect::<BTreeSet<_>>()
+            != expected_consumers
+    {
+        return Err(Diagnostic::new(
+            nomos_core::diagnostic::codes::LIGHT_RESOLVER_PLAN_INVALID,
+            "runtime received a light plan outside the Gate K union contract",
+        ));
+    }
+
+    let mut facts = Vec::new();
+    for subject in resolver.subjects() {
+        let mut reasons = Vec::new();
+        for claim in subject.claims() {
+            if !claim.value() {
+                return Err(Diagnostic::new(
+                    nomos_core::diagnostic::codes::LIGHT_CLAIM_INVALID,
+                    format!(
+                        "projected light claim `{}` contradicts positive-only union semantics",
+                        claim.id()
+                    ),
+                ));
+            }
+            if activation_is_true(claim.activation(), plan, state)? {
+                reasons.push(claim.id().clone());
+            }
+        }
+        facts.push(ResolvedLight::new(
+            subject.entity().clone(),
+            !reasons.is_empty(),
+            reasons,
+        )?);
+    }
+    ResolvedLightFacts::new(facts)
 }
 
 fn validate_connectivity(connectivity: &MovementConnectivity) -> Result<(), Diagnostic> {

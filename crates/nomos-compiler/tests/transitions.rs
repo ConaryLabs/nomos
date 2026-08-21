@@ -122,11 +122,16 @@ fn projection_resolves_credentials_and_is_order_stable() {
 
     let mut machines = plan.machines().to_vec();
     let mut edges = plan.causal_edges().to_vec();
+    let mut entities = plan.entities().to_vec();
     machines.reverse();
     edges.reverse();
+    entities.reverse();
     let reversed = SimulationPlan::new(machines, edges)
         .unwrap()
-        .with_movement_resolver(plan.movement_resolver().clone());
+        .with_entities(entities)
+        .unwrap()
+        .with_movement_resolver(plan.movement_resolver().clone())
+        .with_light_resolver(plan.light_resolver().clone());
     assert_eq!(plan.to_canonical_bytes(), reversed.to_canonical_bytes());
 }
 

@@ -3,7 +3,8 @@
 use nomos_core::{Diagnostic, Ident};
 use nomos_schema::{
     Binding, CapabilityKind, Cell, Direction, GroundConnectivity, GroundMovementCoherence,
-    IrEntity, MovementCompositionLaw, MovementResolverPlan, MovementResolverSubject,
+    IrEntity, LightCompositionLaw, LightResolverPlan, LightResolverSubject, MovementCompositionLaw,
+    MovementResolverPlan, MovementResolverSubject, ProjectionConsumer,
 };
 
 pub(crate) fn construction_plan(entities: &[IrEntity]) -> Result<MovementResolverPlan, Diagnostic> {
@@ -40,6 +41,33 @@ pub(crate) fn construction_plan(entities: &[IrEntity]) -> Result<MovementResolve
             1,
             true,
         )?],
+        subjects,
+    )
+}
+
+pub(crate) fn light_construction_plan(
+    entities: &[IrEntity],
+) -> Result<LightResolverPlan, Diagnostic> {
+    let mut subjects = Vec::new();
+    for entity in entities {
+        let claims: Vec<_> = entity
+            .expansion()
+            .claims()
+            .iter()
+            .filter(|claim| claim.capability() == CapabilityKind::EmitsLight)
+            .map(|claim| claim.id().clone())
+            .collect();
+        if !claims.is_empty() {
+            subjects.push(LightResolverSubject::new(entity.id().clone(), claims)?);
+        }
+    }
+    LightResolverPlan::new(
+        LightCompositionLaw::Union,
+        vec![
+            ProjectionConsumer::Diagnostics,
+            ProjectionConsumer::Persistence,
+            ProjectionConsumer::Simulation,
+        ],
         subjects,
     )
 }

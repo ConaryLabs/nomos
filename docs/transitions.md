@@ -1,6 +1,6 @@
 ---
 title: Gate K transitions and transaction preparation
-status: Implementation reference through SW-E
+status: Implementation reference through SW-F
 date: 2026-08-21
 applies_to: KERNEL.md sections 1, 2, 4; acceptance 4-6
 ---
@@ -11,10 +11,10 @@ SW-D makes machine behavior compiler-owned and executable without allowing the
 runtime to read authoring source or Canonical World IR. The boundary is:
 
 ```text
-nomos-schema WorldIr construction@2 (Nomos epoch)
+nomos-schema WorldIr construction@3 (Nomos epoch)
   -> nomos-compiler validation and projection
-  -> nomos-projection SimulationPlan@2
-  -> nomos-sim immutable transaction preparation
+  -> nomos-projection SimulationPlan@3
+  -> nomos-sim immutable transaction preparation and commit
 ```
 
 `nomos-projection` depends only on `nomos-core`; `nomos-sim` depends only on
@@ -79,8 +79,11 @@ Preparation borrows `current`, clones it privately, validates and stages the
 local transition, queues matching state-entry events in projection order, and
 lets each target machine apply its own handler. A successful result contains a
 staged after-state, ordered `Local` then `Causal` transition steps, and
-effective movement facts resolved before and after complete causal settlement.
-It is not a committed snapshot.
+effective movement and light facts resolved before and after complete causal
+settlement. It is not a committed snapshot. SW-F's `commit_transaction`
+consumes the successful preparation privately, advances the tick with checked
+arithmetic, and returns a new `nomos.runtime_state@1` snapshot, its state hash,
+and a typed `nomos.causal_receipt@1`. No commit evidence is returned on rejection.
 
 Any `EK08xx` failure discards the staged clone. Tests compare both Rust equality
 and canonical state bytes around rejected commands. They cover missing/wrong
@@ -96,8 +99,9 @@ event, and target-owned `integrity → destroyed` staging in deterministic order
 It also proves unlock/open/close/unseal/extinguish local changes and that opening
 does not alter `ward`.
 
-SW-E now proves the ground `MovementDisposition` facts described in
-[`movement.md`](movement.md). It still does not prove light removal,
-persistence/diagnostics deltas, committed state, hashes, replay, migration,
-receipts, package/CLI orchestration, the ten-run target matrix, or whole-Gate-K
-cold-agent acceptance. Acceptance 5, 6, and 9 and Gate K remain open.
+SW-E's ground `MovementDisposition` facts remain as described in
+[`movement.md`](movement.md). SW-F proves light removal,
+persistence/diagnostics deltas, committed in-memory state, hashes, and typed
+causal receipts as described in [`runtime.md`](runtime.md). Replay, migration,
+package/filesystem CLI orchestration, the ten-run target matrix, and
+whole-Gate-K cold-agent acceptance remain open.

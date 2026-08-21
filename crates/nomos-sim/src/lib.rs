@@ -38,13 +38,17 @@
 
 use nomos_core::id::SchemaId;
 
+mod commit;
+mod receipt;
 mod resolver;
 mod transaction;
 
-pub use resolver::resolve_movement;
+pub use commit::{CommittedTransaction, commit_transaction, commit_transaction_with_budget};
+pub use receipt::{CausalReceipt, EffectiveFactRef, EffectiveFactValue, ProjectionDelta};
+pub use resolver::{resolve_light, resolve_movement};
 pub use transaction::{
-    DEFAULT_TRANSITION_BUDGET, PreparedTransaction, SimulationState, TransitionCause,
-    TransitionStep, prepare_transaction, prepare_transaction_with_budget,
+    DEFAULT_TRANSITION_BUDGET, PreparedTransaction, RuntimeEntityState, SimulationState,
+    TransitionCause, TransitionStep, prepare_transaction, prepare_transaction_with_budget,
 };
 
 /// The authoritative runtime-state schema.
@@ -62,6 +66,13 @@ pub fn runtime_state_schema() -> SchemaId {
     SchemaId::new("nomos.runtime_state", 1).expect("the runtime state schema id is a valid literal")
 }
 
+/// The typed causal-receipt schema written beside runtime state.
+#[must_use]
+pub fn causal_receipt_schema() -> SchemaId {
+    SchemaId::new("nomos.causal_receipt", 1)
+        .expect("the causal receipt schema id is a valid literal")
+}
+
 /// The replay and command-log schema.
 ///
 /// # Panics
@@ -75,12 +86,13 @@ pub fn replay_log_schema() -> SchemaId {
 
 #[cfg(test)]
 mod tests {
-    use super::{replay_log_schema, runtime_state_schema};
+    use super::{causal_receipt_schema, replay_log_schema, runtime_state_schema};
 
     #[test]
     fn runtime_schemas_are_independent_of_the_projections_this_crate_consumes() {
         let runtime = runtime_state_schema();
         assert_ne!(runtime.name(), replay_log_schema().name());
+        assert_ne!(runtime.name(), causal_receipt_schema().name());
         for projection in nomos_projection::all_schemas() {
             assert_ne!(
                 runtime.name(),

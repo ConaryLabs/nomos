@@ -34,8 +34,17 @@
 
 use nomos_core::id::SchemaId;
 
+mod artifacts;
+mod light;
 mod movement;
 mod simulation;
+mod state;
+
+pub use artifacts::{DiagnosticsPlan, PersistencePlan, validate_light_projection_agreement};
+pub use light::{
+    LightClaim, LightProjectionConsumer, LightResolverPlan, LightSubject, ResolvedLight,
+    ResolvedLightFacts,
+};
 
 pub use movement::{
     LatticeCell, MovementClaim, MovementConnectivity, MovementDisposition, MovementResolverPlan,
@@ -45,6 +54,7 @@ pub use simulation::{
     CausalEdge, Command, CommandArgument, CommandRequirement, CommandTransition, EventHandler,
     EventPayload, MachineDefinition, Phase, SimulationPlan,
 };
+pub use state::{ProjectedDirection, ProjectedEntity, RuntimeBinding};
 
 macro_rules! projection_schema {
     ($($function:ident => $name:literal @ $version:literal, $doc:literal;)*) => {
@@ -70,7 +80,7 @@ macro_rules! projection_schema {
 }
 
 projection_schema! {
-    simulation_schema => "nomos.projection.simulation" @ 2,
+    simulation_schema => "nomos.projection.simulation" @ 3,
         "The simulation projection schema.";
     navigation_schema => "nomos.projection.navigation" @ 1,
         "The navigation projection schema.";
@@ -93,7 +103,7 @@ mod tests {
         assert_eq!(schemas.len(), 4);
         let names: BTreeSet<String> = schemas.iter().map(|id| id.name().to_string()).collect();
         assert_eq!(names.len(), 4, "projection schema names must be distinct");
-        assert_eq!(simulation_schema().version(), 2);
+        assert_eq!(simulation_schema().version(), 3);
         assert_eq!(navigation_schema().version(), 1);
         assert_eq!(persistence_schema().version(), 1);
         assert_eq!(diagnostics_schema().version(), 1);

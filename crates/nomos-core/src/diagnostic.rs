@@ -26,7 +26,7 @@ use crate::canonical::{CanonicalValue, FieldName};
 /// | `EK06xx` | name resolution and linking |
 /// | `EK07xx` | transitions and causal interactions |
 /// | `EK08xx` | runtime transaction preparation |
-/// | `EK09xx` | movement resolution |
+/// | `EK09xx` | effective-fact resolution |
 /// | `EK10xx` | typed forensic provenance |
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 pub struct DiagnosticCode(&'static str);
@@ -456,6 +456,10 @@ pub mod codes {
     pub const RUNTIME_TRANSITION_BUDGET: DiagnosticCode = DiagnosticCode::new("EK0808");
     /// Initial or current runtime state does not conform to the projection.
     pub const RUNTIME_STATE_INVALID: DiagnosticCode = DiagnosticCode::new("EK0809");
+    /// A recorded state hash does not match the canonical runtime snapshot.
+    pub const RUNTIME_STATE_HASH_MISMATCH: DiagnosticCode = DiagnosticCode::new("EK0810");
+    /// Runtime commit evidence disagrees with compiler-projected consumers.
+    pub const RUNTIME_PROJECTION_MISMATCH: DiagnosticCode = DiagnosticCode::new("EK0811");
 
     /// A resolver-plan collection repeats one stable semantic identity.
     pub const RESOLVER_DUPLICATE_IDENTITY: DiagnosticCode = DiagnosticCode::new("EK0901");
@@ -475,6 +479,12 @@ pub mod codes {
     pub const RESOLVER_RUNTIME_REFERENCE_MISSING: DiagnosticCode = DiagnosticCode::new("EK0908");
     /// A resolved movement disposition violates its nonempty/positive invariant.
     pub const MOVEMENT_DISPOSITION_INVALID: DiagnosticCode = DiagnosticCode::new("EK0909");
+    /// A light claim contradicts the positive-only Gate K union semantics.
+    pub const LIGHT_CLAIM_INVALID: DiagnosticCode = DiagnosticCode::new("EK0910");
+    /// A light resolver plan omits or contradicts required Gate K semantics.
+    pub const LIGHT_RESOLVER_PLAN_INVALID: DiagnosticCode = DiagnosticCode::new("EK0911");
+    /// Persistence and diagnostics do not carry the same projected light facts.
+    pub const LIGHT_PROJECTION_MISMATCH: DiagnosticCode = DiagnosticCode::new("EK0912");
 
     /// A provenance record names a fact absent from the receipt graph or world.
     pub const PROVENANCE_FACT_REFERENCE_MISSING: DiagnosticCode = DiagnosticCode::new("EK1001");
@@ -530,6 +540,8 @@ pub mod codes {
         RUNTIME_EVENT_HANDLER_MISSING,
         RUNTIME_TRANSITION_BUDGET,
         RUNTIME_STATE_INVALID,
+        RUNTIME_STATE_HASH_MISMATCH,
+        RUNTIME_PROJECTION_MISMATCH,
         RESOLVER_DUPLICATE_IDENTITY,
         RESOLVER_CLAIM_ENTITY_MISMATCH,
         RESOLVER_ACTIVATION_NAMESPACE_MISSING,
@@ -539,6 +551,9 @@ pub mod codes {
         RESOLVER_PLAN_INVALID,
         RESOLVER_RUNTIME_REFERENCE_MISSING,
         MOVEMENT_DISPOSITION_INVALID,
+        LIGHT_CLAIM_INVALID,
+        LIGHT_RESOLVER_PLAN_INVALID,
+        LIGHT_PROJECTION_MISMATCH,
         PROVENANCE_FACT_REFERENCE_MISSING,
         PROVENANCE_VALUE_INVALID,
         PROVENANCE_PRODUCER_UNKNOWN,

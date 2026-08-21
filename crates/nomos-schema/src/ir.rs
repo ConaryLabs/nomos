@@ -10,8 +10,8 @@ use nomos_core::{
 };
 
 use crate::{
-    Binding, FactIdentity, FactOwnershipReceipt, InteractionDefinition, MovementResolverPlan,
-    TransitionDefinition, construction_world_ir_schema,
+    Binding, FactIdentity, FactOwnershipReceipt, InteractionDefinition, LightResolverPlan,
+    MovementResolverPlan, TransitionDefinition, construction_world_ir_schema,
 };
 
 /// A capability in the sealed Gate K basis used by the three approved kinds.
@@ -525,6 +525,7 @@ pub struct WorldIr {
     relations: Vec<IrRelation>,
     ownership_receipts: Vec<FactOwnershipReceipt>,
     movement_resolver: MovementResolverPlan,
+    light_resolver: LightResolverPlan,
 }
 
 impl WorldIr {
@@ -599,12 +600,19 @@ impl WorldIr {
             relations,
             ownership_receipts,
             movement_resolver: MovementResolverPlan::empty_gate_k(),
+            light_resolver: LightResolverPlan::empty_gate_k(),
         })
     }
     /// Attaches the compiler-prepared movement resolver plan.
     #[must_use]
     pub fn with_movement_resolver(mut self, movement_resolver: MovementResolverPlan) -> Self {
         self.movement_resolver = movement_resolver;
+        self
+    }
+    /// Attaches the compiler-prepared effective-light resolver plan.
+    #[must_use]
+    pub fn with_light_resolver(mut self, light_resolver: LightResolverPlan) -> Self {
+        self.light_resolver = light_resolver;
         self
     }
     /// IR schema identity.
@@ -642,6 +650,11 @@ impl WorldIr {
     pub const fn movement_resolver(&self) -> &MovementResolverPlan {
         &self.movement_resolver
     }
+    /// Compiler-prepared effective-light resolver plan.
+    #[must_use]
+    pub const fn light_resolver(&self) -> &LightResolverPlan {
+        &self.light_resolver
+    }
 
     /// Canonical semantic value for this construction snapshot.
     #[must_use]
@@ -665,6 +678,7 @@ impl WorldIr {
                 )
                 .expect("WorldIr validates unique entity IDs"),
             ),
+            ("light_resolver", self.light_resolver.to_canonical()),
             ("movement_resolver", self.movement_resolver.to_canonical()),
             (
                 "ownership_receipts",
