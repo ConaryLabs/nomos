@@ -1,0 +1,164 @@
+//! The canonical byte profile of `KERNEL.md` section 7.
+
+use estate_core::canonical::keyed_array;
+use estate_core::canonical::read::{is_canonical, parse_canonical};
+use estate_core::id::{EntityId, StableId};
+use estate_core::{CanonicalValue, FieldName};
+
+fn field(name: &str) -> FieldName {
+    FieldName::new(name).unwrap()
+}
+
+#[test]
+fn encoding_is_byte_stable_across_insertion_order() {
+    let pairs = [
+        (field("ward"), CanonicalValue::text("sealed")),
+        (field("access"), CanonicalValue::text("locked")),
+        (field("integrity"), CanonicalValue::text("intact")),
+        (field("combustion"), CanonicalValue::text("cold")),
+    ];
+
+    let forward = CanonicalValue::object(pairs.clone());
+    let reversed = CanonicalValue::object(pairs.iter().rev().cloned());
+    let shuffled = CanonicalValue::object([
+        pairs[2].clone(),
+        pairs[0].clone(),
+        pairs[3].clone(),
+        pairs[1].clone(),
+    ]);
+
+    let expected =
+        br#"{"access":"locked","combustion":"cold","integrity":"intact","ward":"sealed"}"#.to_vec();
+    assert_eq!(forward.to_canonical_bytes(), expected);
+    assert_eq!(reversed.to_canonical_bytes(), expected);
+    assert_eq!(shuffled.to_canonical_bytes(), expected);
+}
+
+#[test]
+fn arrays_ordered_by_stable_id_do_not_depend_on_declaration_order() {
+    let entity = |name: &str| {
+        let id = EntityId::parse(name).unwrap();
+        (
+            id.clone(),
+            CanonicalValue::object([(field("id"), id.to_canonical())]),
+        )
+    };
+
+    let declared = keyed_array([
+        entity("north_gate"),
+        entity("brazier_02"),
+        entity("flooded_section"),
+    ]);
+    let other_order = keyed_array([
+        entity("flooded_section"),
+        entity("north_gate"),
+        entity("brazier_02"),
+    ]);
+
+    assert_eq!(
+        declared.to_canonical_bytes(),
+        other_order.to_canonical_bytes()
+    );
+    assert_eq!(
+        declared.to_canonical_bytes(),
+        br#"[{"id":"brazier_02"},{"id":"flooded_section"},{"id":"north_gate"}]"#.to_vec()
+    );
+}
+
+#[test]
+fn integers_are_the_only_numbers_and_have_one_spelling() {
+    assert_eq!(CanonicalValue::Int(0).to_canonical_bytes(), b"0".to_vec());
+    assert_eq!(CanonicalValue::Int(-3).to_canonical_bytes(), b"-3".to_vec());
+    assert_eq!(
+        CanonicalValue::Uint(u64::MAX).to_canonical_bytes(),
+        b"18446744073709551615".to_vec()
+    );
+
+    // No float variant exists, so an authoritative artifact cannot carry one.
+    // Reading one back is refused rather than rounded.
+    let rejected = parse_canonical(br#"{"cost":3.0}"#).unwrap_err();
+    assert_eq!(rejected.code().as_str(), "EK0302");
+    assert!(rejected.message().contains("floating-point"));
+    assert!(parse_canonical(br#"{"cost":3e2}"#).is_err());
+}
+
+#[test]
+fn strings_escape_only_what_the_profile_requires() {
+    let value = CanonicalValue::text("quote\" slash\\ tab\t nul\u{0} bell\u{7} caf\u{e9} \u{7f}");
+    let bytes = value.to_canonical_bytes();
+    let text = String::from_utf8(bytes.clone()).unwrap();
+    assert_eq!(
+        text,
+        "\"quote\\\" slash\\\\ tab\\t nul\\u0000 bell\\u0007 caf\u{e9} \u{7f}\""
+    );
+    // Non-ASCII is emitted as UTF-8, never as an escape.
+    assert!(bytes.windows(2).any(|pair| pair == [0xc3, 0xa9]));
+    assert_eq!(parse_canonical(&bytes).unwrap(), value);
+}
+
+#[test]
+fn the_reader_refuses_everything_the_profile_forbids() {
+    let canonical = br#"{"a":1,"b":[true,null]}"#;
+    assert!(is_canonical(canonical));
+
+    let rejected: [(&[u8], &str, &str); 8] = [
+        (b"{\"b\":1,\"a\":2}", "EK0303", "unsorted keys"),
+        // The reader never skips whitespace, so this is refused structurally
+        // rather than by the re-encode comparison.
+        (b"{\"a\": 1}", "EK0302", "insignificant whitespace"),
+        (b"{\"a\":01}", "EK0303", "redundant leading zero"),
+        (b"{\"a\":+1}", "EK0302", "leading plus"),
+        (
+            b"{\"a\":\"\\u0041\"}",
+            "EK0303",
+            "escape where UTF-8 belongs",
+        ),
+        (b"{\"a\":\"\\/\"}", "EK0303", "escaped solidus"),
+        (b"{\"a\":1,\"a\":2}", "EK0303", "duplicate key"),
+        (b"{\"a\":1}\n", "EK0302", "trailing newline"),
+    ];
+    for (bytes, code, why) in rejected {
+        let diagnostic = parse_canonical(bytes).unwrap_err();
+        assert_eq!(
+            diagnostic.code().as_str(),
+            code,
+            "{why}: {}",
+            String::from_utf8_lossy(bytes)
+        );
+    }
+
+    // A byte-order mark is not whitespace and is not a value.
+    assert!(parse_canonical("\u{feff}{}".as_bytes()).is_err());
+    // Object keys use the same restricted shape as identifiers.
+    assert_eq!(
+        parse_canonical(br#"{"Alpha":1}"#)
+            .unwrap_err()
+            .code()
+            .as_str(),
+        "EK0301"
+    );
+}
+
+#[test]
+fn every_canonical_encoding_reads_back_to_the_same_bytes() {
+    let value = CanonicalValue::object([
+        (field("empty_array"), CanonicalValue::Array(vec![])),
+        (field("empty_object"), CanonicalValue::object([])),
+        (field("flag"), CanonicalValue::Bool(false)),
+        (field("nothing"), CanonicalValue::Null),
+        (
+            field("nested"),
+            CanonicalValue::Array(vec![
+                CanonicalValue::Int(-1),
+                CanonicalValue::object([(field("deep"), CanonicalValue::text(""))]),
+            ]),
+        ),
+    ]);
+    let bytes = value.to_canonical_bytes();
+    let reread = parse_canonical(&bytes).unwrap();
+    assert_eq!(reread.to_canonical_bytes(), bytes);
+    assert!(
+        !bytes.ends_with(b"\n"),
+        "hashed bytes carry no trailing newline"
+    );
+}

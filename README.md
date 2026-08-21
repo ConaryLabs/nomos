@@ -12,7 +12,9 @@ test that thesis before any renderer is built.
 ## Status
 
 - **Architecture status:** exploratory and non-authoritative
-- **Implementation status:** semantic kernel not started
+- **Implementation status:** workspace, stable IDs, canonical encoding,
+  hashing, and package mechanics implemented (SW-B); no command surface, no
+  parser, no runtime
 - **Contract revision:** 2
 - **Scope:** greenfield / vacuum architecture exercise
 - **Effect on other projects:** none unless separately adopted by an explicit
@@ -34,11 +36,28 @@ it.
    — the owner-authorized revision-1 to revision-2 contract repair.
 4. [docs/evaluation/COLD_AGENT_PROTOCOL.md](docs/evaluation/COLD_AGENT_PROTOCOL.md)
    — the reproducible cold-author, cold-debug, and cold-review procedure.
-5. [docs/review/2026-08-21-founding-review.md](docs/review/2026-08-21-founding-review.md)
+5. [docs/workspace.md](docs/workspace.md) — the crate map, how to run the
+   proof, and the decisions the first implementation slice had to make.
+6. [docs/review/2026-08-21-founding-review.md](docs/review/2026-08-21-founding-review.md)
    — the condensed primary record of the founding adversarial review, written
    in the originating session, with its provenance limits stated.
-6. [docs/review/2026-08-21-founding-review-synthesis.md](docs/review/2026-08-21-founding-review-synthesis.md)
+7. [docs/review/2026-08-21-founding-review-synthesis.md](docs/review/2026-08-21-founding-review-synthesis.md)
    — the contract-revision-2 edited synthesis of that review.
+
+## Layout
+
+```text
+README.md          status and reading order
+THESIS.md          the design thesis
+KERNEL.md          the Gate K acceptance contract
+docs/              decisions, evaluation protocols, reviews, workspace notes
+crates/            the six Gate K kernel crates named in KERNEL.md section 10
+xtask/             workspace tooling; `cargo xtask boundary`
+.github/workflows/ the verification lane
+```
+
+The kernel crates have no third-party dependencies: `Cargo.lock` holds seven
+local entries and nothing else, so the workspace builds and tests offline.
 
 ## Gate order
 

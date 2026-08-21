@@ -64,14 +64,21 @@ is authority for any other project.
 ## Repository layout
 
 ```text
-README.md        status and reading order
-THESIS.md        exploratory design thesis, currently revision 2
-KERNEL.md        Gate K acceptance contract, currently revision 2
-docs/decisions/  owner-authorized contract and architecture decisions
-docs/evaluation/ reproducible evaluation protocols
-docs/review/     review syntheses, provenance notes, and cold-review records
-experiments/     optional disposable work that cannot satisfy acceptance
+README.md          status and reading order
+THESIS.md          exploratory design thesis, currently revision 2
+KERNEL.md          Gate K acceptance contract, currently revision 2
+docs/decisions/    owner-authorized contract and architecture decisions
+docs/evaluation/   reproducible evaluation protocols
+docs/review/       review syntheses, provenance notes, and cold-review records
+docs/workspace.md  crate map, boundary tool, and the decisions SW-B made
+crates/            the six Gate K kernel crates
+xtask/             workspace tooling; the dependency-boundary check
+.github/workflows/ the verification lane
+experiments/       optional disposable work that cannot satisfy acceptance
 ```
 
 The Gate K workspace layout and permitted dependency edges are defined directly
 in `KERNEL.md`; do not infer them from the historical disagreement table.
+`docs/workspace.md` records where those crates live and how the boundary check
+proves them, and `cargo xtask boundary` fails closed on any new workspace member
+that neither `KERNEL.md` nor that document declares.

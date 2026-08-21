@@ -1,0 +1,15 @@
+[package]
+name = "estate-sim"
+description = "Runtime state, command transactions, replay, and effective-fact resolution."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+# KERNEL.md section 10: estate-sim -> estate-core, estate-projection only.
+# Depending on estate-schema or the source parser is named as forbidden.
+[dependencies]
+estate-core.workspace = true
+estate-projection.workspace = true

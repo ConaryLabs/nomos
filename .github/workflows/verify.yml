@@ -1,0 +1,96 @@
+name: verify
+
+# The SW-B proof lane: formatting, lints, tests, the KERNEL.md section 10
+# dependency-boundary check, and a determinism step.
+#
+# Scope limit, stated rather than implied: KERNEL.md section 7 requires ten runs
+# on each of Linux x86_64 debug, Linux x86_64 release, and Linux aarch64
+# release. This workflow proves x86_64 debug and release only. The aarch64
+# target and the ten-run count are recorded as UNPROVED and belong to the slice
+# that owns the determinism matrix. Gate K is not green until they exist.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_INCREMENTAL: 0
+  CARGO_TERM_COLOR: always
+  # Debug info is capped by the workspace `[profile.dev]` setting rather than
+  # here, so a local build and a CI build measure the same thing.
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Disk before
+        run: |
+          df -h
+          du -sh ~/.cargo 2>/dev/null || true
+
+      - name: Install the pinned toolchain
+        run: |
+          rustup show
+          rustup component add rustfmt clippy
+          rustc --version
+          cargo --version
+          cargo fmt --version
+          cargo clippy --version
+
+      - name: Format
+        run: cargo fmt --all -- --check
+
+      - name: Lint
+        run: cargo clippy --workspace --all-targets --locked -- -D warnings
+
+      - name: Test
+        run: cargo test --workspace --locked
+
+      - name: Dependency boundaries (KERNEL.md section 10, acceptance 15)
+        run: cargo xtask boundary
+
+      - name: Determinism
+        # The canonical-hash test prints `HASH <name> <hex>` lines. Four runs —
+        # debug twice, release twice — must produce byte-identical lines.
+        run: |
+          set -euo pipefail
+          hashes() {
+            cargo test --locked -p estate-core --test determinism "$@" \
+              -- --nocapture --test-threads=1 | grep '^HASH ' | sort
+          }
+          hashes > debug-1.txt
+          hashes > debug-2.txt
+          hashes --release > release-1.txt
+          hashes --release > release-2.txt
+          # Exact count, not just non-empty: a silently dropped line would
+          # otherwise let a shrinking proof pass.
+          test "$(wc -l < debug-1.txt)" -eq 3 || {
+            echo "expected 3 HASH lines, got $(wc -l < debug-1.txt)"; exit 1;
+          }
+          diff -u debug-1.txt debug-2.txt
+          diff -u debug-1.txt release-1.txt
+          diff -u release-1.txt release-2.txt
+          echo "determinism: identical across debug and release on $(uname -m)"
+          cat debug-1.txt
+
+      - name: Build
+        run: |
+          set -euo pipefail
+          start=$(date +%s)
+          cargo build --workspace --locked
+          echo "build seconds: $(( $(date +%s) - start ))"
+
+      - name: Budgets (acceptance 16)
+        if: always()
+        run: |
+          du -sh target
+          du -sh ~/.cargo 2>/dev/null || true
+          df -h
