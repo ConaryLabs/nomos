@@ -55,7 +55,7 @@ It independently recorded:
 cargo fmt --all -- --check                                  exit 0
 cargo clippy --workspace --all-targets --locked -- -D warnings exit 0
 cargo test --workspace --locked                             exit 0
-  79 tests plus 10 doctests, zero failed or ignored
+  73 tests plus 10 doctests, zero failed or ignored
 cargo xtask boundary                                        exit 0
   boundary: clean
 git status before and after                                 clean
@@ -85,3 +85,24 @@ route, prompts, transcript, branch, and reviewed commit; added a frozen SHA-256
 fixture over every canonical construction-v1 byte; documented that guard; moved
 SW-D version bookkeeping out of KERNEL; and added an inline proposed-revision
 heading.
+
+## Iteration 3 — FAIL
+
+Subject: `37fa7a9288b7484f1e311f18f9db96cbd533c334`.
+
+The reviewer verified every prior finding closed, found no stale schema
+identity, and confirmed no criterion was weakened. It independently hashed the
+5,556-byte canonical construction snapshot with coreutils and matched the
+frozen `accd979dbc4d8caea132f757366192b24cdddc723ce5499c3ae5fac0b7d26a2b`
+digest. In a disposable `/tmp` copy it added a canonical IR field: the golden
+test failed while every other workspace test stayed green, proving the guard's
+necessity and scope. The scratch copy was removed.
+
+All proof commands passed on an unchanged tree. The reviewer counted 73
+unit/integration tests and 10 doctests. It found that iteration 2 had been
+transcribed here and in `RUN.md` as 79 plus 10. Because the durable receipt must
+be reproducible, the two incorrect counts were its sole actionable finding.
+Verdict: **FAIL**.
+
+Operator disposition: corrected both counts from 79 to 73 and preserved the
+failure in the review history.

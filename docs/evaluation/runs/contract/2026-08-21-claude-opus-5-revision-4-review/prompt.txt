@@ -34,3 +34,25 @@ git status --short --branch. Report exact full commit, canonical model identity
 if available, findings ordered by severity with file/line evidence, command
 results, clean-tree result, and final PASS or FAIL. PASS only if there are no
 actionable defects and all four proof commands pass.
+
+=== Iteration 3 ===
+
+Act as the final independent non-author reviewer of exact HEAD 37fa7a9 on branch
+contract/world-ir-construction-lineage in /home/peter/signed-world. Do not edit
+files, commit, push, or use network. Read AGENTS.md, README.md, THESIS.md,
+KERNEL.md, docs/decisions/0004-world-ir-construction-lineage.md, all three files
+under docs/evaluation/runs/contract/2026-08-21-claude-opus-5-revision-4-review/,
+and the complete branch diff and commit history against main. Verify every
+finding from iterations 1 and 2 is closed. In particular prove the golden
+SHA-256 fixture fails closed over the full construction-v1 canonical bytes,
+receipt history accurately distinguishes the amended-away historical SHA from
+retrievable commits, KERNEL contains only general normative construction rules
+while decision 0004 owns SW-D bookkeeping, proposed/effective authority is
+unambiguous, and no contract criterion was weakened. Search for stale identities
+and any new inconsistency. Run these exact commands separately and record each
+exit: git status --short --branch; cargo fmt --all -- --check; cargo clippy
+--workspace --all-targets --locked -- -D warnings; cargo test --workspace
+--locked; cargo xtask boundary; git status --short --branch. Report the exact
+full commit and branch, canonical model identity, environment, findings with
+file/line evidence, every command result, clean-tree result, and final PASS or
+FAIL. PASS only with zero actionable findings and all proof commands green.

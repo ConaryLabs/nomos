@@ -1,6 +1,6 @@
 # Contract revision 4 non-author review
 
-**Verdict:** in progress after two failed review iterations
+**Verdict:** in progress after three failed review iterations
 
 **Date:** 2026-08-21
 
@@ -20,7 +20,8 @@ formal whole-Gate-K cold-agent subject run.
 - Resolved canonical model: `claude-opus-5`.
 - Effort: high.
 - Sessions: `376f2c45-66eb-4250-9946-ae2ad95a67d6`,
-  `c663db07-d5bf-48f6-a30e-34b4807c116b`.
+  `c663db07-d5bf-48f6-a30e-34b4807c116b`,
+  `839cf8a0-ee49-43f5-8684-1cc9c42ad97d`.
 - Operator: Mira.
 - Mode: read-only; no subagents, fallback model, web search, file edits,
   commits, pushes, GitHub writes, or resumed unrelated conversation.
@@ -48,6 +49,11 @@ The failures are part of the evidence and are not normalized away:
    fail-closed construction-shape obligation neither implemented nor filed.
    The reviewer also asked that SW-D version bookkeeping move out of the
    normative KERNEL body.
+3. `37fa7a9288b7484f1e311f18f9db96cbd533c334` — **fail**. The
+   reviewer proved every prior finding closed, independently mutation-tested
+   the golden construction fixture, and reran the full proof successfully. It
+   found one receipt transcription error: the reproducible unit/integration
+   count is 73, not 79. Both incorrect occurrences are corrected here.
 
 ## Proof at the second reviewed head
 
@@ -57,7 +63,7 @@ At `ecc664362eee0dda76a9d721d58813e37e2b8a05`, the reviewer independently ran:
 | --- | --- |
 | `cargo fmt --all -- --check` | pass, exit 0 |
 | `cargo clippy --workspace --all-targets --locked -- -D warnings` | pass, exit 0 |
-| `cargo test --workspace --locked` | pass, exit 0, 79 tests plus 10 doctests |
+| `cargo test --workspace --locked` | pass, exit 0, 73 tests plus 10 doctests |
 | `cargo xtask boundary` | pass, exit 0, `boundary: clean` |
 
 The reviewer confirmed exact HEAD and an empty working tree before and after.
