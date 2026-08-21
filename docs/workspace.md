@@ -125,6 +125,14 @@ The module knows nothing about member *meaning*. It enforces names, bytes,
 hashes, and immutability. What `simulation.json` must contain stays in
 `estate-projection`.
 
+Contract revision 5 closes the directory boundary around that generic layer.
+Writes use a verified sibling staging directory and one same-filesystem rename;
+reads require exact manifest shapes, ordered unique rows, canonical members,
+and regular-file-only roots without symlinks or undeclared subtrees. Compiler
+receipts become the hashed `compiler-receipts.json` member, while runtime causal
+receipts remain separate run artifacts. [`packages.md`](packages.md) records the
+supported local-filesystem/single-publisher limit and the evidence still absent.
+
 ### SHA-256 in-crate under the Gate K dependency policy
 
 The state hash is the constitutional identity of authoritative state, and

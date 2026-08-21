@@ -1,6 +1,6 @@
 # Handoff — state of the repository
 
-Updated 2026-08-21 on the SW-E issue #28 implementation branch.
+Updated 2026-08-21 after SW-E merged and package-boundary issue #22 began.
 This file orients a fresh session; it is rewritten at each slice boundary and
 never accumulates history (git has that).
 
@@ -70,7 +70,7 @@ never accumulates history (git has that).
   object fields, stable keyed arrays, package members/manifest rows,
   machine/claim identities, transitions, and interactions fail closed instead
   of retaining a final duplicate.
-- **SW-E is implemented on `feature/sw-e-28`:** construction IR advances to
+- **SW-E is merged (#28/#29):** construction IR advances to
   `estate.world_ir.construction@3` with explicit movement composition,
   coherence, connectivity, and resolver subjects. Simulation advances to `@2`,
   navigation begins at `@1`, and both receive one byte-identical typed resolver
@@ -78,23 +78,36 @@ never accumulates history (git has that).
   claim activation after complete local/causal settlement and exposes immutable
   before/after facts. The exact fixture proves two initial gate blockers, ward
   survival after opening or destruction, base cost `1` after unsealing, and
-  water cost `3`. The four-command author proof passes; exact-head non-author
-  and CI evidence are pending.
+  water cost `3`. GPT-5.6 Luna max found and verified fixes for stale projection
+  documentation and invalid-connectivity validation, then reran exact head
+  `6dda1d0` green. PR #29 and post-merge CI run `32521857686` passed; merge
+  commit `dacfaef` is clean on main. Issue #28 is closed.
+- **Contract revision 5 is in progress for #22:** decision 0006 replaces the
+  unmanifested package `receipts/` subtree with canonical hashed
+  `compiler-receipts.json`; runtime causal receipts remain only in run outputs.
+  It also defines same-filesystem staged publication and exact filesystem and
+  manifest verification. The implementation and four-command author proof are
+  green on `feature/package-boundary-22`. The first GPT-5.6 Luna max pass on
+  `c70b5bf` found a trailing-separator root-symlink bypass and an unstated
+  path-based reader race boundary. Both are repaired: roots are lexically
+  normalized before entry checks, the regression test covers both spellings,
+  and revision 5 now explicitly requires a caller-owned quiescent package tree.
+  A replacement exact-head Luna rerun is pending. Revision 4 remains effective
+  until this branch merges.
 
 ## What is next
 
-Finish **SW-E issue #28**: run the complete author proof, obtain the exact-head
-GPT-5.6 Luna max non-author rerun, merge after CI, and record the resulting
-evidence.
+Finish **issue #22 — seal the WorldPackage evidence boundary** under decision
+0006 by obtaining the replacement exact-head non-author rerun, merging PR #30,
+and confirming post-merge CI before SW-F relies on packages.
 
-Do not pull #22 package hardening or #24 typed forensic provenance sideways into
-SW-E. Resolve #22 before package/CLI/migration evidence and #24 before stable
-World IR promotion or `explain-*`. Issue #17 remains a formal cold-author
-tooling blocker, not a blocker for semantic implementation.
+Do not pull #24 typed forensic provenance into this package-boundary repair.
+Resolve #24 before stable World IR promotion or `explain-*`. Issue #17 remains
+a formal cold-author tooling blocker, not a blocker for implementation.
 
-After SW-E: SW-F (runtime state, replay, migration v1→v2, `explain-*`), complete
-command surface/package orchestration, determinism matrix, and formal cold-agent
-gates.
+After #22: resolve #24 at its stated boundary, then continue SW-F runtime state,
+replay, migration v1→v2, package/command orchestration, explanations, the
+determinism matrix, and formal cold-agent gates.
 
 ## How to prove the current branch
 
