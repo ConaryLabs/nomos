@@ -45,5 +45,7 @@ pub mod package;
 pub use canonical::{CanonicalValue, FieldName, to_canonical_bytes};
 pub use diagnostic::{Diagnostic, DiagnosticCode, RepairClass, SourcePath, SourceSpan};
 pub use hash::{Sha256Digest, StateHash};
-pub use id::{CatalogValueId, ClaimRef, EntityId, NamespaceId, SchemaId, SchemaName};
+pub use id::{
+    CatalogValueId, ClaimRef, EntityId, NamespaceId, PrimitiveKindId, SchemaId, SchemaName,
+};
 pub use ident::Ident;

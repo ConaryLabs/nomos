@@ -1,39 +1,50 @@
-//! The compile-time half of the kernel.
+//! The compile-time half of the Gate K kernel.
 //!
-//! `KERNEL.md` section 10 assigns this crate *parse, link, expand, validate,
-//! migrate, and project*. Section 2 fixes what "compile time" means here: it
-//! prepares claim templates, machines, interaction edges, composition laws,
-//! coherence rules, and a resolver plan. It does **not** decide final subsystem
-//! deltas — amendment A4 exists precisely because opening a door may leave
-//! movement blocked while a ward still claims it.
-//!
-//! This crate is the only place that reads both the Canonical World IR schema
-//! and the projection schemas, because it is the only thing that turns one into
-//! the other.
-//!
-//! # Boundary
-//!
-//! Its three permitted edges all resolve:
-//!
-//! ```
-//! use estate_core::id::SchemaId;
-//! let _: Vec<SchemaId> = estate_compiler::consumed_schemas();
-//! let _: Vec<SchemaId> = estate_compiler::produced_schemas();
-//! ```
-//!
-//! It may not reach `estate-sim`. The compiler produces artifacts; it does not
-//! execute them, and a compiler that could name runtime state would be able to
-//! precompute deltas that section 2 says are not knowable until command time:
-//!
-//! ```compile_fail
-//! let _ = estate_sim::runtime_state_schema();
-//! ```
+//! SW-C implements source schema version 1, parsing, typed name resolution,
+//! approved primitive expansion, and the fact-ownership linker. Command-time
+//! effective-fact resolution remains in `estate-sim`; this crate cannot depend
+//! on it by construction.
 
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]
 #![warn(missing_debug_implementations)]
 
-use estate_core::id::SchemaId;
+mod catalog;
+pub mod diagnostics;
+mod linker;
+mod parser;
+
+use estate_core::{Diagnostic, SchemaId, SourcePath};
+use estate_schema::{SourceDocument, WorldIr};
+
+/// Parses source schema version 1 without resolving cross-references.
+///
+/// # Errors
+///
+/// Returns the first deterministic syntax/schema diagnostic with a source span.
+pub fn parse_source(source: &str, path: SourcePath) -> Result<SourceDocument, Diagnostic> {
+    parser::parse(source, path)
+}
+
+/// Resolves names, enforces ownership, expands approved primitives, and emits
+/// Canonical World IR.
+///
+/// # Errors
+///
+/// Returns the first deterministic linker diagnostic with a source span.
+pub fn link_source(document: &SourceDocument) -> Result<WorldIr, Diagnostic> {
+    linker::link(document)
+}
+
+/// Compiles one `.estate` source file through parsing and ownership linking.
+///
+/// # Errors
+///
+/// Returns a stable source or linker diagnostic. No partial IR is returned.
+pub fn compile_source(source: &str, path: SourcePath) -> Result<WorldIr, Diagnostic> {
+    let document = parse_source(source, path)?;
+    link_source(&document)
+}
 
 /// The schemas this compiler reads.
 #[must_use]
@@ -45,9 +56,6 @@ pub fn consumed_schemas() -> Vec<SchemaId> {
 }
 
 /// The schemas this compiler writes.
-///
-/// The Canonical World IR appears on both sides: the compiler emits it from
-/// source, and the migration path reads a previous version of it.
 #[must_use]
 pub fn produced_schemas() -> Vec<SchemaId> {
     let mut schemas = vec![estate_schema::world_ir_schema()];
@@ -65,14 +73,8 @@ mod tests {
         let produced = produced_schemas();
         assert!(consumed.contains(&estate_schema::source_schema()));
         for projection in estate_projection::all_schemas() {
-            assert!(
-                produced.contains(&projection),
-                "the compiler must produce every projection schema"
-            );
-            assert!(
-                !consumed.contains(&projection),
-                "a projection schema is compiler output, never compiler input"
-            );
+            assert!(produced.contains(&projection));
+            assert!(!consumed.contains(&projection));
         }
     }
 }

@@ -90,7 +90,7 @@ That is a property of the source, not of the dependency graph, and
 `cargo metadata` cannot see it. It is enforced structurally instead: the
 Canonical World IR type is defined in `estate-schema`, and every crate that must
 not see it lacks the edge that would let it. The checker proves the missing
-edges; the type itself arrives with SW-C.
+edges; SW-C supplies the type and tests the only permitted compiler crossing.
 
 ## Decisions SW-B made
 
