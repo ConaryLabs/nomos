@@ -4,8 +4,10 @@ use estate_core::{
     ClaimRef, EntityId, Ident, NamespaceId, PrimitiveKindId, SourcePath, SourceSpan,
 };
 use estate_schema::{
-    Binding, CapabilityKind, Cell, ClaimActivation, ClaimTemplate, ClaimValue, IrEntity,
-    MachineTemplate, PrimitiveExpansion, WorldIr, source_schema,
+    Binding, CapabilityKind, Cell, ClaimActivation, ClaimTemplate, ClaimValue,
+    InteractionDefinition, InteractionPhase, InteractionTrigger, IrEntity, MachineTemplate,
+    PrimitiveExpansion, TransitionDefinition, TransitionInput, TransitionTrigger, WorldIr,
+    source_schema,
 };
 
 fn ident(value: &str) -> Ident {
@@ -72,4 +74,46 @@ fn duplicate_world_ir_entities_fail_before_encoding() {
     .unwrap_err();
     assert_eq!(rejected.code().as_str(), "EK0304");
     assert!(rejected.message().contains("entity"));
+}
+
+#[test]
+fn duplicate_transition_signatures_fail_before_encoding() {
+    let transition = TransitionDefinition::new(
+        TransitionTrigger::Command {
+            action: ident("open"),
+            input: TransitionInput::None,
+        },
+        ident("closed"),
+        ident("open"),
+    );
+    let rejected = MachineTemplate::new(
+        namespace("access"),
+        vec![ident("closed"), ident("open")],
+        ident("closed"),
+    )
+    .with_transitions(vec![transition.clone(), transition])
+    .unwrap_err();
+    assert_eq!(rejected.code().as_str(), "EK0704");
+}
+
+#[test]
+fn duplicate_interaction_identities_fail_before_encoding() {
+    let interaction = InteractionDefinition::new(
+        InteractionTrigger::OnEnter {
+            namespace: namespace("combustion"),
+            state: ident("burning"),
+        },
+        InteractionPhase::Causal,
+        namespace("integrity"),
+        ident("apply_damage"),
+        TransitionInput::Damage {
+            channel: ident("fire"),
+            amount: 2,
+        },
+    );
+    let rejected = PrimitiveExpansion::new(Vec::new(), Vec::new(), Vec::new())
+        .unwrap()
+        .with_interactions(vec![interaction.clone(), interaction])
+        .unwrap_err();
+    assert_eq!(rejected.code().as_str(), "EK0705");
 }

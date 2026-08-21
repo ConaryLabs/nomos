@@ -88,8 +88,9 @@ pub fn render_rejection(diagnostic: &Diagnostic) -> String {
 #[cfg(test)]
 mod tests {
     use super::{ExitCode, render_rejection};
-    use estate_core::Diagnostic;
     use estate_core::diagnostic::codes;
+    use estate_core::{Diagnostic, EntityId, Ident, NamespaceId, SourcePath};
+    use estate_projection::{Command, CommandArgument};
 
     #[test]
     fn exit_codes_match_kernel_section_8() {
@@ -113,6 +114,40 @@ mod tests {
         assert_eq!(
             render_rejection(&diagnostic),
             r#"{"diagnostics":[{"code":"EK0401","message":"already exists","repairs":[]}],"status":"rejected"}"#
+        );
+    }
+
+    #[test]
+    fn compiled_fixture_semantics_cross_the_ir_boundary_and_execute() {
+        let ir = estate_compiler::compile_source(
+            include_str!("../../../fixtures/gaol.estate"),
+            SourcePath::new("fixtures/gaol.estate").unwrap(),
+        )
+        .unwrap();
+        let plan = estate_compiler::compile_simulation_plan(&ir).unwrap();
+        let state = estate_sim::SimulationState::initialize(&plan).unwrap();
+        let combustion = NamespaceId::new(
+            EntityId::parse("north_gate").unwrap(),
+            Ident::new("combustion").unwrap(),
+        );
+        let integrity = NamespaceId::new(
+            EntityId::parse("north_gate").unwrap(),
+            Ident::new("integrity").unwrap(),
+        );
+        let prepared = estate_sim::prepare_transaction(
+            &plan,
+            &state,
+            &Command::new(
+                combustion,
+                Ident::new("ignite").unwrap(),
+                CommandArgument::None,
+            ),
+        )
+        .unwrap();
+        assert_eq!(prepared.steps().len(), 2);
+        assert_eq!(
+            prepared.after().machine(&integrity).unwrap().as_str(),
+            "destroyed"
         );
     }
 }

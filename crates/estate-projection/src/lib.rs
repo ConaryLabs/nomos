@@ -34,6 +34,13 @@
 
 use estate_core::id::SchemaId;
 
+mod simulation;
+
+pub use simulation::{
+    CausalEdge, Command, CommandArgument, CommandRequirement, CommandTransition, EventHandler,
+    EventPayload, MachineDefinition, Phase, SimulationPlan,
+};
+
 macro_rules! projection_schema {
     ($($function:ident => $name:literal, $doc:literal;)*) => {
         $(

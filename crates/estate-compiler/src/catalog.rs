@@ -2,7 +2,9 @@
 
 use estate_core::{ClaimRef, Diagnostic, EntityId, Ident, NamespaceId, PrimitiveKindId};
 use estate_schema::{
-    CapabilityKind, ClaimActivation, ClaimTemplate, ClaimValue, MachineTemplate, PrimitiveExpansion,
+    CapabilityKind, ClaimActivation, ClaimTemplate, ClaimValue, InteractionDefinition,
+    InteractionPhase, InteractionTrigger, MachineTemplate, PrimitiveExpansion,
+    TransitionDefinition, TransitionInput, TransitionTrigger,
 };
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -33,15 +35,40 @@ pub(crate) fn expand(
 }
 
 fn door(entity: &EntityId) -> Result<PrimitiveExpansion, Diagnostic> {
-    let access = machine(entity, "access", &["locked", "closed", "open"], "locked");
+    let access = machine(entity, "access", &["locked", "closed", "open"], "locked")
+        .with_transitions(vec![
+            command(
+                "unlock",
+                TransitionInput::ResolvedEntityCredential,
+                "locked",
+                "closed",
+            ),
+            command("open", TransitionInput::None, "closed", "open"),
+            command("close", TransitionInput::None, "open", "closed"),
+        ])?;
     let integrity = machine(
         entity,
         "integrity",
         &["intact", "damaged", "destroyed"],
         "intact",
-    );
-    let ward = machine(entity, "ward", &["sealed", "unsealed"], "sealed");
-    let combustion = machine(entity, "combustion", &["cold", "burning", "spent"], "cold");
+    )
+    .with_transitions(vec![event(
+        "apply_damage",
+        TransitionInput::Damage {
+            channel: ident("fire"),
+            amount: 2,
+        },
+        "intact",
+        "destroyed",
+    )])?;
+    let ward =
+        machine(entity, "ward", &["sealed", "unsealed"], "sealed").with_transitions(vec![
+            command("unseal", TransitionInput::None, "sealed", "unsealed"),
+        ])?;
+    let combustion =
+        machine(entity, "combustion", &["cold", "burning", "spent"], "cold").with_transitions(
+            vec![command("ignite", TransitionInput::None, "cold", "burning")],
+        )?;
     let portal_open = ClaimActivation::Any(vec![
         state(entity, "access", "open"),
         state(entity, "integrity", "destroyed"),
@@ -72,7 +99,20 @@ fn door(entity: &EntityId) -> Result<PrimitiveExpansion, Diagnostic> {
         ],
         vec![access, integrity, ward, combustion],
         claims,
-    )
+    )?
+    .with_interactions(vec![InteractionDefinition::new(
+        InteractionTrigger::OnEnter {
+            namespace: namespace(entity, "combustion"),
+            state: ident("burning"),
+        },
+        InteractionPhase::Causal,
+        namespace(entity, "integrity"),
+        ident("apply_damage"),
+        TransitionInput::Damage {
+            channel: ident("fire"),
+            amount: 2,
+        },
+    )])
 }
 
 fn water(entity: &EntityId) -> Result<PrimitiveExpansion, Diagnostic> {
@@ -94,6 +134,10 @@ fn water(entity: &EntityId) -> Result<PrimitiveExpansion, Diagnostic> {
 }
 
 fn light(entity: &EntityId) -> Result<PrimitiveExpansion, Diagnostic> {
+    let emission =
+        machine(entity, "emission", &["lit", "extinguished"], "lit").with_transitions(vec![
+            command("extinguish", TransitionInput::None, "lit", "extinguished"),
+        ])?;
     PrimitiveExpansion::new(
         [
             CapabilityKind::Machine,
@@ -102,7 +146,7 @@ fn light(entity: &EntityId) -> Result<PrimitiveExpansion, Diagnostic> {
             CapabilityKind::Authority,
             CapabilityKind::Persisted,
         ],
-        vec![machine(entity, "emission", &["lit", "extinguished"], "lit")],
+        vec![emission],
         vec![ClaimTemplate::new(
             claim(entity, "emission", "emits_light"),
             CapabilityKind::EmitsLight,
@@ -114,10 +158,46 @@ fn light(entity: &EntityId) -> Result<PrimitiveExpansion, Diagnostic> {
 
 fn machine(entity: &EntityId, namespace: &str, states: &[&str], initial: &str) -> MachineTemplate {
     MachineTemplate::new(
-        NamespaceId::new(entity.clone(), ident(namespace)),
+        self::namespace(entity, namespace),
         states.iter().map(|state| ident(state)).collect(),
         ident(initial),
     )
+}
+
+fn command(
+    action: &str,
+    input: TransitionInput,
+    source: &str,
+    target: &str,
+) -> TransitionDefinition {
+    TransitionDefinition::new(
+        TransitionTrigger::Command {
+            action: ident(action),
+            input,
+        },
+        ident(source),
+        ident(target),
+    )
+}
+
+fn event(
+    handler: &str,
+    input: TransitionInput,
+    source: &str,
+    target: &str,
+) -> TransitionDefinition {
+    TransitionDefinition::new(
+        TransitionTrigger::Event {
+            handler: ident(handler),
+            input,
+        },
+        ident(source),
+        ident(target),
+    )
+}
+
+fn namespace(entity: &EntityId, local: &str) -> NamespaceId {
+    NamespaceId::new(entity.clone(), ident(local))
 }
 
 fn state(entity: &EntityId, namespace: &str, state: &str) -> ClaimActivation {

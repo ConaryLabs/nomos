@@ -13,8 +13,10 @@ mod catalog;
 pub mod diagnostics;
 mod linker;
 mod parser;
+mod projection;
 
 use estate_core::{Diagnostic, SchemaId, SourcePath};
+pub use estate_projection::SimulationPlan;
 use estate_schema::{SourceDocument, WorldIr};
 
 /// Parses source schema version 1 without resolving cross-references.
@@ -46,6 +48,16 @@ pub fn compile_source(source: &str, path: SourcePath) -> Result<WorldIr, Diagnos
     link_source(&document)
 }
 
+/// Validates construction-IR machine semantics and emits the simulation plan.
+///
+/// # Errors
+///
+/// Returns a stable `EK07xx` diagnostic for invalid transitions, references,
+/// handlers, or causal cycles. No partial projection is returned.
+pub fn compile_simulation_plan(ir: &WorldIr) -> Result<SimulationPlan, Diagnostic> {
+    projection::simulation_plan(ir)
+}
+
 /// The schemas this compiler reads.
 #[must_use]
 pub fn consumed_schemas() -> Vec<SchemaId> {
@@ -58,6 +70,18 @@ pub fn consumed_schemas() -> Vec<SchemaId> {
 /// The schemas this compiler writes.
 #[must_use]
 pub fn produced_schemas() -> Vec<SchemaId> {
+    vec![
+        estate_schema::construction_world_ir_schema(),
+        estate_projection::simulation_schema(),
+    ]
+}
+
+/// The full projection family assigned to the compile-time side of Gate K.
+///
+/// This is planned responsibility, not a claim that every artifact is emitted
+/// by the current implementation. See [`produced_schemas`] for that evidence.
+#[must_use]
+pub fn planned_output_schemas() -> Vec<SchemaId> {
     let mut schemas = vec![estate_schema::construction_world_ir_schema()];
     schemas.extend(estate_projection::all_schemas());
     schemas
@@ -65,15 +89,19 @@ pub fn produced_schemas() -> Vec<SchemaId> {
 
 #[cfg(test)]
 mod tests {
-    use super::{consumed_schemas, produced_schemas};
+    use super::{consumed_schemas, planned_output_schemas, produced_schemas};
 
     #[test]
     fn the_compiler_is_the_only_crossing_between_ir_and_projections() {
         let consumed = consumed_schemas();
         let produced = produced_schemas();
         assert!(consumed.contains(&estate_schema::source_schema()));
+        assert!(produced.contains(&estate_projection::simulation_schema()));
+        assert!(!produced.contains(&estate_projection::navigation_schema()));
+        assert!(!produced.contains(&estate_projection::persistence_schema()));
+        assert!(!produced.contains(&estate_projection::diagnostics_schema()));
         for projection in estate_projection::all_schemas() {
-            assert!(produced.contains(&projection));
+            assert!(planned_output_schemas().contains(&projection));
             assert!(!consumed.contains(&projection));
         }
     }

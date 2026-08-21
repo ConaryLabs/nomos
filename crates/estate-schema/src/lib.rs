@@ -13,6 +13,7 @@
 mod ir;
 mod source;
 mod spatial;
+mod transition;
 
 use estate_core::SchemaId;
 
@@ -24,6 +25,10 @@ pub use source::{
     ForbiddenFactOwner, SourceDocument, SourceEntity, SourceField, SourceRelation, Spanned,
 };
 pub use spatial::{Binding, Cell, Direction};
+pub use transition::{
+    InteractionDefinition, InteractionPhase, InteractionTrigger, TransitionDefinition,
+    TransitionInput, TransitionTrigger,
+};
 
 /// The `.estate` authoring source schema.
 #[must_use]
@@ -35,10 +40,11 @@ pub fn source_schema() -> SchemaId {
 ///
 /// Contract revision 4 separates pre-Gate construction snapshots from the
 /// stable `estate.world_ir@1` to `estate.world_ir@2` migration line. SW-C owns
-/// construction version 1.
+/// SW-D advances the construction lineage to version 2 because transition and
+/// interaction definitions change the snapshot shape.
 #[must_use]
 pub fn construction_world_ir_schema() -> SchemaId {
-    SchemaId::new("estate.world_ir.construction", 1)
+    SchemaId::new("estate.world_ir.construction", 2)
         .expect("the construction world IR schema id is a valid literal")
 }
 
@@ -53,7 +59,7 @@ mod tests {
             construction_world_ir_schema().name()
         );
         assert_eq!(source_schema().version(), 1);
-        assert_eq!(construction_world_ir_schema().version(), 1);
+        assert_eq!(construction_world_ir_schema().version(), 2);
     }
 
     #[test]
@@ -66,7 +72,7 @@ mod tests {
             construction_world_ir_schema()
                 .to_canonical()
                 .to_canonical_bytes(),
-            br#"{"name":"estate.world_ir.construction","version":1}"#.to_vec()
+            br#"{"name":"estate.world_ir.construction","version":2}"#.to_vec()
         );
     }
 }

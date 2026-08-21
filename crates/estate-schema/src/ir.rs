@@ -9,7 +9,7 @@ use estate_core::{
     PrimitiveKindId, RepairClass, SchemaId, SourceSpan,
 };
 
-use crate::{Binding, construction_world_ir_schema};
+use crate::{Binding, InteractionDefinition, TransitionDefinition, construction_world_ir_schema};
 
 /// A capability in the sealed Gate K basis used by the three approved kinds.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
@@ -130,6 +130,7 @@ pub struct MachineTemplate {
     namespace: NamespaceId,
     states: Vec<Ident>,
     initial: Ident,
+    transitions: Vec<TransitionDefinition>,
 }
 
 impl MachineTemplate {
@@ -140,7 +141,27 @@ impl MachineTemplate {
             namespace,
             states,
             initial,
+            transitions: Vec::new(),
         }
+    }
+
+    /// Attaches transitions in stable signature order.
+    ///
+    /// # Errors
+    ///
+    /// Returns `EK0704` when a transition signature occurs more than once.
+    pub fn with_transitions(
+        mut self,
+        mut transitions: Vec<TransitionDefinition>,
+    ) -> Result<Self, Diagnostic> {
+        require_unique_with_code(
+            transitions.iter().map(TransitionDefinition::stable_key),
+            "transition signature",
+            estate_core::diagnostic::codes::TRANSITION_SIGNATURE_DUPLICATE,
+        )?;
+        transitions.sort_by_key(TransitionDefinition::stable_key);
+        self.transitions = transitions;
+        Ok(self)
     }
     /// The machine namespace.
     #[must_use]
@@ -157,6 +178,11 @@ impl MachineTemplate {
     pub fn initial(&self) -> &Ident {
         &self.initial
     }
+    /// Transition definitions in stable signature order.
+    #[must_use]
+    pub fn transitions(&self) -> &[TransitionDefinition] {
+        &self.transitions
+    }
 
     fn to_canonical(&self) -> CanonicalValue {
         CanonicalValue::object_declared([
@@ -168,6 +194,15 @@ impl MachineTemplate {
                     self.states
                         .iter()
                         .map(|state| CanonicalValue::text(state.as_str()))
+                        .collect(),
+                ),
+            ),
+            (
+                "transitions",
+                CanonicalValue::Array(
+                    self.transitions
+                        .iter()
+                        .map(TransitionDefinition::to_canonical)
                         .collect(),
                 ),
             ),
@@ -237,6 +272,7 @@ pub struct PrimitiveExpansion {
     capabilities: BTreeSet<CapabilityKind>,
     machines: Vec<MachineTemplate>,
     claims: Vec<ClaimTemplate>,
+    interactions: Vec<InteractionDefinition>,
 }
 
 impl PrimitiveExpansion {
@@ -265,7 +301,26 @@ impl PrimitiveExpansion {
             capabilities: capabilities.into_iter().collect(),
             machines,
             claims,
+            interactions: Vec::new(),
         })
+    }
+    /// Attaches causal interactions in explicit phase and semantic order.
+    ///
+    /// # Errors
+    ///
+    /// Returns `EK0705` when an interaction identity occurs more than once.
+    pub fn with_interactions(
+        mut self,
+        mut interactions: Vec<InteractionDefinition>,
+    ) -> Result<Self, Diagnostic> {
+        require_unique_with_code(
+            interactions.iter().map(InteractionDefinition::stable_key),
+            "interaction identity",
+            estate_core::diagnostic::codes::INTERACTION_IDENTITY_DUPLICATE,
+        )?;
+        interactions.sort_by_key(InteractionDefinition::stable_key);
+        self.interactions = interactions;
+        Ok(self)
     }
     /// Capability bundle in stable order.
     #[must_use]
@@ -281,6 +336,11 @@ impl PrimitiveExpansion {
     #[must_use]
     pub fn claims(&self) -> &[ClaimTemplate] {
         &self.claims
+    }
+    /// Causal interactions in explicit phase and semantic order.
+    #[must_use]
+    pub fn interactions(&self) -> &[InteractionDefinition] {
+        &self.interactions
     }
 
     fn to_canonical(&self) -> CanonicalValue {
@@ -302,6 +362,15 @@ impl PrimitiveExpansion {
                         .map(|claim| (claim.id.clone(), claim.to_canonical())),
                 )
                 .expect("PrimitiveExpansion validates unique claim references"),
+            ),
+            (
+                "interactions",
+                CanonicalValue::Array(
+                    self.interactions
+                        .iter()
+                        .map(InteractionDefinition::to_canonical)
+                        .collect(),
+                ),
             ),
             (
                 "machines",
@@ -674,6 +743,23 @@ fn require_unique<T: Ord>(
                 format!("{identity} occurs more than once"),
             )
             .with_repair(RepairClass::RemoveDuplicateDeclaration));
+        }
+    }
+    Ok(())
+}
+
+fn require_unique_with_code<T: Ord>(
+    values: impl IntoIterator<Item = T>,
+    identity: &str,
+    code: estate_core::DiagnosticCode,
+) -> Result<(), Diagnostic> {
+    let mut seen = BTreeSet::new();
+    for value in values {
+        if !seen.insert(value) {
+            return Err(
+                Diagnostic::new(code, format!("{identity} occurs more than once"))
+                    .with_repair(RepairClass::RemoveDuplicateDeclaration),
+            );
         }
     }
     Ok(())
