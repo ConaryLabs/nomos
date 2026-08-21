@@ -16,7 +16,8 @@ This document says where they live and how to run the proof. Contract revision
 ```text
 crates/estate-core        stable IDs, canonical bytes, hashing, checked
                           arithmetic, diagnostics, world packages
-crates/estate-schema      authoring source and Canonical World IR schemas
+crates/estate-schema      authoring source and Canonical World IR construction
+                          schemas
 crates/estate-projection  simulation/navigation/persistence/diagnostics
                           projection schemas
 crates/estate-compiler    parse, link, expand, validate, migrate, project
@@ -87,12 +88,12 @@ planted-violation receipt is produced without disturbing this one.
 
 Section 10 also forbids canonical schema types from being defined in more than
 one crate. That is a property of the source, not of the dependency graph, and
-`cargo metadata` cannot see it. The Canonical World IR type is defined in
-`estate-schema`; every crate that must not see it lacks the edge that would let
-it. The checker proves the missing edges. Local schema-ID uniqueness tests,
-compile-fail boundary doctests, and the compiler crossing test support the
-explicit source-review receipt required by revision 3. None of those
-checks is claimed as a semantic-uniqueness proof by itself.
+`cargo metadata` cannot see it. The Canonical World IR construction type is
+defined in `estate-schema`; every crate that must not see it lacks the edge that
+would let it. The checker proves the missing edges. Local schema-ID uniqueness
+tests, compile-fail boundary doctests, and the compiler crossing test support
+the explicit source-review receipt required by revision 3. None of those checks
+is claimed as a semantic-uniqueness proof by itself.
 
 ## Contract choices first implemented by SW-B
 

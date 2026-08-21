@@ -1,4 +1,4 @@
-//! Canonical World IR schema types produced by the ownership linker.
+//! Canonical World IR construction types produced by the ownership linker.
 
 use std::collections::BTreeSet;
 
@@ -9,7 +9,7 @@ use estate_core::{
     SchemaId, SourceSpan,
 };
 
-use crate::{Binding, world_ir_schema};
+use crate::{Binding, construction_world_ir_schema};
 
 /// A capability in the sealed Gate K basis used by the three approved kinds.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
@@ -517,7 +517,7 @@ impl FactOwnershipReceipt {
     }
 }
 
-/// Versioned Canonical World IR produced from one linked source file.
+/// Versioned Canonical World IR construction snapshot from one linked source.
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct WorldIr {
     schema: SchemaId,
@@ -543,7 +543,7 @@ impl WorldIr {
         relations.sort_by_key(IrRelation::stable_key);
         ownership_receipts.sort_by(|left, right| left.fact.cmp(&right.fact));
         Self {
-            schema: world_ir_schema(),
+            schema: construction_world_ir_schema(),
             source_schema,
             catalog_values,
             entities,
@@ -582,7 +582,7 @@ impl WorldIr {
         &self.ownership_receipts
     }
 
-    /// Canonical semantic value for `world-ir.json`.
+    /// Canonical semantic value for this construction snapshot.
     #[must_use]
     pub fn to_canonical(&self) -> CanonicalValue {
         CanonicalValue::object_declared([
@@ -622,7 +622,7 @@ impl WorldIr {
             ("source_schema", self.source_schema.to_canonical()),
         ])
     }
-    /// Canonical bytes for `world-ir.json`.
+    /// Canonical bytes for this construction snapshot.
     #[must_use]
     pub fn to_canonical_bytes(&self) -> Vec<u8> {
         self.to_canonical().to_canonical_bytes()

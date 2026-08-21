@@ -15,7 +15,8 @@ test that thesis before any renderer is built.
 - **Implementation status:** workspace foundations (SW-B) plus source schema,
   parser, typed name resolution, primitive expansion, and ownership linker
   (SW-C); no command surface or runtime
-- **Contract revision:** 3, owner-authorized in decision 0003
+- **Contract revision:** 3 remains effective; revision 4 is proposed in decision
+  0004 to repair the incomplete World IR schema lineage before SW-D
 - **Scope:** greenfield / vacuum architecture exercise
 - **Effect on other projects:** none unless separately adopted by an explicit
   decision in that project's own authority records
@@ -35,22 +36,25 @@ it.
 3. [docs/decisions/0003-contract-profile-closure.md](docs/decisions/0003-contract-profile-closure.md)
    — the owner-authorized revision-2 to revision-3 closure of the canonical
    profile and workspace-evidence contract gaps.
-4. [docs/decisions/0001-contract-repair.md](docs/decisions/0001-contract-repair.md)
+4. [docs/decisions/0004-world-ir-construction-lineage.md](docs/decisions/0004-world-ir-construction-lineage.md)
+   — the proposed revision-3 to revision-4 repair separating incomplete
+   construction snapshots from the stable World IR migration line.
+5. [docs/decisions/0001-contract-repair.md](docs/decisions/0001-contract-repair.md)
    — the owner-authorized revision-1 to revision-2 contract repair.
-5. [docs/evaluation/COLD_AGENT_PROTOCOL.md](docs/evaluation/COLD_AGENT_PROTOCOL.md)
+6. [docs/evaluation/COLD_AGENT_PROTOCOL.md](docs/evaluation/COLD_AGENT_PROTOCOL.md)
    — the reproducible cold-author, cold-debug, and cold-review procedure.
-6. [docs/evaluation/GATE_K_COLD_AGENT_PLAN.md](docs/evaluation/GATE_K_COLD_AGENT_PLAN.md)
+7. [docs/evaluation/GATE_K_COLD_AGENT_PLAN.md](docs/evaluation/GATE_K_COLD_AGENT_PLAN.md)
    — the owner-authorized whole-kernel subject roster and eligibility checks.
-7. [docs/workspace.md](docs/workspace.md) — the crate map, how to run the
+8. [docs/workspace.md](docs/workspace.md) — the crate map, how to run the
    proof, and the decisions the first implementation slice had to make.
-8. [docs/authoring.md](docs/authoring.md) — source schema version 1 and the
+9. [docs/authoring.md](docs/authoring.md) — source schema version 1 and the
    approved Gate K authoring vocabulary.
-9. [docs/compiler.md](docs/compiler.md) — parser/linker stages, schema
+10. [docs/compiler.md](docs/compiler.md) — parser/linker stages, schema
    ownership, proof coverage, and limits.
-10. [docs/review/2026-08-21-founding-review.md](docs/review/2026-08-21-founding-review.md)
+11. [docs/review/2026-08-21-founding-review.md](docs/review/2026-08-21-founding-review.md)
    — the condensed primary record of the founding adversarial review, written
    in the originating session, with its provenance limits stated.
-11. [docs/review/2026-08-21-founding-review-synthesis.md](docs/review/2026-08-21-founding-review-synthesis.md)
+12. [docs/review/2026-08-21-founding-review-synthesis.md](docs/review/2026-08-21-founding-review-synthesis.md)
     — the contract-revision-2 edited synthesis of that review.
 
 ## Layout

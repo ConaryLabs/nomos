@@ -1,10 +1,13 @@
 ---
 title: The executable semantic kernel
-status: In progress through SW-C
+status: Proposed contract revision 4; revision 3 remains effective pending owner disposition
 gate: K
 contract_revision: 3
 supersedes_contract_revision: 2
 decision_record: docs/decisions/0003-contract-profile-closure.md
+proposed_contract_revision: 4
+proposed_supersedes_contract_revision: 3
+proposed_decision_record: docs/decisions/0004-world-ir-construction-lineage.md
 ---
 
 # The executable semantic kernel
@@ -288,7 +291,7 @@ The source package remains intact as evidence.
 Version from the first commit:
 
 - authoring source schema;
-- Canonical World IR;
+- Canonical World IR, including incomplete construction snapshots;
 - simulation projection;
 - navigation projection;
 - persistence projection;
@@ -300,6 +303,20 @@ Version from the first commit:
 Every persisted artifact names its schema and version. An incompatible change
 requires a migration or an explicit recorded epoch break. Successful
 parsing/deserialization alone never implies compatibility.
+
+Before the complete Gate K Canonical World IR exists, incomplete build
+snapshots use `estate.world_ir.construction@N`. They are canonical, versioned
+evidence, but they are not valid Gate K packages and cannot satisfy the stable
+migration below. An incomplete build cannot emit a valid package, and a
+construction snapshot cannot occupy its `world-ir.json` member. SW-C is
+construction version 1; SW-D is construction version 2. Their incompatible
+change is the construction epoch break recorded by decision 0004. Every later
+incompatible construction change increments `N` and requires a migration or an
+explicit construction epoch break.
+
+Stable `estate.world_ir@1` is assigned only when the section 4 schema is
+complete and includes the v1 movement representation. Construction versions
+must not be relabelled as stable versions.
 
 Gate K implements one real Canonical World IR migration:
 
@@ -500,7 +517,7 @@ tooling member:
 
 ```text
 estate-core        stable IDs, deterministic primitives, canonical bytes, hashing, diagnostics
-estate-schema      authoring and Canonical World IR schemas
+estate-schema      authoring and Canonical World IR construction schemas
 estate-projection  versioned simulation/navigation/persistence/diagnostic schemas
 estate-compiler    parse, link, expand, validate, migrate, and project
 estate-sim         runtime state, command transactions, replay, effective-fact resolution

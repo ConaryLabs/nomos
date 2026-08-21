@@ -25,7 +25,7 @@
 //! through it, which section 4 forbids:
 //!
 //! ```compile_fail
-//! let _ = estate_schema::world_ir_schema();
+//! let _ = estate_schema::construction_world_ir_schema();
 //! ```
 
 #![forbid(unsafe_code)]

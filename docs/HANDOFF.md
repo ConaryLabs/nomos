@@ -1,6 +1,6 @@
 # Handoff — state of the repository
 
-Updated 2026-08-21 for contract revision 3. This file orients a fresh
+Updated 2026-08-21 for proposed contract revision 4. This file orients a fresh
 session; it is rewritten at each slice boundary and never accumulates history
 (git has that).
 
@@ -9,14 +9,18 @@ session; it is rewritten at each slice boundary and never accumulates history
 - **Contract revision 3 is owner-authorized:** decision 0003 pins the canonical
   escape profile, ASCII identifier and field-name grammar, isolated `xtask`,
   and the honest evidence boundary for semantic schema ownership.
+- **Contract revision 4 is proposed:** issue #15 and decision 0004 correct the
+  incomplete SW-C linker snapshot from `estate.world_ir@1` to separately
+  versioned `estate.world_ir.construction@1`. Revision 3 remains effective until
+  Peter disposes the proposal.
 - **SW-B is merged (#3):** six kernel crates plus isolated `xtask`, Rust 1.97.1,
   zero third-party crates, deterministic core primitives, immutable package
   mechanics, boundary enforcement, and green CI on main.
 - **SW-C is implemented by PR #6:** source-language decision 0002, the
-  exact `fixtures/gaol.estate`, source AST and Canonical World IR schemas, typed
-  lattice bindings, parser, distinct typed symbol tables, the sealed
-  three-primitive expansion catalog, ownership linker/receipts, and mutation
-  tests. The implementation commit is `be5576d`.
+  exact `fixtures/gaol.estate`, source AST and Canonical World IR construction
+  schemas, typed lattice bindings, parser, distinct typed symbol tables, the
+  sealed three-primitive expansion catalog, ownership linker/receipts, and
+  mutation tests. The implementation commit is `be5576d`.
 - **Non-author disposition:** Peter explicitly authorized merging PR #6 before
   its non-author rerun. DeepSeek V4 Pro then reran the complete proof through
   direct Reasonix at max effort against merge commit `4ec25e5`; all four
@@ -27,7 +31,7 @@ session; it is rewritten at each slice boundary and never accumulates history
 - **Issue #5 is disposed by PR #6.** Acceptance 3 remains only partially
   covered: IR expansion is proved, but the observable `estate inspect` command
   still requires complete packages and projections.
-- **Issue #4 is disposed by revision 3** and closes when PR #13 merges.
+- **Issue #4 is closed:** revision 3 merged in PR #13.
 - **The whole-kernel cold roster is predeclared:** Gemini 3.7 Flash High through
   `agy` is the formal cold author; DeepSeek V4 Pro through direct Reasonix is the
   formal cold debugger; each independently checks the other's output. The plan
@@ -37,7 +41,12 @@ session; it is rewritten at each slice boundary and never accumulates history
 
 ## What is next
 
-Implement **SW-D — namespace-machine transitions, typed
+Dispose and merge **issue #15 — World IR construction lineage**. It blocks
+**SW-D implementation issue #14** because changing the incomplete SW-C schema
+under `estate.world_ir@1` would violate section 6, while consuming version 2
+would destroy the required movement-migration proof.
+
+Then implement **SW-D — namespace-machine transitions, typed
 interactions, deterministic phase order, and atomic transaction preparation**.
 The schemas now contain machine and claim templates; SW-D must add executable
 transition and interaction semantics without moving command-time truth into the
@@ -56,7 +65,8 @@ cargo test --workspace --locked
 cargo xtask boundary
 ```
 
-The SW-C author and non-author reruns passed all four commands. Still unproven:
+The SW-C author and non-author reruns passed all four commands. The revision-4
+proposal must receive its own exact-head non-author rerun. Still unproven:
 Linux aarch64 release, ten runs per target, the complete `estate` command
 surface, complete package projections, runtime semantics, migration/replay, and
 formal cold-agent gates. Revision 3 also requires a final explicit
