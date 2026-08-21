@@ -12,9 +12,9 @@ test that thesis before any renderer is built.
 ## Status
 
 - **Architecture status:** exploratory and non-authoritative
-- **Implementation status:** workspace, stable IDs, canonical encoding,
-  hashing, and package mechanics implemented (SW-B); no command surface, no
-  parser, no runtime
+- **Implementation status:** workspace foundations (SW-B) plus source schema,
+  parser, typed name resolution, primitive expansion, and ownership linker
+  (SW-C); no command surface or runtime
 - **Contract revision:** 2
 - **Scope:** greenfield / vacuum architecture exercise
 - **Effect on other projects:** none unless separately adopted by an explicit
@@ -38,10 +38,14 @@ it.
    — the reproducible cold-author, cold-debug, and cold-review procedure.
 5. [docs/workspace.md](docs/workspace.md) — the crate map, how to run the
    proof, and the decisions the first implementation slice had to make.
-6. [docs/review/2026-08-21-founding-review.md](docs/review/2026-08-21-founding-review.md)
+6. [docs/authoring.md](docs/authoring.md) — source schema version 1 and the
+   approved Gate K authoring vocabulary.
+7. [docs/compiler.md](docs/compiler.md) — parser/linker stages, schema
+   ownership, proof coverage, and limits.
+8. [docs/review/2026-08-21-founding-review.md](docs/review/2026-08-21-founding-review.md)
    — the condensed primary record of the founding adversarial review, written
    in the originating session, with its provenance limits stated.
-7. [docs/review/2026-08-21-founding-review-synthesis.md](docs/review/2026-08-21-founding-review-synthesis.md)
+9. [docs/review/2026-08-21-founding-review-synthesis.md](docs/review/2026-08-21-founding-review-synthesis.md)
    — the contract-revision-2 edited synthesis of that review.
 
 ## Layout
@@ -51,6 +55,7 @@ README.md          status and reading order
 THESIS.md          the design thesis
 KERNEL.md          the Gate K acceptance contract
 docs/              decisions, evaluation protocols, reviews, workspace notes
+fixtures/          exact Gate K authoring source and later command/replay fixtures
 crates/            the six Gate K kernel crates named in KERNEL.md section 10
 xtask/             workspace tooling; `cargo xtask boundary`
 .github/workflows/ the verification lane

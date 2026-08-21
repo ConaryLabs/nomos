@@ -22,6 +22,8 @@ use crate::canonical::{CanonicalValue, FieldName};
 /// | `EK02xx` | checked arithmetic |
 /// | `EK03xx` | canonical encoding |
 /// | `EK04xx` | world packages |
+/// | `EK05xx` | source parsing |
+/// | `EK06xx` | name resolution and linking |
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 pub struct DiagnosticCode(&'static str);
 
@@ -77,6 +79,32 @@ pub enum RepairClass {
     WriteToNewOutputPath,
     /// Rebuild the artifact from its source rather than editing it in place.
     RebuildFromSource,
+    /// Correct the source to match the published `.estate` grammar.
+    FixSourceSyntax,
+    /// Declare the referenced entity before linking it.
+    DeclareReferencedEntity,
+    /// Declare the referenced catalog value before linking it.
+    DeclareReferencedCatalogValue,
+    /// Use one of the approved primitive kinds.
+    UseApprovedPrimitive,
+    /// Move a relational fact into the graph relation syntax.
+    MoveRelationToGraph,
+    /// Remove a source-authored fact that belongs to a compiler projection.
+    RemoveDerivedFact,
+    /// Replace a raw transform with a typed lattice binding.
+    ReplaceRawTransformWithBinding,
+    /// Remove an attempted canonical-owner declaration from content.
+    RestoreCanonicalFactOwner,
+    /// Remove or rename a duplicate declaration.
+    RemoveDuplicateDeclaration,
+    /// Supply the field required by the selected primitive kind.
+    SupplyRequiredField,
+    /// Remove a field the selected primitive kind does not accept.
+    RemoveUnsupportedField,
+    /// Use a value from the catalog namespace required by the field.
+    UseExpectedCatalogNamespace,
+    /// Use a relation kind from the approved relation vocabulary.
+    UseApprovedRelationKind,
 }
 
 impl RepairClass {
@@ -91,6 +119,19 @@ impl RepairClass {
             Self::RemoveUndeclaredMember => "remove_undeclared_member",
             Self::WriteToNewOutputPath => "write_to_new_output_path",
             Self::RebuildFromSource => "rebuild_from_source",
+            Self::FixSourceSyntax => "fix_source_syntax",
+            Self::DeclareReferencedEntity => "declare_referenced_entity",
+            Self::DeclareReferencedCatalogValue => "declare_referenced_catalog_value",
+            Self::UseApprovedPrimitive => "use_approved_primitive",
+            Self::MoveRelationToGraph => "move_relation_to_graph",
+            Self::RemoveDerivedFact => "remove_derived_fact",
+            Self::ReplaceRawTransformWithBinding => "replace_raw_transform_with_binding",
+            Self::RestoreCanonicalFactOwner => "restore_canonical_fact_owner",
+            Self::RemoveDuplicateDeclaration => "remove_duplicate_declaration",
+            Self::SupplyRequiredField => "supply_required_field",
+            Self::RemoveUnsupportedField => "remove_unsupported_field",
+            Self::UseExpectedCatalogNamespace => "use_expected_catalog_namespace",
+            Self::UseApprovedRelationKind => "use_approved_relation_kind",
         }
     }
 }

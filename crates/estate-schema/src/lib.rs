@@ -1,43 +1,30 @@
 //! Authoring source and Canonical World IR schemas.
 //!
-//! `KERNEL.md` section 10 assigns this crate *authoring and Canonical World IR
-//! schemas*. Section 4 makes the Canonical World IR the single semantic truth,
-//! and section 10 forbids canonical schema types being defined in more than one
-//! crate — so the IR type will be defined here and nowhere else when SW-C lands
-//! it.
-//!
-//! At SW-B this crate carries the two schema identities it owns, so that
-//! versioning exists from the first commit as section 6 requires, and the
-//! boundary is proved before there is anything to put behind it.
-//!
-//! # Boundary
-//!
-//! The only permitted edge out of this crate is `estate-core`:
-//!
-//! ```
-//! use estate_core::id::SchemaId;
-//! let _: SchemaId = estate_schema::source_schema();
-//! ```
-//!
-//! It may not reach `estate-projection`. Projections are derived from the IR by
-//! the compiler; the schema crate must not learn what its consumers look like.
-//!
-//! ```compile_fail
-//! let _ = estate_projection::simulation_schema();
-//! ```
+//! `KERNEL.md` section 4 makes this crate the single owner of the Canonical
+//! World IR type. The compiler consumes [`SourceDocument`] and produces
+//! [`WorldIr`]; projection and runtime crates cannot name either because the
+//! dependency graph denies them access to this crate.
 
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]
 #![warn(missing_debug_implementations)]
 
-use estate_core::id::SchemaId;
+mod ir;
+mod source;
+mod spatial;
+
+use estate_core::SchemaId;
+
+pub use ir::{
+    CapabilityKind, ClaimActivation, ClaimTemplate, ClaimValue, FactOwner, FactOwnershipReceipt,
+    IrEntity, IrRelation, MachineTemplate, PrimitiveExpansion, WorldIr,
+};
+pub use source::{
+    ForbiddenFactOwner, SourceDocument, SourceEntity, SourceField, SourceRelation, Spanned,
+};
+pub use spatial::{Binding, Cell, Direction};
 
 /// The `.estate` authoring source schema.
-///
-/// # Panics
-///
-/// Panics if the built-in literal is not a valid schema id, which this crate's
-/// tests rule out.
 #[must_use]
 pub fn source_schema() -> SchemaId {
     SchemaId::new("estate.source", 1).expect("the source schema id is a valid literal")
@@ -46,12 +33,7 @@ pub fn source_schema() -> SchemaId {
 /// The Canonical World IR schema.
 ///
 /// Section 6 requires one real v1-to-v2 migration of this schema, changing the
-/// movement representation. SW-B records version 1; the migration is SW-F's.
-///
-/// # Panics
-///
-/// Panics if the built-in literal is not a valid schema id, which this crate's
-/// tests rule out.
+/// movement representation. Version 1 remains current until that later slice.
 #[must_use]
 pub fn world_ir_schema() -> SchemaId {
     SchemaId::new("estate.world_ir", 1).expect("the world IR schema id is a valid literal")

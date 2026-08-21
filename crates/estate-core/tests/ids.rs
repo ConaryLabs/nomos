@@ -1,7 +1,9 @@
 //! Stable identity: typed, non-interchangeable, and ordered the way section 7
 //! requires for hashing.
 
-use estate_core::id::{CatalogValueId, ClaimRef, EntityId, NamespaceId, SchemaId, StableId};
+use estate_core::id::{
+    CatalogValueId, ClaimRef, EntityId, NamespaceId, PrimitiveKindId, SchemaId, StableId,
+};
 use estate_core::ident::{Ident, SEPARATORS};
 
 #[test]
@@ -109,10 +111,10 @@ fn namespace_ids_order_by_canonical_string_and_by_parts_alike() {
 }
 
 #[test]
-fn claim_refs_carry_the_machine_that_raises_them() {
+fn claim_refs_carry_the_semantic_namespace_that_raises_them() {
     let reason = ClaimRef::parse("north_gate.ward#blocks_ground").unwrap();
     assert_eq!(reason.namespace().entity().to_string(), "north_gate");
-    assert_eq!(reason.namespace().machine().as_str(), "ward");
+    assert_eq!(reason.namespace().local_name().as_str(), "ward");
     assert_eq!(reason.capability().as_str(), "blocks_ground");
     assert_eq!(reason.to_string(), "north_gate.ward#blocks_ground");
 
@@ -144,4 +146,23 @@ fn schema_versions_start_at_one() {
         schema.to_canonical().to_canonical_bytes(),
         br#"{"name":"estate.source","version":2}"#.to_vec()
     );
+}
+
+#[test]
+fn primitive_kinds_are_not_catalog_values() {
+    let primitive = PrimitiveKindId::parse("primitive/iron_barred_door").unwrap();
+    assert_eq!(primitive.name().as_str(), "iron_barred_door");
+    assert_eq!(primitive.to_string(), "primitive/iron_barred_door");
+    assert!(PrimitiveKindId::parse("credential/gaoler_key").is_err());
+}
+
+#[test]
+fn schema_ids_parse_their_wire_spelling() {
+    assert_eq!(
+        SchemaId::parse("estate.source@1").unwrap(),
+        SchemaId::new("estate.source", 1).unwrap()
+    );
+    for illegal in ["estate.source", "estate.source@", "estate.source@x"] {
+        assert!(SchemaId::parse(illegal).is_err());
+    }
 }

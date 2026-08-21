@@ -125,35 +125,37 @@ impl fmt::Display for CatalogValueId {
     }
 }
 
-/// A namespace-local machine, for example `north_gate.access`.
+/// An entity-local semantic namespace, for example `north_gate.access`.
 ///
-/// Section 7 orders machine collections by canonical namespace ID. The four
-/// door machines therefore hash in the order `access`, `combustion`,
-/// `integrity`, `ward` regardless of the order they were declared in.
+/// State machines live in namespaces, but not every namespace is a machine:
+/// static topology claims use names such as `flooded_section.region`. Section
+/// 7 orders machine collections by these IDs; the broader type also gives
+/// every static claim an honest semantic home instead of inventing a fake
+/// state machine for it.
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 pub struct NamespaceId {
     entity: EntityId,
-    machine: Ident,
+    local_name: Ident,
 }
 
 impl NamespaceId {
     /// Builds a namespace ID from its parts.
     #[must_use]
-    pub fn new(entity: EntityId, machine: Ident) -> Self {
-        Self { entity, machine }
+    pub fn new(entity: EntityId, local_name: Ident) -> Self {
+        Self { entity, local_name }
     }
 
-    /// Parses `<entity>.<machine>`.
+    /// Parses `<entity>.<namespace>`.
     ///
     /// # Errors
     ///
     /// Returns `EK0104` when the shape is wrong and `EK0101` when a segment is
     /// not a legal identifier.
     pub fn parse(text: &str) -> Result<Self, Diagnostic> {
-        let [entity, machine] = split_exact::<2>(text, b'.', "<entity>.<machine>")?;
+        let [entity, local_name] = split_exact::<2>(text, b'.', "<entity>.<namespace>")?;
         Ok(Self {
             entity: EntityId(entity),
-            machine,
+            local_name,
         })
     }
 
@@ -163,22 +165,22 @@ impl NamespaceId {
         &self.entity
     }
 
-    /// The machine's local name, for example `access`.
+    /// The namespace's entity-local name, for example `access` or `region`.
     #[must_use]
-    pub fn machine(&self) -> &Ident {
-        &self.machine
+    pub fn local_name(&self) -> &Ident {
+        &self.local_name
     }
 }
 
 impl StableId for NamespaceId {
     fn canonical_string(&self) -> String {
-        format!("{}.{}", self.entity, self.machine)
+        format!("{}.{}", self.entity, self.local_name)
     }
 }
 
 impl fmt::Display for NamespaceId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}.{}", self.entity, self.machine)
+        write!(f, "{}.{}", self.entity, self.local_name)
     }
 }
 
@@ -226,7 +228,7 @@ impl ClaimRef {
         })
     }
 
-    /// The machine that raises this claim.
+    /// The semantic namespace that raises this claim.
     #[must_use]
     pub fn namespace(&self) -> &NamespaceId {
         &self.namespace
@@ -236,6 +238,52 @@ impl ClaimRef {
     #[must_use]
     pub fn capability(&self) -> &Ident {
         &self.capability
+    }
+}
+
+/// An approved primitive kind, for example `primitive/iron_barred_door`.
+///
+/// Primitive kinds and catalog values deliberately use different Rust types.
+/// A credential cannot satisfy a primitive reference merely because both use
+/// slash-separated symbolic names in source.
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+pub struct PrimitiveKindId(Ident);
+
+impl PrimitiveKindId {
+    /// Parses `primitive/<name>`.
+    ///
+    /// # Errors
+    ///
+    /// Returns `EK0104` when the namespace or shape is wrong and `EK0101`
+    /// when the name is not a supported identifier.
+    pub fn parse(text: &str) -> Result<Self, Diagnostic> {
+        let [namespace, name] = split_exact::<2>(text, b'/', "primitive/<name>")?;
+        if namespace.as_str() != "primitive" {
+            return Err(Diagnostic::new(
+                codes::ID_SHAPE_INVALID,
+                format!("`{text}` is not in the `primitive` namespace"),
+            )
+            .with_repair(RepairClass::UseSupportedIdentifierShape));
+        }
+        Ok(Self(name))
+    }
+
+    /// The primitive's name within the approved catalog.
+    #[must_use]
+    pub fn name(&self) -> &Ident {
+        &self.0
+    }
+}
+
+impl StableId for PrimitiveKindId {
+    fn canonical_string(&self) -> String {
+        format!("primitive/{}", self.0)
+    }
+}
+
+impl fmt::Display for PrimitiveKindId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "primitive/{}", self.0)
     }
 }
 
@@ -311,6 +359,37 @@ pub struct SchemaId {
 }
 
 impl SchemaId {
+    /// Parses `<dotted-name>@<positive-version>`.
+    ///
+    /// # Errors
+    ///
+    /// Returns a stable identifier diagnostic when the shape, name, or
+    /// version is invalid.
+    pub fn parse(text: &str) -> Result<Self, Diagnostic> {
+        let (name, version) = text.split_once('@').ok_or_else(|| {
+            Diagnostic::new(
+                codes::ID_SHAPE_INVALID,
+                format!("`{text}` does not match `<schema-name>@<version>`"),
+            )
+            .with_repair(RepairClass::UseSupportedIdentifierShape)
+        })?;
+        if version.is_empty() || !version.bytes().all(|byte| byte.is_ascii_digit()) {
+            return Err(Diagnostic::new(
+                codes::ID_SHAPE_INVALID,
+                format!("schema version `{version}` is not an unsigned integer"),
+            )
+            .with_repair(RepairClass::UseSupportedIdentifierShape));
+        }
+        let version = version.parse::<u32>().map_err(|_| {
+            Diagnostic::new(
+                codes::ID_SHAPE_INVALID,
+                format!("schema version `{version}` does not fit a 32-bit unsigned integer"),
+            )
+            .with_repair(RepairClass::UseSupportedIdentifierShape)
+        })?;
+        Self::new(name, version)
+    }
+
     /// Builds a schema ID.
     ///
     /// # Errors
