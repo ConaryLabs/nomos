@@ -10,10 +10,8 @@ applies_to_the_mortal_estate: No, unless separately adopted by an explicit proje
 authors: Claude Fable 5 and GPT-5.6 Pro, in adversarial review, with Peter Permenter as owner and referee
 date: 2026-08-21
 revision: 2
-contract_revision: 2
-decision_record: docs/decisions/0001-contract-repair.md
-proposed_contract_revision: 3
-proposed_decision_record: docs/decisions/0003-contract-profile-closure.md
+contract_revision: 3
+decision_record: docs/decisions/0003-contract-profile-closure.md
 ---
 
 # The Signed World
@@ -40,8 +38,8 @@ project. [KERNEL.md](KERNEL.md) is the first executable acceptance contract.
 [docs/decisions/0001-contract-repair.md](docs/decisions/0001-contract-repair.md)
 records the owner-authorized repair from revision 1 to revision 2.
 [docs/decisions/0003-contract-profile-closure.md](docs/decisions/0003-contract-profile-closure.md)
-proposes revision 3 to close the canonical-profile and workspace-evidence gaps
-found by SW-B; it remains non-authoritative pending owner disposition.
+records the owner-authorized revision 3 closure of the canonical-profile and
+workspace-evidence gaps found by SW-B.
 
 Contract changes follow `AGENTS.md`. Contradictions and falsified assumptions may
 be repaired explicitly; criteria may not be silently weakened because code

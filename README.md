@@ -15,8 +15,7 @@ test that thesis before any renderer is built.
 - **Implementation status:** workspace foundations (SW-B) plus source schema,
   parser, typed name resolution, primitive expansion, and ownership linker
   (SW-C); no command surface or runtime
-- **Contract revision:** 2 effective; revision 3 proposed in decision 0003
-  pending owner disposition
+- **Contract revision:** 3, owner-authorized in decision 0003
 - **Scope:** greenfield / vacuum architecture exercise
 - **Effect on other projects:** none unless separately adopted by an explicit
   decision in that project's own authority records
@@ -34,8 +33,8 @@ it.
 2. [KERNEL.md](KERNEL.md) — the revisioned acceptance contract for Gate K, the
    renderer-free executable semantic kernel.
 3. [docs/decisions/0003-contract-profile-closure.md](docs/decisions/0003-contract-profile-closure.md)
-   — the proposed revision-2 to revision-3 closure of the canonical profile
-   and workspace-evidence contract gaps; owner disposition is pending.
+   — the owner-authorized revision-2 to revision-3 closure of the canonical
+   profile and workspace-evidence contract gaps.
 4. [docs/decisions/0001-contract-repair.md](docs/decisions/0001-contract-repair.md)
    — the owner-authorized revision-1 to revision-2 contract repair.
 5. [docs/evaluation/COLD_AGENT_PROTOCOL.md](docs/evaluation/COLD_AGENT_PROTOCOL.md)

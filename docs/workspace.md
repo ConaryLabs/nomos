@@ -8,9 +8,8 @@ applies_to: KERNEL.md sections 5, 7, 8, 10; acceptance 12, 15, 16
 # Gate K workspace
 
 `KERNEL.md` section 10 defines the crates and the permitted dependency edges.
-This document says where they live and how to run the proof. Proposed contract
-revision 3 would pin the implementation choices SW-B originally had to make;
-revision 2 remains effective pending owner disposition.
+This document says where they live and how to run the proof. Contract revision
+3 pins the implementation choices SW-B originally had to make.
 
 ## Crate map
 
@@ -92,14 +91,14 @@ one crate. That is a property of the source, not of the dependency graph, and
 `estate-schema`; every crate that must not see it lacks the edge that would let
 it. The checker proves the missing edges. Local schema-ID uniqueness tests,
 compile-fail boundary doctests, and the compiler crossing test support the
-explicit source-review receipt required by proposed revision 3. None of those
+explicit source-review receipt required by revision 3. None of those
 checks is claimed as a semantic-uniqueness proof by itself.
 
 ## Contract choices first implemented by SW-B
 
 ### `xtask` is a seventh workspace member
 
-Proposed contract revision 3 declares six kernel crates plus `xtask`. `xtask`
+Contract revision 3 declares six kernel crates plus `xtask`. `xtask`
 builds no kernel artifact and is not reachable from any kernel crate. It exists
 as a separate member for one reason: the boundary checker must not sit inside
 the graph it checks. As a subcommand of `estate-cli` its own dependencies would
@@ -136,7 +135,7 @@ hash would prove the swap changed nothing.
 
 ### Identifiers are ASCII, and that is how NFC is satisfied
 
-Proposed revision 3 requires stable identifier segments and canonical object
+Revision 3 requires stable identifier segments and canonical object
 field names to match `[a-z][a-z0-9_]*`. Every character in that ASCII set is
 NFC-invariant, so a validated name is normalized by construction without
 carrying versioned Unicode tables into the hash domain. Composite IDs add only
@@ -150,7 +149,7 @@ decision; it does not need this rule relaxed quietly.
 
 ### Escape spelling
 
-Proposed revision 3 pins the spelling first implemented by SW-B: `\b \f \n \r
+Revision 3 pins the spelling first implemented by SW-B: `\b \f \n \r
 \t` for those five control code points and `\u00xx` with lowercase hex for every
 other code point below `U+0020`. `\/` is never emitted and is refused on read.
 `U+007F` is not a JSON control character and is emitted raw.

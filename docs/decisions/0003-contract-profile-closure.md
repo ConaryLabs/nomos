@@ -1,6 +1,6 @@
 ---
 title: Contract revision 3 — canonical profile and workspace evidence closure
-status: Proposed for owner disposition
+status: Owner-authorized; effective when merged
 number: 0003
 date: 2026-08-21
 issue: 4
@@ -12,19 +12,19 @@ implementing_reviewer: GPT-5.6
 
 # Contract revision 3 — canonical profile and workspace evidence closure
 
-## Proposed decision
+## Decision
 
 Repair four underspecified parts of the Gate K contract that SW-B had to choose
 while implementing contract revision 2. Revision 3 pins the existing accepted
 implementation choices; it does not waive a failed proof or broaden Gate K.
 
-This proposal is non-authoritative until the owner reviews the finished wording,
-records a disposition below, and merges it. The revised contract becomes
-effective on merge.
+The owner reviewed and approved the finished replacement wording. The revised
+contract becomes effective on merge.
 
 ## Owner disposition
 
-Pending owner review of the finished replacement wording.
+On 2026-08-21, Peter Permenter explicitly approved decision 0003 as written and
+authorized merging PR #13. No amendment below is accepted only in part.
 
 ## Amendments
 
@@ -47,7 +47,7 @@ profile must permit exactly one.
 and strict reader already implement this profile. Revision 3 adds direct tests
 for every short escape and representative refused alternatives.
 
-**Owner disposition:** pending.
+**Owner disposition:** approved as written.
 
 **New contract revision:** 3.
 
@@ -80,7 +80,7 @@ incorrect issue summary.
 byte sequence, or hash changes. Existing non-ASCII refusal tests remain valid;
 revision 3 adds direct field-name shape tests.
 
-**Owner disposition:** pending.
+**Owner disposition:** approved as written.
 
 **New contract revision:** 3.
 
@@ -104,7 +104,7 @@ kernel boundary. An isolated member can inspect the graph without joining it.
 planted boundary violations already match this wording. The six kernel-crate
 dependency edges are unchanged.
 
-**Owner disposition:** pending.
+**Owner disposition:** approved as written.
 
 **New contract revision:** 3.
 
@@ -136,16 +136,17 @@ compile-fail doctests, and compiler-crossing tests retain their scope. Revision
 3 corrects the claim made about them and adds an explicit source-review receipt
 obligation; it does not mark the whole Gate K workspace green.
 
-**Owner disposition:** pending.
+**Owner disposition:** approved as written.
 
 **New contract revision:** 3.
 
 ## Related non-normative record maintenance
 
 `KERNEL.md` previously reported `status: Not started`. The replacement status
-states that revision 3 is proposed pending owner disposition and implementation
-has progressed through SW-C. This repairs stale repository state; it changes no
-acceptance criterion and has no effect on existing evidence.
+records that implementation has progressed through SW-C; the frontmatter now
+identifies owner-authorized contract revision 3. This repairs stale repository
+state; it changes no acceptance criterion and has no effect on existing
+evidence.
 
 `THESIS.md` section 21 previously retained the authoring-source-language choice
 as open after decision 0002 and SW-C had resolved it. The live open-question
