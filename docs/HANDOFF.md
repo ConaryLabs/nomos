@@ -1,8 +1,8 @@
 # Handoff — state of the repository
 
-Updated 2026-08-21 for SW-C draft PR #6. This file orients a fresh session; it
-is rewritten at each slice boundary and never accumulates history (git has
-that).
+Updated 2026-08-21 for the owner disposition on SW-C PR #6. This file orients a
+fresh session; it is rewritten at each slice boundary and never accumulates
+history (git has that).
 
 ## Where things stand
 
@@ -11,16 +11,18 @@ that).
 - **SW-B is merged (#3):** six kernel crates plus isolated `xtask`, Rust 1.97.1,
   zero third-party crates, deterministic core primitives, immutable package
   mechanics, boundary enforcement, and green CI on main.
-- **SW-C is implemented in draft PR #6:** source-language decision 0002, the
+- **SW-C is implemented by PR #6:** source-language decision 0002, the
   exact `fixtures/gaol.estate`, source AST and Canonical World IR schemas, typed
   lattice bindings, parser, distinct typed symbol tables, the sealed
   three-primitive expansion catalog, ownership linker/receipts, and mutation
-  tests. The implementation commit is `be5576d`; check the PR for its current
-  head, CI, review, and merge state.
-- **Issue #5 remains open** until owner disposition and merge. Its record states
-  that acceptance 3 is only partially covered: IR expansion is proved, but the
-  observable `estate inspect` command still requires complete packages and
-  projections.
+  tests. The implementation commit is `be5576d`.
+- **Owner disposition:** Peter explicitly authorized merging PR #6 without the
+  required non-author rerun on 2026-08-21. The merge is authorized; SW-C is not
+  green until a later non-author receipt records the commit, commands,
+  environment, result, and reviewer. CI and author proof do not substitute.
+- **Issue #5 is disposed by PR #6.** Acceptance 3 remains only partially
+  covered: IR expansion is proved, but the observable `estate inspect` command
+  still requires complete packages and projections.
 - **Issue #4 remains open** for the four SW-B contract underspecifications.
 - **Issue #7 records the cold-agent roster problem:** SW-B is Claude-authored
   and SW-C is GPT-authored, so GPT is no longer eligible as the formal cold
@@ -29,9 +31,9 @@ that).
 
 ## What is next
 
-First, obtain a non-author rerun of PR #6 at its final head. Author proof and CI
-do not satisfy the repository's non-author rule. Owner review and merge remain
-separate dispositions.
+First, obtain the deferred non-author rerun of the merged SW-C commit. Author
+proof and CI do not satisfy the repository's non-author rule; the explicit
+owner merge disposition did not call the slice green.
 
 After SW-C, implement **SW-D — namespace-machine transitions, typed
 interactions, deterministic phase order, and atomic transaction preparation**.
