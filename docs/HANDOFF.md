@@ -14,6 +14,11 @@ never accumulates history (git has that).
   construction epoch begins at `nomos.world_ir.construction@1`. References to
   `signed-world`, `estate-*`, `.estate`, and `estate.*` below describe immutable
   prototype-era history unless explicitly called current.
+  The mechanical implementation is commit `7c0ca31`; its full author proof,
+  old-to-new golden relationship, and classified legacy-name audit are recorded
+  under `docs/evaluation/runs/identity/2026-08-21-nomos-cutover/`. PR CI, the
+  Luna max exact-head rerun, repository rename, and post-merge CI remain
+  pending.
 
 - **Contract revision 3 is owner-authorized:** decision 0003 pins the canonical
   escape profile, ASCII identifier and field-name grammar, isolated `xtask`,
