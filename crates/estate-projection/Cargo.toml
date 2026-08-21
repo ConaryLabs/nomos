@@ -1,0 +1,13 @@
+[package]
+name = "estate-projection"
+description = "Versioned simulation, navigation, persistence, and diagnostic projection schemas."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+# KERNEL.md section 10 permits exactly one edge: estate-projection -> estate-core.
+[dependencies]
+estate-core.workspace = true

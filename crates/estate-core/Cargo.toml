@@ -1,0 +1,15 @@
+[package]
+name = "estate-core"
+description = "Stable IDs, canonical bytes, hashing, checked arithmetic, and diagnostics for the Gate K semantic kernel."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+# estate-core is the root of the KERNEL.md section 10 dependency graph and has
+# no dependencies at all, first-party or third-party. The authoritative state
+# hash is constitutional evidence; nothing outside this repository participates
+# in producing it.
+[dependencies]
