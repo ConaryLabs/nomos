@@ -1,0 +1,36 @@
+=== Iteration 1 ===
+
+Act as an independent non-author reviewer of exact HEAD 7857ea7 on branch
+contract/world-ir-construction-lineage in /home/peter/signed-world. Do not edit
+files, commit, push, or use network. Read AGENTS.md, README.md, THESIS.md,
+KERNEL.md, docs/decisions/0004-world-ir-construction-lineage.md, issue context
+embedded in that decision, and the complete HEAD diff against main. Audit
+whether the proposal honestly repairs the schema-version contradiction without
+weakening or creating ambiguity; verify every required decision-record field;
+inspect all code/docs references for stale or misleading stable World IR
+identity; inspect tests for meaningful proof. Run: git status --short --branch;
+cargo fmt --all -- --check; cargo clippy --workspace --all-targets --locked --
+-D warnings; cargo test --workspace --locked; cargo xtask boundary; git status
+--short --branch. Report exact commit, model identity if available, findings
+ordered by severity with file/line evidence, command results, clean-tree result,
+and final PASS or FAIL. PASS only if there are no actionable defects.
+
+=== Iteration 2 ===
+
+Act as an independent non-author reviewer of exact HEAD ecc6643 on branch
+contract/world-ir-construction-lineage in /home/peter/signed-world. Do not edit
+files, commit, push, or use network. Read AGENTS.md, README.md, THESIS.md,
+KERNEL.md, docs/decisions/0004-world-ir-construction-lineage.md,
+docs/evaluation/runs/contract/2026-08-21-claude-opus-5-revision-4-review/README.md,
+and the complete HEAD diff against main. Audit the contract repair and
+specifically verify that every finding recorded in that failed-review receipt is
+completely resolved without weakening first-commit versioning, migration,
+package, or owner-authority rules. Search all code/docs for stale stable World
+IR identity. Inspect tests for meaningful schema name-and-version proof. Run
+these exact commands separately and record each exit status: git status --short
+--branch; cargo fmt --all -- --check; cargo clippy --workspace --all-targets
+--locked -- -D warnings; cargo test --workspace --locked; cargo xtask boundary;
+git status --short --branch. Report exact full commit, canonical model identity
+if available, findings ordered by severity with file/line evidence, command
+results, clean-tree result, and final PASS or FAIL. PASS only if there are no
+actionable defects and all four proof commands pass.

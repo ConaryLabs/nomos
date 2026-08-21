@@ -149,6 +149,10 @@ fn world_ir_bytes_are_canonical_and_repeatable() {
             .windows(encoded_schema.len())
             .any(|window| window == encoded_schema)
     );
+    assert_eq!(
+        estate_core::hash::Sha256Digest::of_bytes(&first).to_hex(),
+        include_str!("golden/gaol-world-ir-construction-v1.sha256").trim()
+    );
     assert!(!first.ends_with(b"\n"));
 }
 

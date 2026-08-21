@@ -65,6 +65,8 @@ SW-C corrected the narrower SW-B naming before it became serialized behavior.
 - the door, water, and light expand into inspectable typed IR;
 - source maps and ownership receipts survive canonical encoding;
 - repeated compilation of the same bytes produces identical canonical IR;
+- a frozen SHA-256 fixture pins every construction-v1 canonical byte, so a
+  shape change without a schema-version change fails the build;
 - relevant ownership and cross-reference mutations fail with stable codes and
   source spans.
 
