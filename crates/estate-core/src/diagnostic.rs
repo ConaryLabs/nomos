@@ -353,6 +353,7 @@ impl Diagnostic {
             fields.push((FieldName::declared("span"), span_value));
         }
         CanonicalValue::object(fields)
+            .expect("diagnostic construction supplies each canonical field once")
     }
 }
 
@@ -392,6 +393,8 @@ pub mod codes {
     pub const CANONICAL_MALFORMED: DiagnosticCode = DiagnosticCode::new("EK0302");
     /// Bytes parse as JSON but violate the canonical byte profile.
     pub const CANONICAL_NOT_CANONICAL: DiagnosticCode = DiagnosticCode::new("EK0303");
+    /// A canonical builder received one semantic field or stable ID twice.
+    pub const CANONICAL_DUPLICATE_IDENTITY: DiagnosticCode = DiagnosticCode::new("EK0304");
 
     /// A package output directory already exists.
     pub const PACKAGE_OUTPUT_EXISTS: DiagnosticCode = DiagnosticCode::new("EK0401");
@@ -407,6 +410,44 @@ pub mod codes {
     pub const PACKAGE_MEMBER_NAME_INVALID: DiagnosticCode = DiagnosticCode::new("EK0406");
     /// Reading or writing the package failed for an environment reason.
     pub const PACKAGE_IO: DiagnosticCode = DiagnosticCode::new("EK0407");
+    /// A package writer received the same member name more than once.
+    pub const PACKAGE_MEMBER_DUPLICATE: DiagnosticCode = DiagnosticCode::new("EK0408");
+
+    /// A transition refers to a source machine namespace that does not exist.
+    pub const TRANSITION_SOURCE_NAMESPACE_MISSING: DiagnosticCode = DiagnosticCode::new("EK0701");
+    /// An interaction refers to a target machine namespace that does not exist.
+    pub const INTERACTION_TARGET_NAMESPACE_MISSING: DiagnosticCode = DiagnosticCode::new("EK0702");
+    /// A transition or on-enter trigger names a state absent from its machine.
+    pub const TRANSITION_STATE_MISSING: DiagnosticCode = DiagnosticCode::new("EK0703");
+    /// One machine declares the same transition signature more than once.
+    pub const TRANSITION_SIGNATURE_DUPLICATE: DiagnosticCode = DiagnosticCode::new("EK0704");
+    /// The interaction set declares the same stable edge identity more than once.
+    pub const INTERACTION_IDENTITY_DUPLICATE: DiagnosticCode = DiagnosticCode::new("EK0705");
+    /// An interaction target does not own a matching internal event handler.
+    pub const INTERACTION_HANDLER_MISSING: DiagnosticCode = DiagnosticCode::new("EK0706");
+    /// Causal interaction settlement contains a cycle.
+    pub const INTERACTION_CYCLE: DiagnosticCode = DiagnosticCode::new("EK0707");
+    /// A catalog transition has an input form that cannot be projected.
+    pub const TRANSITION_INPUT_INVALID: DiagnosticCode = DiagnosticCode::new("EK0708");
+
+    /// A command targets a machine absent from the projection or current state.
+    pub const RUNTIME_TARGET_MISSING: DiagnosticCode = DiagnosticCode::new("EK0801");
+    /// An external command action is not declared by its target machine.
+    pub const RUNTIME_ACTION_UNDECLARED: DiagnosticCode = DiagnosticCode::new("EK0802");
+    /// An external caller attempted to invoke an internal event handler.
+    pub const RUNTIME_INTERNAL_HANDLER_EXTERNAL: DiagnosticCode = DiagnosticCode::new("EK0803");
+    /// The selected command or handler is illegal in the current machine state.
+    pub const RUNTIME_SOURCE_STATE_ILLEGAL: DiagnosticCode = DiagnosticCode::new("EK0804");
+    /// A command argument does not match its compiled input requirement.
+    pub const RUNTIME_ARGUMENT_MISMATCH: DiagnosticCode = DiagnosticCode::new("EK0805");
+    /// A causal event targets a machine absent from the projection or state.
+    pub const RUNTIME_EVENT_TARGET_MISSING: DiagnosticCode = DiagnosticCode::new("EK0806");
+    /// A causal event has no matching target-owned handler.
+    pub const RUNTIME_EVENT_HANDLER_MISSING: DiagnosticCode = DiagnosticCode::new("EK0807");
+    /// Causal settlement exceeded the deterministic transition budget.
+    pub const RUNTIME_TRANSITION_BUDGET: DiagnosticCode = DiagnosticCode::new("EK0808");
+    /// Initial or current runtime state does not conform to the projection.
+    pub const RUNTIME_STATE_INVALID: DiagnosticCode = DiagnosticCode::new("EK0809");
 
     /// Every code this crate owns, for well-formedness and uniqueness tests.
     pub const ALL: &[DiagnosticCode] = &[
@@ -419,6 +460,7 @@ pub mod codes {
         FIELD_NAME_UNSUPPORTED,
         CANONICAL_MALFORMED,
         CANONICAL_NOT_CANONICAL,
+        CANONICAL_DUPLICATE_IDENTITY,
         PACKAGE_OUTPUT_EXISTS,
         PACKAGE_MEMBER_MISSING,
         PACKAGE_MEMBER_HASH_MISMATCH,
@@ -426,5 +468,23 @@ pub mod codes {
         PACKAGE_MANIFEST_INVALID,
         PACKAGE_MEMBER_NAME_INVALID,
         PACKAGE_IO,
+        PACKAGE_MEMBER_DUPLICATE,
+        TRANSITION_SOURCE_NAMESPACE_MISSING,
+        INTERACTION_TARGET_NAMESPACE_MISSING,
+        TRANSITION_STATE_MISSING,
+        TRANSITION_SIGNATURE_DUPLICATE,
+        INTERACTION_IDENTITY_DUPLICATE,
+        INTERACTION_HANDLER_MISSING,
+        INTERACTION_CYCLE,
+        TRANSITION_INPUT_INVALID,
+        RUNTIME_TARGET_MISSING,
+        RUNTIME_ACTION_UNDECLARED,
+        RUNTIME_INTERNAL_HANDLER_EXTERNAL,
+        RUNTIME_SOURCE_STATE_ILLEGAL,
+        RUNTIME_ARGUMENT_MISMATCH,
+        RUNTIME_EVENT_TARGET_MISSING,
+        RUNTIME_EVENT_HANDLER_MISSING,
+        RUNTIME_TRANSITION_BUDGET,
+        RUNTIME_STATE_INVALID,
     ];
 }

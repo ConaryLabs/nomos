@@ -4,8 +4,9 @@ use std::fs;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicU32, Ordering};
 
-use estate_core::CanonicalValue;
+use estate_core::canonical::read::parse_canonical;
 use estate_core::package::{MANIFEST_FILE, MemberName, RECEIPTS_DIR, WorldPackage};
+use estate_core::{CanonicalValue, FieldName, Sha256Digest};
 
 static COUNTER: AtomicU32 = AtomicU32::new(0);
 
@@ -180,6 +181,64 @@ fn a_non_canonical_member_never_reaches_disk() {
         !path.exists(),
         "a refused write must not leave a partial package behind"
     );
+}
+
+#[test]
+fn duplicate_input_members_fail_before_the_package_exists() {
+    let path = fresh_path("duplicate-input");
+    let bytes =
+        CanonicalValue::object_declared([("tick", CanonicalValue::Uint(0))]).to_canonical_bytes();
+    let rejected = WorldPackage::write(
+        &path,
+        vec![
+            (member("world-ir.json"), bytes.clone()),
+            (member("world-ir.json"), bytes),
+        ],
+    )
+    .unwrap_err();
+    assert_eq!(rejected.code().as_str(), "EK0408");
+    assert!(!path.exists());
+}
+
+#[test]
+fn duplicate_manifest_rows_fail_even_with_a_recomputed_digest() {
+    let path = fresh_path("duplicate-manifest-row");
+    WorldPackage::write(&path, simple_members()).unwrap();
+
+    let manifest_path = path.join(MANIFEST_FILE);
+    let CanonicalValue::Object(mut fields) =
+        parse_canonical(&fs::read(&manifest_path).unwrap()).unwrap()
+    else {
+        panic!("the writer emits an object manifest")
+    };
+    let schema = fields
+        .get(&FieldName::declared("schema"))
+        .expect("the writer emits a schema")
+        .clone();
+    let CanonicalValue::Array(rows) = fields
+        .get_mut(&FieldName::declared("members"))
+        .expect("the writer emits members")
+    else {
+        panic!("manifest members are an array")
+    };
+    rows.push(rows[0].clone());
+    let body = CanonicalValue::object_declared([
+        ("members", CanonicalValue::Array(rows.clone())),
+        ("schema", schema),
+    ]);
+    fields.insert(
+        FieldName::declared("package_digest"),
+        CanonicalValue::text(Sha256Digest::of_canonical(&body).to_hex()),
+    );
+    fs::write(
+        &manifest_path,
+        CanonicalValue::Object(fields).to_canonical_bytes(),
+    )
+    .unwrap();
+
+    let rejected = WorldPackage::open(&path).unwrap_err();
+    assert_eq!(rejected.code().as_str(), "EK0405");
+    assert!(rejected.message().contains("occurs more than once"));
 }
 
 #[test]

@@ -1,6 +1,6 @@
 # Handoff — state of the repository
 
-Updated 2026-08-21 after the owner-disposed GPT Pro architecture checkpoint.
+Updated 2026-08-21 on the SW-D implementation branch.
 This file orients a fresh session; it is rewritten at each slice boundary and
 never accumulates history (git has that).
 
@@ -58,27 +58,32 @@ never accumulates history (git has that).
 - **The GPT Pro architecture checkpoint is owner-disposed (#25):** review of
   clean `main` at `feacad0` found the project on target, endorsed SW-D's scope,
   and filed #21–#24. This was architecture fuzzing, not a formal Gate K run.
+- **SW-D is implemented on the current branch (#14):** construction IR advances
+  to `estate.world_ir.construction@2` with typed transitions and one phased
+  causal edge. The compiler emits `estate.projection.simulation@1`, rejects
+  invalid references and cycles, and no longer claims unimplemented projection
+  artifacts. `estate-sim` initializes projected machines and atomically prepares
+  local-then-causal state changes without seeing source or IR.
+- **Issue #21 is the first isolated SW-D commit (`a3be521`):** canonical object
+  fields, stable keyed arrays, package members/manifest rows, machine/claim
+  identities, transitions, and interactions fail closed instead of retaining a
+  final duplicate.
+- **SW-D evidence is not green yet:** the author proof passes locally, but the
+  exact-head non-author rerun and PR CI required before owner merge disposition
+  have not yet been recorded.
 
 ## What is next
 
-Implement **SW-D issue #14 — namespace-machine transitions, typed interactions,
-deterministic phase order, and atomic transaction preparation**. Its first
-isolated commit resolves **#21** so duplicate canonical fields, stable IDs,
-package members, machine namespaces, and claim references fail closed before
-SW-D adds transition signatures and interaction identities.
-
-Then implement #14 exactly as scoped. The schemas already contain machine and
-claim templates; SW-D adds executable transition and interaction semantics
-without moving command-time truth into the compiler. It also separates planned
-schema ownership from artifacts actually emitted: after SW-D only the
-simulation projection is implemented.
+Finish **SW-D issue #14**: run the exact-head non-author proof, obtain green PR
+CI, and leave merge disposition to the owner. Do not call the slice green before
+both exist.
 
 Do not pull #22 package hardening or #24 typed forensic provenance sideways into
 SW-D. Resolve #22 before package/CLI/migration evidence and #24 before stable
 World IR promotion or `explain-*`. Issue #17 remains a formal cold-author
 tooling blocker, not a blocker for semantic implementation.
 
-Then: SW-E (effective-fact resolution, `MovementDisposition`, projections),
+After SW-D merges: SW-E (effective-fact resolution, `MovementDisposition`, projections),
 SW-F (runtime state, replay, migration v1→v2, `explain-*`), complete command
 surface/package orchestration, determinism matrix, and formal cold-agent gates.
 
@@ -91,12 +96,13 @@ cargo test --workspace --locked
 cargo xtask boundary
 ```
 
-The SW-C, revision-4, and Rust-1.98 maintenance author/non-author reruns passed
-all four commands. Revision 4 and Rust 1.98 PR/post-merge CI are green. Still
-unproven: Linux aarch64
+The current SW-D author run passes all four commands locally. Its non-author and
+PR CI evidence are still pending. Earlier SW-C, revision-4, and Rust-1.98
+maintenance author/non-author reruns passed all four commands. Revision 4 and
+Rust 1.98 PR/post-merge CI are green. Still unproven: Linux aarch64
 release, ten runs per target, the complete `estate` command surface, complete
-package projections, runtime semantics, migration/replay, and formal cold-agent
-gates. The contract also requires a final explicit schema-ownership
+package projections, effective-fact resolution, committed runtime semantics,
+migration/replay, and formal cold-agent gates. The contract also requires a final explicit schema-ownership
 source-review receipt after the Gate K schema set stabilizes; that final receipt
 does not exist yet.
 

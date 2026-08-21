@@ -63,7 +63,8 @@ fn fixture() -> CanonicalValue {
                 entity("north_gate", Some("credential/gaoler_key")),
                 entity("brazier_02", None),
                 entity("flooded_section", None),
-            ]),
+            ])
+            .unwrap(),
         ),
         (
             "lattice_bindings",
@@ -84,7 +85,8 @@ fn fixture() -> CanonicalValue {
                 machine("north_gate.access", "locked"),
                 machine("north_gate.combustion", "cold"),
                 machine("north_gate.integrity", "intact"),
-            ]),
+            ])
+            .unwrap(),
         ),
         (
             "schema",
@@ -108,7 +110,7 @@ fn the_frozen_fixture_hash_does_not_move() {
     println!("HASH hash_domain_fixture {}", hash.to_hex());
     println!(
         "HASH hash_domain_fixture_empty_object {}",
-        StateHash::of_envelope(&CanonicalValue::object([])).to_hex()
+        StateHash::of_envelope(&CanonicalValue::object([]).unwrap()).to_hex()
     );
     println!(
         "HASH hash_domain_fixture_entities {}",

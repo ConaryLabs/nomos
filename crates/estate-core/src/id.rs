@@ -27,7 +27,7 @@
 
 use std::fmt;
 
-use crate::canonical::{CanonicalValue, FieldName};
+use crate::canonical::CanonicalValue;
 use crate::diagnostic::{Diagnostic, RepairClass, codes};
 use crate::ident::{Ident, split_exact};
 
@@ -425,15 +425,9 @@ impl SchemaId {
     /// The schema ID as a canonical object.
     #[must_use]
     pub fn to_canonical(&self) -> CanonicalValue {
-        CanonicalValue::object([
-            (
-                FieldName::declared("name"),
-                CanonicalValue::Text(self.name.canonical_string()),
-            ),
-            (
-                FieldName::declared("version"),
-                CanonicalValue::Uint(u64::from(self.version)),
-            ),
+        CanonicalValue::object_declared([
+            ("name", CanonicalValue::Text(self.name.canonical_string())),
+            ("version", CanonicalValue::Uint(u64::from(self.version))),
         ])
     }
 }

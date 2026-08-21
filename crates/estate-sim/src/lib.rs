@@ -38,6 +38,13 @@
 
 use estate_core::id::SchemaId;
 
+mod transaction;
+
+pub use transaction::{
+    DEFAULT_TRANSITION_BUDGET, PreparedTransaction, SimulationState, TransitionCause,
+    TransitionStep, prepare_transaction, prepare_transaction_with_budget,
+};
+
 /// The authoritative runtime-state schema.
 ///
 /// Section 5 keeps this separate from the package: the package contains

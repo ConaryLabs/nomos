@@ -18,14 +18,15 @@ fn encoding_is_byte_stable_across_insertion_order() {
         (field("combustion"), CanonicalValue::text("cold")),
     ];
 
-    let forward = CanonicalValue::object(pairs.clone());
-    let reversed = CanonicalValue::object(pairs.iter().rev().cloned());
+    let forward = CanonicalValue::object(pairs.clone()).unwrap();
+    let reversed = CanonicalValue::object(pairs.iter().rev().cloned()).unwrap();
     let shuffled = CanonicalValue::object([
         pairs[2].clone(),
         pairs[0].clone(),
         pairs[3].clone(),
         pairs[1].clone(),
-    ]);
+    ])
+    .unwrap();
 
     let expected =
         br#"{"access":"locked","combustion":"cold","integrity":"intact","ward":"sealed"}"#.to_vec();
@@ -40,7 +41,7 @@ fn arrays_ordered_by_stable_id_do_not_depend_on_declaration_order() {
         let id = EntityId::parse(name).unwrap();
         (
             id.clone(),
-            CanonicalValue::object([(field("id"), id.to_canonical())]),
+            CanonicalValue::object([(field("id"), id.to_canonical())]).unwrap(),
         )
     };
 
@@ -48,12 +49,14 @@ fn arrays_ordered_by_stable_id_do_not_depend_on_declaration_order() {
         entity("north_gate"),
         entity("brazier_02"),
         entity("flooded_section"),
-    ]);
+    ])
+    .unwrap();
     let other_order = keyed_array([
         entity("flooded_section"),
         entity("north_gate"),
         entity("brazier_02"),
-    ]);
+    ])
+    .unwrap();
 
     assert_eq!(
         declared.to_canonical_bytes(),
@@ -63,6 +66,33 @@ fn arrays_ordered_by_stable_id_do_not_depend_on_declaration_order() {
         declared.to_canonical_bytes(),
         br#"[{"id":"brazier_02"},{"id":"flooded_section"},{"id":"north_gate"}]"#.to_vec()
     );
+}
+
+#[test]
+fn dynamic_objects_and_keyed_arrays_reject_duplicate_identity() {
+    let duplicate_field = CanonicalValue::object([
+        (field("state"), CanonicalValue::text("locked")),
+        (field("state"), CanonicalValue::text("open")),
+    ])
+    .unwrap_err();
+    assert_eq!(duplicate_field.code().as_str(), "EK0304");
+
+    let duplicate_id = EntityId::parse("north_gate").unwrap();
+    let duplicate_key = keyed_array([
+        (duplicate_id.clone(), CanonicalValue::text("first")),
+        (duplicate_id, CanonicalValue::text("second")),
+    ])
+    .unwrap_err();
+    assert_eq!(duplicate_key.code().as_str(), "EK0304");
+}
+
+#[test]
+#[should_panic(expected = "duplicate declared canonical field `state`")]
+fn duplicate_declared_fields_are_developer_errors() {
+    let _ = CanonicalValue::object_declared([
+        ("state", CanonicalValue::text("locked")),
+        ("state", CanonicalValue::text("open")),
+    ]);
 }
 
 #[test]
@@ -170,17 +200,18 @@ fn canonical_field_names_use_the_exact_ascii_identifier_shape() {
 fn every_canonical_encoding_reads_back_to_the_same_bytes() {
     let value = CanonicalValue::object([
         (field("empty_array"), CanonicalValue::Array(vec![])),
-        (field("empty_object"), CanonicalValue::object([])),
+        (field("empty_object"), CanonicalValue::object([]).unwrap()),
         (field("flag"), CanonicalValue::Bool(false)),
         (field("nothing"), CanonicalValue::Null),
         (
             field("nested"),
             CanonicalValue::Array(vec![
                 CanonicalValue::Int(-1),
-                CanonicalValue::object([(field("deep"), CanonicalValue::text(""))]),
+                CanonicalValue::object([(field("deep"), CanonicalValue::text(""))]).unwrap(),
             ]),
         ),
-    ]);
+    ])
+    .unwrap();
     let bytes = value.to_canonical_bytes();
     let reread = parse_canonical(&bytes).unwrap();
     assert_eq!(reread.to_canonical_bytes(), bytes);

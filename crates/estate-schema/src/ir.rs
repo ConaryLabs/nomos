@@ -5,11 +5,11 @@ use std::collections::BTreeSet;
 use estate_core::canonical::keyed_array;
 use estate_core::id::StableId;
 use estate_core::{
-    CanonicalValue, CatalogValueId, ClaimRef, EntityId, Ident, NamespaceId, PrimitiveKindId,
-    SchemaId, SourceSpan,
+    CanonicalValue, CatalogValueId, ClaimRef, Diagnostic, EntityId, Ident, NamespaceId,
+    PrimitiveKindId, RepairClass, SchemaId, SourceSpan,
 };
 
-use crate::{Binding, construction_world_ir_schema};
+use crate::{Binding, InteractionDefinition, TransitionDefinition, construction_world_ir_schema};
 
 /// A capability in the sealed Gate K basis used by the three approved kinds.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
@@ -130,6 +130,7 @@ pub struct MachineTemplate {
     namespace: NamespaceId,
     states: Vec<Ident>,
     initial: Ident,
+    transitions: Vec<TransitionDefinition>,
 }
 
 impl MachineTemplate {
@@ -140,7 +141,27 @@ impl MachineTemplate {
             namespace,
             states,
             initial,
+            transitions: Vec::new(),
         }
+    }
+
+    /// Attaches transitions in stable signature order.
+    ///
+    /// # Errors
+    ///
+    /// Returns `EK0704` when a transition signature occurs more than once.
+    pub fn with_transitions(
+        mut self,
+        mut transitions: Vec<TransitionDefinition>,
+    ) -> Result<Self, Diagnostic> {
+        require_unique_with_code(
+            transitions.iter().map(TransitionDefinition::stable_key),
+            "transition signature",
+            estate_core::diagnostic::codes::TRANSITION_SIGNATURE_DUPLICATE,
+        )?;
+        transitions.sort_by_key(TransitionDefinition::stable_key);
+        self.transitions = transitions;
+        Ok(self)
     }
     /// The machine namespace.
     #[must_use]
@@ -157,6 +178,11 @@ impl MachineTemplate {
     pub fn initial(&self) -> &Ident {
         &self.initial
     }
+    /// Transition definitions in stable signature order.
+    #[must_use]
+    pub fn transitions(&self) -> &[TransitionDefinition] {
+        &self.transitions
+    }
 
     fn to_canonical(&self) -> CanonicalValue {
         CanonicalValue::object_declared([
@@ -168,6 +194,15 @@ impl MachineTemplate {
                     self.states
                         .iter()
                         .map(|state| CanonicalValue::text(state.as_str()))
+                        .collect(),
+                ),
+            ),
+            (
+                "transitions",
+                CanonicalValue::Array(
+                    self.transitions
+                        .iter()
+                        .map(TransitionDefinition::to_canonical)
                         .collect(),
                 ),
             ),
@@ -237,23 +272,55 @@ pub struct PrimitiveExpansion {
     capabilities: BTreeSet<CapabilityKind>,
     machines: Vec<MachineTemplate>,
     claims: Vec<ClaimTemplate>,
+    interactions: Vec<InteractionDefinition>,
 }
 
 impl PrimitiveExpansion {
     /// Builds an expansion and imposes stable namespace/claim ordering.
-    #[must_use]
+    ///
+    /// # Errors
+    ///
+    /// Returns `EK0304` when a machine namespace or claim reference occurs
+    /// more than once.
     pub fn new(
         capabilities: impl IntoIterator<Item = CapabilityKind>,
         mut machines: Vec<MachineTemplate>,
         mut claims: Vec<ClaimTemplate>,
-    ) -> Self {
+    ) -> Result<Self, Diagnostic> {
+        require_unique(
+            machines.iter().map(|machine| machine.namespace.clone()),
+            "machine namespace",
+        )?;
+        require_unique(
+            claims.iter().map(|claim| claim.id.clone()),
+            "claim reference",
+        )?;
         machines.sort_by(|left, right| left.namespace.cmp(&right.namespace));
         claims.sort_by(|left, right| left.id.cmp(&right.id));
-        Self {
+        Ok(Self {
             capabilities: capabilities.into_iter().collect(),
             machines,
             claims,
-        }
+            interactions: Vec::new(),
+        })
+    }
+    /// Attaches causal interactions in explicit phase and semantic order.
+    ///
+    /// # Errors
+    ///
+    /// Returns `EK0705` when an interaction identity occurs more than once.
+    pub fn with_interactions(
+        mut self,
+        mut interactions: Vec<InteractionDefinition>,
+    ) -> Result<Self, Diagnostic> {
+        require_unique_with_code(
+            interactions.iter().map(InteractionDefinition::stable_key),
+            "interaction identity",
+            estate_core::diagnostic::codes::INTERACTION_IDENTITY_DUPLICATE,
+        )?;
+        interactions.sort_by_key(InteractionDefinition::stable_key);
+        self.interactions = interactions;
+        Ok(self)
     }
     /// Capability bundle in stable order.
     #[must_use]
@@ -269,6 +336,11 @@ impl PrimitiveExpansion {
     #[must_use]
     pub fn claims(&self) -> &[ClaimTemplate] {
         &self.claims
+    }
+    /// Causal interactions in explicit phase and semantic order.
+    #[must_use]
+    pub fn interactions(&self) -> &[InteractionDefinition] {
+        &self.interactions
     }
 
     fn to_canonical(&self) -> CanonicalValue {
@@ -288,6 +360,16 @@ impl PrimitiveExpansion {
                     self.claims
                         .iter()
                         .map(|claim| (claim.id.clone(), claim.to_canonical())),
+                )
+                .expect("PrimitiveExpansion validates unique claim references"),
+            ),
+            (
+                "interactions",
+                CanonicalValue::Array(
+                    self.interactions
+                        .iter()
+                        .map(InteractionDefinition::to_canonical)
+                        .collect(),
                 ),
             ),
             (
@@ -296,7 +378,8 @@ impl PrimitiveExpansion {
                     self.machines
                         .iter()
                         .map(|machine| (machine.namespace.clone(), machine.to_canonical())),
-                ),
+                )
+                .expect("PrimitiveExpansion validates unique machine namespaces"),
             ),
         ])
     }
@@ -530,26 +613,41 @@ pub struct WorldIr {
 
 impl WorldIr {
     /// Builds the IR and imposes every stable collection order.
-    #[must_use]
+    ///
+    /// # Errors
+    ///
+    /// Returns `EK0304` when a keyed semantic identity occurs more than once.
     pub fn new(
         source_schema: SchemaId,
         mut catalog_values: Vec<CatalogValueId>,
         mut entities: Vec<IrEntity>,
         mut relations: Vec<IrRelation>,
         mut ownership_receipts: Vec<FactOwnershipReceipt>,
-    ) -> Self {
+    ) -> Result<Self, Diagnostic> {
+        require_unique(catalog_values.iter().cloned(), "catalog value")?;
+        require_unique(entities.iter().map(|entity| entity.id.clone()), "entity")?;
+        require_unique(
+            relations.iter().map(IrRelation::stable_key),
+            "relation identity",
+        )?;
+        require_unique(
+            ownership_receipts
+                .iter()
+                .map(|receipt| receipt.fact.clone()),
+            "ownership fact",
+        )?;
         catalog_values.sort();
         entities.sort_by(|left, right| left.id.cmp(&right.id));
         relations.sort_by_key(IrRelation::stable_key);
         ownership_receipts.sort_by(|left, right| left.fact.cmp(&right.fact));
-        Self {
+        Ok(Self {
             schema: construction_world_ir_schema(),
             source_schema,
             catalog_values,
             entities,
             relations,
             ownership_receipts,
-        }
+        })
     }
     /// IR schema identity.
     #[must_use]
@@ -592,7 +690,8 @@ impl WorldIr {
                     self.catalog_values
                         .iter()
                         .map(|id| (id.clone(), id.to_canonical())),
-                ),
+                )
+                .expect("WorldIr validates unique catalog values"),
             ),
             (
                 "entities",
@@ -600,7 +699,8 @@ impl WorldIr {
                     self.entities
                         .iter()
                         .map(|entity| (entity.id.clone(), entity.to_canonical())),
-                ),
+                )
+                .expect("WorldIr validates unique entity IDs"),
             ),
             (
                 "ownership_receipts",
@@ -608,7 +708,8 @@ impl WorldIr {
                     self.ownership_receipts
                         .iter()
                         .map(|receipt| (receipt.fact.clone(), receipt.to_canonical())),
-                ),
+                )
+                .expect("WorldIr validates unique ownership facts"),
             ),
             (
                 "relations",
@@ -616,7 +717,8 @@ impl WorldIr {
                     self.relations
                         .iter()
                         .map(|relation| (relation.stable_key(), relation.to_canonical())),
-                ),
+                )
+                .expect("WorldIr validates unique relation identities"),
             ),
             ("schema", self.schema.to_canonical()),
             ("source_schema", self.source_schema.to_canonical()),
@@ -627,6 +729,40 @@ impl WorldIr {
     pub fn to_canonical_bytes(&self) -> Vec<u8> {
         self.to_canonical().to_canonical_bytes()
     }
+}
+
+fn require_unique<T: Ord>(
+    values: impl IntoIterator<Item = T>,
+    identity: &str,
+) -> Result<(), Diagnostic> {
+    let mut seen = BTreeSet::new();
+    for value in values {
+        if !seen.insert(value) {
+            return Err(Diagnostic::new(
+                estate_core::diagnostic::codes::CANONICAL_DUPLICATE_IDENTITY,
+                format!("{identity} occurs more than once"),
+            )
+            .with_repair(RepairClass::RemoveDuplicateDeclaration));
+        }
+    }
+    Ok(())
+}
+
+fn require_unique_with_code<T: Ord>(
+    values: impl IntoIterator<Item = T>,
+    identity: &str,
+    code: estate_core::DiagnosticCode,
+) -> Result<(), Diagnostic> {
+    let mut seen = BTreeSet::new();
+    for value in values {
+        if !seen.insert(value) {
+            return Err(
+                Diagnostic::new(code, format!("{identity} occurs more than once"))
+                    .with_repair(RepairClass::RemoveDuplicateDeclaration),
+            );
+        }
+    }
+    Ok(())
 }
 
 fn span_to_canonical(span: &SourceSpan) -> CanonicalValue {
