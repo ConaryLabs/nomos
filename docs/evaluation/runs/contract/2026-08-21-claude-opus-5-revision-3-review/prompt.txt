@@ -1,0 +1,44 @@
+TURN 1 — initial independent review
+
+Act as a fresh independent contract reviewer. Work read-only in
+/home/peter/signed-world. Review exact commit
+feb28c6cd2b97d78362680aa24b76cf319f4f97a and issue #4. Read AGENTS.md,
+README.md, THESIS.md, KERNEL.md, decisions 0001, 0002, and proposed 0003,
+docs/workspace.md, docs/HANDOFF.md, the canonical encoder/reader and canonical
+tests, and inspect git diff against main. Determine whether revision 3 closes
+exactly the four underspecifications without weakening Gate K, whether its
+prior/replacement/reason/evidence/disposition/revision fields satisfy the
+amendment procedure, whether any claim about schema-ownership evidence is
+stronger than current evidence, whether field-name grammar and escape wording
+exactly match code, whether the THESIS decomposition preserved the authoritative
+record and meets the 1k touch rule, and whether every branch document correctly
+distinguishes proposed revision 3 from effective revision 2. You may run
+read-only commands and targeted tests. Do not edit, commit, push, comment,
+approve, or resume another conversation. Begin final answer with PASS or FAIL.
+Findings first, ordered by severity with exact file and line references. Then
+state exact HEAD, model identity, commands run and outcomes, clean-tree state,
+and preserved evidence limits. Any failed tool or test makes the review
+inconclusive or failed, never PASS.
+
+TURN 2 — original-finding closure
+
+Review the exact fix commit a3c4900b2e1e1b4f1e19f7eb75d3042248fafc37
+read-only. Verify HEAD and clean tree. Inspect the diff from your failed review
+commit feb28c6cd2b97d78362680aa24b76cf319f4f97a and determine whether each of
+your eight findings is fully resolved without new weakening or inconsistency.
+Pay special attention to the restored verbatim schema-duplication prohibition,
+the explicit source-review receipt obligation, proposed-versus-effective
+metadata, the recorded source-language ledger cleanup, stale citations, and
+non-normative KERNEL status maintenance. Run the full four-command proof. Do
+not edit, commit, push, comment, or approve. Start with PASS, FAIL, or
+INCONCLUSIVE. List any remaining findings with exact file and line references,
+then exact commit/model/commands/clean-tree state. Any failed command means not
+PASS.
+
+TURN 3 — follow-up-finding closure
+
+Review exact HEAD d128b83f6ebe541e35f76da005be35e91b8df217 read-only.
+Verify clean tree. Check only your remaining R1 through R3 from the prior turn
+and scan the small a3c4900..HEAD diff for regressions. Do not edit or perform
+external writes. Start PASS, FAIL, or INCONCLUSIVE. Give exact remaining
+findings if any, then model identity, exact HEAD, commands, and clean-tree state.
