@@ -1,6 +1,6 @@
 //! Canonical World IR construction types produced by the ownership linker.
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
 use nomos_core::canonical::keyed_array;
 use nomos_core::id::StableId;
@@ -10,8 +10,8 @@ use nomos_core::{
 };
 
 use crate::{
-    Binding, InteractionDefinition, MovementResolverPlan, TransitionDefinition,
-    construction_world_ir_schema,
+    Binding, FactIdentity, FactOwnershipReceipt, InteractionDefinition, MovementResolverPlan,
+    TransitionDefinition, construction_world_ir_schema,
 };
 
 /// A capability in the sealed Gate K basis used by the three approved kinds.
@@ -515,94 +515,6 @@ impl IrRelation {
     }
 }
 
-/// Canonical owner of a fact class.
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
-pub enum FactOwner {
-    /// Lattice-owned spatial truth.
-    Lattice,
-    /// Graph-owned identity or relation.
-    Graph,
-    /// Linker-derived cross-domain binding.
-    WorldLinker,
-}
-
-impl FactOwner {
-    /// Stable wire spelling.
-    #[must_use]
-    pub const fn as_str(self) -> &'static str {
-        match self {
-            Self::Lattice => "lattice",
-            Self::Graph => "graph",
-            Self::WorldLinker => "world_linker",
-        }
-    }
-}
-
-/// Machine-generated proof of where a semantic fact came from and who owns it.
-#[derive(Clone, PartialEq, Eq, Debug)]
-pub struct FactOwnershipReceipt {
-    fact: String,
-    owner: FactOwner,
-    declared_at: SourceSpan,
-    resolved_to: String,
-    consumers: BTreeSet<Ident>,
-    derivation: Vec<String>,
-}
-
-impl FactOwnershipReceipt {
-    /// Builds an ownership receipt.
-    #[must_use]
-    pub fn new(
-        fact: String,
-        owner: FactOwner,
-        declared_at: SourceSpan,
-        resolved_to: String,
-        consumers: impl IntoIterator<Item = Ident>,
-        derivation: Vec<String>,
-    ) -> Self {
-        Self {
-            fact,
-            owner,
-            declared_at,
-            resolved_to,
-            consumers: consumers.into_iter().collect(),
-            derivation,
-        }
-    }
-    /// Stable fact path.
-    #[must_use]
-    pub fn fact(&self) -> &str {
-        &self.fact
-    }
-    /// Canonical owner.
-    #[must_use]
-    pub const fn owner(&self) -> FactOwner {
-        self.owner
-    }
-
-    fn to_canonical(&self) -> CanonicalValue {
-        CanonicalValue::object_declared([
-            (
-                "consumers",
-                CanonicalValue::Array(
-                    self.consumers
-                        .iter()
-                        .map(|item| CanonicalValue::text(item.as_str()))
-                        .collect(),
-                ),
-            ),
-            ("declared_at", span_to_canonical(&self.declared_at)),
-            (
-                "derivation",
-                CanonicalValue::Array(self.derivation.iter().map(CanonicalValue::text).collect()),
-            ),
-            ("fact", CanonicalValue::text(&self.fact)),
-            ("owner", CanonicalValue::text(self.owner.as_str())),
-            ("resolved_to", CanonicalValue::text(&self.resolved_to)),
-        ])
-    }
-}
-
 /// Versioned Canonical World IR construction snapshot from one linked source.
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct WorldIr {
@@ -637,13 +549,48 @@ impl WorldIr {
         require_unique(
             ownership_receipts
                 .iter()
-                .map(|receipt| receipt.fact.clone()),
+                .map(|receipt| receipt.fact().clone()),
             "ownership fact",
         )?;
         catalog_values.sort();
         entities.sort_by(|left, right| left.id.cmp(&right.id));
         relations.sort_by_key(IrRelation::stable_key);
-        ownership_receipts.sort_by(|left, right| left.fact.cmp(&right.fact));
+        ownership_receipts.sort_by(|left, right| left.fact().cmp(right.fact()));
+        let facts = ownership_receipts
+            .iter()
+            .map(|receipt| receipt.fact().clone())
+            .collect::<BTreeSet<FactIdentity>>();
+        let catalog_value_set = catalog_values.iter().cloned().collect::<BTreeSet<_>>();
+        let entity_records = entities
+            .iter()
+            .map(|entity| {
+                (
+                    entity.id().clone(),
+                    (entity.binding().clone(), entity.credential().cloned()),
+                )
+            })
+            .collect::<BTreeMap<_, _>>();
+        let relation_facts = relations
+            .iter()
+            .map(|relation| FactIdentity::Relation {
+                subject: relation.subject().clone(),
+                kind: relation.kind().clone(),
+                object: relation.object().clone(),
+            })
+            .collect::<BTreeSet<_>>();
+        let primitives = entities
+            .iter()
+            .map(|entity| entity.primitive().clone())
+            .collect::<BTreeSet<_>>();
+        for receipt in &ownership_receipts {
+            receipt.validate(
+                &facts,
+                &entity_records,
+                &relation_facts,
+                &catalog_value_set,
+                &primitives,
+            )?;
+        }
         Ok(Self {
             schema: construction_world_ir_schema(),
             source_schema,
@@ -724,7 +671,7 @@ impl WorldIr {
                 keyed_array(
                     self.ownership_receipts
                         .iter()
-                        .map(|receipt| (receipt.fact.clone(), receipt.to_canonical())),
+                        .map(|receipt| (receipt.fact().clone(), receipt.to_canonical())),
                 )
                 .expect("WorldIr validates unique ownership facts"),
             ),
@@ -782,7 +729,7 @@ fn require_unique_with_code<T: Ord>(
     Ok(())
 }
 
-fn span_to_canonical(span: &SourceSpan) -> CanonicalValue {
+pub(crate) fn span_to_canonical(span: &SourceSpan) -> CanonicalValue {
     let (byte_start, byte_end) = span.byte_range();
     let (line, column) = span.position();
     CanonicalValue::object_declared([

@@ -24,6 +24,10 @@ use crate::canonical::{CanonicalValue, FieldName};
 /// | `EK04xx` | world packages |
 /// | `EK05xx` | source parsing |
 /// | `EK06xx` | name resolution and linking |
+/// | `EK07xx` | transitions and causal interactions |
+/// | `EK08xx` | runtime transaction preparation |
+/// | `EK09xx` | movement resolution |
+/// | `EK10xx` | typed forensic provenance |
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 pub struct DiagnosticCode(&'static str);
 
@@ -472,6 +476,21 @@ pub mod codes {
     /// A resolved movement disposition violates its nonempty/positive invariant.
     pub const MOVEMENT_DISPOSITION_INVALID: DiagnosticCode = DiagnosticCode::new("EK0909");
 
+    /// A provenance record names a fact absent from the receipt graph or world.
+    pub const PROVENANCE_FACT_REFERENCE_MISSING: DiagnosticCode = DiagnosticCode::new("EK1001");
+    /// A provenance fact carries a resolved value incompatible with its class.
+    pub const PROVENANCE_VALUE_INVALID: DiagnosticCode = DiagnosticCode::new("EK1002");
+    /// A provenance record names a producer outside the closed Gate K vocabulary.
+    pub const PROVENANCE_PRODUCER_UNKNOWN: DiagnosticCode = DiagnosticCode::new("EK1003");
+    /// A provenance record names a pass outside the closed Gate K vocabulary.
+    pub const PROVENANCE_PASS_UNKNOWN: DiagnosticCode = DiagnosticCode::new("EK1004");
+    /// A provenance step uses an unsupported producer/pass combination.
+    pub const PROVENANCE_DERIVATION_INVALID: DiagnosticCode = DiagnosticCode::new("EK1005");
+    /// A typed non-fact provenance input is absent from the compiled world.
+    pub const PROVENANCE_INPUT_REFERENCE_MISSING: DiagnosticCode = DiagnosticCode::new("EK1006");
+    /// A provenance fact is assigned to a non-canonical owner.
+    pub const PROVENANCE_OWNER_INVALID: DiagnosticCode = DiagnosticCode::new("EK1007");
+
     /// Every code this crate owns, for well-formedness and uniqueness tests.
     pub const ALL: &[DiagnosticCode] = &[
         IDENT_UNSUPPORTED,
@@ -520,5 +539,12 @@ pub mod codes {
         RESOLVER_PLAN_INVALID,
         RESOLVER_RUNTIME_REFERENCE_MISSING,
         MOVEMENT_DISPOSITION_INVALID,
+        PROVENANCE_FACT_REFERENCE_MISSING,
+        PROVENANCE_VALUE_INVALID,
+        PROVENANCE_PRODUCER_UNKNOWN,
+        PROVENANCE_PASS_UNKNOWN,
+        PROVENANCE_DERIVATION_INVALID,
+        PROVENANCE_INPUT_REFERENCE_MISSING,
+        PROVENANCE_OWNER_INVALID,
     ];
 }

@@ -3,7 +3,7 @@
 use nomos_compiler::compile_source;
 use nomos_core::canonical::read::is_canonical;
 use nomos_core::{SourcePath, id::StableId};
-use nomos_schema::{CapabilityKind, ClaimActivation, ClaimValue, FactOwner};
+use nomos_schema::{CapabilityKind, ClaimActivation, ClaimValue, FactIdentity, FactOwner};
 
 const SOURCE: &str = include_str!("../../../fixtures/gaol.nomos");
 const PATH: &str = "fixtures/gaol.nomos";
@@ -106,28 +106,42 @@ fn approved_primitives_expand_into_machines_capabilities_and_claims() {
 #[test]
 fn ownership_receipts_name_graph_lattice_and_linker_authority() {
     let ir = compile();
-    let receipt = |fact: &str| {
+    let receipt = |fact: FactIdentity| {
         ir.ownership_receipts()
             .iter()
-            .find(|receipt| receipt.fact() == fact)
+            .find(|receipt| receipt.fact() == &fact)
             .unwrap()
     };
+    let gate = nomos_core::EntityId::parse("north_gate").unwrap();
     assert_eq!(
-        receipt("entity.north_gate.identity").owner(),
+        receipt(FactIdentity::EntityIdentity(gate.clone())).owner(),
         FactOwner::Graph
     );
     assert_eq!(
-        receipt("entity.north_gate.spatial_anchor").owner(),
+        receipt(FactIdentity::EntitySpatialAnchor(gate.clone())).owner(),
         FactOwner::Lattice
     );
     assert_eq!(
-        receipt("entity.north_gate.spatial_binding").owner(),
+        receipt(FactIdentity::EntitySpatialBinding(gate.clone())).owner(),
         FactOwner::WorldLinker
     );
     assert_eq!(
-        receipt("entity.north_gate.credential").owner(),
+        receipt(FactIdentity::EntityCredential(gate)).owner(),
         FactOwner::WorldLinker
     );
+}
+
+#[test]
+fn typed_ownership_facts_use_canonical_typed_order() {
+    let ir = compile();
+    let actual = ir
+        .ownership_receipts()
+        .iter()
+        .map(|receipt| receipt.fact().clone())
+        .collect::<Vec<_>>();
+    let mut expected = actual.clone();
+    expected.sort();
+    assert_eq!(actual, expected);
 }
 
 #[test]
@@ -138,12 +152,12 @@ fn world_ir_bytes_are_canonical_and_repeatable() {
         ir.schema().name().to_string(),
         "nomos.world_ir.construction"
     );
-    assert_eq!(ir.schema().version(), 1);
+    assert_eq!(ir.schema().version(), 2);
     let first = ir.to_canonical_bytes();
     let second = compile().to_canonical_bytes();
     assert_eq!(first, second);
     assert!(is_canonical(&first));
-    let encoded_schema = br#""schema":{"name":"nomos.world_ir.construction","version":1}"#;
+    let encoded_schema = br#""schema":{"name":"nomos.world_ir.construction","version":2}"#;
     assert!(
         first
             .windows(encoded_schema.len())
@@ -151,7 +165,7 @@ fn world_ir_bytes_are_canonical_and_repeatable() {
     );
     assert_eq!(
         nomos_core::hash::Sha256Digest::of_bytes(&first).to_hex(),
-        include_str!("golden/gaol-world-ir-nomos-construction-v1.sha256").trim()
+        include_str!("golden/gaol-world-ir-nomos-construction-v2.sha256").trim()
     );
     assert!(!first.ends_with(b"\n"));
 }

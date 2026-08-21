@@ -297,12 +297,12 @@ Every build emits fact-ownership receipts:
 
 ```json
 {
-  "fact": "entity.north_gate.spatial_binding",
+  "fact": {"entity": "north_gate", "kind": "entity_spatial_binding"},
   "owner": "world_linker",
-  "declared_at": "rooms/gaol.nomos:42",
-  "resolved_to": "face(cell(5,0,0),north)",
-  "consumers": ["render", "simulation", "navigation"],
-  "derivation": ["primitive/iron_barred_door", "binding/face_anchor"]
+  "declared_at": {"path": "rooms/gaol.nomos", "line": 42},
+  "resolved_to": {"kind": "binding", "binding": {"kind": "face", "cell": {"x": 5, "y": 0, "z": 0}, "direction": "north"}},
+  "consumers": ["diagnostics", "navigation", "simulation"],
+  "derivation": [{"producer": "world_linker", "pass": "resolve_spatial_binding", "inputs": [{"kind": "fact", "fact": {"entity": "north_gate", "kind": "entity_spatial_anchor"}}, {"kind": "primitive", "primitive": "primitive/iron_barred_door"}]}]
 }
 ```
 

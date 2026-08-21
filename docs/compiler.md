@@ -40,8 +40,9 @@ records why that language was chosen.
 8. Derive typed ground connectivity and an explicit resolver plan: any active
    blocker wins; otherwise the maximum active traversal cost wins; otherwise
    the positive base cost is `1`.
-9. Emit stable fact-ownership receipts and canonical construction-snapshot
-   bytes under `nomos.world_ir.construction@1` in the revision-6 Nomos epoch.
+9. Emit typed fact-ownership receipts and canonical construction-snapshot
+   bytes under `nomos.world_ir.construction@2`. The incompatible provenance
+   shape advances the revision-6 Nomos construction epoch from `@1`.
 10. Resolve entity credentials into command requirements and emit
     `nomos.projection.simulation@2` plus `nomos.projection.navigation@1` with
     byte-identical movement resolver plans. Simulation advances independently
@@ -49,7 +50,7 @@ records why that language was chosen.
 
 Parser failures use `EK05xx`; linker and ownership failures use `EK06xx`;
 transition/projection validation uses `EK07xx`; movement resolver validation
-uses `EK09xx`.
+uses `EK09xx`; typed provenance validation uses `EK10xx`.
 Every source rejection carries a repository-relative span and a legal repair
 class. The mutation suite plants each ownership/cross-reference violation in
 `KERNEL.md` section 9 that belongs to this slice.
@@ -64,7 +65,8 @@ class. The mutation suite plants each ownership/cross-reference violation in
 - machine and claim templates;
 - typed command/event transitions and phased causal interactions;
 - typed movement composition, coherence, connectivity, and resolver subjects;
-- fact-ownership receipts.
+- typed fact-ownership receipts: fact IDs, resolved values, projection
+  consumers, derivation producers/passes, and causal inputs.
 
 `nomos-compiler` exclusively defines parsing, the sealed primitive catalog,
 name resolution, validation, expansion, linking, cycle rejection, and
@@ -85,7 +87,8 @@ SW-C corrected the narrower SW-B naming before it became serialized behavior.
 - the door, water, and light expand into inspectable typed IR;
 - source maps and ownership receipts survive canonical encoding;
 - repeated compilation of the same bytes produces identical canonical IR;
-- a frozen SHA-256 fixture pins every Nomos construction-v1 canonical byte, so a
+- frozen SHA-256 fixtures preserve Nomos construction-v1 and pin every active
+  construction-v2 canonical byte, so a
   shape change without a schema-version change fails the build;
 - relevant ownership and cross-reference mutations fail with stable codes and
   source spans;
@@ -97,6 +100,10 @@ SW-C corrected the narrower SW-B naming before it became serialized behavior.
 - simulation and navigation receive the same typed ground resolver bytes;
 - dangling claim activations, invalid claim values, mismatched connectivity,
   duplicate resolver identities, and absent subjects fail closed.
+- dangling provenance fact edges, unknown producer/pass IDs, unsupported
+  producer/pass pairs, and incompatible resolved-value classes fail closed.
+- structured provenance and human-readable explanation rendering are separate
+  outputs; display wording is not canonical semantics.
 
 ## Still unproved
 
@@ -105,7 +112,8 @@ The CLI remains intentionally unimplemented. Acceptance item 3's observable
 SW-C proves its expansion/IR half but does not call the criterion satisfied.
 Issue #5 records that scope split.
 
-SW-E resolves only effective ground movement facts. It does not resolve light,
+Typed provenance prepares the data needed by `explain-entity`, but the CLI
+surface itself remains unimplemented. SW-E resolves only effective ground movement facts. It does not resolve light,
 commit snapshots, hash state, write packages, replay, migrate, or implement
 explanations/CLI commands. Persistence and diagnostics projection schema names
 remain planned ownership only; `produced_schemas()` reports construction IR,
