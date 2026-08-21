@@ -15,8 +15,7 @@ test that thesis before any renderer is built.
 - **Implementation status:** workspace foundations (SW-B) plus source schema,
   parser, typed name resolution, primitive expansion, and ownership linker
   (SW-C); no command surface or runtime
-- **Contract revision:** 3 remains effective; revision 4 is proposed in decision
-  0004 to repair the incomplete World IR schema lineage before SW-D
+- **Contract revision:** 4, owner-authorized in decision 0004
 - **Scope:** greenfield / vacuum architecture exercise
 - **Effect on other projects:** none unless separately adopted by an explicit
   decision in that project's own authority records
@@ -37,7 +36,7 @@ it.
    — the owner-authorized revision-2 to revision-3 closure of the canonical
    profile and workspace-evidence contract gaps.
 4. [docs/decisions/0004-world-ir-construction-lineage.md](docs/decisions/0004-world-ir-construction-lineage.md)
-   — the proposed revision-3 to revision-4 repair separating incomplete
+   — the owner-authorized revision-3 to revision-4 repair separating incomplete
    construction snapshots from the stable World IR migration line.
 5. [docs/decisions/0001-contract-repair.md](docs/decisions/0001-contract-repair.md)
    — the owner-authorized revision-1 to revision-2 contract repair.

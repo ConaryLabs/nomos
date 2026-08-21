@@ -1,13 +1,10 @@
 ---
 title: The executable semantic kernel
-status: Proposed contract revision 4; revision 3 remains effective pending owner disposition
+status: In progress through SW-C
 gate: K
-contract_revision: 3
-supersedes_contract_revision: 2
-decision_record: docs/decisions/0003-contract-profile-closure.md
-proposed_contract_revision: 4
-proposed_supersedes_contract_revision: 3
-proposed_decision_record: docs/decisions/0004-world-ir-construction-lineage.md
+contract_revision: 4
+supersedes_contract_revision: 3
+decision_record: docs/decisions/0004-world-ir-construction-lineage.md
 ---
 
 # The executable semantic kernel
@@ -304,7 +301,7 @@ Every persisted artifact names its schema and version. An incompatible change
 requires a migration or an explicit recorded epoch break. Successful
 parsing/deserialization alone never implies compatibility.
 
-### Proposed revision 4 construction lineage
+### Construction lineage
 
 Before the complete Gate K Canonical World IR exists, incomplete build
 snapshots use `estate.world_ir.construction@N`. They are canonical, versioned

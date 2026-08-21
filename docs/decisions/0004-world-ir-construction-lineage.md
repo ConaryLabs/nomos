@@ -1,6 +1,6 @@
 ---
 title: Contract revision 4 — World IR construction lineage
-status: Proposed for owner disposition
+status: Owner-authorized; effective when merged
 number: 0004
 date: 2026-08-21
 issue: 15
@@ -12,18 +12,18 @@ implementing_reviewer: GPT-5.6
 
 # Contract revision 4 — World IR construction lineage
 
-## Status and authority
+## Decision authority
 
-This record is a proposal until the owner records a disposition below. Contract
-revision 3 remains effective meanwhile. Neither this file nor its implementation
-may authorize Gate K acceptance before owner approval.
+The owner reviewed and approved the finished replacement wording. Contract
+revision 4 becomes effective when PR #16 merges. Revision 3 remains effective
+until then.
 
 ## Decision
 
-If approved, distinguish incomplete Canonical World IR construction snapshots
-from the stable World IR migration line. The repair preserves every first-commit
-versioning and compatibility obligation; it does not authorize a package,
-runtime, or Gate K acceptance artifact.
+Distinguish incomplete Canonical World IR construction snapshots from the stable
+World IR migration line. The repair preserves every first-commit versioning and
+compatibility obligation; it does not authorize a package, runtime, or Gate K
+acceptance artifact.
 
 ## Problem
 
@@ -129,14 +129,16 @@ incomplete intermediate artifact from impersonating the stable migration line.
 
 ## Owner disposition
 
-Pending.
+On 2026-08-21, Peter Permenter explicitly approved decision 0004 as written and
+authorized merging PR #16. The amendment is approved in full.
 
-If approved, this record establishes contract revision 4 and supersedes
-revision 3. If rejected, revision 3 remains effective and SW-D implementation
-issue #14 stays blocked until issue #15 receives a different explicit repair.
+On merge, this record establishes contract revision 4 and supersedes revision
+3. SW-D implementation issue #14 may then proceed and repair issue #15 may
+close.
 
 ## Related non-normative record maintenance
 
 README, AGENTS, HANDOFF, compiler/workspace documentation, crate descriptions,
 and API documentation are updated to label the current output as a construction
-snapshot and to distinguish effective revision 3 from proposed revision 4.
+snapshot. Before disposition they distinguish effective revision 3 from proposed
+revision 4; this authorization advances them to revision 4 effective on merge.

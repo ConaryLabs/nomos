@@ -107,7 +107,8 @@ break. The reviewer found no actionable defect and returned **PASS**.
 
 ## Evidence limits
 
-The passing reviewed commit precedes this receipt-only commit. A
-different-family rerun must verify the receipt-bearing PR head. This review does
-not supply owner disposition, Linux aarch64 execution, the ten-run matrix, or
-any runtime, migration, replay, command-surface, or formal cold-agent evidence.
+The passing reviewed commit precedes its receipt-only commit, which received a
+different-family exact-head rerun. Owner disposition was supplied afterward and
+must receive its own exact-head proof before merge. This review does not supply
+Linux aarch64 execution, the ten-run matrix, or any runtime, migration, replay,
+command-surface, or formal cold-agent evidence.

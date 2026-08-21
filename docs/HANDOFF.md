@@ -1,19 +1,19 @@
 # Handoff — state of the repository
 
-Updated 2026-08-21 for proposed contract revision 4. This file orients a fresh
-session; it is rewritten at each slice boundary and never accumulates history
-(git has that).
+Updated 2026-08-21 for owner-authorized contract revision 4. This file orients
+a fresh session; it is rewritten at each slice boundary and never accumulates
+history (git has that).
 
 ## Where things stand
 
 - **Contract revision 3 is owner-authorized:** decision 0003 pins the canonical
   escape profile, ASCII identifier and field-name grammar, isolated `xtask`,
   and the honest evidence boundary for semantic schema ownership.
-- **Contract revision 4 is proposed:** issue #15 and decision 0004 correct the
+- **Contract revision 4 is owner-authorized:** issue #15 and decision 0004 correct the
   incomplete SW-C linker snapshot from `estate.world_ir@1` to separately
-  versioned `estate.world_ir.construction@1`. Revision 3 remains effective until
-  Peter disposes the proposal. Draft PR #16 carries the repaired wording, code,
-  golden construction-byte guard, and non-author review receipt.
+  versioned `estate.world_ir.construction@1`. Peter approved the finished
+  wording and authorized merging draft PR #16, which carries the code, golden
+  construction-byte guard, and non-author review receipt.
 - **SW-B is merged (#3):** six kernel crates plus isolated `xtask`, Rust 1.97.1,
   zero third-party crates, deterministic core primitives, immutable package
   mechanics, boundary enforcement, and green CI on main.
@@ -42,10 +42,9 @@ session; it is rewritten at each slice boundary and never accumulates history
 
 ## What is next
 
-Dispose and merge **issue #15 — World IR construction lineage**. It blocks
-**SW-D implementation issue #14** because changing the incomplete SW-C schema
-under `estate.world_ir@1` would violate section 6, while consuming version 2
-would destroy the required movement-migration proof.
+Complete the authorization-head rerun and CI, then merge **PR #16** and close
+**issue #15 — World IR construction lineage**. It blocks **SW-D implementation
+issue #14** until the owner-authorized repair is merged.
 
 Then implement **SW-D — namespace-machine transitions, typed
 interactions, deterministic phase order, and atomic transaction preparation**.
@@ -67,12 +66,12 @@ cargo xtask boundary
 ```
 
 The SW-C author and non-author reruns passed all four commands. The revision-4
-proposal must receive its own exact-head non-author rerun. Still unproven:
-Linux aarch64 release, ten runs per target, the complete `estate` command
-surface, complete package projections, runtime semantics, migration/replay, and
-formal cold-agent gates. Revision 3 also requires a final explicit
-schema-ownership source-review receipt after the Gate K schema set stabilizes;
-that final receipt does not exist yet.
+authorization head must receive its own exact-head non-author rerun. Still
+unproven: Linux aarch64 release, ten runs per target, the complete `estate`
+command surface, complete package projections, runtime semantics,
+migration/replay, and formal cold-agent gates. The contract also requires a
+final explicit schema-ownership source-review receipt after the Gate K schema
+set stabilizes; that final receipt does not exist yet.
 
 ## Remaining evidence points
 

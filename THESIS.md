@@ -10,10 +10,8 @@ applies_to_the_mortal_estate: No, unless separately adopted by an explicit proje
 authors: Claude Fable 5 and GPT-5.6 Pro, in adversarial review, with Peter Permenter as owner and referee
 date: 2026-08-21
 revision: 2
-contract_revision: 3
-proposed_contract_revision: 4
-decision_record: docs/decisions/0003-contract-profile-closure.md
-proposed_decision_record: docs/decisions/0004-world-ir-construction-lineage.md
+contract_revision: 4
+decision_record: docs/decisions/0004-world-ir-construction-lineage.md
 ---
 
 # The Signed World
@@ -43,8 +41,7 @@ records the owner-authorized repair from revision 1 to revision 2.
 records the owner-authorized revision 3 closure of the canonical-profile and
 workspace-evidence gaps found by SW-B.
 [docs/decisions/0004-world-ir-construction-lineage.md](docs/decisions/0004-world-ir-construction-lineage.md)
-proposes revision 4's construction-lineage repair; it is non-authoritative
-pending owner disposition.
+records the owner-authorized revision 4 construction-lineage repair.
 
 Contract changes follow `AGENTS.md`. Contradictions and falsified assumptions may
 be repaired explicitly; criteria may not be silently weakened because code
