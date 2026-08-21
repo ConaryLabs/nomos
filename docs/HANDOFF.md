@@ -12,7 +12,8 @@ session; it is rewritten at each slice boundary and never accumulates history
 - **Contract revision 4 is proposed:** issue #15 and decision 0004 correct the
   incomplete SW-C linker snapshot from `estate.world_ir@1` to separately
   versioned `estate.world_ir.construction@1`. Revision 3 remains effective until
-  Peter disposes the proposal.
+  Peter disposes the proposal. Draft PR #16 carries the repaired wording, code,
+  golden construction-byte guard, and non-author review receipt.
 - **SW-B is merged (#3):** six kernel crates plus isolated `xtask`, Rust 1.97.1,
   zero third-party crates, deterministic core primitives, immutable package
   mechanics, boundary enforcement, and green CI on main.

@@ -4,7 +4,7 @@
 
 **Date:** 2026-08-21
 
-**Issue / PR:** #15 / not opened yet
+**Issue / PR:** #15 / #16
 
 **Evaluated commit:** `090eea880a093ec60a390c760fd40c24e3cd7ed2`
 
