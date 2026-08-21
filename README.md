@@ -16,11 +16,11 @@ any renderer is built.
 ## Status
 
 - **Architecture status:** exploratory and non-authoritative
-- **Implementation status:** implemented through SW-F: foundations, source and
-  construction IR, compiled transitions, shared movement and light resolution,
-  simulation/navigation/persistence/diagnostics projections, and immutable
-  runtime-state commit evidence with canonical hashes and typed causal receipts;
-  no filesystem command surface, package assembly, replay, or migration
+- **Implementation status:** implemented through SW-G: foundations, source and
+  preserved construction IR, stable `nomos.world_ir@1`, compiled transitions,
+  shared movement and light resolution, all four projections, immutable runtime
+  commits, and complete hash-verified world packages; no filesystem command
+  surface, replay, or migration
 - **Contract revision:** 6, owner-authorized in decision 0007
 - **Scope:** greenfield / vacuum architecture exercise
 - **Effect on other projects:** none unless separately adopted by an explicit

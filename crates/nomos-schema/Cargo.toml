@@ -1,6 +1,6 @@
 [package]
 name = "nomos-schema"
-description = "Authoring source and Canonical World IR construction schemas for Gate K."
+description = "Authoring, stable World IR, construction, and package-registry schemas for Gate K."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

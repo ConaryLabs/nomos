@@ -31,6 +31,12 @@
 
 use nomos_core::Diagnostic;
 
+mod package;
+
+pub use package::{
+    compile_and_write_world, initial_state_from_package, open_compiled_world, write_compiled_world,
+};
+
 /// The process exit codes fixed by `KERNEL.md` section 8.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 pub enum ExitCode {
@@ -121,7 +127,7 @@ mod tests {
 
     #[test]
     fn compiled_fixture_semantics_cross_the_ir_boundary_and_execute() {
-        let ir = nomos_compiler::compile_source(
+        let ir = nomos_compiler::compile_world(
             include_str!("../../../fixtures/gaol.nomos"),
             SourcePath::new("fixtures/gaol.nomos").unwrap(),
         )
@@ -155,7 +161,7 @@ mod tests {
 
     #[test]
     fn compiled_fixture_resolves_exact_ground_movement_facts() {
-        let ir = nomos_compiler::compile_source(
+        let ir = nomos_compiler::compile_world(
             include_str!("../../../fixtures/gaol.nomos"),
             SourcePath::new("fixtures/gaol.nomos").unwrap(),
         )

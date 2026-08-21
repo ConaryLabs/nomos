@@ -1,12 +1,14 @@
 //! Fail-closed construction identities from checkpoint issue #21.
 
-use nomos_core::{ClaimRef, EntityId, Ident, NamespaceId, PrimitiveKindId, SourcePath, SourceSpan};
+use nomos_core::{
+    ClaimRef, EntityId, Ident, NamespaceId, PrimitiveKindId, SchemaId, SourcePath, SourceSpan,
+};
 use nomos_schema::{
     Binding, CapabilityKind, Cell, ClaimActivation, ClaimTemplate, ClaimValue, GroundConnectivity,
     GroundMovementCoherence, InteractionDefinition, InteractionPhase, InteractionTrigger, IrEntity,
     MachineTemplate, MovementCompositionLaw, MovementResolverPlan, MovementResolverSubject,
-    PrimitiveExpansion, TransitionDefinition, TransitionInput, TransitionTrigger, WorldIr,
-    source_schema,
+    PrimitiveExpansion, SchemaOwner, SchemaRegistration, SchemaRegistry, TransitionDefinition,
+    TransitionInput, TransitionTrigger, WorldIr, source_schema,
 };
 
 fn ident(value: &str) -> Ident {
@@ -163,4 +165,34 @@ fn duplicate_resolver_laws_coherence_and_subjects_fail_before_encoding() {
     )
     .unwrap_err();
     assert_eq!(duplicate_subject.code().as_str(), "EK0901");
+}
+
+#[test]
+fn duplicate_schema_registry_artifacts_or_schemas_fail_before_encoding() {
+    let world = SchemaRegistration::new(
+        "world-ir.json",
+        SchemaId::new("nomos.world_ir", 1).unwrap(),
+        SchemaOwner::Schema,
+    );
+    let duplicate_artifact = SchemaRegistration::new(
+        "world-ir.json",
+        SchemaId::new("nomos.other", 1).unwrap(),
+        SchemaOwner::Schema,
+    );
+    assert_eq!(
+        SchemaRegistry::new(vec![world.clone(), duplicate_artifact])
+            .unwrap_err()
+            .code()
+            .as_str(),
+        "EK0304"
+    );
+    let duplicate_schema =
+        SchemaRegistration::new("other.json", world.schema().clone(), SchemaOwner::Schema);
+    assert_eq!(
+        SchemaRegistry::new(vec![world, duplicate_schema])
+            .unwrap_err()
+            .code()
+            .as_str(),
+        "EK0304"
+    );
 }

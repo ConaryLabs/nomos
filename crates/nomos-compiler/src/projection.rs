@@ -15,7 +15,8 @@ use nomos_projection::{
 use nomos_schema::{
     Binding, CapabilityKind, ClaimActivation, ClaimTemplate, ClaimValue, Direction,
     GroundConnectivity, InteractionPhase, LightCompositionLaw, MovementCompositionLaw,
-    ProjectionConsumer, TransitionDefinition, TransitionInput, TransitionTrigger, WorldIr,
+    ProjectionConsumer, StableGroundMovementV1, TransitionDefinition, TransitionInput,
+    TransitionTrigger, WorldIr,
 };
 
 pub(crate) fn simulation_plan(ir: &WorldIr) -> Result<SimulationPlan, Diagnostic> {
@@ -105,6 +106,44 @@ pub(crate) fn validate_all_light_projections(ir: &WorldIr) -> Result<(), Diagnos
     let persistence = persistence_plan(ir)?;
     let diagnostics = diagnostics_plan(ir)?;
     validate_light_projection_agreement(simulation.light_resolver(), &persistence, &diagnostics)
+}
+
+pub(crate) fn initial_movement_v1(ir: &WorldIr) -> Result<Vec<StableGroundMovementV1>, Diagnostic> {
+    let projected = movement_plan(ir)?;
+    let initial_states: BTreeMap<NamespaceId, Ident> = ir
+        .entities()
+        .iter()
+        .flat_map(|entity| entity.expansion().machines())
+        .map(|machine| (machine.namespace().clone(), machine.initial().clone()))
+        .collect();
+    let mut rows = Vec::new();
+    for subject in projected.subjects() {
+        let mut blocked = false;
+        let mut maximum_cost = None;
+        for claim in subject.claims() {
+            if !projected_activation_is_true(claim.activation(), &initial_states)? {
+                continue;
+            }
+            match claim {
+                MovementClaim::Blocker { value: true, .. } => blocked = true,
+                MovementClaim::TraversalCost { cost, .. } => {
+                    maximum_cost =
+                        Some(maximum_cost.map_or(*cost, |current: u32| current.max(*cost)));
+                }
+                MovementClaim::Blocker { value: false, .. } => {}
+            }
+        }
+        rows.push(StableGroundMovementV1::new(
+            subject.entity().clone(),
+            blocked,
+            if blocked {
+                None
+            } else {
+                Some(maximum_cost.unwrap_or(projected.base_cost()))
+            },
+        )?);
+    }
+    Ok(rows)
 }
 
 fn light_plan(ir: &WorldIr) -> Result<ProjectedLightResolverPlan, Diagnostic> {
@@ -522,6 +561,39 @@ fn project_activation(activation: &ClaimActivation) -> ProjectedActivation {
         ClaimActivation::Not(child) => {
             ProjectedActivation::Not(Box::new(project_activation(child)))
         }
+    }
+}
+
+fn projected_activation_is_true(
+    activation: &ProjectedActivation,
+    states: &BTreeMap<NamespaceId, Ident>,
+) -> Result<bool, Diagnostic> {
+    match activation {
+        ProjectedActivation::Always => Ok(true),
+        ProjectedActivation::StateEquals { namespace, state } => states
+            .get(namespace)
+            .map(|current| current == state)
+            .ok_or_else(|| {
+                Diagnostic::new(
+                    nomos_core::diagnostic::codes::RESOLVER_ACTIVATION_NAMESPACE_MISSING,
+                    format!("initial movement activation namespace `{namespace}` does not exist"),
+                )
+            }),
+        ProjectedActivation::Any(children) => {
+            let mut result = false;
+            for child in children {
+                result |= projected_activation_is_true(child, states)?;
+            }
+            Ok(result)
+        }
+        ProjectedActivation::All(children) => {
+            let mut result = true;
+            for child in children {
+                result &= projected_activation_is_true(child, states)?;
+            }
+            Ok(result)
+        }
+        ProjectedActivation::Not(child) => Ok(!projected_activation_is_true(child, states)?),
     }
 }
 

@@ -1,6 +1,6 @@
 //! SW-D compiler proof for executable transitions and causal interactions.
 
-use nomos_compiler::{compile_simulation_plan, compile_source};
+use nomos_compiler::{compile_simulation_plan, compile_source, promote_world_ir};
 use nomos_core::{EntityId, Ident, NamespaceId, PrimitiveKindId, SourcePath, SourceSpan};
 use nomos_projection::{CommandRequirement, EventPayload, Phase, SimulationPlan};
 use nomos_schema::{
@@ -90,7 +90,8 @@ fn construction_ir_encodes_the_exact_on_enter_damage_edge() {
 
 #[test]
 fn projection_resolves_credentials_and_is_order_stable() {
-    let plan = compile_simulation_plan(&fixture_ir()).unwrap();
+    let stable = promote_world_ir(&fixture_ir()).unwrap();
+    let plan = compile_simulation_plan(&stable).unwrap();
     assert_eq!(plan.schema(), &nomos_projection::simulation_schema());
     let access = plan
         .machines()
@@ -238,10 +239,7 @@ fn compiler_rejects_dangling_namespaces_states_and_handlers() {
         ),
     ];
     for (ir, code) in cases {
-        assert_eq!(
-            compile_simulation_plan(&ir).unwrap_err().code().as_str(),
-            code
-        );
+        assert_eq!(promote_world_ir(&ir).unwrap_err().code().as_str(), code);
     }
 }
 
@@ -271,10 +269,7 @@ fn compiler_rejects_every_causal_cycle() {
         ])
         .unwrap();
     let ir = world(entity_id, expansion);
-    assert_eq!(
-        compile_simulation_plan(&ir).unwrap_err().code().as_str(),
-        "EK0707"
-    );
+    assert_eq!(promote_world_ir(&ir).unwrap_err().code().as_str(), "EK0707");
 }
 
 #[test]
@@ -296,7 +291,7 @@ fn compiler_rejects_transition_states_absent_from_the_machine() {
     .unwrap();
     let expansion = PrimitiveExpansion::new(Vec::new(), vec![machine], Vec::new()).unwrap();
     assert_eq!(
-        compile_simulation_plan(&world(entity_id, expansion))
+        promote_world_ir(&world(entity_id, expansion))
             .unwrap_err()
             .code()
             .as_str(),

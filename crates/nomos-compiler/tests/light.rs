@@ -2,6 +2,7 @@
 
 use nomos_compiler::{
     compile_diagnostics_plan, compile_persistence_plan, compile_simulation_plan, compile_source,
+    promote_world_ir,
 };
 use nomos_core::{ClaimRef, EntityId, Ident, NamespaceId, PrimitiveKindId, SourcePath, SourceSpan};
 use nomos_projection::{
@@ -35,9 +36,10 @@ fn fixture_ir() -> WorldIr {
 #[test]
 fn simulation_persistence_and_diagnostics_share_exact_light_semantics() {
     let ir = fixture_ir();
-    let simulation = compile_simulation_plan(&ir).unwrap();
-    let persistence = compile_persistence_plan(&ir).unwrap();
-    let diagnostics = compile_diagnostics_plan(&ir).unwrap();
+    let stable = promote_world_ir(&ir).unwrap();
+    let simulation = compile_simulation_plan(&stable).unwrap();
+    let persistence = compile_persistence_plan(&stable).unwrap();
+    let diagnostics = compile_diagnostics_plan(&stable).unwrap();
     validate_light_projection_agreement(simulation.light_resolver(), &persistence, &diagnostics)
         .unwrap();
     assert_eq!(
@@ -62,9 +64,10 @@ fn simulation_persistence_and_diagnostics_share_exact_light_semantics() {
 #[test]
 fn mismatched_persistence_or_diagnostics_light_facts_fail_closed() {
     let ir = fixture_ir();
-    let simulation = compile_simulation_plan(&ir).unwrap();
-    let persistence = compile_persistence_plan(&ir).unwrap();
-    let diagnostics = compile_diagnostics_plan(&ir).unwrap();
+    let stable = promote_world_ir(&ir).unwrap();
+    let simulation = compile_simulation_plan(&stable).unwrap();
+    let persistence = compile_persistence_plan(&stable).unwrap();
+    let diagnostics = compile_diagnostics_plan(&stable).unwrap();
     let mismatched = DiagnosticsPlan::new(
         diagnostics.entities().to_vec(),
         ProjectedLightResolverPlan::empty_gate_k(),
@@ -90,7 +93,7 @@ fn dangling_light_activations_and_conflicting_values_fail_closed() {
         true,
     );
     assert_eq!(
-        compile_persistence_plan(&dangling_namespace)
+        promote_world_ir(&dangling_namespace)
             .unwrap_err()
             .code()
             .as_str(),
@@ -109,7 +112,7 @@ fn dangling_light_activations_and_conflicting_values_fail_closed() {
         true,
     );
     assert_eq!(
-        compile_diagnostics_plan(&dangling_state)
+        promote_world_ir(&dangling_state)
             .unwrap_err()
             .code()
             .as_str(),
@@ -129,10 +132,7 @@ fn dangling_light_activations_and_conflicting_values_fail_closed() {
             true,
         );
         assert_eq!(
-            compile_simulation_plan(&conflicting)
-                .unwrap_err()
-                .code()
-                .as_str(),
+            promote_world_ir(&conflicting).unwrap_err().code().as_str(),
             "EK0910"
         );
     }
@@ -149,7 +149,7 @@ fn absent_light_subject_fails_closed() {
         false,
     );
     assert_eq!(
-        compile_simulation_plan(&world).unwrap_err().code().as_str(),
+        promote_world_ir(&world).unwrap_err().code().as_str(),
         "EK0911"
     );
 }

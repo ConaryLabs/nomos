@@ -420,6 +420,12 @@ pub mod codes {
     pub const PACKAGE_ENTRY_TYPE_INVALID: DiagnosticCode = DiagnosticCode::new("EK0409");
     /// A manifest-declared member is not canonical semantic bytes.
     pub const PACKAGE_MEMBER_NON_CANONICAL: DiagnosticCode = DiagnosticCode::new("EK0410");
+    /// A complete Gate K package has the wrong semantic member set.
+    pub const PACKAGE_MEMBER_SET_INVALID: DiagnosticCode = DiagnosticCode::new("EK0411");
+    /// A package member has the wrong schema or semantic shape.
+    pub const PACKAGE_MEMBER_SCHEMA_INVALID: DiagnosticCode = DiagnosticCode::new("EK0412");
+    /// Canonical package members disagree with one another.
+    pub const PACKAGE_MEMBER_INCONSISTENT: DiagnosticCode = DiagnosticCode::new("EK0413");
 
     /// A transition refers to a source machine namespace that does not exist.
     pub const TRANSITION_SOURCE_NAMESPACE_MISSING: DiagnosticCode = DiagnosticCode::new("EK0701");
@@ -523,6 +529,9 @@ pub mod codes {
         PACKAGE_MEMBER_DUPLICATE,
         PACKAGE_ENTRY_TYPE_INVALID,
         PACKAGE_MEMBER_NON_CANONICAL,
+        PACKAGE_MEMBER_SET_INVALID,
+        PACKAGE_MEMBER_SCHEMA_INVALID,
+        PACKAGE_MEMBER_INCONSISTENT,
         TRANSITION_SOURCE_NAMESPACE_MISSING,
         INTERACTION_TARGET_NAMESPACE_MISSING,
         TRANSITION_STATE_MISSING,
