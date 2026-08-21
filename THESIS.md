@@ -1048,7 +1048,9 @@ record.
 - **Incremental compilation granularity:** room, package, primitive, or graph
   slice.
 - **Migration identity:** how migrations preserve stable entities and behavior.
-- **Cold-agent roster:** models, rotation cadence, access, and cost controls.
+- **Later-gate cold-agent roster:** Gate K subjects and invalidation rules are
+  predeclared in `docs/evaluation/GATE_K_COLD_AGENT_PLAN.md`; models, rotation
+  cadence, access, and cost controls for later gates remain open.
 - **Signature threat model:** corruption, supply-chain integrity, hostile clients,
   signer policy, and trust-root rotation.
 - **Deterministic parallelism:** which phases may parallelize without affecting

@@ -1,0 +1,26 @@
+INITIAL PROMPT
+==============
+
+You are the independent non-author checker for signed-world PR #11. You did not author this change. Work only in /home/peter/signed-world.
+
+Verification only. Do not edit, create, delete, move, format, commit, push, comment, use web, use persisted project memory, invoke another model, or spawn a subagent. Cargo may write only ignored target artifacts required by the proof.
+
+Required target:
+- HEAD exactly c7fdca2e3f4d425f26f10fb8ad73b85493219aeb
+- branch exactly ci/checkout-v7
+- tracked tree clean before and after
+
+Inspect the committed diff against main. Confirm it changes only .github/workflows/verify.yml from actions/checkout@v4 to actions/checkout@v7, that no v4 reference remains in the workflow, and that the existing permissions and verification steps remain unchanged.
+
+Run these commands standalone and observe each exit status:
+1. cargo fmt --all -- --check
+2. cargo clippy --workspace --all-targets --locked -- -D warnings
+3. cargo test --workspace --locked
+4. cargo xtask boundary
+
+Recheck HEAD, branch, and clean tracked tree. Report the exact model identity and agy client information visible to you, constraint compliance, diff findings, each command result, final Git state, and PASS only if every required condition succeeds. Otherwise FAIL or INCONCLUSIVE with the exact reason. Do not infer success from CI or prior prose.
+
+FOLLOW-UP PROMPT
+================
+
+Append the missing environment receipt for your completed PASS. Remain verification-only and do not alter any tracked file or external state. Run and report exact output from: rustc --version --verbose; cargo --version --verbose; uname -a; git rev-parse HEAD; git status --short --branch. Confirm whether your prior verdict changes. Do not rerun the proof commands and do not use web, memory, another model, or a subagent.

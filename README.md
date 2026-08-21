@@ -36,17 +36,19 @@ it.
    — the owner-authorized revision-1 to revision-2 contract repair.
 4. [docs/evaluation/COLD_AGENT_PROTOCOL.md](docs/evaluation/COLD_AGENT_PROTOCOL.md)
    — the reproducible cold-author, cold-debug, and cold-review procedure.
-5. [docs/workspace.md](docs/workspace.md) — the crate map, how to run the
+5. [docs/evaluation/GATE_K_COLD_AGENT_PLAN.md](docs/evaluation/GATE_K_COLD_AGENT_PLAN.md)
+   — the owner-authorized whole-kernel subject roster and eligibility checks.
+6. [docs/workspace.md](docs/workspace.md) — the crate map, how to run the
    proof, and the decisions the first implementation slice had to make.
-6. [docs/authoring.md](docs/authoring.md) — source schema version 1 and the
+7. [docs/authoring.md](docs/authoring.md) — source schema version 1 and the
    approved Gate K authoring vocabulary.
-7. [docs/compiler.md](docs/compiler.md) — parser/linker stages, schema
+8. [docs/compiler.md](docs/compiler.md) — parser/linker stages, schema
    ownership, proof coverage, and limits.
-8. [docs/review/2026-08-21-founding-review.md](docs/review/2026-08-21-founding-review.md)
+9. [docs/review/2026-08-21-founding-review.md](docs/review/2026-08-21-founding-review.md)
    — the condensed primary record of the founding adversarial review, written
    in the originating session, with its provenance limits stated.
-9. [docs/review/2026-08-21-founding-review-synthesis.md](docs/review/2026-08-21-founding-review-synthesis.md)
-   — the contract-revision-2 edited synthesis of that review.
+10. [docs/review/2026-08-21-founding-review-synthesis.md](docs/review/2026-08-21-founding-review-synthesis.md)
+    — the contract-revision-2 edited synthesis of that review.
 
 ## Layout
 
