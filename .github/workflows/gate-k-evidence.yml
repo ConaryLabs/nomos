@@ -33,6 +33,8 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
       - name: Install the pinned toolchain
         run: |
@@ -70,6 +72,8 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
       - name: Download x86_64 debug evidence
         uses: actions/download-artifact@v8
@@ -111,6 +115,8 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
       - name: Install the pinned toolchain
         run: |
@@ -129,5 +135,28 @@ jobs:
         with:
           name: gate-k-budgets-x86_64-release
           path: target/gate-k-evidence/budgets-x86_64-release
+          if-no-files-found: error
+          retention-days: 90
+
+  schema-ownership:
+    name: canonical schema ownership
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Verify the final twenty-identity source review
+        run: |
+          mkdir -p target/gate-k-evidence/schema-ownership
+          docs/evaluation/gate-k-schema-ownership.sh | \
+            tee target/gate-k-evidence/schema-ownership/receipt.txt
+
+      - name: Upload schema-ownership receipt
+        uses: actions/upload-artifact@v7
+        with:
+          name: gate-k-schema-ownership
+          path: target/gate-k-evidence/schema-ownership
           if-no-files-found: error
           retention-days: 90
