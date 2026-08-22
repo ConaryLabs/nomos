@@ -471,7 +471,12 @@ fn validate_reason_references(
             .entities()
             .iter()
             .find(|entity| entity.id() == row.entity())
-            .expect("resolver subjects belong to construction entities");
+            .ok_or_else(|| {
+                movement_invalid(format!(
+                    "stable World IR v2 movement subject `{}` has no construction entity",
+                    row.entity()
+                ))
+            })?;
         let required_capability = match row.movement_disposition_ground() {
             StableMovementDispositionGround::Blocked { .. } => CapabilityKind::BlocksGround,
             StableMovementDispositionGround::Traversable { .. } => {

@@ -205,6 +205,35 @@ fn stable_v2_decoder_rejects_variants_reasons_and_subject_coverage() {
     });
 }
 
+#[test]
+fn stable_v2_decoder_rejects_resolver_subject_without_construction_entity() {
+    assert_v2_decode_rejected(|root| {
+        let subject = movement_subject_mut(root, "flooded_section");
+        subject.insert(
+            FieldName::declared("entity"),
+            CanonicalValue::text("absent"),
+        );
+        subject.insert(
+            FieldName::declared("claims"),
+            CanonicalValue::Array(Vec::new()),
+        );
+
+        let row = movement_row_mut(root, "flooded_section");
+        row.insert(
+            FieldName::declared("entity"),
+            CanonicalValue::text("absent"),
+        );
+        row.insert(
+            FieldName::declared("movement_disposition_ground"),
+            CanonicalValue::object_declared([
+                ("cost", CanonicalValue::Uint(1)),
+                ("kind", CanonicalValue::text("traversable")),
+                ("reasons", CanonicalValue::Array(Vec::new())),
+            ]),
+        );
+    });
+}
+
 fn assert_v2_decode_rejected(
     mutate: impl FnOnce(&mut std::collections::BTreeMap<FieldName, CanonicalValue>),
 ) {
@@ -237,6 +266,20 @@ fn disposition_mut<'a>(
     root: &'a mut std::collections::BTreeMap<FieldName, CanonicalValue>,
     entity: &str,
 ) -> &'a mut std::collections::BTreeMap<FieldName, CanonicalValue> {
+    let row = movement_row_mut(root, entity);
+    let CanonicalValue::Object(disposition) = row
+        .get_mut(&FieldName::declared("movement_disposition_ground"))
+        .unwrap()
+    else {
+        panic!("stable-v2 movement disposition is an object")
+    };
+    disposition
+}
+
+fn movement_row_mut<'a>(
+    root: &'a mut std::collections::BTreeMap<FieldName, CanonicalValue>,
+    entity: &str,
+) -> &'a mut std::collections::BTreeMap<FieldName, CanonicalValue> {
     let row = movement_rows_mut(root)
         .iter_mut()
         .find(|row| {
@@ -249,11 +292,35 @@ fn disposition_mut<'a>(
     let CanonicalValue::Object(fields) = row else {
         unreachable!()
     };
-    let CanonicalValue::Object(disposition) = fields
-        .get_mut(&FieldName::declared("movement_disposition_ground"))
+    fields
+}
+
+fn movement_subject_mut<'a>(
+    root: &'a mut std::collections::BTreeMap<FieldName, CanonicalValue>,
+    entity: &str,
+) -> &'a mut std::collections::BTreeMap<FieldName, CanonicalValue> {
+    let CanonicalValue::Object(resolver) = root
+        .get_mut(&FieldName::declared("movement_resolver"))
         .unwrap()
     else {
-        panic!("stable-v2 movement disposition is an object")
+        panic!("movement resolver is an object")
     };
-    disposition
+    let CanonicalValue::Array(subjects) =
+        resolver.get_mut(&FieldName::declared("subjects")).unwrap()
+    else {
+        panic!("movement subjects are an array")
+    };
+    let subject = subjects
+        .iter_mut()
+        .find(|subject| {
+            let CanonicalValue::Object(fields) = subject else {
+                return false;
+            };
+            fields.get(&FieldName::declared("entity")) == Some(&CanonicalValue::text(entity))
+        })
+        .unwrap();
+    let CanonicalValue::Object(fields) = subject else {
+        unreachable!()
+    };
+    fields
 }

@@ -1,7 +1,7 @@
 //! Filesystem orchestration for complete compiled-world packages.
 
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 
 use nomos_compiler::{
     CompiledWorld, MigratedCompiledWorld, OpenedCompiledWorld, compile_world_package,
@@ -45,16 +45,30 @@ pub fn migrate_and_write_world(
 }
 
 fn require_migration_output_outside_input(input: &Path, output: &Path) -> Result<(), Diagnostic> {
+    if output
+        .components()
+        .any(|component| component == Component::ParentDir)
+    {
+        return Err(migration_output_overlap(
+            "migration output contains a parent traversal and cannot be proven outside the immutable stable-v1 input package",
+        ));
+    }
     let input = fs::canonicalize(input).map_err(|error| migration_io_failure(input, &error))?;
     let output = resolve_with_missing_tail(output)?;
     if output.starts_with(&input) {
-        return Err(Diagnostic::new(
-            nomos_core::diagnostic::codes::MIGRATION_OUTPUT_OVERLAPS_INPUT,
+        return Err(migration_output_overlap(
             "migration output overlaps the immutable stable-v1 input package",
-        )
-        .with_repair(RepairClass::WriteToNewOutputPath));
+        ));
     }
     Ok(())
+}
+
+fn migration_output_overlap(message: impl Into<String>) -> Diagnostic {
+    Diagnostic::new(
+        nomos_core::diagnostic::codes::MIGRATION_OUTPUT_OVERLAPS_INPUT,
+        message,
+    )
+    .with_repair(RepairClass::WriteToNewOutputPath)
 }
 
 fn resolve_with_missing_tail(path: &Path) -> Result<PathBuf, Diagnostic> {

@@ -503,6 +503,17 @@ fn public_migration_api_rejects_output_overlap_before_mutation() {
         assert_eq!(tree_bytes(&input), before);
         assert!(!input.join("nested.world").exists());
     }
+
+    let traversal_parent = cwd.join("missing");
+    let traversal_output = traversal_parent
+        .join("..")
+        .join("gaol-v1.world")
+        .join("traversal.world");
+    let rejected = nomos_cli::migrate_and_write_world(&input, &traversal_output).unwrap_err();
+    assert_eq!(rejected.code().as_str(), "EK0416");
+    assert_eq!(tree_bytes(&input), before);
+    assert!(!traversal_parent.exists());
+    assert!(!input.join("traversal.world").exists());
 }
 
 #[test]
