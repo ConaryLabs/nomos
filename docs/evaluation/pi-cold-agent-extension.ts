@@ -99,7 +99,38 @@ function sandboxArguments(
 	boundaryKind: BoundaryKind,
 	writablePaths: readonly string[],
 ): string[] {
-	const args = [
+	if (boundaryKind === "source-preflight" && !toolchainHome) {
+		throw new Error("source preflight is missing its Rust toolchain");
+	}
+	const sourceDirectories =
+		boundaryKind === "source-preflight" ? ["--dir", "/cargo", "--dir", "/toolchain"] : [];
+	const sourceMounts =
+		boundaryKind === "source-preflight"
+			? ["--ro-bind", toolchainHome as string, "/toolchain", "--tmpfs", "/cargo"]
+			: [];
+	const writableMounts =
+		boundaryKind === "packet-run"
+			? writablePaths.flatMap((path) => [
+					"--bind",
+					join(workspace, path),
+					join(GUEST_WORKSPACE, path),
+				])
+			: [];
+	const sourceEnvironment =
+		boundaryKind === "source-preflight"
+			? [
+					"--setenv",
+					"CARGO_HOME",
+					"/cargo",
+					"--setenv",
+					"CARGO_NET_OFFLINE",
+					"true",
+					"--setenv",
+					"CARGO_TARGET_DIR",
+					"/workspace/target/pi-cold-agent",
+				]
+			: [];
+	return [
 		"--die-with-parent",
 		"--new-session",
 		"--unshare-all",
@@ -118,6 +149,7 @@ function sandboxArguments(
 		"/home",
 		"--dir",
 		"/home/subject",
+		...sourceDirectories,
 		"--symlink",
 		"usr/bin",
 		"/bin",
@@ -135,6 +167,8 @@ function sandboxArguments(
 		boundaryKind === "source-preflight" ? "--bind" : "--ro-bind",
 		workspace,
 		GUEST_WORKSPACE,
+		...sourceMounts,
+		...writableMounts,
 		"--tmpfs",
 		"/tmp",
 		"--proc",
@@ -147,6 +181,7 @@ function sandboxArguments(
 		"--setenv",
 		"PATH",
 		boundaryKind === "source-preflight" ? "/toolchain/bin:/usr/bin" : "/workspace/bin:/usr/bin",
+		...sourceEnvironment,
 		"--setenv",
 		"LC_ALL",
 		"C.UTF-8",
@@ -156,46 +191,6 @@ function sandboxArguments(
 		"--chdir",
 		GUEST_WORKSPACE,
 	];
-	if (boundaryKind === "source-preflight") {
-		if (!toolchainHome) throw new Error("source preflight is missing its Rust toolchain");
-		args.splice(
-			args.indexOf("--tmpfs"),
-			0,
-			"--dir",
-			"/cargo",
-			"--dir",
-			"/toolchain",
-			"--ro-bind",
-			toolchainHome,
-			"/toolchain",
-			"--tmpfs",
-			"/cargo",
-		);
-		args.splice(
-			args.indexOf("--setenv", args.indexOf("PATH") + 1),
-			0,
-			"--setenv",
-			"CARGO_HOME",
-			"/cargo",
-			"--setenv",
-			"CARGO_NET_OFFLINE",
-			"true",
-			"--setenv",
-			"CARGO_TARGET_DIR",
-			"/workspace/target/pi-cold-agent",
-		);
-	} else {
-		for (const path of writablePaths) {
-			args.splice(
-				args.indexOf("--tmpfs"),
-				0,
-				"--bind",
-				join(workspace, path),
-				join(GUEST_WORKSPACE, path),
-			);
-		}
-	}
-	return args;
 }
 
 function createIsolatedBashOperations(
