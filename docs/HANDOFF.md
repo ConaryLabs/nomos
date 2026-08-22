@@ -62,10 +62,11 @@ never accumulates history (git has that).
   command still requires complete packages and projections.
 - **Issue #4 is closed:** revision 3 merged in PR #13.
 - **The whole-kernel cold roster is predeclared:** Gemini 3.7 Flash High is the
-  formal cold author; DeepSeek V4 Pro is the formal cold debugger; each
-  independently checks the other's output. Issue #49 changes their transport
-  to Pi without changing either family or role. The plan and invalidation rules
-  are in `docs/evaluation/GATE_K_COLD_AGENT_PLAN.md`.
+  formal cold author; DeepSeek V4 Flash Vision Exp is the formal cold debugger;
+  each independently checks the other's output. Issue #49 changes their
+  transport to Pi without changing either family or role, and advances the
+  exact DeepSeek-family model by owner direction. The plan and invalidation
+  rules are in `docs/evaluation/GATE_K_COLD_AGENT_PLAN.md`.
 - **The `agy` print path is repaired (#17):** official client 1.1.17 was
   restored after the host reinstall. The old argument order passed `--model` as
   the seven-byte print prompt; a prompt-first invocation now proves the exact
@@ -84,10 +85,13 @@ never accumulates history (git has that).
   formal run, roster substitution, or protocol change.
 - **Pi qualifies all three non-Codex lanes (#49):** Pi 0.84.2 now drives
   `antigravity/gemini-3.7-flash` at high,
-  `deepseek/deepseek-v4-pro` at max, and supplemental
-  `anthropic/claude-opus-5` at max through one common fail-closed launcher.
+  `deepseek/deepseek-v4-flash-vision-exp` at max, and supplemental
+  `anthropic/claude-opus-5` at high through one common fail-closed launcher.
   The Gemini lane explicitly loads the separately pinned `pi-antigravity`
-  0.4.0 provider; package discovery remains off. All three authenticated
+  0.4.0 provider; package discovery remains off. The new DeepSeek model was
+  released after Pi 0.84.2, so that lane supplies a repository-owned,
+  hash-pinned declarative model catalog while retaining Pi's built-in DeepSeek
+  transport; it loads no executable DeepSeek plugin. All three authenticated
   author probes passed with fresh ephemeral sessions, the exact provider/model,
   only the repository-owned isolated `bash`, no model-requested tool call, and
   no credential leakage. Bubblewrap exposes only the target checkout as

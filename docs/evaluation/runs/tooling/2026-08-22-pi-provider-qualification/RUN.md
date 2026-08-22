@@ -7,9 +7,7 @@ pending
 
 **Issue:** #49
 
-**Gemini/Claude probe commit:** `8fa139918eb58b1159a93151f9879d5bb4885678`
-
-**DeepSeek probe commit:** `b593b2dcdc89de372807ec7be54b8789aa9352e4`
+**Probe commit:** `8d18d455ba56f30e464466fe093764650c5b3953`
 
 This is transport and isolation evidence only. It launches no formal
 cold-author or cold-debug attempt, spends no formal attempt budget, changes no
@@ -36,7 +34,7 @@ Gate K criterion, and does not change the predeclared model-family roster.
 
 ## Common invocation and boundary
 
-Both successful lanes used `docs/evaluation/pi-cold-agent-preflight.sh` with
+All three successful lanes used `docs/evaluation/pi-cold-agent-preflight.sh` with
 an explicit lane. The launcher selected the exact provider, model, and thinking
 level and passed all of these controls:
 
@@ -61,11 +59,24 @@ outside read, denial of an outside write, absence of credential-named child
 environment variables, denial of an external network request, and Cargo
 availability. Failure exits before a provider request.
 
-Credentials remained in the user's Pi auth store. Each run copied only
-`auth.json` into a mode-0700 temporary configuration root, scanned output for
-credential values before parsing it, removed provider response-signature fields,
-and deleted the temporary root on exit. No credential value appears in the
-committed receipts.
+Credentials remained in the user's Pi auth store. Each run copied `auth.json`
+into a mode-0700 temporary configuration root. The DeepSeek lane also copied
+the repository's hash-pinned declarative model catalog there. The launcher
+scanned output for credential values before parsing it, removed provider
+response-signature fields, and deleted the temporary root on exit. No
+credential value appears in the committed receipts.
+
+## DeepSeek model catalog
+
+DeepSeek released `deepseek-v4-flash-vision-exp` on 2026-08-21, and Pi 0.84.2's
+built-in catalog does not yet contain it. The official release announcement is
+<https://api-docs.deepseek.com/news/news260821/>. The lane retains Pi's built-in
+DeepSeek transport and supplies only
+`docs/evaluation/pi-deepseek-models.json`, a declarative catalog entry with
+SHA-256
+`7954fb3ef750bed773619c9fe259a8eb923b6f4f8455442a33cf8e1fe2fa3773`.
+The preflight rejects any digest or field mismatch and copies the file only into
+its ephemeral configuration root. No executable DeepSeek plugin is loaded.
 
 ## Gemini provider extension
 
@@ -104,9 +115,9 @@ workspace or the subject's callable tool boundary.
 
 | Lane | Exact route | Thinking | Session | Result |
 | --- | --- | --- | --- | --- |
-| Gemini | `antigravity/gemini-3.7-flash` | `high` | `01a02726-658b-7299-8987-debf85730d59` | PASS |
-| Claude | `anthropic/claude-opus-5` | `max` | `01a02726-75fa-7fa1-b9d7-af63c239a3e7` | PASS |
-| DeepSeek | `deepseek/deepseek-v4-pro` | `max` | `01a0272a-092c-7870-bcb2-b1e56bfe1bf1` | PASS |
+| Gemini | `antigravity/gemini-3.7-flash` | `high` | `01a02733-d201-7d45-8672-085a7ec67c78` | PASS |
+| Claude | `anthropic/claude-opus-5` | `high` | `01a02733-d44c-7eac-b7d6-7b258833b085` | PASS |
+| DeepSeek | `deepseek/deepseek-v4-flash-vision-exp` | `max` | `01a02733-ad79-7b4a-b791-6d9a7b9d2e61` | PASS |
 
 Each passing lane returned exactly `pi boundary preflight`, emitted one fresh
 ephemeral session, executed zero model-requested tools, and ended without retry.

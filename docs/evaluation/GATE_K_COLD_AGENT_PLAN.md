@@ -39,8 +39,8 @@ and where they are not adjudicating their own work alone.
 
 | Formal role | Subject route | Independent checker route |
 | --- | --- | --- |
-| Cold author | Google Gemini 3.7 Flash High through Pi and the pinned `pi-antigravity` provider | DeepSeek V4 Pro through Pi's built-in provider |
-| Cold debugger | DeepSeek V4 Pro through Pi's built-in provider | Google Gemini 3.7 Flash High through Pi and the pinned `pi-antigravity` provider |
+| Cold author | Google Gemini 3.7 Flash High through Pi and the pinned `pi-antigravity` provider | DeepSeek V4 Flash Vision Exp through Pi's built-in provider and the repository-pinned model catalog |
+| Cold debugger | DeepSeek V4 Flash Vision Exp through Pi's built-in provider and the repository-pinned model catalog | Google Gemini 3.7 Flash High through Pi and the pinned `pi-antigravity` provider |
 
 The cold author and cold debugger use separate fresh sessions. A checker also
 uses a fresh session. The cold-author checker receives the committed subject
@@ -81,18 +81,24 @@ On 2026-08-22 issue #49 qualified a common replacement transport:
 ```text
 Pi 0.84.2
 antigravity/gemini-3.7-flash    Gemini 3.7 Flash    high
-deepseek/deepseek-v4-pro        DeepSeek V4 Pro     max
-anthropic/claude-opus-5         Claude Opus 5       max (supplemental only)
+deepseek/deepseek-v4-flash-vision-exp
+                                  DeepSeek V4 Flash Vision Exp    max
+anthropic/claude-opus-5         Claude Opus 5       high (supplemental only)
 ```
 
 Gemini runs use high effort, the maximum supported by this route. DeepSeek runs
-use maximum effort. Exact model resolution is evidence, not an invocation
-assumption:
+use maximum effort; supplemental Claude runs use high effort. DeepSeek released
+`deepseek-v4-flash-vision-exp` on 2026-08-21 as its first multimodal API model.
+Pi 0.84.2 does not contain that catalog entry, so the launcher supplies only
+the repository-owned, hash-pinned declarative model metadata while retaining
+Pi's built-in DeepSeek transport. The upstream release is
+<https://api-docs.deepseek.com/news/news260821/>. Exact model resolution is
+evidence, not an invocation assumption:
 
 - Pi's boundary record and terminal assistant event must both resolve Gemini to
   `antigravity/gemini-3.7-flash` at `high`;
 - those same records must resolve DeepSeek to
-  `deepseek/deepseek-v4-pro` at `max`.
+  `deepseek/deepseek-v4-flash-vision-exp` at `max`.
 
 Client versions may change before the formal runs. Each `plan.json` records the
 then-current version, exact invocation, resolved model, and provider. A route
@@ -165,11 +171,14 @@ docs/evaluation/pi-cold-agent-preflight.sh deepseek
 Pi is pinned by npm integrity and installed-tree digest. The Gemini adapter is
 separately named and pinned; package discovery remains disabled, and only that
 provider entry point plus the repository boundary extension are loaded
-explicitly. The launcher starts a fresh ephemeral JSON session from a clean
-exact commit, rejects a provider/model/thinking/worktree mismatch, disables
-discovered extensions, skills, templates, themes, context files, built-in
-tools, project trust, and session persistence, and proves the effective tool
-catalog is exactly the boundary extension's `bash`.
+explicitly. The DeepSeek lane uses Pi's built-in provider plus the
+repository-owned hash-pinned declarative metadata for the newer exact model; it
+loads no executable provider extension. The launcher starts a fresh ephemeral
+JSON session from a clean exact commit, rejects a
+provider/model/thinking/worktree mismatch, disables discovered extensions,
+skills, templates, themes, context files, built-in tools, project trust, and
+session persistence, and proves the effective tool catalog is exactly the
+boundary extension's `bash`.
 
 That tool runs only inside Bubblewrap with a read-only host root, the target
 checkout as its sole read-write host mount, a cleared allowlisted environment,
@@ -219,7 +228,9 @@ same-family subject or inventing slice boundaries after results are known.
 Peter authorized direct `agy` with Gemini 3.7 Flash High and the original
 Reasonix/DeepSeek route on 2026-08-21. After the `agy` boundary falsification,
 he authorized qualifying Pi as the common non-Codex transport on 2026-08-22.
-Issue #49 changes only those transports: Gemini remains the cold author,
-DeepSeek remains the cold debugger, and each remains the other's independent
-checker. Claude through Pi is supplemental only. The updated routing becomes
-effective when the owner merges the issue #49 change.
+After DeepSeek released V4 Flash Vision Exp on 2026-08-21, he further directed
+the exact DeepSeek-family route to that model at maximum effort and Claude Opus
+5 to high effort. Issue #49 does not change family or role: Gemini remains the
+cold author, DeepSeek remains the cold debugger, and each remains the other's
+independent checker. Claude through Pi is supplemental only. The updated
+routing becomes effective when the owner merges the issue #49 change.
