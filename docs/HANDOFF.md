@@ -274,15 +274,20 @@ never accumulates history (git has that).
   package and invalidate it. The next repair rejects resolved output paths at or
   below the package or a verified input-state run bundle, including
   symlinked-ancestor aliases, before execution or publication, with subprocess
-  coverage for both runtime commands. The repaired tree passes the full author
-  proof. Fresh PR CI and a third non-author exact-head audit/rerun remain
-  outstanding.
+  coverage for both runtime commands. Head `8ff16e5` passed the full author
+  proof and PR CI run `32558458548`. A third fresh non-author exact-head audit
+  passed all four proof commands and found no runtime-code issue, but rejected
+  two stale evidence-boundary sentences in `docs/movement.md` and
+  `docs/transitions.md` that still listed runtime CLI execution as open. Repair
+  commit `3f58532` makes both documents current through SW-J and passes the full
+  author proof. PR #59 is the authoritative live record for the required fresh
+  exact-head CI and non-author rerun before owner merge.
 
 ## What is next
 
-Finish issue #58: publish the review repair, obtain fresh green PR CI, and
-obtain the required fresh non-author exact-head audit/rerun. Later work includes
-replay, explanations, the
+Finish issue #58 only after PR #59 records green CI and a clean non-author
+exact-head rerun for the final repair, then perform the owner-authorized merge
+and branch cleanup. Later work includes replay, explanations, the
 required stable v1-to-v2 movement migration, direct v2 runtime loading/refusal
 evidence, the Linux aarch64 and ten-run matrix, measured Gate K budgets, final
 schema-ownership review, and the formal cold-agent gates.
