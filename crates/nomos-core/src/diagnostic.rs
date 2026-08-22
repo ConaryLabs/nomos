@@ -517,6 +517,12 @@ pub mod codes {
     pub const REPLAY_INPUT_MISMATCH: DiagnosticCode = DiagnosticCode::new("EK0823");
     /// Re-execution does not reproduce the replay log's expected committed evidence.
     pub const REPLAY_EVIDENCE_MISMATCH: DiagnosticCode = DiagnosticCode::new("EK0824");
+    /// An explanation names a well-formed entity absent from the verified world.
+    pub const EXPLANATION_ENTITY_MISSING: DiagnosticCode = DiagnosticCode::new("EK0825");
+    /// An explanation names a tick absent from the verified committed run prefix.
+    pub const EXPLANATION_TICK_MISSING: DiagnosticCode = DiagnosticCode::new("EK0826");
+    /// An explanation entity is unrelated to the selected committed transition.
+    pub const EXPLANATION_ENTITY_UNRELATED: DiagnosticCode = DiagnosticCode::new("EK0827");
 
     /// A resolver-plan collection repeats one stable semantic identity.
     pub const RESOLVER_DUPLICATE_IDENTITY: DiagnosticCode = DiagnosticCode::new("EK0901");
@@ -622,6 +628,9 @@ pub mod codes {
         REPLAY_LOG_INVALID,
         REPLAY_INPUT_MISMATCH,
         REPLAY_EVIDENCE_MISMATCH,
+        EXPLANATION_ENTITY_MISSING,
+        EXPLANATION_TICK_MISSING,
+        EXPLANATION_ENTITY_UNRELATED,
         RESOLVER_DUPLICATE_IDENTITY,
         RESOLVER_CLAIM_ENTITY_MISMATCH,
         RESOLVER_ACTIVATION_NAMESPACE_MISSING,

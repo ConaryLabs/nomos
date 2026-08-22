@@ -6,18 +6,18 @@ use std::path::{Path, PathBuf};
 
 use nomos_compiler::{compile_world_package, inspect_compiled_package};
 use nomos_core::package::MANIFEST_FILE;
-use nomos_core::{CanonicalValue, Diagnostic, RepairClass, SourcePath};
+use nomos_core::{CanonicalValue, Diagnostic, EntityId, RepairClass, SourcePath};
 use nomos_sim::{
     CommandRequest, CommandScript, PersistedRuntimeState, ReplayLog, RunExecution, execute_requests,
 };
 
 use crate::{
     ExitCode, OpenedRunBundle, compile_and_write_world, initial_state_from_package,
-    migrate_and_write_world, open_compiled_world, render_rejection, require_available_run_output,
-    write_run_bundle,
+    migrate_and_write_world, open_compiled_world, open_run_bundle, render_rejection,
+    require_available_run_output, write_run_bundle,
 };
 
-const ROOT_HELP: &str = "Nomos Gate K semantic runtime\n\nUsage:\n  nomos validate <source.nomos>\n  nomos compile <source.nomos> --out <new.world/>\n  nomos inspect <world/>\n  nomos migrate <v1-world/> --to 2 --out <new-v2-world/>\n  nomos run <world/> --commands <commands> --out <new-run/>\n  nomos command <world/> --state <state.json> \"<command>\" --out <new-run/>\n  nomos replay <world/> --log <replay> --out <new-run/>\n  nomos --help\n";
+const ROOT_HELP: &str = "Nomos Gate K semantic runtime\n\nUsage:\n  nomos validate <source.nomos>\n  nomos compile <source.nomos> --out <new.world/>\n  nomos inspect <world/>\n  nomos migrate <v1-world/> --to 2 --out <new-v2-world/>\n  nomos run <world/> --commands <commands> --out <new-run/>\n  nomos command <world/> --state <state.json> \"<command>\" --out <new-run/>\n  nomos replay <world/> --log <replay> --out <new-run/>\n  nomos explain-entity <world/> <entity>\n  nomos explain-transition <run/> <entity> --tick <tick> --world <world/>\n  nomos --help\n";
 const VALIDATE_HELP: &str = "Validate one Nomos source file without writing artifacts.\n\nUsage:\n  nomos validate <source.nomos>\n";
 const COMPILE_HELP: &str = "Compile one Nomos source file into a new immutable world package.\n\nUsage:\n  nomos compile <source.nomos> --out <new.world/>\n";
 const INSPECT_HELP: &str =
@@ -26,6 +26,8 @@ const MIGRATE_HELP: &str = "Migrate one immutable stable-v1 world into a new sta
 const RUN_HELP: &str = "Execute one strict command script from a compiled world's initial state.\n\nUsage:\n  nomos run <world/> --commands <commands> --out <new-run/>\n";
 const COMMAND_HELP: &str = "Execute one command from a verified persisted runtime state.\n\nUsage:\n  nomos command <world/> --state <state.json> \"<command>\" --out <new-run/>\n";
 const REPLAY_HELP: &str = "Reproduce one strict replay log against a compiled world's initial state.\n\nUsage:\n  nomos replay <world/> --log <replay> --out <new-run/>\n";
+const EXPLAIN_ENTITY_HELP: &str = "Explain one entity from a strictly verified compiled world.\n\nUsage:\n  nomos explain-entity <world/> <entity>\n";
+const EXPLAIN_TRANSITION_HELP: &str = "Explain one committed transition after strictly verifying its world and re-executing its run.\n\nUsage:\n  nomos explain-transition <run/> <entity> --tick <tick> --world <world/>\n";
 
 /// One completed command-line execution, including its exact stdout bytes.
 #[derive(Clone, PartialEq, Eq, Debug)]
@@ -81,6 +83,16 @@ enum Command {
         package: String,
         log: String,
         output: String,
+    },
+    ExplainEntity {
+        package: String,
+        entity: String,
+    },
+    ExplainTransition {
+        run: String,
+        entity: String,
+        tick: u64,
+        package: String,
     },
 }
 
@@ -186,6 +198,41 @@ fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Command, Diagnostic
                 output: output.clone(),
             }
         }
+        [name, help] if name == "explain-entity" && help == "--help" => {
+            Command::Help(EXPLAIN_ENTITY_HELP)
+        }
+        [name, package, entity]
+            if name == "explain-entity" && !is_option(package) && !is_option(entity) =>
+        {
+            Command::ExplainEntity {
+                package: package.clone(),
+                entity: entity.clone(),
+            }
+        }
+        [name, help] if name == "explain-transition" && help == "--help" => {
+            Command::Help(EXPLAIN_TRANSITION_HELP)
+        }
+        [name, run, entity, tick_option, tick, world_option, package]
+            if name == "explain-transition"
+                && !is_option(run)
+                && !is_option(entity)
+                && tick_option == "--tick"
+                && !is_option(tick)
+                && world_option == "--world"
+                && !is_option(package) =>
+        {
+            let tick = tick.parse::<u64>().map_err(|_| {
+                usage(format!(
+                    "transition explanation tick `{tick}` is not an unsigned integer"
+                ))
+            })?;
+            Command::ExplainTransition {
+                run: run.clone(),
+                entity: entity.clone(),
+                tick,
+                package: package.clone(),
+            }
+        }
         [name, help] if name == "command" && help == "--help" => Command::Help(COMMAND_HELP),
         [
             name,
@@ -252,6 +299,15 @@ fn execute_command(command: Command) -> Execution {
             log,
             output,
         } => replay(&package, &log, &output),
+        Command::ExplainEntity { package, entity } => {
+            explain_entity(&package, &entity).map(RuntimeOutcome::completed)
+        }
+        Command::ExplainTransition {
+            run,
+            entity,
+            tick,
+            package,
+        } => explain_transition(&run, &entity, tick, &package).map(RuntimeOutcome::completed),
     };
     match result {
         Ok(outcome) => outcome.into_execution(),
@@ -481,6 +537,27 @@ fn replay(package: &str, log: &str, output: &str) -> Result<RuntimeOutcome, Diag
     )?;
     replay.validate_execution(&execution)?;
     publish_execution("replay", output, &output_path, &world, execution)
+}
+
+fn explain_entity(package: &str, entity: &str) -> Result<CanonicalValue, Diagnostic> {
+    let package_path = relative_filesystem_path(package)?;
+    let entity = EntityId::parse(entity)?;
+    let world = open_compiled_world(&package_path)?;
+    crate::explanation::entity_report(&world, &entity)
+}
+
+fn explain_transition(
+    run: &str,
+    entity: &str,
+    tick: u64,
+    package: &str,
+) -> Result<CanonicalValue, Diagnostic> {
+    let run_path = relative_filesystem_path(run)?;
+    let package_path = relative_filesystem_path(package)?;
+    let entity = EntityId::parse(entity)?;
+    let world = open_compiled_world(&package_path)?;
+    let run = open_run_bundle(&run_path, &world)?;
+    crate::explanation::transition_report(&world, &run, &entity, tick)
 }
 
 fn publish_execution(

@@ -59,6 +59,20 @@ pub enum FactIdentity {
 }
 
 impl FactIdentity {
+    /// Whether this fact directly concerns the supplied entity.
+    #[must_use]
+    pub fn mentions_entity(&self, entity: &EntityId) -> bool {
+        match self {
+            Self::EntityIdentity(subject)
+            | Self::EntitySpatialAnchor(subject)
+            | Self::EntitySpatialBinding(subject)
+            | Self::EntityCredential(subject) => subject == entity,
+            Self::Relation {
+                subject, object, ..
+            } => subject == entity || object == entity,
+        }
+    }
+
     /// Canonical structured identity.
     #[must_use]
     pub fn to_canonical(&self) -> CanonicalValue {

@@ -2,8 +2,7 @@
 //!
 //! SW-H exposes the Gate K filesystem-authoring commands, SW-J adds immutable
 //! runtime run bundles, SW-K adds deterministic replay, and SW-M adds strict
-//! stable-v1 migration while leaving explanations for the accepted explanation
-//! slice.
+//! stable-v1 migration. SW-N adds package-bound semantic explanations.
 
 use std::io::{self, Write};
 use std::process::ExitCode as ProcessExitCode;
