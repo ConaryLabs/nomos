@@ -16,9 +16,9 @@ any renderer is built.
 ## Status
 
 - **Architecture status:** exploratory and non-authoritative
-- **Implementation status:** `main` is implemented through SW-M; SW-N is active
-  on branch `sw-n-semantic-explanations-65`. The implemented surface includes
-  foundations, source and preserved construction IR, stable
+- **Implementation status:** semantic implementation is complete through SW-N
+  on `main`. The implemented surface includes foundations, source and preserved
+  construction IR, stable
   `nomos.world_ir@2` plus strict v1 migration, compiled transitions,
   shared movement and light resolution, all four projections, immutable runtime
   commits, complete hash-verified world packages, the filesystem `validate`,
@@ -26,6 +26,8 @@ any renderer is built.
   runtime and replay evidence, atomic verified run bundles, the immutable
   `migrate` command, and package-bound read-only entity and transition
   explanations
+- **Gate K status:** evidence closure is in progress. The implementation-complete
+  tree is not yet a frozen `gate-k-rcN`, and Gate K is not accepted or green
 - **Contract revision:** 7, owner-authorized in decision 0009
 - **Cold-agent protocol revision:** 2, owner-authorized in decision 0008
 - **Scope:** greenfield / vacuum architecture exercise
