@@ -12,6 +12,7 @@
 
 mod catalog;
 pub mod diagnostics;
+mod inspect;
 mod linker;
 mod opened;
 mod package;
@@ -24,6 +25,7 @@ use nomos_core::{Diagnostic, SchemaId, SourcePath};
 pub use nomos_projection::{DiagnosticsPlan, NavigationPlan, PersistencePlan, SimulationPlan};
 use nomos_schema::{SourceDocument, StableWorldIr, WorldIr};
 
+pub use inspect::inspect_compiled_package;
 pub use opened::{OpenedCompiledWorld, open_compiled_package, validate_compiled_package};
 pub use package::{CompiledWorld, compile_world_package, compiler_receipts_schema};
 

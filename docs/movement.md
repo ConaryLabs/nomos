@@ -71,6 +71,7 @@ claim. These results are computed from the projected activation expressions;
 
 SW-E's resolver remains ground-movement-only. SW-F now carries its before/after
 facts into committed typed receipts alongside light facts; the movement plan
-and navigation schema do not change. Replay, migration, package artifacts,
-filesystem CLI commands, explanations, and the multi-target/formal cold-agent
-evidence remain open.
+and navigation schema do not change. SW-G packages those artifacts and SW-H
+exposes their filesystem validation, compilation, and inspection. Replay,
+migration, runtime CLI execution, explanations, and the multi-target/formal
+cold-agent evidence remain open.

@@ -102,6 +102,7 @@ does not alter `ward`.
 SW-E's ground `MovementDisposition` facts remain as described in
 [`movement.md`](movement.md). SW-F proves light removal,
 persistence/diagnostics deltas, committed in-memory state, hashes, and typed
-causal receipts as described in [`runtime.md`](runtime.md). Replay, migration,
-package/filesystem CLI orchestration, the ten-run target matrix, and
+causal receipts as described in [`runtime.md`](runtime.md). SW-G packages those
+artifacts and SW-H exposes filesystem validation, compilation, and inspection.
+Runtime CLI execution, replay, migration, the ten-run target matrix, and
 whole-Gate-K cold-agent acceptance remain open.
