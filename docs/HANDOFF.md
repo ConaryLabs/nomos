@@ -234,13 +234,17 @@ never accumulates history (git has that).
   `1d5da43` closes all three findings: `RunResult` now derives and revalidates
   all five hashes from typed artifacts, receipt sequences anchor to the actual
   initial tick, and state validation checks ownership. Refreshed-integrity
-  mutations cover every artifact binding. The four pre-SW-I receipt digests and
-  state hashes were compared against untouched checkpoint `94f60eb` and remain
-  frozen as regression goldens. The repaired implementation passed the complete
-  four-command author proof with a clean tree. Draft PR #57 remains open for
-  final-head CI and a fresh non-author audit/rerun; exact-head disposition is
-  recorded externally in that PR so updating this handoff cannot invalidate
-  it. No runtime CLI command or run-directory publisher was added.
+  mutations cover every artifact binding. A second audit of `845cc1f` confirmed
+  the implementation repairs and all four proof commands but rejected the test
+  evidence because it showed only tick-zero success. The following repair adds
+  a successful command/evidence chain beginning from the fixture's persisted
+  tick-5 state, plus a wrong-zero-anchor rejection. The four pre-SW-I receipt
+  digests and state hashes were compared against untouched checkpoint `94f60eb`
+  and remain frozen as regression goldens. Draft PR #57 remains open for a
+  complete final-head author proof, CI, and a fresh non-author audit/rerun;
+  exact-head disposition is recorded externally in that PR so updating this
+  handoff cannot invalidate it. No runtime CLI command or run-directory
+  publisher was added.
 
 ## What is next
 

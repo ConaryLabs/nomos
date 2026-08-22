@@ -464,6 +464,46 @@ fn logs_hash_sequences_and_results_round_trip_and_cross_validate() {
 }
 
 #[test]
+fn run_evidence_accepts_a_nonzero_persisted_initial_tick() {
+    let (plan, _, initial, _, _, _) = executed_evidence();
+    assert_eq!(initial.state().tick(), 5);
+    let request = CommandScript::from_bytes(b"schema nomos.command_script@1\nclose north_gate\n")
+        .unwrap()
+        .requests()[0]
+        .clone();
+    let command = resolve_command(&plan, &request).unwrap();
+    let committed = commit_transaction(&plan, initial.state(), &command).unwrap();
+    let receipt = committed.receipt().clone();
+    let log = CommandLog::new(vec![
+        CommandLogRow::new(0, request, command, initial.state_hash(), &receipt).unwrap(),
+    ])
+    .unwrap();
+    let receipts =
+        CausalReceiptSequence::new(initial.state().tick(), &log, vec![receipt.clone()]).unwrap();
+    let hashes = StateHashSequence::from_command_log(initial.state_hash(), &log).unwrap();
+    let final_state = PersistedRuntimeState::new(&plan, committed.into_snapshot()).unwrap();
+    let result = RunResult::completed(
+        Sha256Digest::of_bytes(b"manifest.json"),
+        &initial,
+        &final_state,
+        &log,
+        &receipts,
+        &hashes,
+    )
+    .unwrap();
+    result
+        .validate_evidence(&initial, &final_state, &log, &receipts, &hashes)
+        .unwrap();
+    assert_eq!(receipt.tick(), 6);
+    assert_eq!(
+        CausalReceiptSequence::new(0, &log, vec![receipt])
+            .unwrap_err()
+            .code(),
+        nomos_core::diagnostic::codes::RUNTIME_EVIDENCE_INCONSISTENT
+    );
+}
+
+#[test]
 fn refreshed_receipt_digest_cannot_hide_typed_command_disagreement() {
     let (_, _, _, log, receipt_sequence, _) = executed_evidence();
     let mut receipts = receipt_sequence.receipts().to_vec();
