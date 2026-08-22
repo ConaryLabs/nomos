@@ -1,6 +1,6 @@
 ---
 title: The executable semantic kernel
-status: In progress through SW-M
+status: In progress through SW-N
 gate: K
 contract_revision: 7
 supersedes_contract_revision: 6

@@ -1,6 +1,6 @@
 ---
 title: Gate K transitions and transaction preparation
-status: Transition implementation reference; current through SW-M
+status: Transition implementation reference; current through SW-N
 date: 2026-08-22
 applies_to: KERNEL.md sections 1, 2, 4; acceptance 4-6
 ---
@@ -112,14 +112,15 @@ acceptance remain open.
 
 ## Explanation verification boundary
 
-Decision 0009 resolves the issue #62 contract ambiguity without implementing
-the explanation surface. A future `explain-transition` command must receive an
-explicit `--world <world/>`, strictly open that package, and then strictly open
-and re-execute the supplied run against it before rendering any explanation.
+Decision 0009 resolves the issue #62 contract ambiguity. SW-N implements
+`explain-transition` with the required explicit `--world <world/>`, strictly
+opens that package, and then strictly opens and re-executes the supplied run
+against it before rendering any explanation.
 The run's package and simulation digests bind the supplied bytes but cannot
 locate or reconstruct the package by themselves.
 
-The tick-7 brazier example uses separate seven-command run evidence. It does not
-change the accepted five-command command script or replay fixture. Explanation
-remains downstream human-readable output over existing typed evidence; this
-decision adds no persisted schema or alternate runtime path.
+The tick-7 brazier example uses `fixtures/gaol-seven.commands` as separate
+seven-command run evidence. It does not change the accepted five-command command
+script or replay fixture. Explanation remains downstream canonical JSON over
+existing typed evidence; SW-N adds no persisted schema or alternate runtime
+path.

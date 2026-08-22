@@ -139,5 +139,5 @@ This slice supports exactly the preserved stable-v1 package boundary and target
 v2. It does not migrate construction snapshots, expose a legacy runtime path,
 add a package member, promise future save compatibility, implement explanation,
 or claim signing, authenticity, hostile-filesystem safety, or concurrent-writer
-safety. Decision 0009 resolves the transition-explanation input boundary;
-implementation remains in issue #65.
+safety. SW-N explanations consume only an already migrated active-v2 package;
+they do not create a legacy explanation path.

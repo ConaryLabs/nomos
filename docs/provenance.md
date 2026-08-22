@@ -46,12 +46,13 @@ not merely present in the global vocabulary.
 
 ## Structured and readable output
 
-`FactOwnershipReceipt::to_canonical()` exposes the structured causal record for
-future diagnostics projection and `nomos explain-entity` output.
+`FactOwnershipReceipt::to_canonical()` exposes the structured causal record
+retained in World IR and used by `nomos explain-entity`; it remains available to
+a future richer diagnostics projection.
 `FactOwnershipReceipt::render_text()` produces human-readable text from those
 types. The renderer is deliberately downstream: changing prose cannot change
 canonical World IR bytes, fact identities, or causal edges.
 
-The CLI explanation commands remain a later slice. Issue #24 provides their
-typed semantic input and presentation boundary; it does not claim the commands
-are implemented.
+Issue #24 supplied the typed semantic input and presentation boundary. SW-N now
+renders it only after strict package verification; presentation remains
+downstream from canonical meaning and cannot change package bytes.

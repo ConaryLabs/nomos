@@ -16,14 +16,16 @@ any renderer is built.
 ## Status
 
 - **Architecture status:** exploratory and non-authoritative
-- **Implementation status:** implemented through SW-M on `main`: foundations,
-  source and preserved construction IR, stable
+- **Implementation status:** `main` is implemented through SW-M; SW-N is active
+  on branch `sw-n-semantic-explanations-65`. The implemented surface includes
+  foundations, source and preserved construction IR, stable
   `nomos.world_ir@2` plus strict v1 migration, compiled transitions,
   shared movement and light resolution, all four projections, immutable runtime
   commits, complete hash-verified world packages, the filesystem `validate`,
   `compile`, `inspect`, `run`, `command`, and `replay` commands, strict persisted
-  runtime and replay evidence, atomic verified run bundles, and the immutable
-  `migrate` command; no explanation commands
+  runtime and replay evidence, atomic verified run bundles, the immutable
+  `migrate` command, and package-bound read-only entity and transition
+  explanations
 - **Contract revision:** 7, owner-authorized in decision 0009
 - **Cold-agent protocol revision:** 2, owner-authorized in decision 0008
 - **Scope:** greenfield / vacuum architecture exercise
@@ -88,10 +90,12 @@ it.
     values, causal inputs, and the boundary between semantics and display text.
 21. [docs/runtime.md](docs/runtime.md) — compiler-owned light union, immutable
     runtime snapshots, state hashes, atomic commit, and typed causal receipts.
-22. [docs/review/2026-08-21-founding-review.md](docs/review/2026-08-21-founding-review.md)
+22. [docs/explanations.md](docs/explanations.md) — package-bound entity and
+    transition explanations, stable selection failures, and SW-N evidence.
+23. [docs/review/2026-08-21-founding-review.md](docs/review/2026-08-21-founding-review.md)
    — the condensed primary record of the founding adversarial review, written
    in the originating session, with its provenance limits stated.
-23. [docs/review/2026-08-21-founding-review-synthesis.md](docs/review/2026-08-21-founding-review-synthesis.md)
+24. [docs/review/2026-08-21-founding-review-synthesis.md](docs/review/2026-08-21-founding-review-synthesis.md)
     — the contract-revision-2 edited synthesis of that review.
 
 ## Layout
