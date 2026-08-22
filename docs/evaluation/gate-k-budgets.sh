@@ -19,6 +19,7 @@ script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)
 repo_root=$(cd "$script_dir/../.." && pwd -P)
 [[ $(git -C "$repo_root" rev-parse --show-toplevel) == "$repo_root" ]] ||
   fail 'script must run from its repository worktree'
+cd "$repo_root"
 
 head=$(git -C "$repo_root" rev-parse --verify HEAD)
 [[ $head =~ ^[0-9a-f]{40}$ ]] || fail 'HEAD is not a full commit id'
@@ -61,9 +62,9 @@ fi
 
 cat >"$evidence_dir/commands.txt" <<EOF
 CARGO_TARGET_DIR=$build_target cargo build --workspace --release --locked
-$build_target/release/nomos validate $repo_root/fixtures/gaol.nomos
+$build_target/release/nomos validate fixtures/gaol.nomos
 $build_target/release/nomos command <verified-world> --state <verified-six-file-run>/final-state.json "close north_gate" --out <fresh-output>
-$build_target/release/nomos replay <verified-world> --log $repo_root/fixtures/gaol.replay --out <fresh-output>
+$build_target/release/nomos replay <verified-world> --log fixtures/gaol.replay --out <fresh-output>
 EOF
 
 disk_samples=$evidence_dir/build/disk-samples.tsv
@@ -100,12 +101,12 @@ binary=$build_target/release/nomos
 
 world=$evidence_dir/inputs/gaol.world
 base_run=$evidence_dir/inputs/base.run
-"$binary" compile "$repo_root/fixtures/gaol.nomos" --out "$world" \
+"$binary" compile fixtures/gaol.nomos --out "$world" \
   >"$evidence_dir/inputs/compile.stdout"
-"$binary" run "$world" --commands "$repo_root/fixtures/gaol.commands" --out "$base_run" \
+"$binary" run "$world" --commands fixtures/gaol.commands --out "$base_run" \
   >"$evidence_dir/inputs/run.stdout"
 
-replay_commands=$(grep -o '"ordinal"' "$repo_root/fixtures/gaol.replay" | wc -l)
+replay_commands=$(grep -o '"ordinal"' fixtures/gaol.replay | wc -l)
 [[ $replay_commands -eq 5 ]] || fail "accepted replay command count changed: $replay_commands"
 
 raw_warmups=$evidence_dir/raw-warmups.tsv
@@ -141,7 +142,7 @@ run_phase() {
     root=$evidence_dir/operations/validate/$name
     mkdir -p "$(dirname "$root")"
     measure_process "$table" validate "$ordinal" "$root" \
-      "$binary" validate "$repo_root/fixtures/gaol.nomos"
+      "$binary" validate fixtures/gaol.nomos
 
     root=$evidence_dir/operations/command/$name
     mkdir -p "$(dirname "$root")"
@@ -152,7 +153,7 @@ run_phase() {
     root=$evidence_dir/operations/replay/$name
     mkdir -p "$(dirname "$root")"
     measure_process "$table" replay "$ordinal" "$root" \
-      "$binary" replay "$world" --log "$repo_root/fixtures/gaol.replay" \
+      "$binary" replay "$world" --log fixtures/gaol.replay \
       --out "$root.run"
   done
 }

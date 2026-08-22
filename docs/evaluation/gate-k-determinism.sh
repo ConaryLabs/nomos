@@ -38,6 +38,7 @@ script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)
 repo_root=$(cd "$script_dir/../.." && pwd -P)
 [[ $(git -C "$repo_root" rev-parse --show-toplevel) == "$repo_root" ]] ||
   fail 'script must run from its repository worktree'
+cd "$repo_root"
 
 actual_arch=$(uname -m)
 [[ $actual_arch == "$expected_arch" ]] ||
@@ -106,13 +107,13 @@ for iteration in $(seq 1 10); do
   run_dir=$evidence_dir/runs/$run_name
   mkdir "$run_dir"
 
-  "$binary" compile "$repo_root/fixtures/gaol.nomos" \
+  "$binary" compile fixtures/gaol.nomos \
     --out "$run_dir/gaol.world" >"$run_dir/compile.stdout"
   "$binary" run "$run_dir/gaol.world" \
-    --commands "$repo_root/fixtures/gaol.commands" \
+    --commands fixtures/gaol.commands \
     --out "$run_dir/gaol.run" >"$run_dir/run.stdout"
   "$binary" replay "$run_dir/gaol.world" \
-    --log "$repo_root/fixtures/gaol.replay" \
+    --log fixtures/gaol.replay \
     --out "$run_dir/gaol.replay.run" >"$run_dir/replay.stdout"
 
   compare_run_and_replay "$run_dir"
