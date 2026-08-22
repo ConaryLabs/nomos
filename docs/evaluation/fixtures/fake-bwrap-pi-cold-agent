@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+[[ ${1:-} == --version ]] || exit 64
+printf 'bubblewrap 0.11.2-fixture\n'
