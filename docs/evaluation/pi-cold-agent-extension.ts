@@ -5,6 +5,7 @@ import { join } from "node:path";
 
 import {
 	createBashTool,
+	isToolCallEventType,
 	type BashOperations,
 	type ExtensionAPI,
 } from "@earendil-works/pi-coding-agent";
@@ -17,6 +18,7 @@ const EXPOSED_SESSION_ENVIRONMENT = new Set([
 	"PI_REASONING_LEVEL",
 	"PI_SESSION_ID",
 ]);
+type BoundaryKind = "source-preflight" | "packet-run";
 
 function requiredEnvironment(name: string): string {
 	const value = process.env[name];
@@ -28,6 +30,40 @@ function sha256(value: string): string {
 	return createHash("sha256").update(value).digest("hex");
 }
 
+function requiredSha256(name: string): string {
+	const value = requiredEnvironment(name);
+	if (!/^[0-9a-f]{64}$/.test(value)) throw new Error(`invalid SHA-256 in ${name}`);
+	return value;
+}
+
+function requiredPositiveInteger(name: string): number {
+	const value = requiredEnvironment(name);
+	if (!/^[1-9][0-9]*$/.test(value)) throw new Error(`invalid positive integer in ${name}`);
+	return Number(value);
+}
+
+function parseBoundaryKind(): BoundaryKind {
+	const value = process.env.NOMOS_PI_BOUNDARY_KIND ?? "source-preflight";
+	if (value === "source-preflight" || value === "packet-run") return value;
+	throw new Error(`invalid NOMOS_PI_BOUNDARY_KIND: ${value}`);
+}
+
+function parseWritablePaths(workspace: string, boundaryKind: BoundaryKind): string[] {
+	if (boundaryKind === "source-preflight") return [];
+	const value = requiredEnvironment("NOMOS_PI_WRITABLE_PATHS");
+	const paths = value.split(",");
+	if (paths.length !== 1 || !/^[a-z][a-z0-9_-]*$/.test(paths[0] ?? "")) {
+		throw new Error("packet boundary requires exactly one safe writable directory");
+	}
+	for (const path of paths) {
+		const resolved = realpathSync(join(workspace, path));
+		if (resolved !== join(workspace, path)) {
+			throw new Error(`writable path is not a direct real directory: ${path}`);
+		}
+	}
+	return paths;
+}
+
 function sameStrings(left: readonly string[], right: readonly string[]): boolean {
 	return left.length === right.length && left.every((value, index) => value === right[index]);
 }
@@ -37,8 +73,33 @@ function blockBoundary(message: string): never {
 	process.exit(78);
 }
 
-function sandboxArguments(workspace: string, toolchainHome: string): string[] {
-	return [
+function countNomosCommands(command: string, subcommands: readonly string[]): number {
+	const alternatives = subcommands.join("|");
+	const pattern = new RegExp(
+		`(?:^|[\\s;&|()])(?:/workspace/|\\./)?bin/nomos\\s+(?:${alternatives})(?:\\s|$)`,
+		"g",
+	);
+	return [...command.matchAll(pattern)].length;
+}
+
+function reportedTokens(message: unknown): number | undefined {
+	if (!message || typeof message !== "object") return undefined;
+	const usage = (message as { usage?: unknown }).usage;
+	if (!usage || typeof usage !== "object") return undefined;
+	const row = usage as Record<string, unknown>;
+	if (typeof row.totalTokens === "number") return row.totalTokens;
+	const fields = ["input", "output", "cacheRead", "cacheWrite"];
+	if (!fields.some((field) => typeof row[field] === "number")) return undefined;
+	return fields.reduce((sum, field) => sum + (typeof row[field] === "number" ? (row[field] as number) : 0), 0);
+}
+
+function sandboxArguments(
+	workspace: string,
+	toolchainHome: string | undefined,
+	boundaryKind: BoundaryKind,
+	writablePaths: readonly string[],
+): string[] {
+	const args = [
 		"--die-with-parent",
 		"--new-session",
 		"--unshare-all",
@@ -49,10 +110,6 @@ function sandboxArguments(workspace: string, toolchainHome: string): string[] {
 		GUEST_WORKSPACE,
 		"--dir",
 		"/tmp",
-		"--dir",
-		"/cargo",
-		"--dir",
-		"/toolchain",
 		"--dir",
 		"/proc",
 		"--dir",
@@ -75,16 +132,11 @@ function sandboxArguments(workspace: string, toolchainHome: string): string[] {
 		"--ro-bind",
 		"/usr",
 		"/usr",
-		"--bind",
+		boundaryKind === "source-preflight" ? "--bind" : "--ro-bind",
 		workspace,
 		GUEST_WORKSPACE,
-		"--ro-bind",
-		toolchainHome,
-		"/toolchain",
 		"--tmpfs",
 		"/tmp",
-		"--tmpfs",
-		"/cargo",
 		"--proc",
 		"/proc",
 		"--dev",
@@ -94,16 +146,7 @@ function sandboxArguments(workspace: string, toolchainHome: string): string[] {
 		"/home/subject",
 		"--setenv",
 		"PATH",
-		"/toolchain/bin:/usr/bin",
-		"--setenv",
-		"CARGO_HOME",
-		"/cargo",
-		"--setenv",
-		"CARGO_NET_OFFLINE",
-		"true",
-		"--setenv",
-		"CARGO_TARGET_DIR",
-		"/workspace/target/pi-cold-agent",
+		boundaryKind === "source-preflight" ? "/toolchain/bin:/usr/bin" : "/workspace/bin:/usr/bin",
 		"--setenv",
 		"LC_ALL",
 		"C.UTF-8",
@@ -113,12 +156,54 @@ function sandboxArguments(workspace: string, toolchainHome: string): string[] {
 		"--chdir",
 		GUEST_WORKSPACE,
 	];
+	if (boundaryKind === "source-preflight") {
+		if (!toolchainHome) throw new Error("source preflight is missing its Rust toolchain");
+		args.splice(
+			args.indexOf("--tmpfs"),
+			0,
+			"--dir",
+			"/cargo",
+			"--dir",
+			"/toolchain",
+			"--ro-bind",
+			toolchainHome,
+			"/toolchain",
+			"--tmpfs",
+			"/cargo",
+		);
+		args.splice(
+			args.indexOf("--setenv", args.indexOf("PATH") + 1),
+			0,
+			"--setenv",
+			"CARGO_HOME",
+			"/cargo",
+			"--setenv",
+			"CARGO_NET_OFFLINE",
+			"true",
+			"--setenv",
+			"CARGO_TARGET_DIR",
+			"/workspace/target/pi-cold-agent",
+		);
+	} else {
+		for (const path of writablePaths) {
+			args.splice(
+				args.indexOf("--tmpfs"),
+				0,
+				"--bind",
+				join(workspace, path),
+				join(GUEST_WORKSPACE, path),
+			);
+		}
+	}
+	return args;
 }
 
 function createIsolatedBashOperations(
 	bwrap: string,
 	workspace: string,
-	toolchainHome: string,
+	toolchainHome: string | undefined,
+	boundaryKind: BoundaryKind,
+	writablePaths: readonly string[],
 ): BashOperations {
 	return {
 		exec: async (command, cwd, options) => {
@@ -131,7 +216,7 @@ function createIsolatedBashOperations(
 				.map(([name, value]) => ["--setenv", name, value as string])
 				.flat();
 			const args = [
-				...sandboxArguments(workspace, toolchainHome),
+				...sandboxArguments(workspace, toolchainHome, boundaryKind, writablePaths),
 				...exposedSessionEnvironment,
 				"/bin/bash",
 				"-lc",
@@ -171,14 +256,18 @@ function createIsolatedBashOperations(
 	};
 }
 
-async function proveSandbox(operations: BashOperations, targetCommit: string) {
+async function proveSandbox(
+	operations: BashOperations,
+	targetCommit: string,
+	boundaryKind: BoundaryKind,
+	writablePaths: readonly string[],
+	packetManifestSha: string | undefined,
+	binarySha: string | undefined,
+) {
 	let output = "";
-	const command = [
+	const common = [
 		"set -eu",
 		'test "$PWD" = /workspace',
-		`test "$(git rev-parse HEAD)" = '${targetCommit}'`,
-		"test -r README.md",
-		"test -w /workspace",
 		"test ! -e /etc/passwd",
 		"test ! -e /work/signed-dev",
 		"test ! -e /run/user",
@@ -186,7 +275,31 @@ async function proveSandbox(operations: BashOperations, targetCommit: string) {
 		"if env | cut -d= -f1 | grep -Eq '(API_KEY|AUTH_TOKEN|OAUTH_TOKEN|ACCESS_TOKEN|REFRESH_TOKEN|PASSWORD|SECRET)$'; then exit 72; fi",
 		"test \"$(awk -F: 'NR > 2 {gsub(/[[:space:]]/, \"\", $1); if ($1 != \"lo\") print $1}' /proc/net/dev)\" = ''",
 		"if curl --connect-timeout 1 --max-time 2 --silent http://1.1.1.1/ >/dev/null 2>&1; then exit 73; fi",
+	];
+	const sourceChecks = [
+		"test -r README.md",
+		`test "$(git rev-parse HEAD)" = '${targetCommit}'`,
+		"test -w /workspace",
 		"cargo --version >/dev/null",
+	];
+	const packetChecks = [
+		"test -r reference/README.md",
+		`test "$(cat .nomos-candidate-commit)" = '${targetCommit}'`,
+		`test "$(sha256sum packet-manifest.json | cut -d' ' -f1)" = '${packetManifestSha}'`,
+		`test "$(sha256sum bin/nomos | cut -d' ' -f1)" = '${binarySha}'`,
+		"test -x bin/nomos",
+		"test ! -e .git",
+		"if touch /workspace/.nomos-undeclared-write 2>/dev/null; then exit 74; fi",
+		...writablePaths.flatMap((path) => [
+			`test -w '/workspace/${path}'`,
+			`touch '/workspace/${path}/.nomos-boundary-write-probe'`,
+			`rm '/workspace/${path}/.nomos-boundary-write-probe'`,
+		]),
+		"bin/nomos --help >/dev/null",
+	];
+	const command = [
+		...common,
+		...(boundaryKind === "source-preflight" ? sourceChecks : packetChecks),
 		"printf 'NOMOS_PI_SANDBOX_SELF_TEST PASS\\n'",
 	].join("\n");
 	const result = await operations.exec(command, GUEST_WORKSPACE, {
@@ -199,24 +312,37 @@ async function proveSandbox(operations: BashOperations, targetCommit: string) {
 	if (result.exitCode !== 0 || output !== "NOMOS_PI_SANDBOX_SELF_TEST PASS\n") {
 		throw new Error(`sandbox self-test failed with exit ${result.exitCode}: ${output.trim()}`);
 	}
-	return {
+	const shared = {
 		targetCommitResolved: true,
 		workspaceRead: true,
-		workspaceWrite: true,
 		outsideReadDenied: true,
 		outsideWriteDenied: true,
 		credentialEnvironmentAbsent: true,
 		networkDenied: true,
-		cargoAvailable: true,
 	};
+	return boundaryKind === "source-preflight"
+		? { ...shared, workspaceWrite: true, cargoAvailable: true }
+		: {
+				...shared,
+				packetManifestMatched: true,
+				candidateBinaryMatched: true,
+				packetRootReadOnly: true,
+				declaredWritablePaths: [...writablePaths],
+				gitMetadataAbsent: true,
+			};
 }
 
 export default function nomosPiColdAgentExtension(pi: ExtensionAPI): void {
 	const workspace = realpathSync(requiredEnvironment("NOMOS_PI_HOST_WORKSPACE"));
-	const rustupHome = realpathSync(requiredEnvironment("NOMOS_PI_RUSTUP_HOME"));
 	const bwrap = realpathSync(requiredEnvironment("NOMOS_PI_BWRAP"));
-	const toolchain = requiredEnvironment("NOMOS_PI_RUST_TOOLCHAIN");
-	const toolchainHome = realpathSync(join(rustupHome, "toolchains", toolchain));
+	const boundaryKind = parseBoundaryKind();
+	const writablePaths = parseWritablePaths(workspace, boundaryKind);
+	let toolchainHome: string | undefined;
+	if (boundaryKind === "source-preflight") {
+		const rustupHome = realpathSync(requiredEnvironment("NOMOS_PI_RUSTUP_HOME"));
+		const toolchain = requiredEnvironment("NOMOS_PI_RUST_TOOLCHAIN");
+		toolchainHome = realpathSync(join(rustupHome, "toolchains", toolchain));
+	}
 	const expectedProvider = requiredEnvironment("NOMOS_PI_EXPECTED_PROVIDER");
 	const expectedModel = requiredEnvironment("NOMOS_PI_EXPECTED_MODEL");
 	const expectedThinking = requiredEnvironment("NOMOS_PI_EXPECTED_THINKING");
@@ -225,12 +351,47 @@ export default function nomosPiColdAgentExtension(pi: ExtensionAPI): void {
 	if (!/^[0-9a-f]{40}$/.test(targetCommit)) {
 		throw new Error(`invalid target commit: ${targetCommit}`);
 	}
-	const operations = createIsolatedBashOperations(bwrap, workspace, toolchainHome);
+	const packetManifestSha =
+		boundaryKind === "packet-run" ? requiredSha256("NOMOS_PI_PACKET_MANIFEST_SHA256") : undefined;
+	const binarySha = boundaryKind === "packet-run" ? requiredSha256("NOMOS_PI_BINARY_SHA256") : undefined;
+	const taskPromptSha =
+		boundaryKind === "packet-run" ? requiredSha256("NOMOS_PI_TASK_PROMPT_SHA256") : undefined;
+	const taskShape = boundaryKind === "packet-run" ? requiredEnvironment("NOMOS_PI_TASK_SHAPE") : undefined;
+	const maximumTurns =
+		boundaryKind === "packet-run" ? requiredPositiveInteger("NOMOS_PI_MAX_ASSISTANT_TURNS") : undefined;
+	const maximumTokens =
+		boundaryKind === "packet-run" ? requiredPositiveInteger("NOMOS_PI_MAX_PROVIDER_TOKENS") : undefined;
+	const maximumValidationCycles =
+		boundaryKind === "packet-run" ? requiredPositiveInteger("NOMOS_PI_MAX_VALIDATION_CYCLES") : undefined;
+	const maximumDiagnosticCycles =
+		boundaryKind === "packet-run" ? requiredPositiveInteger("NOMOS_PI_MAX_DIAGNOSTIC_CYCLES") : undefined;
+	const operations = createIsolatedBashOperations(
+		bwrap,
+		workspace,
+		toolchainHome,
+		boundaryKind,
+		writablePaths,
+	);
 	const bashTool = createBashTool(GUEST_WORKSPACE, {
 		operations,
 		exposeSessionEnvironment: true,
 	});
 	let boundaryReady = false;
+	let assistantTurns = 0;
+	let toolCalls = 0;
+	let validationCycles = 0;
+	let diagnosticCycles = 0;
+	let providerTokens = 0;
+	let providerTokensAvailable = true;
+	let budgetExceeded: string | null = null;
+
+	const exceedBudget = (category: string, observed: number, maximum: number) => {
+		if (budgetExceeded) return;
+		budgetExceeded = category;
+		process.stderr.write(
+			`NOMOS_PI_BUDGET_EXCEEDED ${JSON.stringify({ category, observed, maximum })}\n`,
+		);
+	};
 
 	pi.registerTool({
 		...bashTool,
@@ -287,12 +448,23 @@ export default function nomosPiColdAgentExtension(pi: ExtensionAPI): void {
 			if (sha256(event.systemPromptOptions.customPrompt ?? "") !== expectedPromptSha) {
 				throw new Error("custom system prompt digest mismatch");
 			}
+			if (taskPromptSha && sha256(event.prompt) !== taskPromptSha) {
+				throw new Error("task prompt digest mismatch");
+			}
 
-			const sandboxChecks = await proveSandbox(operations, targetCommit);
+			const sandboxChecks = await proveSandbox(
+				operations,
+				targetCommit,
+				boundaryKind,
+				writablePaths,
+				packetManifestSha,
+				binarySha,
+			);
 
 			const finalSystemPrompt = event.systemPrompt.replaceAll(workspace, GUEST_WORKSPACE);
 			const boundary = {
-				schema: "nomos.pi_cold_agent_boundary@1",
+				schema: "nomos.pi_cold_agent_boundary@2",
+				boundaryKind,
 				mode: ctx.mode,
 				targetCommit,
 				hostWorkspace: workspace,
@@ -310,11 +482,28 @@ export default function nomosPiColdAgentExtension(pi: ExtensionAPI): void {
 				skills: [],
 				systemPromptSha256: expectedPromptSha,
 				finalSystemPromptSha256: sha256(finalSystemPrompt),
+				packetManifestSha256: packetManifestSha ?? null,
+				binarySha256: binarySha ?? null,
+				taskPromptSha256: taskPromptSha ?? null,
+				taskShape: taskShape ?? null,
+				writablePaths,
+				budgets:
+					boundaryKind === "packet-run"
+						? {
+								assistantTurnsMaximum: maximumTurns,
+								providerReportedTokensMaximum: maximumTokens,
+								validationCompileCyclesMaximum: maximumValidationCycles,
+								debugDiagnosticCyclesMaximum: maximumDiagnosticCycles,
+							}
+						: null,
 				sandbox: {
 					backend: "bubblewrap",
 					binary: bwrap,
 					root: "read-only",
-					workspace: "read-write-only-host-mount",
+					workspace:
+						boundaryKind === "source-preflight"
+							? "read-write-only-host-mount"
+							: "read-only-packet-with-declared-writable-paths",
 					network: "unshared",
 					environment: "cleared-and-allowlisted",
 					checks: sandboxChecks,
@@ -331,6 +520,82 @@ export default function nomosPiColdAgentExtension(pi: ExtensionAPI): void {
 			const message = error instanceof Error ? error.message : String(error);
 			blockBoundary(message);
 		}
+	});
+
+	pi.on("tool_call", (event) => {
+		if (boundaryKind !== "packet-run") return;
+		toolCalls += 1;
+		if (!isToolCallEventType("bash", event)) return;
+		const command = event.input.command;
+		const validationAdded = countNomosCommands(command, ["validate", "compile"]);
+		const diagnosticAdded =
+			taskShape === "debug" || taskShape === "debug-checker"
+				? countNomosCommands(command, [
+						"validate",
+						"compile",
+						"inspect",
+						"run",
+						"replay",
+						"command",
+						"explain-entity",
+						"explain-transition",
+					])
+				: 0;
+		if (validationCycles + validationAdded > (maximumValidationCycles ?? 0)) {
+			exceedBudget(
+				"validation_compile_cycles",
+				validationCycles + validationAdded,
+				maximumValidationCycles ?? 0,
+			);
+			return { block: true, reason: "validation/compile cycle budget exhausted", terminate: true };
+		}
+		if (diagnosticCycles + diagnosticAdded > (maximumDiagnosticCycles ?? 0)) {
+			exceedBudget(
+				"debug_diagnostic_cycles",
+				diagnosticCycles + diagnosticAdded,
+				maximumDiagnosticCycles ?? 0,
+			);
+			return { block: true, reason: "debug diagnostic cycle budget exhausted", terminate: true };
+		}
+		validationCycles += validationAdded;
+		diagnosticCycles += diagnosticAdded;
+	});
+
+	pi.on("turn_start", (_event, ctx) => {
+		if (boundaryKind !== "packet-run") return;
+		assistantTurns += 1;
+		if (assistantTurns > (maximumTurns ?? 0)) {
+			exceedBudget("assistant_turns", assistantTurns, maximumTurns ?? 0);
+			ctx.abort();
+		}
+	});
+
+	pi.on("message_end", (event, ctx) => {
+		if (boundaryKind !== "packet-run" || event.message.role !== "assistant") return;
+		const tokens = reportedTokens(event.message);
+		if (tokens === undefined) {
+			providerTokensAvailable = false;
+			return;
+		}
+		providerTokens += tokens;
+		if (providerTokens > (maximumTokens ?? 0)) {
+			exceedBudget("provider_reported_tokens", providerTokens, maximumTokens ?? 0);
+			ctx.abort();
+		}
+	});
+
+	pi.on("agent_end", () => {
+		if (boundaryKind !== "packet-run") return;
+		process.stderr.write(
+			`NOMOS_PI_ACCOUNTING ${JSON.stringify({
+				assistantTurns,
+				toolCalls,
+				validationCompileCycles: validationCycles,
+				debugDiagnosticCycles: diagnosticCycles,
+				providerReportedTokens: providerTokensAvailable ? providerTokens : null,
+				budgetExceeded,
+			})}\n`,
+		);
 	});
 
 	pi.on("before_provider_request", () => {

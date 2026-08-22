@@ -51,10 +51,18 @@ cargo fmt --all -- --check
 cargo clippy --workspace --all-targets --locked -- -D warnings
 cargo test --workspace --locked
 cargo xtask boundary
+docs/evaluation/test-agy-print-preflight.sh
+docs/evaluation/test-agy-formal-boundary-preflight.sh
+docs/evaluation/test-pi-cold-agent-preflight.sh
+docs/evaluation/test-gate-k-eval-tooling.sh
 ```
 
 `.github/workflows/verify.yml` runs exactly these, plus a determinism step and
-disk/time budgets. To run the determinism step locally:
+disk/time budgets. The evaluation harness test is entirely offline: it builds
+all four packet shapes twice, proves byte identity and allowlist enforcement,
+exercises the task boundary through the fake Pi/Bubblewrap fixtures, and rejects
+identity, transcript, command, credential, packet, budget, and harness failures.
+It spends no provider attempt. To run the determinism step locally:
 
 ```bash
 hashes() {

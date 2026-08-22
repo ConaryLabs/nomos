@@ -11,8 +11,8 @@ expected_pi_tree_sha=63a9dd14b0ae82cee2db30c56822682af19145d145febb58b613d5de4db
 expected_antigravity_version=0.4.0
 expected_antigravity_integrity='sha512-Trl0lWZRDM6TUhw8UjZ+si4Tx2IxCtLLdEwQ10gOS3BUJfgv/C32HY3m/v9PcLNZWYzo+LEfmamiB5+f0jciCg=='
 expected_antigravity_tree_sha=7980e6825a23f18a9d298953c0efc9f13c1231ce4c814394803b9da9bfb565ce
-expected_extension_sha=0e481623a0113e9dead8c75a65a2c2171fb3004acadf579655b4e5cc683d4a39
-expected_fake_sha=ef53d9a5d8b10f4392281e488083f5d37311b6f3e5f2c09f83b1b2eb6d4d0cb6
+expected_extension_sha=90f63cd054a1acdee9da1a78e2bd7b08b41f44d3aa020381d98090ac75de2024
+expected_fake_sha=d3b2e8f93fd23b4bd0d9c6bd91532efbc0251cc3cd94023deb9a9a36c95431f8
 expected_fake_antigravity_sha=944ab25260d0efee3c682f0d79f84beae674e7fe8a36a585f7615944bcec4417
 expected_deepseek_catalog_sha=7954fb3ef750bed773619c9fe259a8eb923b6f4f8455442a33cf8e1fe2fa3773
 
@@ -259,6 +259,7 @@ NOMOS_PI_HOST_WORKSPACE="$workspace" \
 NOMOS_PI_RUSTUP_HOME="$rustup_home" \
 NOMOS_PI_RUST_TOOLCHAIN="$rust_toolchain" \
 NOMOS_PI_BWRAP="$bwrap_path" \
+NOMOS_PI_BOUNDARY_KIND=source-preflight \
 NOMOS_PI_EXPECTED_PROVIDER="$provider" \
 NOMOS_PI_EXPECTED_MODEL="$model" \
 NOMOS_PI_EXPECTED_THINKING="$thinking" \
@@ -325,7 +326,8 @@ printf '%s\n' "$boundary_json" | jq -e \
   --arg extension "$extension" \
   --arg bwrap "$bwrap_path" \
   --arg system_prompt_sha "$system_prompt_sha" '
-    .schema == "nomos.pi_cold_agent_boundary@1" and
+    .schema == "nomos.pi_cold_agent_boundary@2" and
+    .boundaryKind == "source-preflight" and
     .mode == "json" and
     .targetCommit == $target_commit and
     .hostWorkspace == $workspace and
@@ -344,6 +346,12 @@ printf '%s\n' "$boundary_json" | jq -e \
     .contextFiles == [] and
     .skills == [] and
     .systemPromptSha256 == $system_prompt_sha and
+    .packetManifestSha256 == null and
+    .binarySha256 == null and
+    .taskPromptSha256 == null and
+    .taskShape == null and
+    .writablePaths == [] and
+    .budgets == null and
     .sandbox.backend == "bubblewrap" and
     .sandbox.binary == $bwrap and
     .sandbox.root == "read-only" and
