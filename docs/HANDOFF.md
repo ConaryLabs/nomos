@@ -202,8 +202,9 @@ never accumulates history (git has that).
   expansions, capabilities, claims, transitions, interactions, bindings,
   relations, resolvers, stable movement, provenance, and semantic order all
   refresh both compiler-receipt and manifest integrity evidence and still fail
-  semantic open. The full author proof is green; PR CI and the required
-  non-author exact-head rerun remain pending.
+  semantic open. The full author proof is green. Because committing a rerun
+  result changes the head it names, final PR CI and non-author exact-head
+  disposition are recorded externally in PR #55.
 - **SW-H is implemented but blocked (#52/#53):** draft PR #53 implements the
   exact `validate`, `compile`, and `inspect` filesystem CLI slice at
   `48c2b72b`, with author proof, CI, and a Luna non-author rerun already green.
@@ -247,9 +248,10 @@ The authenticated formal-boundary command is an expected negative proof on
 print `AGY_FORMAL_BOUNDARY BLOCKED`. A zero exit would require inspection and
 owner disposition before any formal launch.
 
-The issue #54 repair author proof passed all four commands at `200a617`; PR CI
-and non-author exact-head review remain pending. SW-G's original author proof,
-Luna max exact-head rerun, PR CI, and post-merge CI passed all four commands;
+The issue #54 repair author proof passed all four commands at `200a617`; final
+PR CI and non-author exact-head disposition are recorded externally in PR #55.
+SW-G's original author proof, Luna max exact-head rerun, PR CI, and post-merge
+CI passed all four commands;
 the focused release SW-G test also passed. SW-F, SW-D, and
 issue #24 have the same author/non-author/CI chain as recorded above. Earlier
 SW-C, revision-4, and Rust-1.98 maintenance reruns also passed.
