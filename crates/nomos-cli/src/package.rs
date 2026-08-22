@@ -28,8 +28,7 @@ pub fn compile_and_write_world(
 }
 
 /// Publishes a complete compiled world through the generic immutable package
-/// boundary. This is a library operation; the filesystem CLI remains a later
-/// slice.
+/// boundary used by the filesystem `compile` command.
 ///
 /// # Errors
 ///

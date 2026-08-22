@@ -2,9 +2,9 @@
 //!
 //! `KERNEL.md` section 10 assigns this crate *command-line surface and artifact
 //! orchestration*, and section 8 fixes the exit codes every command must use.
-//! SW-B lands the exit-code contract and the boundary; the commands themselves
-//! (`validate`, `compile`, `inspect`, `run`, `command`, `explain-entity`,
-//! `explain-transition`, `replay`, `migrate`) belong to later slices.
+//! SW-H implements the filesystem-authoring commands (`validate`, `compile`,
+//! and `inspect`) over that boundary. Runtime execution, explanation, replay,
+//! and migration commands belong to later accepted slices.
 //!
 //! # Boundary
 //!
@@ -31,8 +31,10 @@
 
 use nomos_core::Diagnostic;
 
+mod command;
 mod package;
 
+pub use command::{Execution, execute};
 pub use package::{
     compile_and_write_world, initial_state_from_package, open_compiled_world, write_compiled_world,
 };
@@ -64,12 +66,15 @@ impl ExitCode {
 
     /// Classifies a diagnostic.
     ///
-    /// A diagnostic in the package I/O range means the environment refused the
-    /// work rather than the world being wrong, which section 8 separates: a
-    /// full disk is not a rejected world.
+    /// A package or CLI I/O diagnostic means the environment refused the work
+    /// rather than the world being wrong, which section 8 separates: a missing
+    /// source or full disk is not a rejected world.
     #[must_use]
     pub fn for_diagnostic(diagnostic: &Diagnostic) -> Self {
-        if diagnostic.code() == nomos_core::diagnostic::codes::PACKAGE_IO {
+        if matches!(
+            diagnostic.code(),
+            nomos_core::diagnostic::codes::PACKAGE_IO | nomos_core::diagnostic::codes::CLI_IO
+        ) {
             Self::Environment
         } else {
             Self::Rejected
@@ -111,8 +116,10 @@ mod tests {
     #[test]
     fn an_io_failure_is_an_environment_failure_not_a_rejected_world() {
         let io = Diagnostic::new(codes::PACKAGE_IO, "disk full");
+        let source_io = Diagnostic::new(codes::CLI_IO, "source missing");
         let world = Diagnostic::new(codes::PACKAGE_MEMBER_HASH_MISMATCH, "tampered");
         assert_eq!(ExitCode::for_diagnostic(&io), ExitCode::Environment);
+        assert_eq!(ExitCode::for_diagnostic(&source_io), ExitCode::Environment);
         assert_eq!(ExitCode::for_diagnostic(&world), ExitCode::Rejected);
     }
 

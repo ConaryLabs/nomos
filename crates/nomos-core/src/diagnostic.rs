@@ -18,6 +18,7 @@ use crate::canonical::{CanonicalValue, FieldName};
 ///
 /// | Range | Area |
 /// | --- | --- |
+/// | `EK00xx` | command-line usage and host input |
 /// | `EK01xx` | identifiers and stable IDs |
 /// | `EK02xx` | checked arithmetic |
 /// | `EK03xx` | canonical encoding |
@@ -377,6 +378,15 @@ impl std::error::Error for Diagnostic {}
 pub mod codes {
     use super::DiagnosticCode;
 
+    /// The command-line argument vector does not name one supported operation.
+    pub const CLI_USAGE: DiagnosticCode = DiagnosticCode::new("EK0001");
+    /// A command-line filesystem path is not a safe relative spelling.
+    pub const CLI_PATH_NOT_RELATIVE: DiagnosticCode = DiagnosticCode::new("EK0002");
+    /// Source bytes are not UTF-8 text.
+    pub const CLI_SOURCE_ENCODING: DiagnosticCode = DiagnosticCode::new("EK0003");
+    /// A host filesystem operation failed before semantic work could complete.
+    pub const CLI_IO: DiagnosticCode = DiagnosticCode::new("EK0004");
+
     /// An identifier segment is empty or uses unsupported characters.
     pub const IDENT_UNSUPPORTED: DiagnosticCode = DiagnosticCode::new("EK0101");
     /// A source path is absolute, empty, or escapes the repository root.
@@ -509,6 +519,10 @@ pub mod codes {
 
     /// Every code this crate owns, for well-formedness and uniqueness tests.
     pub const ALL: &[DiagnosticCode] = &[
+        CLI_USAGE,
+        CLI_PATH_NOT_RELATIVE,
+        CLI_SOURCE_ENCODING,
+        CLI_IO,
         IDENT_UNSUPPORTED,
         SOURCE_PATH_NOT_RELATIVE,
         SOURCE_SPAN_INVALID,

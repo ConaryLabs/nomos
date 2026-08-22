@@ -78,7 +78,8 @@ remains downstream and is not part of the canonical semantic receipt.
 ## Evidence boundary
 
 SW-F proves in-memory snapshot immutability and commit evidence; SW-G proves the
-package contains deterministic material for the same initial snapshot. Neither
-slice writes run directories, implements filesystem CLI commands or command
-logs, replays, performs the required World IR migration, runs the multi-target
-ten-run matrix, or performs formal cold-agent gates.
+package contains deterministic material for the same initial snapshot; SW-H
+exposes filesystem validation, compilation, and inspection. No slice yet writes
+run directories or command logs, executes runtime commands through the CLI,
+replays, performs the required World IR migration, runs the multi-target ten-run
+matrix, or performs formal cold-agent gates.

@@ -1,7 +1,8 @@
 # Handoff — state of the repository
 
-Updated 2026-08-22 for the issue #54 SW-G semantic-open repair.
-Issue #52 / draft PR #53 remains the next feature slice after this repair.
+Updated 2026-08-22 for the issue #52 filesystem-authoring CLI integration.
+The SW-G semantic-open repair is merged; SW-H is rebased onto that boundary and
+its refreshed proof and exact-head disposition remain pending.
 This file orients a fresh session; it is rewritten at each slice boundary and
 never accumulates history (git has that).
 
@@ -107,8 +108,9 @@ never accumulates history (git has that).
   changes the active default tool wording from the published `estate` CLI to
   the published `nomos` CLI. Tool scope, packet boundaries, budgets, rubric,
   roster, attempt accounting, existing verdicts, and immutable prototype-era
-  receipts do not change. The revision becomes effective when this change
-  merges; no formal cold-agent attempt is launched by it.
+  receipts do not change. PR #51 merged as `795791e`, issue #47 closed, its
+  exact-head Luna rerun and CI passed, and no formal cold-agent attempt was
+  launched by it.
 - **CI uses `actions/checkout@v7` (#11):** PR and post-merge verification passed
   without the Node 20 compatibility annotation.
 - **The GPT Pro architecture checkpoint is owner-disposed (#25):** review of
@@ -191,40 +193,41 @@ never accumulates history (git has that).
   reran the exact head with no findings and a clean tree before and after. PR
   CI run `32537565881` passed; PR #42 merged as `0863750`, issue #40 closed,
   and post-merge CI run `32537995524` passed.
-- **SW-G semantic open is under repair (#54/#55):** GPT Pro identified that the
-  package writer was strongly typed while the reader decoded only selected IR
-  and initialization fields. Draft PR #55 at implementation commit `200a617`
-  adds complete strict `StableWorldIr` reconstruction, re-derives
-  compiler-owned primitive/resolver/movement/relation/provenance invariants,
-  regenerates all four typed projections, and returns one
-  `OpenedCompiledWorld`. The partial initialization decoder and alternate
-  runtime path are deleted. Mutations covering commands, handlers, primitive
-  expansions, capabilities, claims, transitions, interactions, bindings,
-  relations, resolvers, stable movement, provenance, and semantic order all
-  refresh both compiler-receipt and manifest integrity evidence and still fail
-  semantic open. The full author proof is green. Because committing a rerun
-  result changes the head it names, final PR CI and non-author exact-head
-  disposition are recorded externally in PR #55.
-- **SW-H is implemented but blocked (#52/#53):** draft PR #53 implements the
-  exact `validate`, `compile`, and `inspect` filesystem CLI slice at
-  `48c2b72b`, with author proof, CI, and a Luna non-author rerun already green.
-  It must be rebased onto the merged #54 repair and change inspection to consume
-  `OpenedCompiledWorld` before it can leave draft.
+- **SW-G semantic open is repaired (#54/#55):** package opening now performs
+  complete strict `StableWorldIr` reconstruction, re-derives compiler-owned
+  primitive/resolver/movement/relation/provenance invariants, regenerates all
+  four typed projections, and returns one `OpenedCompiledWorld`. The partial
+  initialization decoder and alternate runtime path are deleted. Refreshed
+  receipt-and-manifest mutation tests fail closed across nested commands,
+  handlers, claims, capabilities, provenance, ordering, and IR/projection
+  disagreement. Exact repair head `d43150a736cd91c7307da22c16992c720e8827e6`
+  passed PR CI and a clean non-author rerun; PR #55 merged as `15661d2`, and
+  post-merge CI run `32550461102` passed.
+- **SW-H is implemented on issue #52's feature branch:** the `nomos` binary now
+  exposes exact dependency-free `validate`, `compile`, and `inspect` command
+  grammars. Non-help results are one canonical JSON value; source, argv,
+  package, and host failures use the fixed four exit classes. Compilation uses
+  the existing staged immutable package boundary. Inspection opens and
+  semantically validates the package as an `OpenedCompiledWorld`; its
+  compiler-owned report prints the three primitives' capabilities, independent
+  machines, claims, and source mappings without reading source or exposing
+  `nomos-schema` to the CLI.
+  The end-to-end subprocess suite proves all four exits, determinism,
+  no-artifact validation, tamper/extra-entry refusal, symlink policy, staging
+  cleanup, and existing-output preservation. Draft PR #53 must receive a fresh
+  author proof, PR CI, and non-author exact-head rerun after this rebase before
+  the slice is green.
 
 ## What is next
 
-Finish issue #54 / PR #55 first: obtain PR CI and a non-author exact-head rerun,
-then leave merge/disposition to the owner. After merge, rebase draft PR #53,
-make its compiler-owned inspection report consume `OpenedCompiledWorld`, rerun
-the complete SW-H proof and non-author review, and dispose issue #52. Do not
-begin persisted runtime/run/replay work while either read-side repair or SW-H
-is open.
-
-After SW-H, the remaining work includes persisted runtime types and command
-language, run-directory artifacts, replay, explanations, the required stable
-v1-to-v2 movement migration, direct v2 runtime loading/refusal evidence, the
-Linux aarch64 and ten-run matrix, measured Gate K budgets, final
-schema-ownership review, and the formal cold-agent gates.
+Finish issue #52 through refreshed author proof, PR CI, non-author exact-head
+rerun, and owner merge. Do not begin another semantic implementation without a
+new issue. After SW-H, the next slice defines persisted runtime types and the
+command language before runtime `run`/`command`; later work includes verified
+run bundles, replay, explanations, the required stable v1-to-v2 movement
+migration, direct v2 runtime loading/refusal evidence, the Linux aarch64 and
+ten-run matrix, measured Gate K budgets, final schema-ownership review, and the
+formal cold-agent gates.
 
 The old `agy` Gemini route remains falsified evidence. Issue #49 qualifies Pi as
 the replacement transport without spending a formal attempt or changing the
@@ -238,6 +241,10 @@ cargo fmt --all -- --check
 cargo clippy --workspace --all-targets --locked -- -D warnings
 cargo test --workspace --locked
 cargo xtask boundary
+cargo run --locked --bin nomos -- --help
+cargo run --locked --bin nomos -- validate fixtures/gaol.nomos
+cargo run --locked --bin nomos -- compile fixtures/gaol.nomos --out target/tmp/sw-h-proof/gaol.world
+cargo run --locked --bin nomos -- inspect target/tmp/sw-h-proof/gaol.world
 docs/evaluation/test-agy-print-preflight.sh
 docs/evaluation/test-agy-formal-boundary-preflight.sh
 docs/evaluation/test-pi-cold-agent-preflight.sh
@@ -248,15 +255,17 @@ The authenticated formal-boundary command is an expected negative proof on
 print `AGY_FORMAL_BOUNDARY BLOCKED`. A zero exit would require inspection and
 owner disposition before any formal launch.
 
-The issue #54 repair author proof passed all four commands at `200a617`; final
-PR CI and non-author exact-head disposition are recorded externally in PR #55.
-SW-G's original author proof, Luna max exact-head rerun, PR CI, and post-merge
-CI passed all four commands;
-the focused release SW-G test also passed. SW-F, SW-D, and
+The issue #54 repair author proof, PR CI, non-author exact-head rerun, and
+post-merge CI passed as recorded above and externally in PR #55. SW-H's
+refreshed author proof passes all four workspace commands plus the exact CLI
+smoke commands after rebasing onto that repair; final PR CI and non-author
+exact-head disposition are recorded externally in PR #53. SW-G's original
+author proof, Luna max exact-head rerun, PR CI, and post-merge CI also passed all
+four commands; the focused release SW-G test passed. SW-F, SW-D, and
 issue #24 have the same author/non-author/CI chain as recorded above. Earlier
 SW-C, revision-4, and Rust-1.98 maintenance reruns also passed.
-Still unproven: Linux aarch64 release, ten runs per target, the complete
-`nomos` command surface, migration/replay, measured Gate K budgets, and formal
+Still unproven: Linux aarch64 release, ten runs per target, runtime and
+explanation commands, migration/replay, measured Gate K budgets, and formal
 cold-agent gates. The contract also requires a final explicit schema-ownership
 source-review receipt after the Gate K schema set stabilizes; that final
 receipt does not exist yet.

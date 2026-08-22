@@ -143,6 +143,7 @@ binds bytes but supplies neither access control nor provenance.
 
 SHA-256 proves byte identity, not authenticity. Compiler receipts bind exact
 source and artifact bytes inside the package, but they are not signatures.
-This slice does not implement signing, guarantee power-loss durability, expose
-filesystem CLI commands, write run directories, replay, migrate, or satisfy
-whole-Gate-K acceptance.
+SW-H exposes this boundary through filesystem `validate`, `compile`, and
+`inspect` commands. It does not implement signing, guarantee power-loss
+durability, write run directories, execute runtime commands, replay, migrate,
+or satisfy whole-Gate-K acceptance.
