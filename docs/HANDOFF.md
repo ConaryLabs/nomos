@@ -225,7 +225,11 @@ never accumulates history (git has that).
   checkpoint implements strict `SimulationState` rehydration, a separate
   `nomos.persisted_runtime_state@1` envelope bound to canonical simulation
   bytes, and exact command-script parsing/resolution while preserving the
-  frozen `nomos.runtime_state@1` hash domain.
+  frozen `nomos.runtime_state@1` hash domain. Draft PR #57 is open at clean
+  checkpoint `dbde21d`; checkpoint CI run `32551494771` passed. The PR remains
+  draft and explicitly lists causal-receipt decoding, command logs, state-hash
+  chains, run-result evidence, mutation proof, and final exact-head review as
+  unfinished.
 
 ## What is next
 
