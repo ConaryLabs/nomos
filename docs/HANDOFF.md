@@ -1,7 +1,7 @@
 # Handoff — state of the repository
 
-Updated 2026-08-22 for the issue #47 cold-agent protocol identity correction.
-No next semantic implementation slice is currently filed.
+Updated 2026-08-22 for the issue #54 SW-G semantic-open repair.
+Issue #52 / draft PR #53 remains the next feature slice after this repair.
 This file orients a fresh session; it is rewritten at each slice boundary and
 never accumulates history (git has that).
 
@@ -191,15 +191,39 @@ never accumulates history (git has that).
   reran the exact head with no findings and a clean tree before and after. PR
   CI run `32537565881` passed; PR #42 merged as `0863750`, issue #40 closed,
   and post-merge CI run `32537995524` passed.
+- **SW-G semantic open is under repair (#54/#55):** GPT Pro identified that the
+  package writer was strongly typed while the reader decoded only selected IR
+  and initialization fields. Draft PR #55 at implementation commit `200a617`
+  adds complete strict `StableWorldIr` reconstruction, re-derives
+  compiler-owned primitive/resolver/movement/relation/provenance invariants,
+  regenerates all four typed projections, and returns one
+  `OpenedCompiledWorld`. The partial initialization decoder and alternate
+  runtime path are deleted. Mutations covering commands, handlers, primitive
+  expansions, capabilities, claims, transitions, interactions, bindings,
+  relations, resolvers, stable movement, provenance, and semantic order all
+  refresh both compiler-receipt and manifest integrity evidence and still fail
+  semantic open. The full author proof is green; PR CI and the required
+  non-author exact-head rerun remain pending.
+- **SW-H is implemented but blocked (#52/#53):** draft PR #53 implements the
+  exact `validate`, `compile`, and `inspect` filesystem CLI slice at
+  `48c2b72b`, with author proof, CI, and a Luna non-author rerun already green.
+  It must be rebased onto the merged #54 repair and change inspection to consume
+  `OpenedCompiledWorld` before it can leave draft.
 
 ## What is next
 
-No next semantic implementation slice is currently filed; do not infer one
-from this handoff. The remaining post-SW-G work includes the filesystem
-CLI surface, run-directory artifacts, replay, the required stable v1-to-v2
-movement migration, direct v2 runtime loading/refusal evidence, the Linux
-aarch64 and ten-run matrix, measured Gate K budgets, final schema-ownership
-review, and the formal cold-agent gates.
+Finish issue #54 / PR #55 first: obtain PR CI and a non-author exact-head rerun,
+then leave merge/disposition to the owner. After merge, rebase draft PR #53,
+make its compiler-owned inspection report consume `OpenedCompiledWorld`, rerun
+the complete SW-H proof and non-author review, and dispose issue #52. Do not
+begin persisted runtime/run/replay work while either read-side repair or SW-H
+is open.
+
+After SW-H, the remaining work includes persisted runtime types and command
+language, run-directory artifacts, replay, explanations, the required stable
+v1-to-v2 movement migration, direct v2 runtime loading/refusal evidence, the
+Linux aarch64 and ten-run matrix, measured Gate K budgets, final
+schema-ownership review, and the formal cold-agent gates.
 
 The old `agy` Gemini route remains falsified evidence. Issue #49 qualifies Pi as
 the replacement transport without spending a formal attempt or changing the
@@ -223,8 +247,10 @@ The authenticated formal-boundary command is an expected negative proof on
 print `AGY_FORMAL_BOUNDARY BLOCKED`. A zero exit would require inspection and
 owner disposition before any formal launch.
 
-SW-G's author proof, Luna max exact-head rerun, PR CI, and post-merge CI passed
-all four commands; the focused release SW-G test also passed. SW-F, SW-D, and
+The issue #54 repair author proof passed all four commands at `200a617`; PR CI
+and non-author exact-head review remain pending. SW-G's original author proof,
+Luna max exact-head rerun, PR CI, and post-merge CI passed all four commands;
+the focused release SW-G test also passed. SW-F, SW-D, and
 issue #24 have the same author/non-author/CI chain as recorded above. Earlier
 SW-C, revision-4, and Rust-1.98 maintenance reruns also passed.
 Still unproven: Linux aarch64 release, ten runs per target, the complete
