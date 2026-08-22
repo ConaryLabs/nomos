@@ -1,8 +1,8 @@
 # Handoff — state of the repository
 
-Updated 2026-08-22 for the issue #52 filesystem-authoring CLI integration.
-The SW-G semantic-open repair is merged; SW-H is rebased onto that boundary and
-its refreshed proof and exact-head disposition remain pending.
+Updated 2026-08-22 for the issue #56 persisted-runtime evidence slice.
+The semantic opener and filesystem-authoring CLI are merged and green; SW-I is
+the active feature branch.
 This file orients a fresh session; it is rewritten at each slice boundary and
 never accumulates history (git has that).
 
@@ -203,7 +203,7 @@ never accumulates history (git has that).
   disagreement. Exact repair head `d43150a736cd91c7307da22c16992c720e8827e6`
   passed PR CI and a clean non-author rerun; PR #55 merged as `15661d2`, and
   post-merge CI run `32550461102` passed.
-- **SW-H is implemented on issue #52's feature branch:** the `nomos` binary now
+- **SW-H is merged (#52/#53):** the `nomos` binary now
   exposes exact dependency-free `validate`, `compile`, and `inspect` command
   grammars. Non-help results are one canonical JSON value; source, argv,
   package, and host failures use the fixed four exit classes. Compilation uses
@@ -214,17 +214,45 @@ never accumulates history (git has that).
   `nomos-schema` to the CLI.
   The end-to-end subprocess suite proves all four exits, determinism,
   no-artifact validation, tamper/extra-entry refusal, symlink policy, staging
-  cleanup, and existing-output preservation. Draft PR #53 must receive a fresh
-  author proof, PR CI, and non-author exact-head rerun after this rebase before
-  the slice is green.
+  cleanup, and existing-output preservation. Exact head `8288e71` passed the
+  complete author proof, PR CI run `32550761498`, and a clean non-author rerun
+  with no findings. PR #53 merged as `54e5dd2`, issue #52 closed, and post-merge
+  CI run `32551021136` passed.
+- **SW-I implementation is repaired and author-green (#56/#57):** strict typed decoders now
+  reconstruct `nomos.runtime_state@1` and every nested value in
+  `nomos.causal_receipt@1`. `nomos.persisted_runtime_state@1` binds the unchanged
+  inner state hash to exact simulation semantics; `nomos.command_script@1`
+  resolves requests through entity-owned external machines; and the distinct
+  `nomos.command_log@1`, `nomos.causal_receipt_sequence@1`,
+  `nomos.state_hash_sequence@1`, and `nomos.run_result@1` types enforce receipt
+  digests, contiguous ordinals and ticks, row-by-row state hashes, exact
+  non-result artifact coverage, status/diagnostic consistency, and typed
+  artifact hashes. A first non-author audit rejected head `943828c` because
+  three artifact digests were caller-supplied rather than verified, receipt
+  ticks were not anchored to the persisted input tick, and current-state
+  validation omitted the plan's namespace-ownership-set check. Repair commit
+  `1d5da43` closes all three findings: `RunResult` now derives and revalidates
+  all five hashes from typed artifacts, receipt sequences anchor to the actual
+  initial tick, and state validation checks ownership. Refreshed-integrity
+  mutations cover every artifact binding. A second audit of `845cc1f` confirmed
+  the implementation repairs and all four proof commands but rejected the test
+  evidence because it showed only tick-zero success. The following repair adds
+  a successful command/evidence chain beginning from the fixture's persisted
+  tick-5 state, plus a wrong-zero-anchor rejection. The four pre-SW-I receipt
+  digests and state hashes were compared against untouched checkpoint `94f60eb`
+  and remain frozen as regression goldens. Draft PR #57 remains open for a
+  complete final-head author proof, CI, and a fresh non-author audit/rerun;
+  exact-head disposition is recorded externally in that PR so updating this
+  handoff cannot invalidate it. No runtime CLI command or run-directory
+  publisher was added.
 
 ## What is next
 
-Finish issue #52 through refreshed author proof, PR CI, non-author exact-head
-rerun, and owner merge. Do not begin another semantic implementation without a
-new issue. After SW-H, the next slice defines persisted runtime types and the
-command language before runtime `run`/`command`; later work includes verified
-run bundles, replay, explanations, the required stable v1-to-v2 movement
+Finish issue #56's evidence chain: publish this documentation head, obtain green
+PR CI, and obtain the required fresh non-author exact-head audit/rerun before
+marking PR #57 ready. Record that immutable disposition in PR #57. The following
+slice may publish verified run bundles and expose runtime `run`/`command`.
+Later work includes replay, explanations, the required stable v1-to-v2 movement
 migration, direct v2 runtime loading/refusal evidence, the Linux aarch64 and
 ten-run matrix, measured Gate K budgets, final schema-ownership review, and the
 formal cold-agent gates.
@@ -257,9 +285,8 @@ owner disposition before any formal launch.
 
 The issue #54 repair author proof, PR CI, non-author exact-head rerun, and
 post-merge CI passed as recorded above and externally in PR #55. SW-H's
-refreshed author proof passes all four workspace commands plus the exact CLI
-smoke commands after rebasing onto that repair; final PR CI and non-author
-exact-head disposition are recorded externally in PR #53. SW-G's original
+refreshed author proof, PR CI, non-author rerun, and post-merge CI passed as
+recorded above and externally in PR #53. SW-G's original
 author proof, Luna max exact-head rerun, PR CI, and post-merge CI also passed all
 four commands; the focused release SW-G test passed. SW-F, SW-D, and
 issue #24 have the same author/non-author/CI chain as recorded above. Earlier

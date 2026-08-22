@@ -55,6 +55,15 @@ impl DiagnosticCode {
             && bytes[1] == b'K'
             && bytes[2..].iter().all(u8::is_ascii_digit)
     }
+
+    /// Resolves one known stable diagnostic-code spelling.
+    #[must_use]
+    pub fn parse(code: &str) -> Option<Self> {
+        codes::ALL
+            .iter()
+            .copied()
+            .find(|candidate| candidate.as_str() == code)
+    }
 }
 
 impl fmt::Display for DiagnosticCode {
@@ -476,6 +485,16 @@ pub mod codes {
     pub const RUNTIME_STATE_HASH_MISMATCH: DiagnosticCode = DiagnosticCode::new("EK0810");
     /// Runtime commit evidence disagrees with compiler-projected consumers.
     pub const RUNTIME_PROJECTION_MISMATCH: DiagnosticCode = DiagnosticCode::new("EK0811");
+    /// Persisted runtime evidence has an invalid schema or semantic shape.
+    pub const RUNTIME_PERSISTED_INVALID: DiagnosticCode = DiagnosticCode::new("EK0812");
+    /// A persisted state belongs to different compiled runtime semantics.
+    pub const RUNTIME_SEMANTICS_MISMATCH: DiagnosticCode = DiagnosticCode::new("EK0813");
+    /// A command script or request violates the accepted language.
+    pub const RUNTIME_COMMAND_SCRIPT_INVALID: DiagnosticCode = DiagnosticCode::new("EK0814");
+    /// A user command resolves to more than one owned machine namespace.
+    pub const RUNTIME_COMMAND_AMBIGUOUS: DiagnosticCode = DiagnosticCode::new("EK0815");
+    /// Persisted logs, hashes, receipts, or result evidence disagree.
+    pub const RUNTIME_EVIDENCE_INCONSISTENT: DiagnosticCode = DiagnosticCode::new("EK0816");
 
     /// A resolver-plan collection repeats one stable semantic identity.
     pub const RESOLVER_DUPLICATE_IDENTITY: DiagnosticCode = DiagnosticCode::new("EK0901");
@@ -565,6 +584,11 @@ pub mod codes {
         RUNTIME_STATE_INVALID,
         RUNTIME_STATE_HASH_MISMATCH,
         RUNTIME_PROJECTION_MISMATCH,
+        RUNTIME_PERSISTED_INVALID,
+        RUNTIME_SEMANTICS_MISMATCH,
+        RUNTIME_COMMAND_SCRIPT_INVALID,
+        RUNTIME_COMMAND_AMBIGUOUS,
+        RUNTIME_EVIDENCE_INCONSISTENT,
         RESOLVER_DUPLICATE_IDENTITY,
         RESOLVER_CLAIM_ENTITY_MISMATCH,
         RESOLVER_ACTIVATION_NAMESPACE_MISSING,
