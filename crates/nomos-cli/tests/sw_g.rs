@@ -75,6 +75,7 @@ fn complete_package_is_deterministic_and_initializes_the_same_state() {
             "nomos.source@1".to_owned(),
             "nomos.world_ir.construction@3".to_owned(),
             "nomos.world_ir@1".to_owned(),
+            "nomos.world_ir@2".to_owned(),
         ]
         .into_iter()
         .collect()
@@ -98,7 +99,7 @@ fn complete_package_is_deterministic_and_initializes_the_same_state() {
     assert_eq!(first_package.manifest(), second_package.manifest());
     assert_eq!(
         first_package.manifest().digest().to_hex(),
-        include_str!("../../nomos-compiler/tests/golden/gaol-package-nomos-v1.sha256").trim()
+        include_str!("../../nomos-compiler/tests/golden/gaol-package-nomos-v2.sha256").trim()
     );
     assert_eq!(
         first_package
@@ -132,15 +133,17 @@ fn complete_package_is_deterministic_and_initializes_the_same_state() {
     );
     assert_eq!(first_state.state_hash(), second_state.state_hash());
     let resolved = nomos_sim::resolve_movement(first.simulation(), &first_state).unwrap();
-    for row in first.stable_ir().movement_v1() {
+    for row in first.stable_ir().movement_v2() {
         match resolved.get(row.entity()).unwrap() {
-            nomos_projection::MovementDisposition::Blocked { .. } => {
-                assert!(row.blocked_ground());
-                assert_eq!(row.traversal_cost_ground(), None);
+            nomos_projection::MovementDisposition::Blocked { reasons } => {
+                assert!(row.movement_disposition_ground().is_blocked());
+                assert_eq!(row.movement_disposition_ground().cost(), None);
+                assert_eq!(row.movement_disposition_ground().reasons(), reasons);
             }
-            nomos_projection::MovementDisposition::Traversable { cost, .. } => {
-                assert!(!row.blocked_ground());
-                assert_eq!(row.traversal_cost_ground(), Some(*cost));
+            nomos_projection::MovementDisposition::Traversable { cost, reasons } => {
+                assert!(!row.movement_disposition_ground().is_blocked());
+                assert_eq!(row.movement_disposition_ground().cost(), Some(*cost));
+                assert_eq!(row.movement_disposition_ground().reasons(), reasons);
             }
         }
     }
@@ -268,13 +271,13 @@ fn semantic_opener_rejects_member_set_schema_and_version_mutations() {
     });
     assert_semantic_rejection("missing-provenance", omitted_provenance, "EK0412");
 
-    let v2_shape = mutate_member(&compiled, "world-ir.json", |fields| {
+    let v1_shape = mutate_member(&compiled, "world-ir.json", |fields| {
         fields.insert(
-            FieldName::declared("movement_disposition_ground"),
-            CanonicalValue::text("blocked"),
+            FieldName::declared("movement_v1"),
+            CanonicalValue::Array(Vec::new()),
         );
     });
-    assert_semantic_rejection("v2-smuggled", v2_shape, "EK0412");
+    assert_semantic_rejection("v1-smuggled", v1_shape, "EK0412");
 }
 
 #[test]
@@ -291,7 +294,7 @@ fn semantic_opener_rejects_receipt_ownership_and_projection_disagreement() {
 
     let movement_subject = mutate_member(&compiled, "world-ir.json", |fields| {
         let CanonicalValue::Array(rows) = fields
-            .get_mut(&FieldName::declared("movement_v1"))
+            .get_mut(&FieldName::declared("movement_v2"))
             .expect("stable movement rows exist")
         else {
             panic!("stable movement rows are an array")
@@ -647,7 +650,7 @@ fn semantic_opener_rejects_deep_tampering_with_fresh_integrity_hashes() {
 
     let stable_movement = mutate_member_with_fresh_receipt(&compiled, "world-ir.json", |fields| {
         let CanonicalValue::Array(rows) = fields
-            .get_mut(&FieldName::declared("movement_v1"))
+            .get_mut(&FieldName::declared("movement_v2"))
             .expect("stable movement rows exist")
         else {
             panic!("stable movement rows are an array")
@@ -655,10 +658,13 @@ fn semantic_opener_rejects_deep_tampering_with_fresh_integrity_hashes() {
         let CanonicalValue::Object(row) = &mut rows[0] else {
             panic!("a stable movement row is an object")
         };
-        row.insert(
-            FieldName::declared("traversal_cost_ground"),
-            CanonicalValue::Uint(4),
-        );
+        let CanonicalValue::Object(disposition) = row
+            .get_mut(&FieldName::declared("movement_disposition_ground"))
+            .expect("stable movement row has a disposition")
+        else {
+            panic!("stable movement disposition is an object")
+        };
+        disposition.insert(FieldName::declared("cost"), CanonicalValue::Uint(4));
     });
     assert_semantic_rejection("fresh-stable-movement", stable_movement, "EK0412");
 

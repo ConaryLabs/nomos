@@ -205,5 +205,6 @@ them and Gate K cannot call acceptance 16 passing. The CI `Budgets` step prints
 - The section 7 execution matrix. CI proves x86_64 debug and release; **Linux
   aarch64 release is unproved**, and the ten-runs-per-target count is not
   implemented. Gate K is not green until both exist.
-- Everything from `nomos validate` onward: section 8's command surface, the
-  v1-to-v2 migration, the mutation suite, and the cold-agent gates.
+- The explanation portion of section 8's command surface, the final complete
+  mutation/evidence disposition, and the cold-agent gates. The filesystem
+  commands through strict v1-to-v2 `migrate` now exist.

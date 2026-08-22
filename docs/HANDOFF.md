@@ -1,7 +1,7 @@
 # Handoff — state of the repository
 
-Updated 2026-08-22 for the issue #60 deterministic-replay slice.
-SW-J is merged and green; SW-K is the active feature branch.
+Updated 2026-08-22 for the issue #63 stable-migration slice.
+SW-K is merged and green; SW-M is the active feature branch.
 This file orients a fresh session; it is rewritten at each slice boundary and
 never accumulates history (git has that).
 
@@ -253,7 +253,7 @@ never accumulates history (git has that).
   a finding-free GPT-5.6 Luna max non-author exact-head audit/rerun. PR #59
   merged as `593bca2`, issue #58 closed, post-merge CI run `32559562200` passed,
   and the feature/review worktrees and branches were removed.
-- **SW-K is active (#60):** branch `sw-k-replay-60` defines strict canonical
+- **SW-K is merged and green (#60/#61):** strict canonical
   `nomos.replay_log@1`, binds it to the exact package, simulation semantics,
   package-derived initial state, committed command evidence, and final state,
   and exposes `nomos replay`. The checked-in `fixtures/gaol.replay` derives from
@@ -263,15 +263,28 @@ never accumulates history (git has that).
   cover exact fixture derivation, strict decoding, deterministic byte equality
   with an ordinary run, wrong input identities, semantically false expected
   evidence, immutable output collisions/overlap, and all CLI failure classes.
+  Final head `6ce23e0` passed the full author proof, PR CI run `32560201236`,
+  and a clean GPT-5.6 Luna max non-author exact-head audit/rerun. PR #61 merged
+  as `c0e77a6`, issue #60 closed, post-merge CI run `32560842827` passed, and
+  the feature/review worktrees and branches were removed.
+- **SW-M is active (#63):** branch `sw-m-migration-63` preserves the exact
+  accepted stable-v1 package, advances new compilation to tagged stable
+  `nomos.world_ir@2`, and normalizes active runtime and persisted state at v2.
+  `nomos migrate <v1-world/> --to 2 --out <v2-world/>` strictly validates all
+  legacy package meaning, regenerates every active artifact, and publishes
+  immutably. Focused tests prove deterministic output, direct-v1 refusal,
+  strict v1/v2 mutation rejection, and identical normalized five-command state,
+  command, receipt, movement, light, projection-delta, and hash-chain evidence.
+  Transition explanation remains blocked on owner disposition of issue #62;
+  it is deliberately outside SW-M.
 
 ## What is next
 
-Finish issue #60: complete the replay proof and documentation, open its draft
-PR, obtain green CI and a clean non-author exact-head rerun, then perform the
-owner-authorized merge and branch cleanup. Later work includes explanations,
-the required stable v1-to-v2 movement migration, direct v2 runtime
-loading/refusal evidence, the Linux aarch64 and ten-run matrix, measured Gate K
-budgets, final schema-ownership review, and the formal cold-agent gates.
+Finish issue #63: complete the full proof, open its draft PR, obtain green CI
+and a clean non-author exact-head rerun, then leave merge disposition to the
+owner. Later work includes explanations after issue #62 is resolved, the Linux
+aarch64 and ten-run matrix, measured Gate K budgets, final schema-ownership
+review, and the formal cold-agent gates.
 
 The old `agy` Gemini route remains falsified evidence. Issue #49 qualifies Pi as
 the replacement transport without spending a formal attempt or changing the
@@ -287,11 +300,12 @@ cargo test --workspace --locked
 cargo xtask boundary
 cargo run --locked --bin nomos -- --help
 cargo run --locked --bin nomos -- validate fixtures/gaol.nomos
-cargo run --locked --bin nomos -- compile fixtures/gaol.nomos --out target/tmp/sw-k-proof/gaol.world
-cargo run --locked --bin nomos -- inspect target/tmp/sw-k-proof/gaol.world
-cargo run --locked --bin nomos -- run target/tmp/sw-k-proof/gaol.world --commands fixtures/gaol.commands --out target/tmp/sw-k-proof/gaol.run
-cargo run --locked --bin nomos -- command target/tmp/sw-k-proof/gaol.world --state target/tmp/sw-k-proof/gaol.run/final-state.json "close north_gate" --out target/tmp/sw-k-proof/after-close.run
-cargo run --locked --bin nomos -- replay target/tmp/sw-k-proof/gaol.world --log fixtures/gaol.replay --out target/tmp/sw-k-proof/replay.run
+cargo run --locked --bin nomos -- compile fixtures/gaol.nomos --out target/tmp/sw-m-proof/gaol.world
+cargo run --locked --bin nomos -- migrate fixtures/gaol-v1.world --to 2 --out target/tmp/sw-m-proof/gaol-migrated.world
+cargo run --locked --bin nomos -- inspect target/tmp/sw-m-proof/gaol-migrated.world
+cargo run --locked --bin nomos -- run target/tmp/sw-m-proof/gaol.world --commands fixtures/gaol.commands --out target/tmp/sw-m-proof/gaol.run
+cargo run --locked --bin nomos -- command target/tmp/sw-m-proof/gaol.world --state target/tmp/sw-m-proof/gaol.run/final-state.json "close north_gate" --out target/tmp/sw-m-proof/after-close.run
+cargo run --locked --bin nomos -- replay target/tmp/sw-m-proof/gaol.world --log fixtures/gaol.replay --out target/tmp/sw-m-proof/replay.run
 docs/evaluation/test-agy-print-preflight.sh
 docs/evaluation/test-agy-formal-boundary-preflight.sh
 docs/evaluation/test-pi-cold-agent-preflight.sh
@@ -311,7 +325,7 @@ four commands; the focused release SW-G test passed. SW-F, SW-D, and
 issue #24 have the same author/non-author/CI chain as recorded above. Earlier
 SW-C, revision-4, and Rust-1.98 maintenance reruns also passed.
 Still unproven: Linux aarch64 release, ten runs per target, explanation
-commands, migration, measured Gate K budgets, and formal cold-agent
+commands pending issue #62, measured Gate K budgets, and formal cold-agent
 gates. The contract also requires a final explicit schema-ownership
 source-review receipt after the Gate K schema set stabilizes; that final
 receipt does not exist yet.

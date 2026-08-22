@@ -1,6 +1,6 @@
 ---
 title: Gate K ground movement resolution
-status: Movement implementation reference; current through SW-K
+status: Movement implementation reference; current through SW-M
 date: 2026-08-22
 applies_to: KERNEL.md sections 1, 2, 4; acceptance 5
 ---
@@ -74,5 +74,7 @@ facts into committed typed receipts alongside light facts; the movement plan
 and navigation schema do not change. SW-G packages those artifacts, SW-H
 exposes their filesystem validation, compilation, and inspection, and SW-J
 executes runtime commands into verified run bundles. SW-K deterministically
-replays the same movement evidence. Migration, explanations, and the
-multi-target/formal cold-agent evidence remain open.
+replays the same movement evidence. SW-M replaces the legacy stable-v1
+boolean/nullable initial row with one tagged stable-v2 blocked or traversable
+disposition while preserving normalized behavior and typed claim reasons.
+Explanations and the multi-target/formal cold-agent evidence remain open.

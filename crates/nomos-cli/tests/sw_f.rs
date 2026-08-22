@@ -168,10 +168,10 @@ fn exact_command_sequence_is_byte_deterministic_from_one_initial_snapshot() {
             .map(|(_, receipt, _)| Sha256Digest::of_bytes(receipt).to_hex())
             .collect::<Vec<_>>(),
         [
-            "f03814a5501a5e63e1464aaf834622dfccff06146c5d70732478708f4b54b48e",
-            "c8f1bab24339dec8f4be88006a18d81b259cdba61f4fa25f9626ff914740dc55",
-            "6461972f898ee79984ecbca85f6e41728dcc1a5e993c257b3fde006738e35691",
-            "c7e9ca01679a6bf14c1c9c92dc78e87e27b89b5d8b32e8b294d595f974554517",
+            "137aae97ca284b1d086d36b03967df22eccdb8c0787464b56d56eebf1f0b0fad",
+            "02ae95579f61814b68a1735a08ab85c64a1662e81a52de61a8ca6961941fe538",
+            "7105dd0ffdde41eef147b55115f4b617845db8f11c7ba161f2970bfd919a349f",
+            "f41a0505df7937e99622f1e63fe910c4a926d0a571c4702b34d7f749aaba6842",
         ]
     );
     assert_eq!(
@@ -180,10 +180,10 @@ fn exact_command_sequence_is_byte_deterministic_from_one_initial_snapshot() {
             .map(|(_, _, state_hash)| state_hash.as_str())
             .collect::<Vec<_>>(),
         [
-            "4076b938a5d03134810301257022d1124481343fb0d01bf06fa98772350022ae",
-            "9594a153dd1a65975d3737e5c7080868c14cd6d370482cee9809ac22fbb3aafb",
-            "1753f1f199c33add2827e105ce81af5bced8d25d7d53a918d9f797669f4aa49f",
-            "d9eed238e219747752154bfe8697d79773531df34ba66f96d5e11ee30b29affc",
+            "b8eac7726d570b7545d9b7e1a9f3ee838f93c095f2a294070f4976444d94952b",
+            "0545806ca38848850f9e9ca674fa4891066ed57b72fa7a957fd66332cae7314b",
+            "7843d53de4c8bb543a8ea11603d5ada260b549b18a5d5076e74e0e29b81a6e79",
+            "1fa9f01245beae92a25aa96b3b74a4c8e5138ad4fbde545d3d765fc6597c1fde",
         ]
     );
     assert_eq!(initial.tick(), 0);

@@ -1,6 +1,6 @@
 ---
 title: Gate K compiler
-status: Compiler implementation reference; current through SW-K
+status: Compiler implementation reference; current through SW-M
 date: 2026-08-22
 applies_to: KERNEL.md sections 1, 2, 4, 9; acceptance 1-3 and 11
 ---
@@ -22,7 +22,10 @@ nomos_compiler::compile_navigation_plan(&stable_world_ir)
 nomos_compiler::compile_persistence_plan(&stable_world_ir)
 nomos_compiler::compile_diagnostics_plan(&stable_world_ir)
 nomos_compiler::compile_world_package(source, repository_relative_path)
+nomos_compiler::migrate_world_ir_v1_to_v2(&legacy_stable_world_ir)
+nomos_compiler::migrate_world_package_v1(legacy_package_root)
 nomos_cli::compile_and_write_world(source, repository_relative_path, destination)
+nomos_cli::migrate_and_write_world(legacy_package_root, destination)
 ```
 
 The source language and primitive catalog are documented in
@@ -57,13 +60,17 @@ records why that language was chosen.
     dependencies, subjects, and consumers; project one typed light plan to
     simulation, `nomos.projection.persistence@1`, and
     `nomos.projection.diagnostics@1`.
-12. Validate the complete construction snapshot, derive the required initial
-    v1 `blocked_ground` / nullable `traversal_cost_ground` rows, and promote a
-    distinct `nomos.world_ir@1` carrying explicit source, construction,
-    compiler, primitive-catalog, ownership, and provenance versions.
+12. Validate the complete construction snapshot, derive one tagged initial
+    `movement_disposition_ground` row per subject, and promote a distinct
+    `nomos.world_ir@2` carrying explicit source, construction, compiler,
+    primitive-catalog, ownership, and provenance versions.
 13. Compile every projection only from the stable type, emit the exact schema
     ownership registry and typed compiler receipts, and validate the complete
     seven-member semantic package set before filesystem publication.
+14. On the isolated migration path, strictly validate a complete stable-v1
+    package, regenerate and compare every legacy projection and receipt, convert
+    only its movement rows to v2, then regenerate and validate all active
+    package members.
 
 Parser failures use `EK05xx`; linker and ownership failures use `EK06xx`;
 transition/projection validation uses `EK07xx`; movement resolver validation
@@ -85,8 +92,8 @@ class. The mutation suite plants each ownership/cross-reference violation in
 - typed light-union composition, consumers, and resolver subjects;
 - typed fact-ownership receipts: fact IDs, resolved values, projection
   consumers, derivation producers/passes, and causal inputs.
-- stable `nomos.world_ir@1`, its v1 movement rows, and the package schema
-  registry with typed authoritative owners.
+- stable `nomos.world_ir@2`, the migration-only strict v1 type, their movement
+  rows, and the package schema registry with typed authoritative owners.
 
 `nomos-compiler` exclusively defines parsing, the sealed primitive catalog,
 name resolution, validation, expansion, linking, cycle rejection, and
@@ -127,8 +134,9 @@ SW-C corrected the narrower SW-B naming before it became serialized behavior.
   producer/pass pairs, and incompatible resolved-value classes fail closed.
 - structured provenance and human-readable explanation rendering are separate
   outputs; display wording is not canonical semantics.
-- construction-v3 bytes remain frozen while stable-v1 bytes receive their own
-  golden hash; construction evidence is never relabelled into the stable line;
+- construction-v3 bytes remain frozen while stable-v1 and stable-v2 receive
+  independent golden hashes; construction evidence is never relabelled into
+  the stable line;
 - the public projection APIs accept `StableWorldIr`, not construction IR;
 - complete package members, build receipts, schema ownership, and initial state
   reproduce byte-for-byte across clean compilation.
@@ -139,11 +147,13 @@ At SW-C, the CLI was intentionally unimplemented: acceptance item 3's
 observable `nomos inspect` command required the complete package added by later
 slices. Issue #5 records that historical scope split. SW-H now exposes
 `validate`, `compile`, and `inspect`; SW-J adds `run` and `command` over the
-verified package boundary; SW-K adds `replay` over the same boundary.
+verified package boundary; SW-K adds `replay`, and SW-M adds strict `migrate`
+without exposing legacy execution through ordinary runtime commands.
 
 Typed provenance prepares the data needed by `explain-entity`, but the CLI
-explanation surface remains unimplemented. Migration also remains outstanding.
+explanation surface remains unimplemented pending owner disposition of issue
+#62.
 `produced_schemas()` reports construction evidence, stable IR, all
 four projections, the registry, and compiler receipts. Construction versions
-remain preserved evidence; stable `nomos.world_ir@1` is independently frozen
-for the later required v1-to-v2 migration.
+remain preserved evidence; stable `nomos.world_ir@1` is frozen as migration
+input while new compilation emits only `nomos.world_ir@2`.
