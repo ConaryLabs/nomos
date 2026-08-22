@@ -328,7 +328,7 @@ done
 tool_events=$(jq -s '[.[] | select(.type | startswith("tool_execution_"))] | length' "$tmp_dir/events.ndjson")
 [[ $tool_events -eq 0 ]] || fail "neutral probe unexpectedly executed $tool_events tool events"
 
-jq -se --arg provider "$provider" --arg model "$model" --arg prompt "$prompt" '
+if ! jq -se --arg provider "$provider" --arg model "$model" --arg prompt "$prompt" '
   ([.[] | select(.type == "message_end" and .message.role == "user")] | length) == 1 and
   ([.[] | select(.type == "message_end" and .message.role == "user")][0].message.content[0].text) == $prompt and
   ([.[] | select(.type == "message_end" and .message.role == "assistant")] | length) == 1 and
@@ -336,7 +336,11 @@ jq -se --arg provider "$provider" --arg model "$model" --arg prompt "$prompt" '
   ([.[] | select(.type == "message_end" and .message.role == "assistant")][0].message.model) == $model and
   ([.[] | select(.type == "message_end" and .message.role == "assistant")][0].message.stopReason) == "stop" and
   ([.[] | select(.type == "message_end" and .message.role == "assistant")][0].message.content | map(select(.type == "text") | .text) | join("")) == "pi boundary preflight"
-' "$tmp_dir/events.ndjson" >/dev/null || fail 'Pi did not return the exact successful neutral response'
+' "$tmp_dir/events.ndjson" >/dev/null; then
+  cat "$tmp_dir/stderr.txt" >&2
+  cat "$tmp_dir/events.ndjson" >&2
+  fail 'Pi did not return the exact successful neutral response'
+fi
 
 printf 'PI_VERSION %s\n' "$pi_version"
 printf 'PI_INSTALL npm install -g --ignore-scripts @earendil-works/pi-coding-agent@%s\n' "$expected_pi_version"
