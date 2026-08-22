@@ -12,7 +12,7 @@ expected_antigravity_version=0.4.0
 expected_antigravity_integrity='sha512-Trl0lWZRDM6TUhw8UjZ+si4Tx2IxCtLLdEwQ10gOS3BUJfgv/C32HY3m/v9PcLNZWYzo+LEfmamiB5+f0jciCg=='
 expected_antigravity_tree_sha=7980e6825a23f18a9d298953c0efc9f13c1231ce4c814394803b9da9bfb565ce
 expected_extension_sha=0e481623a0113e9dead8c75a65a2c2171fb3004acadf579655b4e5cc683d4a39
-expected_fake_sha=1dadc2c8c45254c627822289a501112f5786a4c05eff1ba8a82080805ab18128
+expected_fake_sha=ef53d9a5d8b10f4392281e488083f5d37311b6f3e5f2c09f83b1b2eb6d4d0cb6
 expected_fake_antigravity_sha=944ab25260d0efee3c682f0d79f84beae674e7fe8a36a585f7615944bcec4417
 
 fail() {
@@ -27,18 +27,21 @@ case $lane in
     model=deepseek-v4-pro
     model_label='DeepSeek V4 Pro'
     thinking=max
+    expected_auth_type=api_key
     ;;
   gemini)
     provider=antigravity
     model=gemini-3.7-flash
     model_label='Gemini 3.7 Flash'
     thinking=high
+    expected_auth_type=oauth
     ;;
   claude)
     provider=anthropic
     model=claude-opus-5
     model_label='Claude Opus 5'
     thinking=max
+    expected_auth_type=oauth
     ;;
   *)
     fail 'usage: pi-cold-agent-preflight.sh deepseek|gemini|claude [workspace]'
@@ -171,6 +174,13 @@ system_prompt_sha=$(printf '%s' "$system_prompt" | sha256sum)
 system_prompt_sha=${system_prompt_sha%% *}
 prompt='Output exactly this line and nothing else: pi boundary preflight'
 
+for suffix in BASE_URL PROJECT_ID USER_AGENT RUNTIME_MODEL CLIENT_ID CLIENT_SECRET \
+  CALLBACK_HOST NO_KEEPALIVE HTTP2 DEBUG_DUMP; do
+  unset "ANTIGRAVITY_$suffix" "NOAGY_$suffix"
+done
+export ANTIGRAVITY_NO_PREWARM=1
+unset NOAGY_NO_PREWARM
+
 tmp_dir=$(mktemp -d)
 trap 'rm -r -- "$tmp_dir"' EXIT
 config_dir="$tmp_dir/config"
@@ -184,6 +194,7 @@ fi
 if [[ $lane == gemini && $pi_path != "$fake_path" ]]; then
   jq -e '.antigravity.type == "oauth"' "$config_dir/auth.json" >/dev/null ||
     fail 'Pi Antigravity OAuth credentials are not ready'
+  resolved_auth_type=oauth
 else
   set +e
   PI_CODING_AGENT_DIR="$config_dir" PI_TELEMETRY=0 \
@@ -195,15 +206,16 @@ else
     cat "$tmp_dir/auth.stderr" >&2
     fail "Pi credentials are not ready for $provider/$model"
   fi
-  jq -e --arg provider "$provider" \
-    '.status == "ready" and .provider == $provider and (has("credential") | not)' \
+  jq -e --arg provider "$provider" --arg auth_type "$expected_auth_type" \
+    '.status == "ready" and .provider == $provider and .authType == $auth_type and
+     (has("credential") | not)' \
     "$tmp_dir/auth.json" >/dev/null || fail 'Pi auth check did not return a sanitized ready result'
+  resolved_auth_type=$(jq -r '.authType' "$tmp_dir/auth.json")
 fi
 
 set +e
 PI_CODING_AGENT_DIR="$config_dir" \
 PI_TELEMETRY=0 \
-ANTIGRAVITY_NO_PREWARM=1 \
 NOMOS_PI_HOST_WORKSPACE="$workspace" \
 NOMOS_PI_RUSTUP_HOME="$rustup_home" \
 NOMOS_PI_RUST_TOOLCHAIN="$rust_toolchain" \
@@ -360,10 +372,12 @@ printf 'PI_HOST_OS %s\n' "$(uname -srm)"
 printf 'PI_TARGET_COMMIT %s\n' "$target_commit"
 printf 'PI_LANE %s\n' "$lane"
 printf 'PI_MODEL %s\t%s\t%s\t%s\n' "$provider" "$model" "$model_label" "$thinking"
+printf 'PI_AUTH_TYPE %s\n' "$resolved_auth_type"
 printf 'PI_EXTENSION %s %s\n' "$extension" "$extension_sha"
 printf 'PI_PROVIDER_EXTENSION %s\n' "$provider_extension"
 printf 'PI_PROVIDER_PACKAGE %s\n' "$provider_package"
 printf 'PI_PROVIDER_INSTALL %s\n' "$provider_install"
+printf 'PI_PROVIDER_ENV overrides-cleared prewarm-disabled\n'
 printf 'PI_SYSTEM_PROMPT %s %s\n' "$system_prompt_file" "$system_prompt_sha"
 printf 'PI_WORKSPACE %s\n' "$workspace"
 printf 'PI_WORKTREE_STATUS %s\n' "$worktree_status"

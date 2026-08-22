@@ -27,7 +27,13 @@ case ${1:-} in
           ;;
       esac
     done
-    printf '{"status":"ready","provider":"%s","source":"fixture"}\n' "$provider"
+    if [[ $provider == deepseek ]]; then
+      auth_type=api_key
+    else
+      auth_type=oauth
+    fi
+    printf '{"status":"ready","provider":"%s","authType":"%s","source":"fixture"}\n' \
+      "$provider" "$auth_type"
     exit 0
     ;;
 esac
