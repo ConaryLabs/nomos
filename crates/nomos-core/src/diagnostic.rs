@@ -505,6 +505,12 @@ pub mod codes {
     pub const RUN_BUNDLE_IO: DiagnosticCode = DiagnosticCode::new("EK0820");
     /// A run-bundle output would overlap immutable input evidence.
     pub const RUN_BUNDLE_OUTPUT_OVERLAPS_INPUT: DiagnosticCode = DiagnosticCode::new("EK0821");
+    /// A replay log is malformed, noncanonical, or internally inconsistent.
+    pub const REPLAY_LOG_INVALID: DiagnosticCode = DiagnosticCode::new("EK0822");
+    /// A replay log names different package, semantics, or initial-state evidence.
+    pub const REPLAY_INPUT_MISMATCH: DiagnosticCode = DiagnosticCode::new("EK0823");
+    /// Re-execution does not reproduce the replay log's expected committed evidence.
+    pub const REPLAY_EVIDENCE_MISMATCH: DiagnosticCode = DiagnosticCode::new("EK0824");
 
     /// A resolver-plan collection repeats one stable semantic identity.
     pub const RESOLVER_DUPLICATE_IDENTITY: DiagnosticCode = DiagnosticCode::new("EK0901");
@@ -604,6 +610,9 @@ pub mod codes {
         RUN_BUNDLE_ENTRY_TYPE_INVALID,
         RUN_BUNDLE_IO,
         RUN_BUNDLE_OUTPUT_OVERLAPS_INPUT,
+        REPLAY_LOG_INVALID,
+        REPLAY_INPUT_MISMATCH,
+        REPLAY_EVIDENCE_MISMATCH,
         RESOLVER_DUPLICATE_IDENTITY,
         RESOLVER_CLAIM_ENTITY_MISMATCH,
         RESOLVER_ACTIVATION_NAMESPACE_MISSING,
