@@ -1,8 +1,10 @@
 ---
 title: Cold-agent evaluation protocol
 status: Contractual for formal cold-agent claims
-revision: 1
-date: 2026-08-21
+revision: 2
+supersedes_protocol_revision: 1
+date: 2026-08-22
+decision_record: docs/decisions/0008-cold-agent-nomos-cli-identity.md
 applies_to: Gate K, Gate 3, Gate 4, cold design review
 ---
 
@@ -121,7 +123,7 @@ Default formal-run tools:
 
 - read permitted packet files;
 - write only inside the isolated task workspace;
-- execute the published `estate` CLI;
+- execute the published `nomos` CLI;
 - inspect structured JSON and generated artifacts;
 - use ordinary file operations such as `ls`, `cat`, and `diff`.
 
