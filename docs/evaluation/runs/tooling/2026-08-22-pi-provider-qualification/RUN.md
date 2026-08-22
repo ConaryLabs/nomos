@@ -1,13 +1,15 @@
 # Pi provider-harness qualification
 
-**Verdict:** Gemini and Claude author probes PASS; DeepSeek credential and
-exact-head non-author reruns remain pending
+**Verdict:** all three author probes PASS; exact-head non-author reruns remain
+pending
 
 **Date:** 2026-08-22
 
 **Issue:** #49
 
-**Probe commit:** `8fa139918eb58b1159a93151f9879d5bb4885678`
+**Gemini/Claude probe commit:** `8fa139918eb58b1159a93151f9879d5bb4885678`
+
+**DeepSeek probe commit:** `b593b2dcdc89de372807ec7be54b8789aa9352e4`
 
 This is transport and isolation evidence only. It launches no formal
 cold-author or cold-debug attempt, spends no formal attempt budget, changes no
@@ -104,17 +106,14 @@ workspace or the subject's callable tool boundary.
 | --- | --- | --- | --- | --- |
 | Gemini | `antigravity/gemini-3.7-flash` | `high` | `01a02726-658b-7299-8987-debf85730d59` | PASS |
 | Claude | `anthropic/claude-opus-5` | `max` | `01a02726-75fa-7fa1-b9d7-af63c239a3e7` | PASS |
-| DeepSeek | `deepseek/deepseek-v4-pro` | `max` | not launched | BLOCKED: no Pi API credential configured |
+| DeepSeek | `deepseek/deepseek-v4-pro` | `max` | `01a0272a-092c-7870-bcb2-b1e56bfe1bf1` | PASS |
 
 Each passing lane returned exactly `pi boundary preflight`, emitted one fresh
 ephemeral session, executed zero model-requested tools, and ended without retry.
 The complete sanitized output is in `gemini-author.txt` and
-`claude-author.txt`.
-
-Pi 0.84.2 exposes no OAuth login route for its built-in DeepSeek provider and
-requires `DEEPSEEK_API_KEY` or an equivalent Pi auth-store API key. Absence of
-that credential blocks only the DeepSeek qualification probe; it is not a
-transport falsification and no provider request was made.
+`claude-author.txt`; `deepseek-author.txt` contains the corresponding DeepSeek
+stream. Pi 0.84.2 exposes no OAuth route for its built-in DeepSeek provider, so
+that lane used an API key kept only in Pi's user auth store.
 
 ## Offline fail-closed proof
 
@@ -133,8 +132,7 @@ credential marker. CI runs this proof without contacting any provider.
 
 ## Remaining disposition
 
-The tooling slice is not green yet. It still requires a DeepSeek credential or
-an explicit unavailable-lane disposition, plus a non-author exact-head rerun of
-the offline proof and each available authenticated probe. Claude remains
+The tooling slice is not green until a non-author reruns the exact head through
+the offline proof and all three authenticated probes. Claude remains
 supplemental review only; its successful transport probe does not make the
 Claude family eligible for a formal whole-Gate-K subject role.
