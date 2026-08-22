@@ -218,25 +218,28 @@ never accumulates history (git has that).
   complete author proof, PR CI run `32550761498`, and a clean non-author rerun
   with no findings. PR #53 merged as `54e5dd2`, issue #52 closed, and post-merge
   CI run `32551021136` passed.
-- **SW-I is in progress (#56):** the accepted slice defines strict persisted
-  runtime state/receipt evidence, the exact command-script language and typed
-  namespace resolution, command logs, state-hash chains, and the future run
-  result binding record without exposing runtime CLI commands. The first
-  checkpoint implements strict `SimulationState` rehydration, a separate
-  `nomos.persisted_runtime_state@1` envelope bound to canonical simulation
-  bytes, and exact command-script parsing/resolution while preserving the
-  frozen `nomos.runtime_state@1` hash domain. Draft PR #57 is open at clean
-  checkpoint `dbde21d`; checkpoint CI run `32551494771` passed. The PR remains
-  draft and explicitly lists causal-receipt decoding, command logs, state-hash
-  chains, run-result evidence, mutation proof, and final exact-head review as
-  unfinished.
+- **SW-I implementation is complete (#56/#57):** strict typed decoders now
+  reconstruct `nomos.runtime_state@1` and every nested value in
+  `nomos.causal_receipt@1`. `nomos.persisted_runtime_state@1` binds the unchanged
+  inner state hash to exact simulation semantics; `nomos.command_script@1`
+  resolves requests through entity-owned external machines; and the distinct
+  `nomos.command_log@1`, `nomos.state_hash_sequence@1`, and
+  `nomos.run_result@1` types enforce receipt digests, contiguous ordinals and
+  ticks, row-by-row state hashes, exact non-result artifact coverage,
+  status/diagnostic consistency, and typed artifact hashes. Refreshed-integrity
+  mutations still fail on semantic disagreement. The four pre-SW-I receipt
+  digests and state hashes were compared against untouched checkpoint
+  `94f60eb` and are now frozen as regression goldens. Implementation commit
+  `f5bbb41` passed the four-command author proof with a clean tree. Draft PR #57
+  remains open pending final-head CI and non-author audit/rerun; no runtime CLI
+  command or run-directory publisher was added.
 
 ## What is next
 
-Finish issue #56: complete causal-receipt decoding and the typed command-log,
-state-hash-sequence, and run-result evidence records; add refreshed-integrity
-mutation proof; then run the full author/CI/non-author chain. The following
-slice may publish verified run bundles and expose runtime `run`/`command`.
+Finish issue #56's evidence chain: publish the final documentation head, obtain
+green PR CI, and obtain the required non-author exact-head audit/rerun before
+marking PR #57 ready. The following slice may publish verified run bundles and
+expose runtime `run`/`command`.
 Later work includes replay, explanations, the required stable v1-to-v2 movement
 migration, direct v2 runtime loading/refusal evidence, the Linux aarch64 and
 ten-run matrix, measured Gate K budgets, final schema-ownership review, and the
