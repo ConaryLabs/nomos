@@ -7,7 +7,7 @@ pending
 
 **Issue:** #49
 
-**Probe commit:** `8d18d455ba56f30e464466fe093764650c5b3953`
+**Probe commit:** `791c2749e3a61ae0cd9495acbe8fb3334e8a7f8f`
 
 This is transport and isolation evidence only. It launches no formal
 cold-author or cold-debug attempt, spends no formal attempt budget, changes no
@@ -115,9 +115,9 @@ workspace or the subject's callable tool boundary.
 
 | Lane | Exact route | Thinking | Session | Result |
 | --- | --- | --- | --- | --- |
-| Gemini | `antigravity/gemini-3.7-flash` | `high` | `01a02733-d201-7d45-8672-085a7ec67c78` | PASS |
-| Claude | `anthropic/claude-opus-5` | `high` | `01a02733-d44c-7eac-b7d6-7b258833b085` | PASS |
-| DeepSeek | `deepseek/deepseek-v4-flash-vision-exp` | `max` | `01a02733-ad79-7b4a-b791-6d9a7b9d2e61` | PASS |
+| Gemini | `antigravity/gemini-3.7-flash` | `high` | `01a02736-4abc-7e31-8654-8a394d95d099` | PASS |
+| Claude | `anthropic/claude-opus-5` | `high` | `01a02736-4d60-7aab-aca8-5a25d86a9fa0` | PASS |
+| DeepSeek | `deepseek/deepseek-v4-flash-vision-exp` | `max` | `01a02736-4d55-754c-8b29-120a1f64bf8e` | PASS |
 
 Each passing lane returned exactly `pi boundary preflight`, emitted one fresh
 ephemeral session, executed zero model-requested tools, and ended without retry.
