@@ -126,12 +126,14 @@ fi
 provider_extension=none
 provider_extension_args=()
 provider_package=none
+provider_install=none
 if [[ $lane == gemini ]]; then
   if [[ $pi_path == "$fake_path" ]]; then
     provider_extension=${PI_ANTIGRAVITY_EXTENSION:-$fake_antigravity}
     [[ $(readlink -f "$provider_extension") == $(readlink -f "$fake_antigravity") ]] ||
       fail "offline Gemini fixture used an unexpected provider extension: $provider_extension"
     provider_package='pi-antigravity fixture'
+    provider_install='fixture'
   else
     npm_root=$(npm root -g)
     antigravity_root="$npm_root/pi-antigravity"
@@ -148,6 +150,7 @@ if [[ $lane == gemini ]]; then
     [[ $antigravity_tree_sha == "$expected_antigravity_tree_sha" ]] ||
       fail "pi-antigravity package tree digest mismatch: $antigravity_tree_sha"
     provider_package="pi-antigravity@$expected_antigravity_version $expected_antigravity_integrity $antigravity_tree_sha"
+    provider_install="npm install -g --ignore-scripts --legacy-peer-deps pi-antigravity@$expected_antigravity_version"
   fi
   provider_extension_args=(-e "$provider_extension")
 fi
@@ -360,6 +363,7 @@ printf 'PI_MODEL %s\t%s\t%s\t%s\n' "$provider" "$model" "$model_label" "$thinkin
 printf 'PI_EXTENSION %s %s\n' "$extension" "$extension_sha"
 printf 'PI_PROVIDER_EXTENSION %s\n' "$provider_extension"
 printf 'PI_PROVIDER_PACKAGE %s\n' "$provider_package"
+printf 'PI_PROVIDER_INSTALL %s\n' "$provider_install"
 printf 'PI_SYSTEM_PROMPT %s %s\n' "$system_prompt_file" "$system_prompt_sha"
 printf 'PI_WORKSPACE %s\n' "$workspace"
 printf 'PI_WORKTREE_STATUS %s\n' "$worktree_status"
