@@ -50,8 +50,10 @@ traversable { cost: positive integer, reasons: sorted unique claim references }
 
 The v2 decoder rejects unknown fields or variants, zero cost, empty blocked
 reasons, duplicates, unstable ordering, incomplete subject coverage, and
-dangling claim references. Construction IR, source bytes, the resolver plan,
-and all projection schemas are unchanged.
+dangling or cross-capability claim references: blocked reasons must name
+ground-blocker claims and traversable reasons must name ground-cost claims for
+that subject. Construction IR, source bytes, the resolver plan, and all
+projection schemas are unchanged.
 
 ## Frozen provenance and digest mapping
 

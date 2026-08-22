@@ -350,7 +350,6 @@ fn migrate(package: &str, target: &str, output: &str) -> Result<CanonicalValue, 
     }
     let package_path = relative_filesystem_path(package)?;
     let output_path = relative_filesystem_path(output)?;
-    require_migration_output_outside_package(&package_path, &output_path)?;
     let (migrated, written) = migrate_and_write_world(&package_path, &output_path)?;
     let artifacts = std::iter::once(MANIFEST_FILE)
         .chain(
@@ -600,22 +599,6 @@ fn require_output_outside_package(package: &Path, output: &Path) -> Result<(), D
     let output = resolve_with_missing_tail(output)?;
     if output.starts_with(&package) {
         return Err(output_overlap("package"));
-    }
-    Ok(())
-}
-
-fn require_migration_output_outside_package(
-    package: &Path,
-    output: &Path,
-) -> Result<(), Diagnostic> {
-    let package = fs::canonicalize(package).map_err(|error| io_failure(package, &error))?;
-    let output = resolve_with_missing_tail(output)?;
-    if output.starts_with(&package) {
-        return Err(Diagnostic::new(
-            nomos_core::diagnostic::codes::MIGRATION_OUTPUT_OVERLAPS_INPUT,
-            "migration output overlaps the immutable stable-v1 input package",
-        )
-        .with_repair(RepairClass::WriteToNewOutputPath));
     }
     Ok(())
 }

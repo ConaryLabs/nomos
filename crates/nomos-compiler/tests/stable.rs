@@ -184,6 +184,19 @@ fn stable_v2_decoder_rejects_variants_reasons_and_subject_coverage() {
         reasons[0] = CanonicalValue::text("north_gate.portal#emits_light");
     });
     assert_v2_decode_rejected(|root| {
+        let disposition = disposition_mut(root, "flooded_section");
+        disposition.remove(&FieldName::declared("cost"));
+        disposition.insert(FieldName::declared("kind"), CanonicalValue::text("blocked"));
+    });
+    assert_v2_decode_rejected(|root| {
+        let disposition = disposition_mut(root, "north_gate");
+        disposition.insert(FieldName::declared("cost"), CanonicalValue::Uint(1));
+        disposition.insert(
+            FieldName::declared("kind"),
+            CanonicalValue::text("traversable"),
+        );
+    });
+    assert_v2_decode_rejected(|root| {
         movement_rows_mut(root).pop();
     });
     assert_v2_decode_rejected(|root| {

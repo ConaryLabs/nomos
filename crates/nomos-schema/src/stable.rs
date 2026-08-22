@@ -9,7 +9,8 @@ use nomos_core::{
 };
 
 use crate::{
-    WorldIr, construction_world_ir_schema, legacy_stable_world_ir_schema, stable_world_ir_schema,
+    CapabilityKind, WorldIr, construction_world_ir_schema, legacy_stable_world_ir_schema,
+    stable_world_ir_schema,
 };
 
 /// One subject encoded with the legacy stable-v1 movement representation.
@@ -466,10 +467,38 @@ fn validate_reason_references(
             .iter()
             .find(|subject| subject.entity() == row.entity())
             .expect("stable movement coverage matches resolver subjects");
+        let entity = construction
+            .entities()
+            .iter()
+            .find(|entity| entity.id() == row.entity())
+            .expect("resolver subjects belong to construction entities");
+        let required_capability = match row.movement_disposition_ground() {
+            StableMovementDispositionGround::Blocked { .. } => CapabilityKind::BlocksGround,
+            StableMovementDispositionGround::Traversable { .. } => {
+                CapabilityKind::TraversalCostGround
+            }
+        };
         for reason in row.movement_disposition_ground().reasons() {
             if subject.claims().binary_search(reason).is_err() {
                 return Err(movement_invalid(format!(
                     "stable World IR v2 reason `{reason}` is not a movement claim for subject `{}`",
+                    row.entity()
+                )));
+            }
+            let claim = entity
+                .expansion()
+                .claims()
+                .iter()
+                .find(|claim| claim.id() == reason)
+                .ok_or_else(|| {
+                    movement_invalid(format!(
+                        "stable World IR v2 reason `{reason}` has no claim definition for subject `{}`",
+                        row.entity()
+                    ))
+                })?;
+            if claim.capability() != required_capability {
+                return Err(movement_invalid(format!(
+                    "stable World IR v2 reason `{reason}` does not supply the disposition for subject `{}`",
                     row.entity()
                 )));
             }

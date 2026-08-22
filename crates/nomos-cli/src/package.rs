@@ -1,13 +1,14 @@
 //! Filesystem orchestration for complete compiled-world packages.
 
-use std::path::Path;
+use std::fs;
+use std::path::{Path, PathBuf};
 
 use nomos_compiler::{
     CompiledWorld, MigratedCompiledWorld, OpenedCompiledWorld, compile_world_package,
     migrate_world_package_v1, open_compiled_package, validate_compiled_package,
 };
 use nomos_core::package::{MemberName, WorldPackage};
-use nomos_core::{Diagnostic, SourcePath};
+use nomos_core::{Diagnostic, RepairClass, SourcePath};
 use nomos_sim::SimulationState;
 
 /// Compiles source and publishes one complete, semantically validated world
@@ -37,9 +38,57 @@ pub fn migrate_and_write_world(
     input: &Path,
     output: &Path,
 ) -> Result<(MigratedCompiledWorld, WorldPackage), Diagnostic> {
+    require_migration_output_outside_input(input, output)?;
     let migrated = migrate_world_package_v1(input)?;
     let package = write_compiled_world(migrated.compiled_world(), output)?;
     Ok((migrated, package))
+}
+
+fn require_migration_output_outside_input(input: &Path, output: &Path) -> Result<(), Diagnostic> {
+    let input = fs::canonicalize(input).map_err(|error| migration_io_failure(input, &error))?;
+    let output = resolve_with_missing_tail(output)?;
+    if output.starts_with(&input) {
+        return Err(Diagnostic::new(
+            nomos_core::diagnostic::codes::MIGRATION_OUTPUT_OVERLAPS_INPUT,
+            "migration output overlaps the immutable stable-v1 input package",
+        )
+        .with_repair(RepairClass::WriteToNewOutputPath));
+    }
+    Ok(())
+}
+
+fn resolve_with_missing_tail(path: &Path) -> Result<PathBuf, Diagnostic> {
+    let mut existing = path.to_path_buf();
+    let mut missing = Vec::new();
+    loop {
+        match fs::symlink_metadata(&existing) {
+            Ok(_) => {
+                let mut resolved = fs::canonicalize(&existing)
+                    .map_err(|error| migration_io_failure(&existing, &error))?;
+                for component in missing.iter().rev() {
+                    resolved.push(component);
+                }
+                return Ok(resolved);
+            }
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+                let Some(name) = existing.file_name() else {
+                    return Err(migration_io_failure(&existing, &error));
+                };
+                missing.push(name.to_os_string());
+                if !existing.pop() || existing.as_os_str().is_empty() {
+                    existing = PathBuf::from(".");
+                }
+            }
+            Err(error) => return Err(migration_io_failure(&existing, &error)),
+        }
+    }
+}
+
+fn migration_io_failure(path: &Path, error: &std::io::Error) -> Diagnostic {
+    Diagnostic::new(
+        nomos_core::diagnostic::codes::CLI_IO,
+        format!("`{}`: {error}", path.display()),
+    )
 }
 
 /// Publishes a complete compiled world through the generic immutable package

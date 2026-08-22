@@ -492,6 +492,20 @@ fn migrate_cli_is_deterministic_immutable_and_required_before_runtime_use() {
 }
 
 #[test]
+fn public_migration_api_rejects_output_overlap_before_mutation() {
+    let cwd = fresh_workspace("public-api-overlap");
+    let input = cwd.join("gaol-v1.world");
+    let before = tree_bytes(&input);
+
+    for output in [input.clone(), input.join("nested.world")] {
+        let rejected = nomos_cli::migrate_and_write_world(&input, &output).unwrap_err();
+        assert_eq!(rejected.code().as_str(), "EK0416");
+        assert_eq!(tree_bytes(&input), before);
+        assert!(!input.join("nested.world").exists());
+    }
+}
+
+#[test]
 fn legacy_and_v2_shape_mutations_fail_closed_with_fresh_integrity() {
     let cwd = fresh_workspace("mutations");
     let invalid_v1 = refreshed_legacy_mutation(&cwd, "invalid-v1.world", |world| {
