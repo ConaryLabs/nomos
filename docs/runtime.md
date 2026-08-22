@@ -1,6 +1,6 @@
 ---
 title: Gate K runtime commit and persisted evidence
-status: Implementation reference through SW-J
+status: Implementation reference through SW-K
 date: 2026-08-22
 applies_to: KERNEL.md sections 2, 3, 5, 7, and 9; acceptance 5, 9, 10, and 12
 ---
@@ -172,12 +172,34 @@ opener accepts both package-initial `run` bundles and nonzero-tick `command`
 bundles; the `run` command itself derives and tests its initial state against the
 opened package.
 
+## Strict replay input and reproduction
+
+SW-K assigns `nomos.replay_log@1` to a canonical replay input that binds the
+exact package digest, simulation-semantics digest, package-derived initial state
+hash, expected committed `CommandLog`, and expected final state hash. The nested
+log carries each unresolved request, resolved typed command, input/result state
+hash, and causal-receipt digest. `ReplayLog::from_execution` derives every field
+from one completed `RunExecution`; rejected or empty histories cannot become
+replay fixtures.
+
+`nomos replay` strictly decodes `fixtures/gaol.replay`, opens the compiled world,
+derives its initial persisted state, and checks all three input identities before
+executing. It re-resolves and commits the five requests under the opened package
+semantics, then requires the regenerated complete command log and final state
+hash to match the fixture. `EK0822` identifies malformed replay bytes, `EK0823`
+identifies the wrong input package/semantics/state, and `EK0824` identifies a
+deterministic reproduction mismatch. None of those paths enters publication.
+A successful replay uses the unchanged SW-J six-file staging, verification,
+rename, and strict-open boundary, and is byte-identical to the corresponding
+ordinary `run` output.
+
 ## Evidence boundary
 
 SW-F proves in-memory snapshot immutability and commit evidence; SW-G proves the
 package contains deterministic material for the same initial snapshot; SW-H
 exposes filesystem validation, compilation, and inspection; SW-I proves the
 strict typed values and their cross-object integrity rules; SW-J publishes and
-reopens those exact values through `run` and `command`. No slice yet replays,
-explains causal evidence, performs the required World IR migration, runs the
-multi-target ten-run matrix, or performs formal cold-agent gates.
+reopens those exact values through `run` and `command`; SW-K binds and reproduces
+them through `replay`. No slice yet explains causal evidence, performs the
+required World IR migration, runs the multi-target ten-run matrix, or performs
+formal cold-agent gates.

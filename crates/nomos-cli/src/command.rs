@@ -8,7 +8,7 @@ use nomos_compiler::{compile_world_package, inspect_compiled_package};
 use nomos_core::package::MANIFEST_FILE;
 use nomos_core::{CanonicalValue, Diagnostic, RepairClass, SourcePath};
 use nomos_sim::{
-    CommandRequest, CommandScript, PersistedRuntimeState, RunExecution, execute_requests,
+    CommandRequest, CommandScript, PersistedRuntimeState, ReplayLog, RunExecution, execute_requests,
 };
 
 use crate::{
@@ -16,13 +16,14 @@ use crate::{
     open_compiled_world, render_rejection, require_available_run_output, write_run_bundle,
 };
 
-const ROOT_HELP: &str = "Nomos Gate K semantic runtime\n\nUsage:\n  nomos validate <source.nomos>\n  nomos compile <source.nomos> --out <new.world/>\n  nomos inspect <world/>\n  nomos run <world/> --commands <commands> --out <new-run/>\n  nomos command <world/> --state <state.json> \"<command>\" --out <new-run/>\n  nomos --help\n";
+const ROOT_HELP: &str = "Nomos Gate K semantic runtime\n\nUsage:\n  nomos validate <source.nomos>\n  nomos compile <source.nomos> --out <new.world/>\n  nomos inspect <world/>\n  nomos run <world/> --commands <commands> --out <new-run/>\n  nomos command <world/> --state <state.json> \"<command>\" --out <new-run/>\n  nomos replay <world/> --log <replay> --out <new-run/>\n  nomos --help\n";
 const VALIDATE_HELP: &str = "Validate one Nomos source file without writing artifacts.\n\nUsage:\n  nomos validate <source.nomos>\n";
 const COMPILE_HELP: &str = "Compile one Nomos source file into a new immutable world package.\n\nUsage:\n  nomos compile <source.nomos> --out <new.world/>\n";
 const INSPECT_HELP: &str =
     "Inspect one verified immutable world package.\n\nUsage:\n  nomos inspect <world/>\n";
 const RUN_HELP: &str = "Execute one strict command script from a compiled world's initial state.\n\nUsage:\n  nomos run <world/> --commands <commands> --out <new-run/>\n";
 const COMMAND_HELP: &str = "Execute one command from a verified persisted runtime state.\n\nUsage:\n  nomos command <world/> --state <state.json> \"<command>\" --out <new-run/>\n";
+const REPLAY_HELP: &str = "Reproduce one strict replay log against a compiled world's initial state.\n\nUsage:\n  nomos replay <world/> --log <replay> --out <new-run/>\n";
 
 /// One completed command-line execution, including its exact stdout bytes.
 #[derive(Clone, PartialEq, Eq, Debug)]
@@ -67,6 +68,11 @@ enum Command {
         package: String,
         state: String,
         request: String,
+        output: String,
+    },
+    Replay {
+        package: String,
+        log: String,
         output: String,
     },
 }
@@ -143,6 +149,21 @@ fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Command, Diagnostic
                 output: output.clone(),
             }
         }
+        [name, help] if name == "replay" && help == "--help" => Command::Help(REPLAY_HELP),
+        [name, package, log_option, log, output_option, output]
+            if name == "replay"
+                && !is_option(package)
+                && log_option == "--log"
+                && !is_option(log)
+                && output_option == "--out"
+                && !is_option(output) =>
+        {
+            Command::Replay {
+                package: package.clone(),
+                log: log.clone(),
+                output: output.clone(),
+            }
+        }
         [name, help] if name == "command" && help == "--help" => Command::Help(COMMAND_HELP),
         [
             name,
@@ -199,6 +220,11 @@ fn execute_command(command: Command) -> Execution {
             request,
             output,
         } => command_once(&package, &state, &request, &output),
+        Command::Replay {
+            package,
+            log,
+            output,
+        } => replay(&package, &log, &output),
     };
     match result {
         Ok(outcome) => outcome.into_execution(),
@@ -341,6 +367,33 @@ fn command_once(
             &[request],
         )?,
     )
+}
+
+fn replay(package: &str, log: &str, output: &str) -> Result<RuntimeOutcome, Diagnostic> {
+    let package_path = relative_filesystem_path(package)?;
+    let log_path = relative_filesystem_path(log)?;
+    let output_path = relative_filesystem_path(output)?;
+    require_available_run_output(&output_path)?;
+    let world = open_compiled_world(&package_path)?;
+    require_output_outside_package(&package_path, &output_path)?;
+    let replay = ReplayLog::from_canonical_bytes(&read_regular_bytes(&log_path, "replay log")?)?;
+    let initial =
+        PersistedRuntimeState::new(world.simulation(), initial_state_from_package(&world)?)?;
+    replay.validate_input(world.package_digest(), &initial)?;
+    let requests = replay
+        .expected_command_log()
+        .rows()
+        .iter()
+        .map(|row| row.request().clone())
+        .collect::<Vec<_>>();
+    let execution = execute_requests(
+        world.simulation(),
+        world.package_digest(),
+        initial,
+        &requests,
+    )?;
+    replay.validate_execution(&execution)?;
+    publish_execution("replay", output, &output_path, &world, execution)
 }
 
 fn publish_execution(

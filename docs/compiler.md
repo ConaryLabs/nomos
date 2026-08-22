@@ -1,6 +1,6 @@
 ---
 title: Gate K compiler
-status: Compiler implementation reference; current through SW-J
+status: Compiler implementation reference; current through SW-K
 date: 2026-08-22
 applies_to: KERNEL.md sections 1, 2, 4, 9; acceptance 1-3 and 11
 ---
@@ -139,11 +139,11 @@ At SW-C, the CLI was intentionally unimplemented: acceptance item 3's
 observable `nomos inspect` command required the complete package added by later
 slices. Issue #5 records that historical scope split. SW-H now exposes
 `validate`, `compile`, and `inspect`; SW-J adds `run` and `command` over the
-verified package boundary.
+verified package boundary; SW-K adds `replay` over the same boundary.
 
 Typed provenance prepares the data needed by `explain-entity`, but the CLI
-explanation surface remains unimplemented. Replay and migration also remain
-outstanding. `produced_schemas()` reports construction evidence, stable IR, all
+explanation surface remains unimplemented. Migration also remains outstanding.
+`produced_schemas()` reports construction evidence, stable IR, all
 four projections, the registry, and compiler receipts. Construction versions
 remain preserved evidence; stable `nomos.world_ir@1` is independently frozen
 for the later required v1-to-v2 migration.

@@ -42,6 +42,7 @@ mod command_language;
 mod commit;
 mod execution;
 mod receipt;
+mod replay;
 mod resolver;
 mod run_evidence;
 mod run_result;
@@ -52,6 +53,7 @@ pub use command_language::{CommandRequest, CommandScript, resolve_command};
 pub use commit::{CommittedTransaction, commit_transaction, commit_transaction_with_budget};
 pub use execution::{RunExecution, execute_requests, validate_committed_evidence};
 pub use receipt::{CausalReceipt, EffectiveFactRef, EffectiveFactValue, ProjectionDelta};
+pub use replay::ReplayLog;
 pub use resolver::{resolve_light, resolve_movement};
 pub use run_evidence::{
     CausalReceiptSequence, CommandLog, CommandLogRow, StateHashRow, StateHashSequence,
@@ -125,7 +127,7 @@ pub fn causal_receipt_schema() -> SchemaId {
         .expect("the causal receipt schema id is a valid literal")
 }
 
-/// The replay and command-log schema.
+/// Canonical schema for strict replay inputs.
 ///
 /// # Panics
 ///

@@ -195,9 +195,10 @@ anything.
 ## Budgets
 
 Acceptance 16 requires measured numbers. SW-B measures build time and target
-size; validation latency, command latency, and replay throughput have nothing to
-measure yet and are recorded as not-applicable rather than as passing. The CI
-`Budgets` step prints `du -sh target` and `df -h` on every run.
+size. SW-H, SW-J, and SW-K make validation latency, command latency, and replay
+throughput measurable, but the dedicated budget receipt has not yet recorded
+them and Gate K cannot call acceptance 16 passing. The CI `Budgets` step prints
+`du -sh target` and `df -h` on every run.
 
 ## Not proved by SW-B
 
