@@ -1,7 +1,7 @@
 # Handoff — state of the repository
 
-Updated 2026-08-22 for the issue #17 Antigravity print-mode repair. No next
-semantic implementation slice is currently filed.
+Updated 2026-08-22 for the issue #45 Antigravity formal-boundary
+falsification. No next semantic implementation slice is currently filed.
 This file orients a fresh session; it is rewritten at each slice boundary and
 never accumulates history (git has that).
 
@@ -71,9 +71,16 @@ never accumulates history (git has that).
   Gemini 3.7 Flash High model and a completed `pwd` tool event in the target
   worktree. The fail-closed harness and exact receipt are under
   `docs/evaluation/`. The three 2026-08-21 attempts retain zero evidentiary
-  value. The successful init event also exposed forbidden formal-run tools, so
-  issue #45 now blocks the Gemini cold-agent route pending effective tool and
-  persisted-context ablation proof.
+  value.
+- **The `agy` formal route is ineligible on 1.1.17 (#45):** a fresh project and
+  conversation with sandboxing, slash commands disabled, and a custom
+  three-tool main agent still reported 57 tools and no machine-readable project,
+  context-source, or memory disclosure. The fail-closed guard therefore exits
+  `1` with `AGY_FORMAL_BOUNDARY BLOCKED`. The exact receipt is under
+  `docs/evaluation/runs/tooling/2026-08-22-agy-formal-boundary-falsification/`.
+  No Gemini formal attempt may launch until a future client/route passes that
+  guard or the owner approves a new plan. This is tooling falsification, not a
+  formal run, roster substitution, or protocol change.
 - **CI uses `actions/checkout@v7` (#11):** PR and post-merge verification passed
   without the Node 20 compatibility annotation.
 - **The GPT Pro architecture checkpoint is owner-disposed (#25):** review of
@@ -159,17 +166,22 @@ never accumulates history (git has that).
 
 ## What is next
 
-No next semantic implementation slice is currently filed. Start by creating an
-issue with falsifiable acceptance and an explicit boundary; do not infer a new
-slice from this handoff. The remaining post-SW-G work includes the filesystem
+No next semantic implementation slice is currently filed; do not infer one
+from this handoff. The remaining post-SW-G work includes the filesystem
 CLI surface, run-directory artifacts, replay, the required stable v1-to-v2
 movement migration, direct v2 runtime loading/refusal evidence, the Linux
 aarch64 and ten-run matrix, measured Gate K budgets, final schema-ownership
 review, and the formal cold-agent gates.
 
-Issue #45 remains a formal cold-author tooling blocker, not a blocker for
-ordinary issue-first semantic implementation. Issue #17 repairs only the
-print-mode transport and command preflight; it is not formal Gate K evidence.
+Issue #47 is the next scoped maintenance item: the contractual cold-agent
+protocol still names the prototype-era `estate` CLI in its active tool policy.
+It requires an owner-authorized protocol revision that changes only that
+identity to `nomos`; issue #45 deliberately does not amend it.
+
+The selected Gemini route remains a formal cold-author tooling blocker, not a
+blocker for ordinary issue-first semantic implementation. Issue #17 repairs
+only print-mode transport; issue #45 proves that 1.1.17 cannot disclose the
+required formal boundary. Neither result is formal Gate K evidence.
 
 ## How to prove the current branch
 
@@ -179,7 +191,13 @@ cargo clippy --workspace --all-targets --locked -- -D warnings
 cargo test --workspace --locked
 cargo xtask boundary
 docs/evaluation/test-agy-print-preflight.sh
+docs/evaluation/test-agy-formal-boundary-preflight.sh
 ```
+
+The authenticated formal-boundary command is an expected negative proof on
+1.1.17: `docs/evaluation/agy-formal-boundary-preflight.sh` must exit `1` and
+print `AGY_FORMAL_BOUNDARY BLOCKED`. A zero exit would require inspection and
+owner disposition before any formal launch.
 
 SW-G's author proof, Luna max exact-head rerun, PR CI, and post-merge CI passed
 all four commands; the focused release SW-G test also passed. SW-F, SW-D, and

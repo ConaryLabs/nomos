@@ -60,6 +60,9 @@ jobs:
       - name: Agy print preflight harness
         run: docs/evaluation/test-agy-print-preflight.sh
 
+      - name: Agy formal boundary harness
+        run: docs/evaluation/test-agy-formal-boundary-preflight.sh
+
       - name: Determinism
         # The canonical-hash test prints `HASH <name> <hex>` lines. Four runs —
         # debug twice, release twice — must produce byte-identical lines.

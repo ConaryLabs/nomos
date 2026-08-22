@@ -1,0 +1,1 @@
+Reply with exactly: formal boundary preflight. Do not call tools.
