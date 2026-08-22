@@ -610,6 +610,22 @@ pub(crate) fn validate_current_state(
             "current state machine set does not match the simulation plan",
         ));
     }
+    let owned_namespaces = plan
+        .entities()
+        .iter()
+        .flat_map(|entity| entity.machines().iter().cloned())
+        .collect::<std::collections::BTreeSet<_>>();
+    let machine_namespaces = plan
+        .machines()
+        .iter()
+        .map(|machine| machine.namespace().clone())
+        .collect::<std::collections::BTreeSet<_>>();
+    if owned_namespaces != machine_namespaces {
+        return Err(Diagnostic::new(
+            nomos_core::diagnostic::codes::RUNTIME_STATE_INVALID,
+            "simulation entity ownership does not match the runtime machine set",
+        ));
+    }
     for machine in plan.machines() {
         let Some(state) = current.machine(machine.namespace()) else {
             return Err(Diagnostic::new(

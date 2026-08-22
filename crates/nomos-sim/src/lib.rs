@@ -43,6 +43,7 @@ mod commit;
 mod receipt;
 mod resolver;
 mod run_evidence;
+mod run_result;
 mod state_persistence;
 mod transaction;
 
@@ -51,9 +52,9 @@ pub use commit::{CommittedTransaction, commit_transaction, commit_transaction_wi
 pub use receipt::{CausalReceipt, EffectiveFactRef, EffectiveFactValue, ProjectionDelta};
 pub use resolver::{resolve_light, resolve_movement};
 pub use run_evidence::{
-    CommandLog, CommandLogRow, RunArtifactDigest, RunArtifactName, RunResult, RunStatus,
-    StateHashRow, StateHashSequence,
+    CausalReceiptSequence, CommandLog, CommandLogRow, StateHashRow, StateHashSequence,
 };
+pub use run_result::{RunArtifactDigest, RunArtifactName, RunResult, RunStatus};
 pub use state_persistence::PersistedRuntimeState;
 pub use transaction::{
     DEFAULT_TRANSITION_BUDGET, PreparedTransaction, RuntimeEntityState, SimulationState,
@@ -102,6 +103,13 @@ pub fn state_hash_sequence_schema() -> SchemaId {
         .expect("the state-hash-sequence schema id is a valid literal")
 }
 
+/// Canonical schema for the ordered causal-receipt artifact.
+#[must_use]
+pub fn causal_receipt_sequence_schema() -> SchemaId {
+    SchemaId::new("nomos.causal_receipt_sequence", 1)
+        .expect("the causal-receipt-sequence schema id is a valid literal")
+}
+
 /// Canonical schema for the future run bundle's content-binding result.
 #[must_use]
 pub fn run_result_schema() -> SchemaId {
@@ -131,9 +139,9 @@ mod tests {
     use std::collections::BTreeSet;
 
     use super::{
-        causal_receipt_schema, command_log_schema, command_script_schema,
-        persisted_runtime_state_schema, replay_log_schema, run_result_schema, runtime_state_schema,
-        state_hash_sequence_schema,
+        causal_receipt_schema, causal_receipt_sequence_schema, command_log_schema,
+        command_script_schema, persisted_runtime_state_schema, replay_log_schema,
+        run_result_schema, runtime_state_schema, state_hash_sequence_schema,
     };
 
     #[test]
@@ -144,6 +152,7 @@ mod tests {
             command_script_schema(),
             command_log_schema(),
             state_hash_sequence_schema(),
+            causal_receipt_sequence_schema(),
             run_result_schema(),
             causal_receipt_schema(),
             replay_log_schema(),

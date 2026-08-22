@@ -1,16 +1,12 @@
 //! Typed persisted evidence shared by future run and replay orchestration.
 
-use std::collections::BTreeSet;
-
 use nomos_core::canonical::read::parse_canonical;
-use nomos_core::{
-    CanonicalValue, Diagnostic, DiagnosticCode, RepairClass, SchemaId, Sha256Digest, StateHash,
-};
+use nomos_core::{CanonicalValue, Diagnostic, RepairClass, SchemaId, Sha256Digest, StateHash};
 use nomos_projection::{Command, CommandArgument};
 
 use crate::receipt::{command_to_canonical, decode_command};
 use crate::state_persistence::{
-    array, digest, field, invalid, object, require_fields, schema, state_hash, text, uint,
+    array, digest, field, invalid, object, require_fields, schema, state_hash, uint,
 };
 use crate::{CausalReceipt, CommandRequest};
 
@@ -238,7 +234,11 @@ impl CommandLog {
     ///
     /// Returns `EK0816` for count, command, tick, state-hash, or digest
     /// disagreement.
-    pub fn validate_receipts(&self, receipts: &[CausalReceipt]) -> Result<(), Diagnostic> {
+    pub fn validate_receipts(
+        &self,
+        initial_tick: u64,
+        receipts: &[CausalReceipt],
+    ) -> Result<(), Diagnostic> {
         if receipts.len() != self.rows.len() {
             return Err(inconsistent(
                 "command-log and causal-receipt counts disagree",
@@ -253,16 +253,17 @@ impl CommandLog {
                     "command-log row disagrees with its typed causal receipt",
                 ));
             }
-            if index > 0 {
-                let expected_tick = receipts[index - 1]
-                    .tick()
-                    .checked_add(1)
-                    .ok_or_else(|| inconsistent("causal-receipt tick chain overflows u64"))?;
-                if receipt.tick() != expected_tick {
-                    return Err(inconsistent(
-                        "causal-receipt ticks are not contiguous in command-log order",
-                    ));
-                }
+            let offset = u64::try_from(index)
+                .map_err(|_| inconsistent("causal-receipt count exceeds u64"))?
+                .checked_add(1)
+                .ok_or_else(|| inconsistent("causal-receipt tick offset overflows u64"))?;
+            let expected_tick = initial_tick
+                .checked_add(offset)
+                .ok_or_else(|| inconsistent("causal-receipt tick chain overflows u64"))?;
+            if receipt.tick() != expected_tick {
+                return Err(inconsistent(
+                    "causal-receipt ticks do not continue from the initial state",
+                ));
             }
         }
         Ok(())
@@ -280,6 +281,115 @@ impl CommandLog {
         ])
         .to_canonical_bytes()
     }
+}
+
+/// Canonical ordered collection written as `causal-receipts.json`.
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct CausalReceiptSequence {
+    schema: SchemaId,
+    receipts: Vec<CausalReceipt>,
+}
+
+impl CausalReceiptSequence {
+    /// Builds a receipt collection anchored to one initial tick and command log.
+    ///
+    /// # Errors
+    ///
+    /// Returns `EK0816` when count, command, tick, state-hash, or digest
+    /// evidence disagrees.
+    pub fn new(
+        initial_tick: u64,
+        log: &CommandLog,
+        receipts: Vec<CausalReceipt>,
+    ) -> Result<Self, Diagnostic> {
+        log.validate_receipts(initial_tick, &receipts)?;
+        Ok(Self {
+            schema: crate::causal_receipt_sequence_schema(),
+            receipts,
+        })
+    }
+
+    /// Strictly decoded causal receipts in committed-command order.
+    #[must_use]
+    pub fn receipts(&self) -> &[CausalReceipt] {
+        &self.receipts
+    }
+
+    /// Strictly reconstructs one canonical receipt sequence.
+    ///
+    /// # Errors
+    ///
+    /// Returns the first canonical, schema, nested-receipt, or tick-order
+    /// disagreement diagnostic.
+    pub fn from_canonical_bytes(bytes: &[u8]) -> Result<Self, Diagnostic> {
+        let value = parse_canonical(bytes)?;
+        let fields = object(&value, "causal-receipt sequence")?;
+        require_fields(fields, &["receipts", "schema"], "causal-receipt sequence")?;
+        let schema = schema(field(fields, "schema")?, "causal-receipt-sequence schema")?;
+        if schema != crate::causal_receipt_sequence_schema() {
+            return Err(invalid(
+                "causal-receipt sequence names an unsupported schema",
+            ));
+        }
+        let receipts = array(field(fields, "receipts")?, "causal receipts")?
+            .iter()
+            .map(|receipt| CausalReceipt::from_canonical_bytes(&receipt.to_canonical_bytes()))
+            .collect::<Result<Vec<_>, _>>()?;
+        validate_receipt_tick_continuity(&receipts)?;
+        let sequence = Self { schema, receipts };
+        if sequence.to_canonical_bytes() != bytes {
+            return Err(invalid(
+                "causal-receipt sequence does not exactly re-encode from its typed meaning",
+            ));
+        }
+        Ok(sequence)
+    }
+
+    /// Verifies this sequence against a command log and its input state's tick.
+    ///
+    /// # Errors
+    ///
+    /// Returns `EK0816` for any cross-object disagreement.
+    pub fn validate_command_log(
+        &self,
+        initial_tick: u64,
+        log: &CommandLog,
+    ) -> Result<(), Diagnostic> {
+        log.validate_receipts(initial_tick, &self.receipts)
+    }
+
+    /// Exact canonical causal-receipt-sequence bytes.
+    #[must_use]
+    pub fn to_canonical_bytes(&self) -> Vec<u8> {
+        CanonicalValue::object_declared([
+            (
+                "receipts",
+                CanonicalValue::Array(
+                    self.receipts
+                        .iter()
+                        .map(CausalReceipt::to_canonical)
+                        .collect(),
+                ),
+            ),
+            ("schema", self.schema.to_canonical()),
+        ])
+        .to_canonical_bytes()
+    }
+}
+
+fn validate_receipt_tick_continuity(receipts: &[CausalReceipt]) -> Result<(), Diagnostic> {
+    for pair in receipts.windows(2) {
+        let expected = pair[0]
+            .tick()
+            .checked_add(1)
+            .ok_or_else(|| inconsistent("causal-receipt tick chain overflows u64"))?;
+        if pair[1].tick() != expected {
+            return Err(inconsistent(
+                "causal-receipt ticks are not contiguous in sequence order",
+            ));
+        }
+    }
+    Ok(())
 }
 
 /// One ordinal runtime snapshot identity in a run's state-hash chain.
@@ -445,462 +555,6 @@ impl StateHashSequence {
     }
 }
 
-/// Run-bundle artifact names bound by `result.json`.
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
-pub enum RunArtifactName {
-    /// Persisted initial state.
-    InitialState,
-    /// Persisted final state.
-    FinalState,
-    /// Typed command log.
-    CommandLog,
-    /// Typed causal-receipt collection.
-    CausalReceipts,
-    /// Typed state-hash sequence.
-    StateHashes,
-}
-
-impl RunArtifactName {
-    /// Fixed root-level file name.
-    #[must_use]
-    pub const fn as_str(self) -> &'static str {
-        match self {
-            Self::InitialState => "initial-state.json",
-            Self::FinalState => "final-state.json",
-            Self::CommandLog => "command-log.json",
-            Self::CausalReceipts => "causal-receipts.json",
-            Self::StateHashes => "state-hashes.json",
-        }
-    }
-
-    fn parse(value: &str) -> Option<Self> {
-        match value {
-            "initial-state.json" => Some(Self::InitialState),
-            "final-state.json" => Some(Self::FinalState),
-            "command-log.json" => Some(Self::CommandLog),
-            "causal-receipts.json" => Some(Self::CausalReceipts),
-            "state-hashes.json" => Some(Self::StateHashes),
-            _ => None,
-        }
-    }
-
-    const ALL: [Self; 5] = [
-        Self::CausalReceipts,
-        Self::CommandLog,
-        Self::FinalState,
-        Self::InitialState,
-        Self::StateHashes,
-    ];
-}
-
-/// SHA-256 binding for one non-result run artifact.
-#[derive(Clone, PartialEq, Eq, Debug)]
-pub struct RunArtifactDigest {
-    name: RunArtifactName,
-    digest: Sha256Digest,
-}
-
-impl RunArtifactDigest {
-    /// Builds one typed artifact binding.
-    #[must_use]
-    pub const fn new(name: RunArtifactName, digest: Sha256Digest) -> Self {
-        Self { name, digest }
-    }
-
-    /// Fixed artifact name.
-    #[must_use]
-    pub const fn name(&self) -> RunArtifactName {
-        self.name
-    }
-
-    /// SHA-256 of the artifact's exact canonical bytes.
-    #[must_use]
-    pub const fn digest(&self) -> Sha256Digest {
-        self.digest
-    }
-
-    fn to_canonical(&self) -> CanonicalValue {
-        CanonicalValue::object_declared([
-            ("digest", CanonicalValue::text(self.digest.to_hex())),
-            ("name", CanonicalValue::text(self.name.as_str())),
-        ])
-    }
-}
-
-/// Terminal status of a future run bundle.
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub enum RunStatus {
-    /// Every requested command committed.
-    Completed,
-    /// Execution stopped on a stable rejection diagnostic.
-    Rejected,
-}
-
-impl RunStatus {
-    /// Stable wire spelling.
-    #[must_use]
-    pub const fn as_str(self) -> &'static str {
-        match self {
-            Self::Completed => "completed",
-            Self::Rejected => "rejected",
-        }
-    }
-}
-
-/// Content-binding record written as a future run bundle's `result.json`.
-#[derive(Clone, PartialEq, Eq, Debug)]
-pub struct RunResult {
-    schema: SchemaId,
-    input_package_digest: Sha256Digest,
-    runtime_semantics_digest: Sha256Digest,
-    status: RunStatus,
-    artifacts: Vec<RunArtifactDigest>,
-    first_state_hash: StateHash,
-    final_state_hash: StateHash,
-    committed_command_count: u64,
-    rejection_diagnostic: Option<DiagnosticCode>,
-}
-
-impl RunResult {
-    /// Builds content-binding evidence for a completed command script.
-    ///
-    /// # Errors
-    ///
-    /// Returns `EK0816` when artifact coverage or the typed log/hash evidence
-    /// disagrees.
-    pub fn completed(
-        input_package_digest: Sha256Digest,
-        runtime_semantics_digest: Sha256Digest,
-        artifacts: Vec<RunArtifactDigest>,
-        log: &CommandLog,
-        hashes: &StateHashSequence,
-    ) -> Result<Self, Diagnostic> {
-        Self::build(
-            input_package_digest,
-            runtime_semantics_digest,
-            RunStatus::Completed,
-            artifacts,
-            log,
-            hashes,
-            None,
-        )
-    }
-
-    /// Builds content-binding evidence for a run stopped by rejection.
-    ///
-    /// # Errors
-    ///
-    /// Returns `EK0816` under the same conditions as [`Self::completed`].
-    pub fn rejected(
-        input_package_digest: Sha256Digest,
-        runtime_semantics_digest: Sha256Digest,
-        artifacts: Vec<RunArtifactDigest>,
-        log: &CommandLog,
-        hashes: &StateHashSequence,
-        rejection_diagnostic: DiagnosticCode,
-    ) -> Result<Self, Diagnostic> {
-        Self::build(
-            input_package_digest,
-            runtime_semantics_digest,
-            RunStatus::Rejected,
-            artifacts,
-            log,
-            hashes,
-            Some(rejection_diagnostic),
-        )
-    }
-
-    fn build(
-        input_package_digest: Sha256Digest,
-        runtime_semantics_digest: Sha256Digest,
-        status: RunStatus,
-        artifacts: Vec<RunArtifactDigest>,
-        log: &CommandLog,
-        hashes: &StateHashSequence,
-        rejection_diagnostic: Option<DiagnosticCode>,
-    ) -> Result<Self, Diagnostic> {
-        hashes.validate_command_log(log)?;
-        let committed_command_count = u64::try_from(log.rows.len())
-            .map_err(|_| inconsistent("committed command count exceeds u64"))?;
-        let result = Self {
-            schema: crate::run_result_schema(),
-            input_package_digest,
-            runtime_semantics_digest,
-            status,
-            artifacts: normalize_artifacts(artifacts)?,
-            first_state_hash: hashes.first_state_hash(),
-            final_state_hash: hashes.final_state_hash(),
-            committed_command_count,
-            rejection_diagnostic,
-        };
-        result.validate_internal()?;
-        result.validate_typed_artifact_digests(log, hashes)?;
-        Ok(result)
-    }
-
-    /// Terminal run status.
-    #[must_use]
-    pub const fn status(&self) -> RunStatus {
-        self.status
-    }
-
-    /// Verified package digest recorded by the input package manifest.
-    #[must_use]
-    pub const fn input_package_digest(&self) -> Sha256Digest {
-        self.input_package_digest
-    }
-
-    /// Digest identifying the exact canonical simulation projection bytes.
-    #[must_use]
-    pub const fn runtime_semantics_digest(&self) -> Sha256Digest {
-        self.runtime_semantics_digest
-    }
-
-    /// Exact required non-result artifact bindings in file-name order.
-    #[must_use]
-    pub fn artifacts(&self) -> &[RunArtifactDigest] {
-        &self.artifacts
-    }
-
-    /// State hash from `initial-state.json`.
-    #[must_use]
-    pub const fn first_state_hash(&self) -> StateHash {
-        self.first_state_hash
-    }
-
-    /// State hash from `final-state.json`.
-    #[must_use]
-    pub const fn final_state_hash(&self) -> StateHash {
-        self.final_state_hash
-    }
-
-    /// Exact number of successfully committed commands.
-    #[must_use]
-    pub const fn committed_command_count(&self) -> u64 {
-        self.committed_command_count
-    }
-
-    /// Stable rejection code, present only for a rejected run.
-    #[must_use]
-    pub const fn rejection_diagnostic(&self) -> Option<DiagnosticCode> {
-        self.rejection_diagnostic
-    }
-
-    /// Strictly reconstructs one canonical run-result record.
-    ///
-    /// # Errors
-    ///
-    /// Returns the first canonical, schema, artifact, status, count, or hash
-    /// consistency diagnostic.
-    pub fn from_canonical_bytes(bytes: &[u8]) -> Result<Self, Diagnostic> {
-        let value = parse_canonical(bytes)?;
-        let fields = object(&value, "run result")?;
-        require_fields(
-            fields,
-            &[
-                "artifacts",
-                "committed_command_count",
-                "final_state_hash",
-                "first_state_hash",
-                "input_package_digest",
-                "rejection_diagnostic",
-                "runtime_semantics_digest",
-                "schema",
-                "status",
-            ],
-            "run result",
-        )?;
-        let schema = schema(field(fields, "schema")?, "run-result schema")?;
-        if schema != crate::run_result_schema() {
-            return Err(invalid("run result names an unsupported schema"));
-        }
-        let status = match text(field(fields, "status")?, "run status")? {
-            "completed" => RunStatus::Completed,
-            "rejected" => RunStatus::Rejected,
-            _ => return Err(invalid("run status is unsupported")),
-        };
-        let artifacts = array(field(fields, "artifacts")?, "run artifacts")?
-            .iter()
-            .map(|row| {
-                let fields = object(row, "run artifact")?;
-                require_fields(fields, &["digest", "name"], "run artifact")?;
-                let name =
-                    RunArtifactName::parse(text(field(fields, "name")?, "run artifact name")?)
-                        .ok_or_else(|| invalid("run artifact name is unsupported"))?;
-                Ok(RunArtifactDigest {
-                    name,
-                    digest: digest(field(fields, "digest")?, "run artifact digest")?,
-                })
-            })
-            .collect::<Result<Vec<_>, Diagnostic>>()?;
-        let rejection_diagnostic = match field(fields, "rejection_diagnostic")? {
-            CanonicalValue::Null => None,
-            value => {
-                let fields = object(value, "run rejection diagnostic")?;
-                require_fields(fields, &["code"], "run rejection diagnostic")?;
-                Some(
-                    DiagnosticCode::parse(text(field(fields, "code")?, "rejection code")?)
-                        .ok_or_else(|| invalid("run rejection diagnostic code is unknown"))?,
-                )
-            }
-        };
-        let result = Self {
-            schema,
-            input_package_digest: digest(
-                field(fields, "input_package_digest")?,
-                "input package digest",
-            )?,
-            runtime_semantics_digest: digest(
-                field(fields, "runtime_semantics_digest")?,
-                "runtime semantics digest",
-            )?,
-            status,
-            artifacts: normalize_artifacts(artifacts)?,
-            first_state_hash: state_hash(field(fields, "first_state_hash")?)?,
-            final_state_hash: state_hash(field(fields, "final_state_hash")?)?,
-            committed_command_count: uint(
-                field(fields, "committed_command_count")?,
-                "committed command count",
-            )?,
-            rejection_diagnostic,
-        };
-        result.validate_internal()?;
-        if result.to_canonical_bytes() != bytes {
-            return Err(invalid(
-                "run result does not exactly re-encode from its typed meaning",
-            ));
-        }
-        Ok(result)
-    }
-
-    /// Verifies count and endpoint hashes against typed log/hash evidence.
-    ///
-    /// # Errors
-    ///
-    /// Returns `EK0816` for any cross-object disagreement.
-    pub fn validate_evidence(
-        &self,
-        log: &CommandLog,
-        hashes: &StateHashSequence,
-    ) -> Result<(), Diagnostic> {
-        hashes.validate_command_log(log)?;
-        let count = u64::try_from(log.rows.len())
-            .map_err(|_| inconsistent("committed command count exceeds u64"))?;
-        if self.committed_command_count != count
-            || self.first_state_hash != hashes.first_state_hash()
-            || self.final_state_hash != hashes.final_state_hash()
-        {
-            return Err(inconsistent(
-                "run result disagrees with command-log or state-hash evidence",
-            ));
-        }
-        self.validate_typed_artifact_digests(log, hashes)?;
-        Ok(())
-    }
-
-    /// Exact canonical run-result bytes.
-    #[must_use]
-    pub fn to_canonical_bytes(&self) -> Vec<u8> {
-        let rejection = self
-            .rejection_diagnostic
-            .map_or(CanonicalValue::Null, |code| {
-                CanonicalValue::object_declared([("code", CanonicalValue::text(code.as_str()))])
-            });
-        CanonicalValue::object_declared([
-            (
-                "artifacts",
-                CanonicalValue::Array(
-                    self.artifacts
-                        .iter()
-                        .map(RunArtifactDigest::to_canonical)
-                        .collect(),
-                ),
-            ),
-            (
-                "committed_command_count",
-                CanonicalValue::Uint(self.committed_command_count),
-            ),
-            (
-                "final_state_hash",
-                CanonicalValue::text(self.final_state_hash.to_hex()),
-            ),
-            (
-                "first_state_hash",
-                CanonicalValue::text(self.first_state_hash.to_hex()),
-            ),
-            (
-                "input_package_digest",
-                CanonicalValue::text(self.input_package_digest.to_hex()),
-            ),
-            ("rejection_diagnostic", rejection),
-            (
-                "runtime_semantics_digest",
-                CanonicalValue::text(self.runtime_semantics_digest.to_hex()),
-            ),
-            ("schema", self.schema.to_canonical()),
-            ("status", CanonicalValue::text(self.status.as_str())),
-        ])
-        .to_canonical_bytes()
-    }
-
-    fn validate_internal(&self) -> Result<(), Diagnostic> {
-        match (self.status, self.rejection_diagnostic) {
-            (RunStatus::Completed, None) | (RunStatus::Rejected, Some(_)) => {}
-            _ => {
-                return Err(inconsistent(
-                    "run status and rejection diagnostic presence disagree",
-                ));
-            }
-        }
-        if self.status == RunStatus::Completed && self.committed_command_count == 0 {
-            return Err(inconsistent(
-                "a completed nonempty command script must commit at least one command",
-            ));
-        }
-        if self.committed_command_count == 0 && self.first_state_hash != self.final_state_hash {
-            return Err(inconsistent(
-                "a zero-commit run has different first and final state hashes",
-            ));
-        }
-        if self.committed_command_count > 0 && self.first_state_hash == self.final_state_hash {
-            return Err(inconsistent(
-                "a committed run has identical first and final state hashes",
-            ));
-        }
-        Ok(())
-    }
-
-    fn validate_typed_artifact_digests(
-        &self,
-        log: &CommandLog,
-        hashes: &StateHashSequence,
-    ) -> Result<(), Diagnostic> {
-        let expected = [
-            (
-                RunArtifactName::CommandLog,
-                Sha256Digest::of_bytes(&log.to_canonical_bytes()),
-            ),
-            (
-                RunArtifactName::StateHashes,
-                Sha256Digest::of_bytes(&hashes.to_canonical_bytes()),
-            ),
-        ];
-        for (name, digest) in expected {
-            let recorded = self
-                .artifacts
-                .iter()
-                .find(|artifact| artifact.name == name)
-                .expect("run-result artifact coverage was already validated");
-            if recorded.digest != digest {
-                return Err(inconsistent(
-                    "run result artifact digest disagrees with typed run evidence",
-                ));
-            }
-        }
-        Ok(())
-    }
-}
-
 fn validate_hash_rows(rows: &[StateHashRow]) -> Result<(), Diagnostic> {
     if rows.is_empty() {
         return Err(inconsistent(
@@ -919,24 +573,7 @@ fn validate_hash_rows(rows: &[StateHashRow]) -> Result<(), Diagnostic> {
     Ok(())
 }
 
-fn normalize_artifacts(
-    mut artifacts: Vec<RunArtifactDigest>,
-) -> Result<Vec<RunArtifactDigest>, Diagnostic> {
-    let actual = artifacts
-        .iter()
-        .map(|artifact| artifact.name)
-        .collect::<BTreeSet<_>>();
-    let expected = RunArtifactName::ALL.into_iter().collect::<BTreeSet<_>>();
-    if artifacts.len() != RunArtifactName::ALL.len() || actual != expected {
-        return Err(inconsistent(
-            "run result does not bind each required non-result artifact exactly once",
-        ));
-    }
-    artifacts.sort_by_key(|artifact| artifact.name.as_str());
-    Ok(artifacts)
-}
-
-fn inconsistent(message: impl Into<String>) -> Diagnostic {
+pub(crate) fn inconsistent(message: impl Into<String>) -> Diagnostic {
     Diagnostic::new(
         nomos_core::diagnostic::codes::RUNTIME_EVIDENCE_INCONSISTENT,
         message,

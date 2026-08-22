@@ -8,9 +8,9 @@ use nomos_projection::{
     ProjectedEntity, RuntimeBinding, SimulationPlan,
 };
 use nomos_sim::{
-    CausalReceipt, CommandLog, CommandLogRow, CommandRequest, CommandScript, PersistedRuntimeState,
-    RunArtifactDigest, RunArtifactName, RunResult, SimulationState, StateHashSequence,
-    commit_transaction, resolve_command,
+    CausalReceipt, CausalReceiptSequence, CommandLog, CommandLogRow, CommandRequest, CommandScript,
+    PersistedRuntimeState, RunResult, SimulationState, StateHashSequence, commit_transaction,
+    resolve_command,
 };
 
 const SOURCE: &str = include_str!("../../../fixtures/gaol.nomos");
@@ -31,8 +31,10 @@ fn object(
 
 fn executed_evidence() -> (
     nomos_projection::SimulationPlan,
+    PersistedRuntimeState,
+    PersistedRuntimeState,
     CommandLog,
-    Vec<CausalReceipt>,
+    CausalReceiptSequence,
     StateHashSequence,
 ) {
     let plan = plan(SOURCE);
@@ -41,6 +43,7 @@ fn executed_evidence() -> (
     )
     .unwrap();
     let mut current = SimulationState::initialize(&plan).unwrap();
+    let initial = PersistedRuntimeState::new(&plan, current.clone()).unwrap();
     let initial_hash = current.state_hash();
     let mut rows = Vec::new();
     let mut receipts = Vec::new();
@@ -63,27 +66,9 @@ fn executed_evidence() -> (
     }
     let log = CommandLog::new(rows).unwrap();
     let hashes = StateHashSequence::from_command_log(initial_hash, &log).unwrap();
-    (plan, log, receipts, hashes)
-}
-
-fn artifact_digests(log: &CommandLog, hashes: &StateHashSequence) -> Vec<RunArtifactDigest> {
-    [
-        RunArtifactName::InitialState,
-        RunArtifactName::FinalState,
-        RunArtifactName::CommandLog,
-        RunArtifactName::CausalReceipts,
-        RunArtifactName::StateHashes,
-    ]
-    .into_iter()
-    .map(|name| {
-        let digest = match name {
-            RunArtifactName::CommandLog => Sha256Digest::of_bytes(&log.to_canonical_bytes()),
-            RunArtifactName::StateHashes => Sha256Digest::of_bytes(&hashes.to_canonical_bytes()),
-            _ => Sha256Digest::of_bytes(name.as_str().as_bytes()),
-        };
-        RunArtifactDigest::new(name, digest)
-    })
-    .collect()
+    let receipts = CausalReceiptSequence::new(initial.state().tick(), &log, receipts).unwrap();
+    let final_state = PersistedRuntimeState::new(&plan, current).unwrap();
+    (plan, initial, final_state, log, receipts, hashes)
 }
 
 #[test]
@@ -135,6 +120,32 @@ fn persisted_state_rejects_semantic_rebinding_and_nested_shape_mutation() {
     assert_eq!(
         error.code(),
         nomos_core::diagnostic::codes::RUNTIME_PERSISTED_INVALID
+    );
+
+    let malformed_entities = original_plan
+        .entities()
+        .iter()
+        .map(|entity| {
+            let machines = if entity.id().to_string() == "north_gate" {
+                Vec::new()
+            } else {
+                entity.machines().to_vec()
+            };
+            ProjectedEntity::new(entity.id().clone(), entity.binding().clone(), machines).unwrap()
+        })
+        .collect();
+    let malformed_plan = original_plan
+        .clone()
+        .with_entities(malformed_entities)
+        .unwrap();
+    assert_eq!(
+        SimulationState::from_canonical_bytes(
+            &persisted.state().to_canonical_bytes(),
+            &malformed_plan,
+        )
+        .unwrap_err()
+        .code(),
+        nomos_core::diagnostic::codes::RUNTIME_STATE_INVALID
     );
 }
 
@@ -312,9 +323,15 @@ fn command_language_rejects_noncanonical_text_and_requirement_mismatches() {
 
 #[test]
 fn causal_receipts_reconstruct_complete_typed_evidence() {
-    let (_, _, receipts, _) = executed_evidence();
+    let (_, _, _, _, receipt_sequence, _) = executed_evidence();
+    let sequence_bytes = receipt_sequence.to_canonical_bytes();
+    assert_eq!(
+        CausalReceiptSequence::from_canonical_bytes(&sequence_bytes).unwrap(),
+        receipt_sequence
+    );
+    let receipts = receipt_sequence.receipts();
     assert_eq!(receipts.len(), 5);
-    for receipt in &receipts {
+    for receipt in receipts {
         let bytes = receipt.to_canonical_bytes();
         let decoded = CausalReceipt::from_canonical_bytes(&bytes).unwrap();
         assert_eq!(&decoded, receipt);
@@ -343,11 +360,20 @@ fn causal_receipts_reconstruct_complete_typed_evidence() {
 
 #[test]
 fn logs_hash_sequences_and_results_round_trip_and_cross_validate() {
-    let (plan, log, receipts, hashes) = executed_evidence();
+    let (plan, initial, final_state, log, receipts, hashes) = executed_evidence();
     let log_bytes = log.to_canonical_bytes();
     let decoded_log = CommandLog::from_canonical_bytes(&log_bytes).unwrap();
     assert_eq!(decoded_log, log);
-    decoded_log.validate_receipts(&receipts).unwrap();
+    decoded_log
+        .validate_receipts(0, receipts.receipts())
+        .unwrap();
+    assert_eq!(
+        decoded_log
+            .validate_receipts(1, receipts.receipts())
+            .unwrap_err()
+            .code(),
+        nomos_core::diagnostic::codes::RUNTIME_EVIDENCE_INCONSISTENT
+    );
 
     let hash_bytes = hashes.to_canonical_bytes();
     let decoded_hashes = StateHashSequence::from_canonical_bytes(&hash_bytes).unwrap();
@@ -355,19 +381,21 @@ fn logs_hash_sequences_and_results_round_trip_and_cross_validate() {
     decoded_hashes.validate_command_log(&decoded_log).unwrap();
     assert_eq!(decoded_hashes.rows().len(), decoded_log.rows().len() + 1);
     assert_eq!(
-        StateHashSequence::from_command_log(receipts.last().unwrap().state_hash(), &decoded_log)
-            .unwrap_err()
-            .code(),
+        StateHashSequence::from_command_log(
+            receipts.receipts().last().unwrap().state_hash(),
+            &decoded_log,
+        )
+        .unwrap_err()
+        .code(),
         nomos_core::diagnostic::codes::RUNTIME_EVIDENCE_INCONSISTENT
     );
 
-    let initial = SimulationState::initialize(&plan).unwrap();
-    let persisted = PersistedRuntimeState::new(&plan, initial).unwrap();
     let result = RunResult::completed(
         Sha256Digest::of_bytes(b"manifest.json"),
-        persisted.runtime_semantics_digest(),
-        artifact_digests(&decoded_log, &decoded_hashes),
+        &initial,
+        &final_state,
         &decoded_log,
+        &receipts,
         &decoded_hashes,
     )
     .unwrap();
@@ -375,16 +403,23 @@ fn logs_hash_sequences_and_results_round_trip_and_cross_validate() {
     let decoded_result = RunResult::from_canonical_bytes(&result_bytes).unwrap();
     assert_eq!(decoded_result, result);
     decoded_result
-        .validate_evidence(&decoded_log, &decoded_hashes)
+        .validate_evidence(
+            &initial,
+            &final_state,
+            &decoded_log,
+            &receipts,
+            &decoded_hashes,
+        )
         .unwrap();
     assert_eq!(decoded_result.committed_command_count(), 5);
     assert_eq!(decoded_result.rejection_diagnostic(), None);
 
     let rejected = RunResult::rejected(
         Sha256Digest::of_bytes(b"manifest.json"),
-        persisted.runtime_semantics_digest(),
-        artifact_digests(&decoded_log, &decoded_hashes),
+        &initial,
+        &final_state,
         &decoded_log,
+        &receipts,
         &decoded_hashes,
         nomos_core::diagnostic::codes::RUNTIME_SOURCE_STATE_ILLEGAL,
     )
@@ -397,17 +432,19 @@ fn logs_hash_sequences_and_results_round_trip_and_cross_validate() {
     );
 
     let empty_log = CommandLog::new(Vec::new()).unwrap();
-    let empty_hashes = StateHashSequence::from_command_log(
-        SimulationState::initialize(&plan).unwrap().state_hash(),
-        &empty_log,
-    )
-    .unwrap();
+    let empty_state =
+        PersistedRuntimeState::new(&plan, SimulationState::initialize(&plan).unwrap()).unwrap();
+    let empty_hashes =
+        StateHashSequence::from_command_log(empty_state.state_hash(), &empty_log).unwrap();
+    let empty_receipts =
+        CausalReceiptSequence::new(empty_state.state().tick(), &empty_log, Vec::new()).unwrap();
     assert_eq!(
         RunResult::completed(
             Sha256Digest::of_bytes(b"manifest.json"),
-            persisted.runtime_semantics_digest(),
-            artifact_digests(&empty_log, &empty_hashes),
+            &empty_state,
+            &empty_state,
             &empty_log,
+            &empty_receipts,
             &empty_hashes,
         )
         .unwrap_err()
@@ -416,9 +453,10 @@ fn logs_hash_sequences_and_results_round_trip_and_cross_validate() {
     );
     RunResult::rejected(
         Sha256Digest::of_bytes(b"manifest.json"),
-        persisted.runtime_semantics_digest(),
-        artifact_digests(&empty_log, &empty_hashes),
+        &empty_state,
+        &empty_state,
         &empty_log,
+        &empty_receipts,
         &empty_hashes,
         nomos_core::diagnostic::codes::RUNTIME_SOURCE_STATE_ILLEGAL,
     )
@@ -427,7 +465,8 @@ fn logs_hash_sequences_and_results_round_trip_and_cross_validate() {
 
 #[test]
 fn refreshed_receipt_digest_cannot_hide_typed_command_disagreement() {
-    let (_, log, mut receipts, _) = executed_evidence();
+    let (_, _, _, log, receipt_sequence, _) = executed_evidence();
+    let mut receipts = receipt_sequence.receipts().to_vec();
     let last = receipts.last_mut().unwrap();
     let mut receipt_value = parse_canonical(&last.to_canonical_bytes()).unwrap();
     object(
@@ -470,7 +509,7 @@ fn refreshed_receipt_digest_cannot_hide_typed_command_disagreement() {
     let refreshed_log = CommandLog::from_canonical_bytes(&log_value.to_canonical_bytes()).unwrap();
     assert_eq!(
         refreshed_log
-            .validate_receipts(&receipts)
+            .validate_receipts(0, &receipts)
             .unwrap_err()
             .code(),
         nomos_core::diagnostic::codes::RUNTIME_EVIDENCE_INCONSISTENT
@@ -479,7 +518,7 @@ fn refreshed_receipt_digest_cannot_hide_typed_command_disagreement() {
 
 #[test]
 fn persisted_evidence_rejects_order_hash_status_and_cross_object_mutations() {
-    let (plan, log, receipts, hashes) = executed_evidence();
+    let (_, initial, final_state, log, receipts, hashes) = executed_evidence();
 
     let mut reordered = parse_canonical(&log.to_canonical_bytes()).unwrap();
     let CanonicalValue::Array(rows) = object(&mut reordered)
@@ -517,13 +556,12 @@ fn persisted_evidence_rejects_order_hash_status_and_cross_object_mutations() {
         nomos_core::diagnostic::codes::RUNTIME_EVIDENCE_INCONSISTENT
     );
 
-    let persisted =
-        PersistedRuntimeState::new(&plan, SimulationState::initialize(&plan).unwrap()).unwrap();
     let result = RunResult::completed(
         Sha256Digest::of_bytes(b"manifest.json"),
-        persisted.runtime_semantics_digest(),
-        artifact_digests(&log, &hashes),
+        &initial,
+        &final_state,
         &log,
+        &receipts,
         &hashes,
     )
     .unwrap();
@@ -536,7 +574,7 @@ fn persisted_evidence_rejects_order_hash_status_and_cross_object_mutations() {
         RunResult::from_canonical_bytes(&changed_count.to_canonical_bytes()).unwrap();
     assert_eq!(
         changed_result
-            .validate_evidence(&log, &hashes)
+            .validate_evidence(&initial, &final_state, &log, &receipts, &hashes)
             .unwrap_err()
             .code(),
         nomos_core::diagnostic::codes::RUNTIME_EVIDENCE_INCONSISTENT
@@ -569,7 +607,7 @@ fn persisted_evidence_rejects_order_hash_status_and_cross_object_mutations() {
         CommandLog::from_canonical_bytes(&stale_digest_log.to_canonical_bytes()).unwrap();
     assert_eq!(
         stale_digest_log
-            .validate_receipts(&receipts)
+            .validate_receipts(0, receipts.receipts())
             .unwrap_err()
             .code(),
         nomos_core::diagnostic::codes::RUNTIME_EVIDENCE_INCONSISTENT
@@ -618,40 +656,30 @@ fn persisted_evidence_rejects_order_hash_status_and_cross_object_mutations() {
     artifacts.reverse();
     assert!(RunResult::from_canonical_bytes(&artifact_order.to_canonical_bytes()).is_err());
 
-    let mut wrong_artifact_digest = parse_canonical(&result.to_canonical_bytes()).unwrap();
-    let CanonicalValue::Array(artifacts) = object(&mut wrong_artifact_digest)
-        .get_mut(&FieldName::declared("artifacts"))
-        .unwrap()
-    else {
-        panic!("run artifacts must be an array")
-    };
-    let command_log_index = artifacts
-        .iter()
-        .position(|artifact| {
-            let CanonicalValue::Object(fields) = artifact else {
-                return false;
-            };
-            fields
-                .get(&FieldName::declared("name"))
-                .is_some_and(|name| name == &CanonicalValue::text("command-log.json"))
-        })
-        .unwrap();
-    let command_log_artifact = &mut artifacts[command_log_index];
-    object(command_log_artifact).insert(
-        FieldName::declared("digest"),
-        CanonicalValue::text("0".repeat(64)),
-    );
-    let wrong_artifact_result =
-        RunResult::from_canonical_bytes(&wrong_artifact_digest.to_canonical_bytes()).unwrap();
-    assert_eq!(
-        wrong_artifact_result
-            .validate_evidence(&log, &hashes)
-            .unwrap_err()
-            .code(),
-        nomos_core::diagnostic::codes::RUNTIME_EVIDENCE_INCONSISTENT
-    );
+    for artifact_index in 0..5 {
+        let mut wrong_artifact_digest = parse_canonical(&result.to_canonical_bytes()).unwrap();
+        let CanonicalValue::Array(artifacts) = object(&mut wrong_artifact_digest)
+            .get_mut(&FieldName::declared("artifacts"))
+            .unwrap()
+        else {
+            panic!("run artifacts must be an array")
+        };
+        object(&mut artifacts[artifact_index]).insert(
+            FieldName::declared("digest"),
+            CanonicalValue::text("0".repeat(64)),
+        );
+        let wrong_artifact_result =
+            RunResult::from_canonical_bytes(&wrong_artifact_digest.to_canonical_bytes()).unwrap();
+        assert_eq!(
+            wrong_artifact_result
+                .validate_evidence(&initial, &final_state, &log, &receipts, &hashes)
+                .unwrap_err()
+                .code(),
+            nomos_core::diagnostic::codes::RUNTIME_EVIDENCE_INCONSISTENT
+        );
+    }
 
-    let mut receipt_order = parse_canonical(&receipts[4].to_canonical_bytes()).unwrap();
+    let mut receipt_order = parse_canonical(&receipts.receipts()[4].to_canonical_bytes()).unwrap();
     let CanonicalValue::Array(deltas) = object(&mut receipt_order)
         .get_mut(&FieldName::declared("projection_deltas"))
         .unwrap()
@@ -661,7 +689,7 @@ fn persisted_evidence_rejects_order_hash_status_and_cross_object_mutations() {
     deltas.reverse();
     assert!(CausalReceipt::from_canonical_bytes(&receipt_order.to_canonical_bytes()).is_err());
 
-    let mut overflow = parse_canonical(&receipts[3].to_canonical_bytes()).unwrap();
+    let mut overflow = parse_canonical(&receipts.receipts()[3].to_canonical_bytes()).unwrap();
     let CanonicalValue::Array(transitions) = object(&mut overflow)
         .get_mut(&FieldName::declared("transitions"))
         .unwrap()

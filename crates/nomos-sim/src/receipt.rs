@@ -325,6 +325,10 @@ impl CausalReceipt {
     /// Canonical receipt bytes suitable for the separate run output.
     #[must_use]
     pub fn to_canonical_bytes(&self) -> Vec<u8> {
+        self.to_canonical().to_canonical_bytes()
+    }
+
+    pub(crate) fn to_canonical(&self) -> CanonicalValue {
         CanonicalValue::object_declared([
             ("command", command_to_canonical(&self.command)),
             (
@@ -352,7 +356,6 @@ impl CausalReceipt {
                 CanonicalValue::Array(self.steps.iter().map(transition_to_canonical).collect()),
             ),
         ])
-        .to_canonical_bytes()
     }
 
     fn validate_semantics(&self) -> Result<(), Diagnostic> {

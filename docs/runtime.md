@@ -103,12 +103,16 @@ text semantics accepted by issue #56. Resolution searches only external
 commands on machines owned by the requested entity and produces one explicit
 typed namespace command; it never reads source or guesses among namespaces.
 
-Three independently versioned canonical evidence types prepare the later run
+Four independently versioned canonical evidence types prepare the later run
 publisher:
 
 - `nomos.command_log@1` records zero-based contiguous committed rows. Each row
   binds the unresolved request, resolved typed command, input/result state
   hashes, and SHA-256 of one strictly decoded causal receipt.
+- `nomos.causal_receipt_sequence@1` is the schema-headed canonical value for
+  `causal-receipts.json`. It strictly reconstructs each nested receipt, preserves
+  commit order, and anchors receipt ticks to the supplied initial state's tick
+  when checked against a command log.
 - `nomos.state_hash_sequence@1` records snapshot ordinal zero for the initial
   state and one following hash for each committed command. Validation checks
   every command-log input and result rather than trusting an untyped hash list.
@@ -121,8 +125,10 @@ publisher:
 
 Constructors and decoders enforce ordinal, hash-chain, status/diagnostic,
 artifact-set, count, endpoint, command/receipt, receipt-digest, and tick-chain
-agreement. Human diagnostic wording remains outside `RunResult`; its rejection
-identity is the stable diagnostic code.
+agreement. `RunResult` accepts all five typed artifacts rather than caller-made
+digest rows and derives every binding from their exact canonical bytes; later
+validation recomputes all five digests. Human diagnostic wording remains
+outside `RunResult`; its rejection identity is the stable diagnostic code.
 
 ## Evidence boundary
 
