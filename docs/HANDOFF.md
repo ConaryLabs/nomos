@@ -1,8 +1,8 @@
 # Handoff — state of the repository
 
-Updated 2026-08-22 for issue #68 after SW-N merged. Semantic implementation is
-complete through SW-N on `main`; the post-SW-N disposition is active on branch
-`post-sw-n-freeze-68`. Gate K evidence closure remains in progress.
+Updated 2026-08-23 for issue #69. Semantic implementation is complete through
+SW-N and frozen on `main`; mechanical Gate K evidence closure is active on
+branch `gate-k-evidence-69`. Gate K remains explicitly unaccepted.
 This file orients a fresh session; it is rewritten at each slice boundary and
 never accumulates history (git has that).
 
@@ -315,27 +315,46 @@ never accumulates history (git has that).
   PR #67 merged as
   `05ba8e1007fe507288bae0c7f4019ba7d750f0f8`, issue #65 closed, and post-merge
   CI run `32587114490` passed.
+- **The post-SW-N implementation candidate is frozen (#68/#74):** the accepted
+  semantic implementation boundary is merge commit
+  `eb86f25f5084a5da83cdd4f26e42e68089367a11`. README and handoff status,
+  candidate invalidation rules, the no-new-feature boundary, and the Gate K
+  closure order are explicit. PR #74 and post-merge CI run `32602527283`
+  passed, issue #68 closed, and its feature branch was removed. This is an
+  implementation-complete boundary, not an RC tag or Gate K pass.
+- **Mechanical evidence closure is active (#69/#75):** the predeclared method
+  lives in `docs/evaluation/GATE_K_EVIDENCE_PLAN.md`; the dedicated workflow
+  runs ten public compile/run/replay processes on native Linux x86_64 debug,
+  x86_64 release, and aarch64 release lanes, then fails on any within-lane or
+  cross-target byte difference. It also records clean release build time,
+  sampled peak/final target disk, process RSS, and three warmup plus twenty
+  measured validate/command/replay samples with raw data and distribution
+  summaries. `docs/evaluation/SCHEMA_OWNERSHIP.md` records the finding-free
+  source review of the exact twenty canonical identities and explicitly
+  dispositions the shared compiler receipt profiles. The final exact-head
+  workflow and non-author disposition are recorded externally on draft PR #75
+  because committing their receipt would create a different head. No formal
+  cold-agent attempt is part of this slice.
 
 ## What is next
 
-Finish issue #68 without changing semantic behavior. It records the
-implementation-complete boundary while keeping Gate K explicitly unaccepted.
-No new semantic feature slice is authorized before final Gate K disposition.
-An evidence-driven defect may still be repaired through the repository's
-issue-first flow; any acceptance-contract correction still requires an
-owner-authorized decision record.
+Review and merge issue #69 / draft PR #75. Its final exact-head dedicated
+workflow, ordered author proof, and independent non-author audit are recorded
+externally on that PR. No new semantic feature slice is authorized before final
+Gate K disposition. An evidence-driven defect may still be repaired through
+the repository's issue-first flow; any acceptance-contract correction still
+requires an owner-authorized decision record.
 
-The only planned work after #68 is:
+The planned work after #69 is:
 
-1. #69 — the full determinism matrix, measured budgets, and final schema-
-   ownership source review;
-2. #70 — formal packet/checker tooling and non-formal Opus rehearsals;
-3. #71 — the formal Gemini cold-author subject and later DeepSeek checker;
-4. #72 — the formal DeepSeek cold-debug subject and later Gemini checker;
-5. #73 — the complete nineteen-criterion owner disposition.
+1. #70 — formal packet/checker tooling and non-formal Opus rehearsals;
+2. #71 — the formal Gemini cold-author subject and later DeepSeek checker;
+3. #72 — the formal DeepSeek cold-debug subject and later Gemini checker;
+4. #73 — the complete nineteen-criterion owner disposition.
 
-Issues #69 and #70 may proceed in parallel after #68. After both are merged,
-their candidate-bound proofs must be rerun on the same clean combined head.
+Issue #70 is independent of #69 and may proceed in parallel. After both are
+merged, their candidate-bound proofs must be rerun on the same clean combined
+head.
 Only then may the owner tag `gate-k-rc1`. The formal order is Gemini author
 subject, DeepSeek debugger subject, DeepSeek author checker, Gemini debugger
 checker, then final disposition.
@@ -390,14 +409,13 @@ author proof, Luna max exact-head rerun, PR CI, and post-merge CI also passed al
 four commands; the focused release SW-G test passed. SW-F, SW-D, and
 issue #24 have the same author/non-author/CI chain as recorded above. Earlier
 SW-C, revision-4, and Rust-1.98 maintenance reruns also passed.
-Still unproven: Linux aarch64 release, ten runs per target, measured Gate K
-budgets, and formal cold-agent gates. The contract also requires a final
-explicit schema-ownership
-source-review receipt after the Gate K schema set stabilizes; that final
-receipt does not exist yet.
+Issue #69 closes the final exact-head disposition for Linux aarch64 release,
+ten runs per target, measured Gate K budgets, and the final explicit schema-
+ownership source review. Formal cold-agent gates remain unperformed regardless
+of #69's result.
 
 ## Remaining evidence points
 
-Linux aarch64 release and the ten-runs-per-target matrix remain evidence gaps,
-not contract-wording questions. The whole-kernel roster and invalidation rules
+The mechanical evidence gaps are closed by issue #69's dedicated exact-head
+workflow and independent audit. The whole-kernel roster and invalidation rules
 are resolved; the formal runs remain unperformed.
