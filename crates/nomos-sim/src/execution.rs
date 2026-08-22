@@ -68,6 +68,94 @@ impl RunExecution {
     pub const fn rejection(&self) -> Option<&Diagnostic> {
         self.rejection.as_ref()
     }
+
+    /// Verifies that the terminal result agrees with the execution outcome.
+    ///
+    /// # Errors
+    ///
+    /// Returns `EK0816` when completed/rejected status, diagnostic identity,
+    /// or the complete committed evidence disagrees.
+    pub fn validate(&self, plan: &SimulationPlan) -> Result<(), Diagnostic> {
+        validate_committed_evidence(
+            plan,
+            &self.initial,
+            &self.final_state,
+            &self.log,
+            &self.receipts,
+            &self.hashes,
+        )?;
+        match (self.result.status(), self.rejection.as_ref()) {
+            (crate::RunStatus::Completed, None) => Ok(()),
+            (crate::RunStatus::Rejected, Some(diagnostic))
+                if self.result.rejection_diagnostic() == Some(diagnostic.code()) =>
+            {
+                Ok(())
+            }
+            _ => Err(crate::run_evidence::inconsistent(
+                "run result status disagrees with the terminal execution outcome",
+            )),
+        }
+    }
+}
+
+/// Re-executes every committed request and requires byte-identical evidence.
+///
+/// A rejected run deliberately omits its uncommitted request, so this checks
+/// only the committed prefix named by the command log.
+///
+/// # Errors
+///
+/// Returns `EK0816` when the log, receipts, hashes, or final state cannot be
+/// reproduced from the initial state and supplied simulation semantics.
+pub fn validate_committed_evidence(
+    plan: &SimulationPlan,
+    initial: &PersistedRuntimeState,
+    final_state: &PersistedRuntimeState,
+    log: &CommandLog,
+    receipts: &CausalReceiptSequence,
+    hashes: &StateHashSequence,
+) -> Result<(), Diagnostic> {
+    let initial = PersistedRuntimeState::from_canonical_bytes(&initial.to_canonical_bytes(), plan)?;
+    let mut current = initial.state().clone();
+    let mut expected_rows = Vec::with_capacity(log.rows().len());
+    let mut expected_receipts = Vec::with_capacity(log.rows().len());
+    for row in log.rows() {
+        let command = resolve_command(plan, row.request()).map_err(|_| {
+            crate::run_evidence::inconsistent(
+                "a committed command-log request no longer resolves under the supplied semantics",
+            )
+        })?;
+        let input_state_hash = current.state_hash();
+        let committed = commit_transaction(plan, &current, &command).map_err(|_| {
+            crate::run_evidence::inconsistent(
+                "a committed command-log request no longer commits under the supplied semantics",
+            )
+        })?;
+        expected_rows.push(CommandLogRow::new(
+            row.ordinal(),
+            row.request().clone(),
+            command,
+            input_state_hash,
+            committed.receipt(),
+        )?);
+        expected_receipts.push(committed.receipt().clone());
+        current = committed.into_snapshot();
+    }
+    let expected_log = CommandLog::new(expected_rows)?;
+    let expected_receipts =
+        CausalReceiptSequence::new(initial.state().tick(), &expected_log, expected_receipts)?;
+    let expected_hashes = StateHashSequence::from_command_log(initial.state_hash(), &expected_log)?;
+    let expected_final = PersistedRuntimeState::new(plan, current)?;
+    if &expected_log != log
+        || &expected_receipts != receipts
+        || &expected_hashes != hashes
+        || &expected_final != final_state
+    {
+        return Err(crate::run_evidence::inconsistent(
+            "committed run evidence does not reproduce from its initial state and simulation semantics",
+        ));
+    }
+    Ok(())
 }
 
 /// Resolves and commits requests in order, stopping at the first rejection.

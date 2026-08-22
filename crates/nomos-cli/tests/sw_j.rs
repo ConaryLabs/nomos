@@ -8,9 +8,9 @@ use std::process::{Command, Output};
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use nomos_cli::{open_compiled_world, open_run_bundle};
+use nomos_cli::{initial_state_from_package, open_compiled_world, open_run_bundle};
 use nomos_core::canonical::read::parse_canonical;
-use nomos_core::{CanonicalValue, FieldName};
+use nomos_core::{CanonicalValue, FieldName, Sha256Digest};
 use nomos_sim::RunStatus;
 
 static COUNTER: AtomicU32 = AtomicU32::new(0);
@@ -68,6 +68,15 @@ fn canonical_stdout(output: &Output) -> CanonicalValue {
 }
 
 fn object(value: &CanonicalValue) -> &std::collections::BTreeMap<FieldName, CanonicalValue> {
+    let CanonicalValue::Object(fields) = value else {
+        panic!("expected canonical object")
+    };
+    fields
+}
+
+fn object_mut(
+    value: &mut CanonicalValue,
+) -> &mut std::collections::BTreeMap<FieldName, CanonicalValue> {
     let CanonicalValue::Object(fields) = value else {
         panic!("expected canonical object")
     };
@@ -184,6 +193,12 @@ fn run_and_command_publish_reopenable_deterministic_evidence() {
 
     let world = open_compiled_world(&cwd.join("build/gaol.world")).unwrap();
     let opened = open_run_bundle(&cwd.join("runs/first"), &world).unwrap();
+    let expected_initial = nomos_sim::PersistedRuntimeState::new(
+        world.simulation(),
+        initial_state_from_package(&world).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(opened.initial(), &expected_initial);
     assert_eq!(opened.result().status(), RunStatus::Completed);
     assert_eq!(opened.command_log().rows().len(), 5);
     assert_eq!(opened.causal_receipts().receipts().len(), 5);
@@ -517,11 +532,143 @@ fn run_open_refuses_tampering_missing_extra_and_nested_entries() {
     );
 }
 
+#[test]
+fn run_open_reexecutes_a_fully_rehashed_committed_prefix() {
+    let cwd = fresh_workspace("semantic-reexecution");
+    compile(&cwd, "gaol.nomos", "gaol.world");
+    fs::write(
+        cwd.join("unlock.commands"),
+        b"schema nomos.command_script@1\nunlock north_gate with credential/gaoler_key\n",
+    )
+    .unwrap();
+    let completed = run(
+        &cwd,
+        [
+            "run",
+            "gaol.world",
+            "--commands",
+            "unlock.commands",
+            "--out",
+            "valid.run",
+        ],
+    );
+    assert_exit(&completed, 0);
+    copy_run(&cwd.join("valid.run"), &cwd.join("forged.run"));
+    let world = open_compiled_world(&cwd.join("gaol.world")).unwrap();
+    let forged = cwd.join("forged.run");
+
+    let final_path = forged.join("final-state.json");
+    let final_text = String::from_utf8(fs::read(&final_path).unwrap())
+        .unwrap()
+        .replace("\"state\":\"closed\"", "\"state\":\"locked\"");
+    let mut final_value = parse_canonical(final_text.as_bytes()).unwrap();
+    let state_value = object(&final_value)
+        .get(&FieldName::declared("state"))
+        .unwrap();
+    let forged_state = nomos_sim::SimulationState::from_canonical_bytes(
+        &state_value.to_canonical_bytes(),
+        world.simulation(),
+    )
+    .unwrap();
+    let forged_hash = forged_state.state_hash();
+    object_mut(&mut final_value).insert(
+        FieldName::declared("state_hash"),
+        CanonicalValue::text(forged_hash.to_hex()),
+    );
+    fs::write(&final_path, final_value.to_canonical_bytes()).unwrap();
+
+    let receipts_path = forged.join("causal-receipts.json");
+    let mut receipts_value = parse_canonical(&fs::read(&receipts_path).unwrap()).unwrap();
+    let CanonicalValue::Array(receipts) = object_mut(&mut receipts_value)
+        .get_mut(&FieldName::declared("receipts"))
+        .unwrap()
+    else {
+        panic!("receipt sequence must contain an array")
+    };
+    object_mut(&mut receipts[0]).insert(
+        FieldName::declared("state_hash"),
+        CanonicalValue::text(forged_hash.to_hex()),
+    );
+    let receipts_bytes = receipts_value.to_canonical_bytes();
+    let forged_receipts =
+        nomos_sim::CausalReceiptSequence::from_canonical_bytes(&receipts_bytes).unwrap();
+    let receipt_digest = forged_receipts.receipts()[0].digest();
+    fs::write(&receipts_path, receipts_bytes).unwrap();
+
+    let log_path = forged.join("command-log.json");
+    let mut log_value = parse_canonical(&fs::read(&log_path).unwrap()).unwrap();
+    let CanonicalValue::Array(rows) = object_mut(&mut log_value)
+        .get_mut(&FieldName::declared("rows"))
+        .unwrap()
+    else {
+        panic!("command log must contain an array")
+    };
+    object_mut(&mut rows[0]).insert(
+        FieldName::declared("causal_receipt_digest"),
+        CanonicalValue::text(receipt_digest.to_hex()),
+    );
+    object_mut(&mut rows[0]).insert(
+        FieldName::declared("resulting_state_hash"),
+        CanonicalValue::text(forged_hash.to_hex()),
+    );
+    let log_bytes = log_value.to_canonical_bytes();
+    let forged_log = nomos_sim::CommandLog::from_canonical_bytes(&log_bytes).unwrap();
+    fs::write(&log_path, log_bytes).unwrap();
+
+    let hashes_path = forged.join("state-hashes.json");
+    let mut hashes_value = parse_canonical(&fs::read(&hashes_path).unwrap()).unwrap();
+    let CanonicalValue::Array(rows) = object_mut(&mut hashes_value)
+        .get_mut(&FieldName::declared("rows"))
+        .unwrap()
+    else {
+        panic!("state-hash sequence must contain an array")
+    };
+    object_mut(&mut rows[1]).insert(
+        FieldName::declared("state_hash"),
+        CanonicalValue::text(forged_hash.to_hex()),
+    );
+    let hashes_bytes = hashes_value.to_canonical_bytes();
+    let forged_hashes = nomos_sim::StateHashSequence::from_canonical_bytes(&hashes_bytes).unwrap();
+    fs::write(&hashes_path, hashes_bytes).unwrap();
+
+    let initial = nomos_sim::PersistedRuntimeState::from_canonical_bytes(
+        &fs::read(forged.join("initial-state.json")).unwrap(),
+        world.simulation(),
+    )
+    .unwrap();
+    let final_state = nomos_sim::PersistedRuntimeState::from_canonical_bytes(
+        &fs::read(&final_path).unwrap(),
+        world.simulation(),
+    )
+    .unwrap();
+    let result = nomos_sim::RunResult::completed(
+        world.package_digest(),
+        &initial,
+        &final_state,
+        &forged_log,
+        &forged_receipts,
+        &forged_hashes,
+    )
+    .unwrap();
+    fs::write(forged.join("result.json"), result.to_canonical_bytes()).unwrap();
+
+    assert_eq!(
+        open_run_bundle(&forged, &world)
+            .unwrap_err()
+            .code()
+            .as_str(),
+        "EK0816"
+    );
+    assert_ne!(
+        Sha256Digest::of_bytes(&fs::read(forged.join("result.json")).unwrap()),
+        Sha256Digest::of_bytes(&fs::read(cwd.join("valid.run/result.json")).unwrap())
+    );
+}
+
 #[cfg(unix)]
 #[test]
 fn run_open_refuses_root_and_entry_symlinks_and_special_files() {
     use std::os::unix::fs::symlink;
-    use std::os::unix::net::UnixListener;
 
     let cwd = fresh_workspace("entry-types");
     compile(&cwd, "gaol.nomos", "gaol.world");
@@ -562,19 +709,8 @@ fn run_open_refuses_root_and_entry_symlinks_and_special_files() {
         "EK0819"
     );
 
-    copy_run(&cwd.join("valid.run"), &cwd.join("special.run"));
-    fs::remove_file(cwd.join("special.run/state-hashes.json")).unwrap();
-    let short_socket = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("../../target")
-        .join(format!(
-            "nomos-sw-j-{}-{}.sock",
-            std::process::id(),
-            COUNTER.fetch_add(1, Ordering::Relaxed)
-        ));
-    let _socket = UnixListener::bind(&short_socket).unwrap();
-    fs::rename(short_socket, cwd.join("special.run/state-hashes.json")).unwrap();
     assert_eq!(
-        open_run_bundle(&cwd.join("special.run"), &world)
+        open_run_bundle(Path::new("/dev/null"), &world)
             .unwrap_err()
             .code()
             .as_str(),

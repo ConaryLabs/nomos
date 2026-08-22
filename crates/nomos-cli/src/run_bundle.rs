@@ -10,7 +10,7 @@ use nomos_compiler::OpenedCompiledWorld;
 use nomos_core::{Diagnostic, RepairClass, Sha256Digest};
 use nomos_sim::{
     CausalReceiptSequence, CommandLog, PersistedRuntimeState, RunExecution, RunResult,
-    StateHashSequence,
+    StateHashSequence, validate_committed_evidence,
 };
 
 const INITIAL_STATE_FILE: &str = "initial-state.json";
@@ -140,6 +140,7 @@ fn write_run_bundle_steps(
 ) -> Result<OpenedRunBundle, Diagnostic> {
     let root = lexical_path(root);
     require_available_run_output(&root)?;
+    execution.validate(world.simulation())?;
     let parent = bundle_parent(&root);
     fs::create_dir_all(parent).map_err(|error| io_failure(parent, &error))?;
     let staging = create_staging_directory(&root)?;
@@ -217,6 +218,14 @@ pub fn open_run_bundle(
     let result_bytes = member(&members, RESULT_FILE)?;
     let result = RunResult::from_canonical_bytes(result_bytes)?;
     result.validate_evidence(&initial, &final_state, &log, &receipts, &hashes)?;
+    validate_committed_evidence(
+        world.simulation(),
+        &initial,
+        &final_state,
+        &log,
+        &receipts,
+        &hashes,
+    )?;
     if result.input_package_digest() != world.package_digest() {
         return Err(inconsistent(
             "run result belongs to a different compiled package",

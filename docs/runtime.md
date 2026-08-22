@@ -104,7 +104,7 @@ text semantics accepted by issue #56. Resolution searches only external
 commands on machines owned by the requested entity and produces one explicit
 typed namespace command; it never reads source or guesses among namespaces.
 
-Four independently versioned canonical evidence types prepare the later run
+Four independently versioned canonical evidence types underpin the run
 publisher:
 
 - `nomos.command_log@1` records zero-based contiguous committed rows. Each row
@@ -129,7 +129,11 @@ artifact-set, count, endpoint, command/receipt, receipt-digest, and tick-chain
 agreement. `RunResult` accepts all five typed artifacts rather than caller-made
 digest rows and derives every binding from their exact canonical bytes; later
 validation recomputes all five digests. Human diagnostic wording remains
-outside `RunResult`; its rejection identity is the stable diagnostic code.
+outside `RunResult`; its rejection identity is the stable diagnostic code. A
+rejected bundle intentionally binds only the committed prefix and the terminal
+code, as issue #58 requires; it does not persist the rejected request. Status is
+therefore a canonical content claim, not an authenticity claim. Publication
+also checks it against the in-memory terminal outcome before writing.
 
 ## Filesystem execution and run bundles
 
@@ -155,9 +159,14 @@ typed artifacts against the input package, recomputes all bindings, then uses
 one rename. Existing destinations are preserved. Roots and entries must be the
 expected directory and regular files; symlinks, special files, missing/extra
 entries, noncanonical bytes, digest changes, cross-package evidence, and
-cross-semantics state reuse fail closed. As with compiled packages, callers own
-a quiescent supported local-filesystem tree; this is integrity, not hostile
-filesystem race safety or authenticity.
+cross-semantics state reuse fail closed. Opening re-executes every committed log
+row from the persisted initial state and requires byte-identical receipts,
+hashes, and final state, including exact tick continuity. As with compiled
+packages, callers own a quiescent supported local-filesystem tree; this is
+integrity, not hostile filesystem race safety or authenticity. The generic
+opener accepts both package-initial `run` bundles and nonzero-tick `command`
+bundles; the `run` command itself derives and tests its initial state against the
+opened package.
 
 ## Evidence boundary
 

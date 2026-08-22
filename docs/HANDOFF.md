@@ -252,14 +252,30 @@ never accumulates history (git has that).
   cover completed and rejected bundles, empty/partial rejection evidence,
   deterministic bytes, input immutability, cross-semantics refusal, existing
   output preservation, noncanonical and digest mutations, exact entry sets,
-  symlink/special-file refusal, and injected staging cleanup. The full author
-  proof, PR CI, and non-author exact-head audit/rerun remain outstanding.
+  symlink/special-file refusal, and injected staging cleanup. Head `f8eba93`
+  passed the author proof and PR CI run `32556961214`, but the first non-author
+  exact-head audit rejected it. One test attempted to create a Unix socket,
+  which the isolated review sandbox correctly refused; the audit also found a
+  missing final-tick cross-check and asked for stronger evidence that committed
+  artifacts reproduce from the supplied simulation semantics. The repair uses
+  the existing `/dev/null` character device for a read-only special-root check,
+  checks final tick from initial tick plus committed count, re-executes every
+  committed log row on open, and compares the complete regenerated log,
+  receipts, hashes, and final state. It also tests that `nomos run` begins from
+  the exact package-derived initial state and refreshes stale scope text. The
+  audit's proposed inference of a rejected request from `result.json` is not
+  representable under issue #58's explicit rule that rejected bundles bind only
+  committed commands and the stable terminal code; status remains a canonical
+  content claim rather than authenticity, while publication validates it
+  against the in-memory terminal outcome. The repaired tree passes the full
+  author proof. A fresh PR CI run and non-author exact-head audit/rerun remain
+  outstanding.
 
 ## What is next
 
-Finish issue #58: complete the mutation and CLI proof, run the full author
-proof, publish a draft PR, obtain green CI, and obtain the required fresh
-non-author exact-head audit/rerun. Later work includes replay, explanations, the
+Finish issue #58: publish the review repair, obtain fresh green PR CI, and
+obtain the required fresh non-author exact-head audit/rerun. Later work includes
+replay, explanations, the
 required stable v1-to-v2 movement migration, direct v2 runtime loading/refusal
 evidence, the Linux aarch64 and ten-run matrix, measured Gate K budgets, final
 schema-ownership review, and the formal cold-agent gates.

@@ -1,4 +1,4 @@
-//! Content binding for the complete typed evidence of one future run bundle.
+//! Content binding for the complete typed evidence of one run bundle.
 
 use std::collections::BTreeSet;
 
@@ -87,7 +87,7 @@ impl RunArtifactDigest {
     }
 }
 
-/// Terminal status of a future run bundle.
+/// Terminal status of a run bundle.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum RunStatus {
     /// Every requested command committed.
@@ -107,7 +107,7 @@ impl RunStatus {
     }
 }
 
-/// Content-binding record written as a future run bundle's `result.json`.
+/// Content-binding record written as a run bundle's `result.json`.
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct RunResult {
     schema: SchemaId,
@@ -452,6 +452,18 @@ fn validate_typed_evidence(
 ) -> Result<(), Diagnostic> {
     hashes.validate_command_log(log)?;
     receipts.validate_command_log(initial.state().tick(), log)?;
+    let committed = u64::try_from(log.rows().len())
+        .map_err(|_| inconsistent("committed command count exceeds u64"))?;
+    let expected_final_tick = initial
+        .state()
+        .tick()
+        .checked_add(committed)
+        .ok_or_else(|| inconsistent("run final tick overflows u64"))?;
+    if final_state.state().tick() != expected_final_tick {
+        return Err(inconsistent(
+            "final-state tick does not continue from the initial state and committed-command count",
+        ));
+    }
     if initial.runtime_semantics_digest() != final_state.runtime_semantics_digest() {
         return Err(inconsistent(
             "initial and final states name different runtime semantics",
