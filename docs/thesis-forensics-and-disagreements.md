@@ -7,13 +7,15 @@ date: 2026-08-21
 # Thesis reference — forensics and resolved disagreements
 
 This companion holds the detailed reference material for `THESIS.md` sections
-19 and 20. It was extracted when the thesis crossed the repository's
-approximately 1,000-line touch threshold; the extraction changes no thesis
-claim.
+19 and 20. It is kept separately for readability; guiding documents are not
+subject to the repository's approximately 1,000-line code-organisation rule,
+and the extraction changes no thesis claim.
 
 ## Section 19 details — forensics, explanation, and the visual proof ladder
 
-The runtime should answer semantic “why” questions:
+The runtime should answer semantic “why” questions. The following prototype-era
+spellings preserve the vocabulary of thesis revision 2; active Nomos acceptance
+and command grammar are governed by `KERNEL.md` and the effective decisions:
 
 ```text
 estate explain-entity north_gate

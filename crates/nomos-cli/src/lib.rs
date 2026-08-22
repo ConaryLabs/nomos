@@ -4,8 +4,9 @@
 //! orchestration*, and section 8 fixes the exit codes every command must use.
 //! SW-H implements the filesystem-authoring commands (`validate`, `compile`,
 //! and `inspect`) over that boundary. SW-J adds atomic verified run bundles and
-//! the `run` and `command` operations; SW-K adds strict deterministic replay.
-//! Explanation and migration commands belong to later accepted slices.
+//! the `run` and `command` operations; SW-K adds strict deterministic replay,
+//! and SW-M adds strict stable-v1 migration. Explanation commands belong to a
+//! later accepted slice.
 //!
 //! # Boundary
 //!
