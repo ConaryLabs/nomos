@@ -1,8 +1,8 @@
 # Handoff — state of the repository
 
-Updated 2026-08-22 for the issue #65 SW-N explanation slice. Contract revision
-7 is merged and green; SW-N is active on branch
-`sw-n-semantic-explanations-65`.
+Updated 2026-08-22 for issue #68 after SW-N merged. Semantic implementation is
+complete through SW-N on `main`; the post-SW-N disposition is active on branch
+`post-sw-n-freeze-68`. Gate K evidence closure remains in progress.
 This file orients a fresh session; it is rewritten at each slice boundary and
 never accumulates history (git has that).
 
@@ -294,10 +294,11 @@ never accumulates history (git has that).
   superseded audit found three stale references. PR #66 merged as `3d67c4f`,
   issue #62 closed, post-merge CI run `32585743441` passed, and the feature and
   review worktrees and branches were removed.
-- **SW-N is active (#65):** `nomos explain-entity` renders linked source,
-  primitive expansion, independent machines, claim templates, active initial
-  claims, effective facts, typed ownership/derivation records, consumers, and
-  schema identities from a strictly opened world. `nomos explain-transition`
+- **SW-N is merged and green (#65/#67):** `nomos explain-entity` renders linked
+  source, primitive expansion, independent machines, claim templates, active
+  initial claims, effective facts, typed ownership/derivation records,
+  consumers, and schema identities from a strictly opened world.
+  `nomos explain-transition`
   strictly opens that world, then strictly opens and re-executes the unchanged
   six-file run before selecting a tick and rendering the unresolved request,
   resolved command, causes, ordered steps, claim changes, complete effective
@@ -306,14 +307,44 @@ never accumulates history (git has that).
   `fixtures/gaol-seven.commands` separately proves `brazier_02` at tick 7.
   Focused subprocess tests freeze exact output hashes and rejection behavior.
   No schema, package/run member, package locator, dependency, or runtime path is
-  added.
+  added. Implementation head `f6a7eb3bd9222459ccfb5d37f20ddd5fd522a993`
+  passed the exact-head author proof and PR CI run `32586792897`. A fresh
+  GPT-5.6 Luna high non-author audit reran all four proof commands on that exact
+  head with a clean detached tree and no findings; its durable receipt is
+  [PR #67 comment 5381611726](https://github.com/ConaryLabs/nomos/pull/67#issuecomment-5381611726).
+  PR #67 merged as
+  `05ba8e1007fe507288bae0c7f4019ba7d750f0f8`, issue #65 closed, and post-merge
+  CI run `32587114490` passed.
 
 ## What is next
 
-Finish issue #65: complete the full proof, open the draft PR, obtain green CI
-and a clean non-author exact-head rerun, then leave merge disposition to the
-owner. Later work includes the Linux aarch64 and ten-run matrix, measured Gate K
-budgets, final schema-ownership review, and the formal cold-agent gates.
+Finish issue #68 without changing semantic behavior. It records the
+implementation-complete boundary while keeping Gate K explicitly unaccepted.
+No new semantic feature slice is authorized before final Gate K disposition.
+An evidence-driven defect may still be repaired through the repository's
+issue-first flow; any acceptance-contract correction still requires an
+owner-authorized decision record.
+
+The only planned work after #68 is:
+
+1. #69 — the full determinism matrix, measured budgets, and final schema-
+   ownership source review;
+2. #70 — formal packet/checker tooling and non-formal Opus rehearsals;
+3. #71 — the formal Gemini cold-author subject and later DeepSeek checker;
+4. #72 — the formal DeepSeek cold-debug subject and later Gemini checker;
+5. #73 — the complete nineteen-criterion owner disposition.
+
+Issues #69 and #70 may proceed in parallel after #68. After both are merged,
+their candidate-bound proofs must be rerun on the same clean combined head.
+Only then may the owner tag `gate-k-rc1`. The formal order is Gemini author
+subject, DeepSeek debugger subject, DeepSeek author checker, Gemini debugger
+checker, then final disposition.
+
+After a `gate-k-rcN` candidate is frozen, any later code, schema, CLI, public
+packet documentation, or evaluation-harness change requires a new candidate
+and invalidates later exact-head evidence against the old candidate. No
+release-candidate tag exists yet, and implementation completion alone does not
+make Gate K green.
 
 The old `agy` Gemini route remains falsified evidence. Issue #49 qualifies Pi as
 the replacement transport without spending a formal attempt or changing the
@@ -329,18 +360,18 @@ cargo test --workspace --locked
 cargo xtask boundary
 cargo run --locked --bin nomos -- --help
 cargo run --locked --bin nomos -- validate fixtures/gaol.nomos
-cargo run --locked --bin nomos -- compile fixtures/gaol.nomos --out target/tmp/sw-n-proof/gaol.world
-cargo run --locked --bin nomos -- migrate fixtures/gaol-v1.world --to 2 --out target/tmp/sw-n-proof/gaol-migrated.world
-cargo run --locked --bin nomos -- inspect target/tmp/sw-n-proof/gaol-migrated.world
-cargo run --locked --bin nomos -- run target/tmp/sw-n-proof/gaol.world --commands fixtures/gaol.commands --out target/tmp/sw-n-proof/gaol.run
-cargo run --locked --bin nomos -- run target/tmp/sw-n-proof/gaol.world --commands fixtures/gaol-seven.commands --out target/tmp/sw-n-proof/gaol-seven.run
-cargo run --locked --bin nomos -- explain-entity target/tmp/sw-n-proof/gaol.world north_gate
-cargo run --locked --bin nomos -- explain-entity target/tmp/sw-n-proof/gaol.world flooded_section
-cargo run --locked --bin nomos -- explain-entity target/tmp/sw-n-proof/gaol.world brazier_02
-cargo run --locked --bin nomos -- explain-transition target/tmp/sw-n-proof/gaol.run north_gate --tick 4 --world target/tmp/sw-n-proof/gaol.world
-cargo run --locked --bin nomos -- explain-transition target/tmp/sw-n-proof/gaol-seven.run brazier_02 --tick 7 --world target/tmp/sw-n-proof/gaol.world
-cargo run --locked --bin nomos -- command target/tmp/sw-n-proof/gaol.world --state target/tmp/sw-n-proof/gaol.run/final-state.json "close north_gate" --out target/tmp/sw-n-proof/after-close.run
-cargo run --locked --bin nomos -- replay target/tmp/sw-n-proof/gaol.world --log fixtures/gaol.replay --out target/tmp/sw-n-proof/replay.run
+cargo run --locked --bin nomos -- compile fixtures/gaol.nomos --out target/tmp/gate-k-proof/gaol.world
+cargo run --locked --bin nomos -- migrate fixtures/gaol-v1.world --to 2 --out target/tmp/gate-k-proof/gaol-migrated.world
+cargo run --locked --bin nomos -- inspect target/tmp/gate-k-proof/gaol-migrated.world
+cargo run --locked --bin nomos -- run target/tmp/gate-k-proof/gaol.world --commands fixtures/gaol.commands --out target/tmp/gate-k-proof/gaol.run
+cargo run --locked --bin nomos -- run target/tmp/gate-k-proof/gaol.world --commands fixtures/gaol-seven.commands --out target/tmp/gate-k-proof/gaol-seven.run
+cargo run --locked --bin nomos -- explain-entity target/tmp/gate-k-proof/gaol.world north_gate
+cargo run --locked --bin nomos -- explain-entity target/tmp/gate-k-proof/gaol.world flooded_section
+cargo run --locked --bin nomos -- explain-entity target/tmp/gate-k-proof/gaol.world brazier_02
+cargo run --locked --bin nomos -- explain-transition target/tmp/gate-k-proof/gaol.run north_gate --tick 4 --world target/tmp/gate-k-proof/gaol.world
+cargo run --locked --bin nomos -- explain-transition target/tmp/gate-k-proof/gaol-seven.run brazier_02 --tick 7 --world target/tmp/gate-k-proof/gaol.world
+cargo run --locked --bin nomos -- command target/tmp/gate-k-proof/gaol.world --state target/tmp/gate-k-proof/gaol.run/final-state.json "close north_gate" --out target/tmp/gate-k-proof/after-close.run
+cargo run --locked --bin nomos -- replay target/tmp/gate-k-proof/gaol.world --log fixtures/gaol.replay --out target/tmp/gate-k-proof/replay.run
 docs/evaluation/test-agy-print-preflight.sh
 docs/evaluation/test-agy-formal-boundary-preflight.sh
 docs/evaluation/test-pi-cold-agent-preflight.sh
