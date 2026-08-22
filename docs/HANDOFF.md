@@ -268,7 +268,14 @@ never accumulates history (git has that).
   committed commands and the stable terminal code; status remains a canonical
   content claim rather than authenticity, while publication validates it
   against the in-memory terminal outcome. The repaired tree passes the full
-  author proof. A fresh PR CI run and non-author exact-head audit/rerun remain
+  author proof and PR CI run `32557756337`. A second fresh non-author audit of
+  `3d2c88c` passed all four proof commands and found one remaining immutability
+  hole: an output nested below the input package could create a directory in the
+  package and invalidate it. The next repair rejects resolved output paths at or
+  below the package or a verified input-state run bundle, including
+  symlinked-ancestor aliases, before execution or publication, with subprocess
+  coverage for both runtime commands. The repaired tree passes the full author
+  proof. Fresh PR CI and a third non-author exact-head audit/rerun remain
   outstanding.
 
 ## What is next

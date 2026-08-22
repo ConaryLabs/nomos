@@ -293,6 +293,7 @@ fn run_script(package: &str, commands: &str, output: &str) -> Result<RuntimeOutc
     let output_path = relative_filesystem_path(output)?;
     require_available_run_output(&output_path)?;
     let world = open_compiled_world(&package_path)?;
+    require_output_outside_package(&package_path, &output_path)?;
     let script = CommandScript::from_bytes(&read_regular_bytes(&commands_path, "command script")?)?;
     let initial =
         PersistedRuntimeState::new(world.simulation(), initial_state_from_package(&world)?)?;
@@ -321,6 +322,8 @@ fn command_once(
     let output_path = relative_filesystem_path(output)?;
     require_available_run_output(&output_path)?;
     let world = open_compiled_world(&package_path)?;
+    require_output_outside_package(&package_path, &output_path)?;
+    require_output_outside_state_bundle(&state_path, &output_path)?;
     let request = CommandRequest::from_line(request)?;
     let initial = PersistedRuntimeState::from_canonical_bytes(
         &read_regular_bytes(&state_path, "persisted runtime state")?,
@@ -449,6 +452,63 @@ fn relative_filesystem_path(spelling: &str) -> Result<PathBuf, Diagnostic> {
         .with_repair(RepairClass::UseSupportedIdentifierShape));
     }
     Ok(PathBuf::from(spelling))
+}
+
+fn require_output_outside_package(package: &Path, output: &Path) -> Result<(), Diagnostic> {
+    let package = fs::canonicalize(package).map_err(|error| io_failure(package, &error))?;
+    let output = resolve_with_missing_tail(output)?;
+    if output.starts_with(&package) {
+        return Err(output_overlap("package"));
+    }
+    Ok(())
+}
+
+fn require_output_outside_state_bundle(state: &Path, output: &Path) -> Result<(), Diagnostic> {
+    let state = fs::canonicalize(state).map_err(|error| io_failure(state, &error))?;
+    let parent = state
+        .parent()
+        .expect("a canonical absolute state path has a parent")
+        .to_path_buf();
+    let output = resolve_with_missing_tail(output)?;
+    if output.starts_with(&parent) && crate::run_bundle::has_run_bundle_shape(&parent)? {
+        return Err(output_overlap("run bundle"));
+    }
+    Ok(())
+}
+
+fn output_overlap(kind: &str) -> Diagnostic {
+    Diagnostic::new(
+        nomos_core::diagnostic::codes::RUN_BUNDLE_OUTPUT_OVERLAPS_INPUT,
+        format!("run-bundle output overlaps an immutable input {kind}"),
+    )
+    .with_repair(RepairClass::WriteToNewOutputPath)
+}
+
+fn resolve_with_missing_tail(path: &Path) -> Result<PathBuf, Diagnostic> {
+    let mut existing = path.to_path_buf();
+    let mut missing = Vec::new();
+    loop {
+        match fs::symlink_metadata(&existing) {
+            Ok(_) => {
+                let mut resolved =
+                    fs::canonicalize(&existing).map_err(|error| io_failure(&existing, &error))?;
+                for component in missing.iter().rev() {
+                    resolved.push(component);
+                }
+                return Ok(resolved);
+            }
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+                let Some(name) = existing.file_name() else {
+                    return Err(io_failure(&existing, &error));
+                };
+                missing.push(name.to_os_string());
+                if !existing.pop() || existing.as_os_str().is_empty() {
+                    existing = PathBuf::from(".");
+                }
+            }
+            Err(error) => return Err(io_failure(&existing, &error)),
+        }
+    }
 }
 
 fn artifact_path(root: &str, member: &str) -> String {

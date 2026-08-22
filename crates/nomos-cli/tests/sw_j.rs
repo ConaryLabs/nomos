@@ -391,6 +391,106 @@ fn usage_environment_existing_output_and_cross_semantics_fail_closed() {
     assert_exit(&collision, 1);
     assert_eq!(directory_bytes(&cwd.join("one.world")), package_before);
 
+    let nested_run = run(
+        &cwd,
+        [
+            "run",
+            "one.world",
+            "--commands",
+            "gaol.commands",
+            "--out",
+            "one.world/nested.run",
+        ],
+    );
+    assert_exit(&nested_run, 1);
+    let nested_report = canonical_stdout(&nested_run);
+    let CanonicalValue::Array(diagnostics) = field(&nested_report, "diagnostics") else {
+        panic!("rejection report must contain diagnostics")
+    };
+    assert_eq!(
+        field(&diagnostics[0], "code"),
+        &CanonicalValue::text("EK0821")
+    );
+    assert_eq!(directory_bytes(&cwd.join("one.world")), package_before);
+    assert!(!cwd.join("one.world/nested.run").exists());
+
+    let nested_command = run(
+        &cwd,
+        [
+            "command",
+            "one.world",
+            "--state",
+            "initial.run/final-state.json",
+            "close north_gate",
+            "--out",
+            "one.world/nested-command.run",
+        ],
+    );
+    assert_exit(&nested_command, 1);
+    assert_eq!(directory_bytes(&cwd.join("one.world")), package_before);
+    assert!(!cwd.join("one.world/nested-command.run").exists());
+
+    let state_bundle_before = directory_bytes(&cwd.join("initial.run"));
+    let nested_in_state_bundle = run(
+        &cwd,
+        [
+            "command",
+            "one.world",
+            "--state",
+            "initial.run/final-state.json",
+            "close north_gate",
+            "--out",
+            "initial.run/nested-command.run",
+        ],
+    );
+    assert_exit(&nested_in_state_bundle, 1);
+    assert_eq!(
+        directory_bytes(&cwd.join("initial.run")),
+        state_bundle_before
+    );
+    assert!(!cwd.join("initial.run/nested-command.run").exists());
+
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::symlink;
+
+        symlink("one.world", cwd.join("package-alias")).unwrap();
+        let aliased_nested = run(
+            &cwd,
+            [
+                "run",
+                "one.world",
+                "--commands",
+                "gaol.commands",
+                "--out",
+                "package-alias/aliased.run",
+            ],
+        );
+        assert_exit(&aliased_nested, 1);
+        assert_eq!(directory_bytes(&cwd.join("one.world")), package_before);
+        assert!(!cwd.join("one.world/aliased.run").exists());
+
+        symlink("initial.run", cwd.join("run-alias")).unwrap();
+        let aliased_state_bundle = run(
+            &cwd,
+            [
+                "command",
+                "one.world",
+                "--state",
+                "run-alias/final-state.json",
+                "close north_gate",
+                "--out",
+                "run-alias/aliased-command.run",
+            ],
+        );
+        assert_exit(&aliased_state_bundle, 1);
+        assert_eq!(
+            directory_bytes(&cwd.join("initial.run")),
+            state_bundle_before
+        );
+        assert!(!cwd.join("initial.run/aliased-command.run").exists());
+    }
+
     let changed = String::from_utf8(SOURCE.to_vec())
         .unwrap()
         .replace("credential/gaoler_key", "credential/other_key");

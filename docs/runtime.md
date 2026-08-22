@@ -156,8 +156,12 @@ The publisher writes exactly `initial-state.json`, `final-state.json`,
 `command-log.json`, `causal-receipts.json`, `state-hashes.json`, and
 `result.json` in a fresh sibling staging directory. It strictly reopens all six
 typed artifacts against the input package, recomputes all bindings, then uses
-one rename. Existing destinations are preserved. Roots and entries must be the
-expected directory and regular files; symlinks, special files, missing/extra
+one rename. Existing destinations are preserved. Before execution, the CLI
+resolves existing path ancestors and rejects an output at or below the immutable
+input package, including paths that enter it through a symlinked ancestor. When
+`nomos command` consumes a state from a verified run bundle, that input bundle
+receives the same protection. Roots and entries must be the expected directory
+and regular files; symlinks, special files, missing/extra
 entries, noncanonical bytes, digest changes, cross-package evidence, and
 cross-semantics state reuse fail closed. Opening re-executes every committed log
 row from the persisted initial state and requires byte-identical receipts,

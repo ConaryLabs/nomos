@@ -503,6 +503,8 @@ pub mod codes {
     pub const RUN_BUNDLE_ENTRY_TYPE_INVALID: DiagnosticCode = DiagnosticCode::new("EK0819");
     /// Reading, staging, publishing, or cleaning a run bundle failed.
     pub const RUN_BUNDLE_IO: DiagnosticCode = DiagnosticCode::new("EK0820");
+    /// A run-bundle output would overlap immutable input evidence.
+    pub const RUN_BUNDLE_OUTPUT_OVERLAPS_INPUT: DiagnosticCode = DiagnosticCode::new("EK0821");
 
     /// A resolver-plan collection repeats one stable semantic identity.
     pub const RESOLVER_DUPLICATE_IDENTITY: DiagnosticCode = DiagnosticCode::new("EK0901");
@@ -601,6 +603,7 @@ pub mod codes {
         RUN_BUNDLE_ENTRY_SET_INVALID,
         RUN_BUNDLE_ENTRY_TYPE_INVALID,
         RUN_BUNDLE_IO,
+        RUN_BUNDLE_OUTPUT_OVERLAPS_INPUT,
         RESOLVER_DUPLICATE_IDENTITY,
         RESOLVER_CLAIM_ENTITY_MISMATCH,
         RESOLVER_ACTIVATION_NAMESPACE_MISSING,

@@ -30,6 +30,33 @@ const RUN_FILES: [&str; 6] = [
 
 static STAGING_COUNTER: AtomicU64 = AtomicU64::new(0);
 
+pub(crate) fn has_run_bundle_shape(root: &Path) -> Result<bool, Diagnostic> {
+    let metadata = match fs::symlink_metadata(root) {
+        Ok(metadata) => metadata,
+        Err(error) if error.kind() == ErrorKind::NotFound => return Ok(false),
+        Err(error) => return Err(io_failure(root, &error)),
+    };
+    if !metadata.file_type().is_dir() {
+        return Ok(false);
+    }
+    let mut names = BTreeSet::new();
+    for entry in fs::read_dir(root).map_err(|error| io_failure(root, &error))? {
+        let entry = entry.map_err(|error| io_failure(root, &error))?;
+        if !entry
+            .file_type()
+            .map_err(|error| io_failure(&entry.path(), &error))?
+            .is_file()
+        {
+            return Ok(false);
+        }
+        let Some(name) = entry.file_name().to_str().map(str::to_owned) else {
+            return Ok(false);
+        };
+        names.insert(name);
+    }
+    Ok(names == RUN_FILES.into_iter().map(str::to_owned).collect())
+}
+
 /// One completely decoded and cross-validated filesystem run bundle.
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct OpenedRunBundle {
