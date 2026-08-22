@@ -293,7 +293,7 @@ plan=$(jq -S -c -n \
       operatorSubstantiveHintsMaximum: 0,
       operatorRetriesMaximum: 0
     },
-    rubric:
+    rubric: (
       if $shape == "author" then [
         "model_packet_tool_and_intervention_eligibility",
         "declared_brief_satisfied_with_approved_primitives",
@@ -316,7 +316,8 @@ plan=$(jq -S -c -n \
         "fresh_independent_checker_identity",
         "subject_result_reproduced_or_rejected",
         "commands_hashes_and_reasons_recorded"
-      ] end,
+      ] end
+    ),
     recording: {
       eventStream: "complete-ndjson",
       removedProviderFields: ["textSignature", "thinkingSignature"],
