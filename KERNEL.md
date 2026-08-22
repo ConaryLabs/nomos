@@ -1,18 +1,18 @@
 ---
 title: The executable semantic kernel
-status: In progress through SW-G
+status: In progress through SW-M
 gate: K
-contract_revision: 6
-supersedes_contract_revision: 5
-decision_record: docs/decisions/0007-adopt-nomos-identity.md
+contract_revision: 7
+supersedes_contract_revision: 6
+decision_record: docs/decisions/0009-transition-explanation-input-boundary.md
 ---
 
 # The executable semantic kernel
 
 Nomos is the project and runtime that implements this contract. The Signed
-World remains the architectural thesis that Nomos tests. Contract revision 6
-replaces the former working project, crate, CLI, source-extension, and active
-schema identities without changing their semantic responsibilities.
+World remains the architectural thesis that Nomos tests. Contract revision 7
+retains revision 6's Nomos identities and repairs the transition-explanation
+input and verification boundary.
 
 Gate K is the first executable artifact after the thesis. It proves the semantic
 machine without graphics, networking, audio playback, hot reload, or an asset
@@ -485,8 +485,13 @@ nomos explain-entity build/gaol.world/ north_gate
 nomos explain-entity build/gaol.world/ flooded_section
 nomos explain-entity build/gaol.world/ brazier_02
 
-nomos explain-transition runs/gaol/ north_gate --tick 4
-nomos explain-transition runs/gaol/ brazier_02 --tick 7
+nomos explain-transition runs/gaol/ north_gate \
+  --tick 4 \
+  --world build/gaol.world/
+
+nomos explain-transition runs/gaol-seven/ brazier_02 \
+  --tick 7 \
+  --world build/gaol.world/
 
 nomos replay build/gaol.world/ \
   --log fixtures/gaol.replay \
@@ -508,6 +513,13 @@ Exit codes:
 ```
 
 No command mutates an input package or input state file.
+
+`explain-transition` opens and semantically verifies the supplied world, then
+strictly opens and re-executes the supplied run against that world before
+selecting the requested receipt. A run's recorded package and simulation
+digests bind supplied bytes; they do not locate or replace the required world
+input. `runs/gaol-seven/` is separate seven-command evidence for the tick-7
+example and does not replace the accepted five-command command/replay fixture.
 
 ## 9. Diagnostics and receipts
 
