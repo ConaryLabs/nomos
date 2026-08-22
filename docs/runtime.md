@@ -1,6 +1,6 @@
 ---
 title: Gate K runtime commit and persisted evidence
-status: Implementation reference through SW-M
+status: Implementation reference through SW-N
 date: 2026-08-22
 applies_to: KERNEL.md sections 2, 3, 5, 7, and 9; acceptance 5, 9, 10, and 12
 ---
@@ -203,8 +203,7 @@ strict typed values and their cross-object integrity rules; SW-J publishes and
 reopens those exact values through `run` and `command`; SW-K binds and reproduces
 them through `replay`. SW-M proves that strict legacy-v1 migration produces the
 same normalized runtime-v2 state, command, receipt, movement, light, and
-hash-chain evidence as active v2 meaning. Decision 0009 requires a future
-transition explanation to open the world and strictly re-execute the run before
-rendering causal evidence; it does not implement that command or change the
-six-file bundle. No slice yet explains causal evidence, runs the multi-target
-ten-run matrix, or performs formal cold-agent gates.
+hash-chain evidence as active v2 meaning. SW-N follows decision 0009 by opening
+the world and strictly re-executing the run before rendering causal evidence.
+It changes neither the receipt nor the six-file bundle. The multi-target ten-run
+matrix and formal cold-agent gates remain open.

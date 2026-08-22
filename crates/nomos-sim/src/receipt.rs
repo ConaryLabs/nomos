@@ -212,6 +212,12 @@ impl CausalReceipt {
         &self.command
     }
 
+    /// Canonical structured form of the compiler-projection-resolved command.
+    #[must_use]
+    pub fn resolved_command_to_canonical(&self) -> CanonicalValue {
+        command_to_canonical(&self.command)
+    }
+
     /// Ordered local-then-causal machine transitions.
     #[must_use]
     pub fn steps(&self) -> &[TransitionStep] {
@@ -328,7 +334,9 @@ impl CausalReceipt {
         self.to_canonical().to_canonical_bytes()
     }
 
-    pub(crate) fn to_canonical(&self) -> CanonicalValue {
+    /// Canonical structured receipt meaning used by downstream explanations.
+    #[must_use]
+    pub fn to_canonical(&self) -> CanonicalValue {
         CanonicalValue::object_declared([
             ("command", command_to_canonical(&self.command)),
             (

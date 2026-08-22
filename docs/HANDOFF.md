@@ -1,8 +1,8 @@
 # Handoff — state of the repository
 
-Updated 2026-08-22 for the issue #62 explanation-boundary contract repair.
-SW-M is merged and green; the contract-revision-7 repair is active on branch
-`contract-transition-explanation-62`.
+Updated 2026-08-22 for the issue #65 SW-N explanation slice. Contract revision
+7 is merged and green; SW-N is active on branch
+`sw-n-semantic-explanations-65`.
 This file orients a fresh session; it is rewritten at each slice boundary and
 never accumulates history (git has that).
 
@@ -164,8 +164,8 @@ never accumulates history (git has that).
   findings; after repair it reviewed and reran final head `7ea49d6` green on
   Rust 1.98.0. PR CI run `32530844878` passed, PR #34 merged as `1f04fce`, issue
   #24 closed, and post-merge CI run `32531098740` passed. Structured canonical
-  data and readable explanations are separate outputs; the actual
-  `nomos explain-*` CLI remains later work.
+  data and readable explanations are separate outputs. At that slice boundary
+  `nomos explain-*` remained later work; SW-N now consumes the typed record.
 - **SW-F is merged (#35/#38):** construction IR advances to
   `nomos.world_ir.construction@3` and simulation to
   `nomos.projection.simulation@3`; persistence and diagnostics begin at `@1`.
@@ -283,22 +283,37 @@ never accumulates history (git has that).
   boundaries. PR #64 merged as `0b9d948`, issue #63 closed, post-merge CI run
   `32573036770` passed, and the feature/review worktrees and branches were
   removed.
-- **Contract revision 7 is owner-authorized (#62):** decision 0009 requires
+- **Contract revision 7 is merged and green (#62/#66):** decision 0009 requires
   `explain-transition` to receive `--world <world/>`, strictly verify that world,
   and strictly open and re-execute the run against it before explaining a
   receipt. The tick-7 brazier example uses separate seven-command evidence, so
   the accepted five-command command/replay fixture remains unchanged. This
   repair adds no run member, package locator, persisted schema, or weaker
-  standalone forensic path. The explanation commands remain a later
-  implementation slice.
+  standalone forensic path. Exact head `98e71d2` passed author proof, PR CI run
+  `32585274094`, and a finding-free GPT-5.6 Luna high non-author rerun after a
+  superseded audit found three stale references. PR #66 merged as `3d67c4f`,
+  issue #62 closed, post-merge CI run `32585743441` passed, and the feature and
+  review worktrees and branches were removed.
+- **SW-N is active (#65):** `nomos explain-entity` renders linked source,
+  primitive expansion, independent machines, claim templates, active initial
+  claims, effective facts, typed ownership/derivation records, consumers, and
+  schema identities from a strictly opened world. `nomos explain-transition`
+  strictly opens that world, then strictly opens and re-executes the unchanged
+  six-file run before selecting a tick and rendering the unresolved request,
+  resolved command, causes, ordered steps, claim changes, complete effective
+  facts, projection deltas, source mapping, and state hash. The primary
+  five-command evidence proves `north_gate` at tick 4;
+  `fixtures/gaol-seven.commands` separately proves `brazier_02` at tick 7.
+  Focused subprocess tests freeze exact output hashes and rejection behavior.
+  No schema, package/run member, package locator, dependency, or runtime path is
+  added.
 
 ## What is next
 
-Finish issue #62: land decision 0009 and the contract-revision-7 wording after
-the full proof, green CI, and a clean non-author exact-head rerun. Then implement
-the package-bound entity and transition explanation surface in issue #65 on its
-own branch. Later work includes the Linux aarch64 and ten-run matrix, measured
-Gate K budgets, final schema-ownership review, and the formal cold-agent gates.
+Finish issue #65: complete the full proof, open the draft PR, obtain green CI
+and a clean non-author exact-head rerun, then leave merge disposition to the
+owner. Later work includes the Linux aarch64 and ten-run matrix, measured Gate K
+budgets, final schema-ownership review, and the formal cold-agent gates.
 
 The old `agy` Gemini route remains falsified evidence. Issue #49 qualifies Pi as
 the replacement transport without spending a formal attempt or changing the
@@ -314,12 +329,18 @@ cargo test --workspace --locked
 cargo xtask boundary
 cargo run --locked --bin nomos -- --help
 cargo run --locked --bin nomos -- validate fixtures/gaol.nomos
-cargo run --locked --bin nomos -- compile fixtures/gaol.nomos --out target/tmp/sw-m-proof/gaol.world
-cargo run --locked --bin nomos -- migrate fixtures/gaol-v1.world --to 2 --out target/tmp/sw-m-proof/gaol-migrated.world
-cargo run --locked --bin nomos -- inspect target/tmp/sw-m-proof/gaol-migrated.world
-cargo run --locked --bin nomos -- run target/tmp/sw-m-proof/gaol.world --commands fixtures/gaol.commands --out target/tmp/sw-m-proof/gaol.run
-cargo run --locked --bin nomos -- command target/tmp/sw-m-proof/gaol.world --state target/tmp/sw-m-proof/gaol.run/final-state.json "close north_gate" --out target/tmp/sw-m-proof/after-close.run
-cargo run --locked --bin nomos -- replay target/tmp/sw-m-proof/gaol.world --log fixtures/gaol.replay --out target/tmp/sw-m-proof/replay.run
+cargo run --locked --bin nomos -- compile fixtures/gaol.nomos --out target/tmp/sw-n-proof/gaol.world
+cargo run --locked --bin nomos -- migrate fixtures/gaol-v1.world --to 2 --out target/tmp/sw-n-proof/gaol-migrated.world
+cargo run --locked --bin nomos -- inspect target/tmp/sw-n-proof/gaol-migrated.world
+cargo run --locked --bin nomos -- run target/tmp/sw-n-proof/gaol.world --commands fixtures/gaol.commands --out target/tmp/sw-n-proof/gaol.run
+cargo run --locked --bin nomos -- run target/tmp/sw-n-proof/gaol.world --commands fixtures/gaol-seven.commands --out target/tmp/sw-n-proof/gaol-seven.run
+cargo run --locked --bin nomos -- explain-entity target/tmp/sw-n-proof/gaol.world north_gate
+cargo run --locked --bin nomos -- explain-entity target/tmp/sw-n-proof/gaol.world flooded_section
+cargo run --locked --bin nomos -- explain-entity target/tmp/sw-n-proof/gaol.world brazier_02
+cargo run --locked --bin nomos -- explain-transition target/tmp/sw-n-proof/gaol.run north_gate --tick 4 --world target/tmp/sw-n-proof/gaol.world
+cargo run --locked --bin nomos -- explain-transition target/tmp/sw-n-proof/gaol-seven.run brazier_02 --tick 7 --world target/tmp/sw-n-proof/gaol.world
+cargo run --locked --bin nomos -- command target/tmp/sw-n-proof/gaol.world --state target/tmp/sw-n-proof/gaol.run/final-state.json "close north_gate" --out target/tmp/sw-n-proof/after-close.run
+cargo run --locked --bin nomos -- replay target/tmp/sw-n-proof/gaol.world --log fixtures/gaol.replay --out target/tmp/sw-n-proof/replay.run
 docs/evaluation/test-agy-print-preflight.sh
 docs/evaluation/test-agy-formal-boundary-preflight.sh
 docs/evaluation/test-pi-cold-agent-preflight.sh
@@ -338,9 +359,9 @@ author proof, Luna max exact-head rerun, PR CI, and post-merge CI also passed al
 four commands; the focused release SW-G test passed. SW-F, SW-D, and
 issue #24 have the same author/non-author/CI chain as recorded above. Earlier
 SW-C, revision-4, and Rust-1.98 maintenance reruns also passed.
-Still unproven: Linux aarch64 release, ten runs per target, explanation command
-implementation, measured Gate K budgets, and formal cold-agent gates. The
-contract also requires a final explicit schema-ownership
+Still unproven: Linux aarch64 release, ten runs per target, measured Gate K
+budgets, and formal cold-agent gates. The contract also requires a final
+explicit schema-ownership
 source-review receipt after the Gate K schema set stabilizes; that final
 receipt does not exist yet.
 

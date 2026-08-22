@@ -450,7 +450,9 @@ impl IrEntity {
         &self.source_span
     }
 
-    fn to_canonical(&self) -> CanonicalValue {
+    /// Canonical structured entity meaning used by downstream explanations.
+    #[must_use]
+    pub fn to_canonical(&self) -> CanonicalValue {
         let credential = self
             .credential
             .as_ref()

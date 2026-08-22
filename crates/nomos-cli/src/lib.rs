@@ -5,8 +5,8 @@
 //! SW-H implements the filesystem-authoring commands (`validate`, `compile`,
 //! and `inspect`) over that boundary. SW-J adds atomic verified run bundles and
 //! the `run` and `command` operations; SW-K adds strict deterministic replay,
-//! and SW-M adds strict stable-v1 migration. Explanation commands belong to a
-//! later accepted slice.
+//! SW-M adds strict stable-v1 migration, and SW-N renders read-only semantic
+//! explanations from already verified typed evidence.
 //!
 //! # Boundary
 //!
@@ -34,6 +34,7 @@
 use nomos_core::Diagnostic;
 
 mod command;
+mod explanation;
 mod package;
 mod run_bundle;
 
