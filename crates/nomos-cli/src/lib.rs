@@ -3,8 +3,9 @@
 //! `KERNEL.md` section 10 assigns this crate *command-line surface and artifact
 //! orchestration*, and section 8 fixes the exit codes every command must use.
 //! SW-H implements the filesystem-authoring commands (`validate`, `compile`,
-//! and `inspect`) over that boundary. Runtime execution, explanation, replay,
-//! and migration commands belong to later accepted slices.
+//! and `inspect`) over that boundary. SW-J adds atomic verified run bundles and
+//! the `run` and `command` operations. Explanation, replay, and migration
+//! commands belong to later accepted slices.
 //!
 //! # Boundary
 //!
@@ -33,10 +34,14 @@ use nomos_core::Diagnostic;
 
 mod command;
 mod package;
+mod run_bundle;
 
 pub use command::{Execution, execute};
 pub use package::{
     compile_and_write_world, initial_state_from_package, open_compiled_world, write_compiled_world,
+};
+pub use run_bundle::{
+    OpenedRunBundle, open_run_bundle, require_available_run_output, write_run_bundle,
 };
 
 /// The process exit codes fixed by `KERNEL.md` section 8.
@@ -73,7 +78,9 @@ impl ExitCode {
     pub fn for_diagnostic(diagnostic: &Diagnostic) -> Self {
         if matches!(
             diagnostic.code(),
-            nomos_core::diagnostic::codes::PACKAGE_IO | nomos_core::diagnostic::codes::CLI_IO
+            nomos_core::diagnostic::codes::PACKAGE_IO
+                | nomos_core::diagnostic::codes::CLI_IO
+                | nomos_core::diagnostic::codes::RUN_BUNDLE_IO
         ) {
             Self::Environment
         } else {

@@ -495,6 +495,14 @@ pub mod codes {
     pub const RUNTIME_COMMAND_AMBIGUOUS: DiagnosticCode = DiagnosticCode::new("EK0815");
     /// Persisted logs, hashes, receipts, or result evidence disagree.
     pub const RUNTIME_EVIDENCE_INCONSISTENT: DiagnosticCode = DiagnosticCode::new("EK0816");
+    /// A requested run-bundle destination already exists.
+    pub const RUN_BUNDLE_OUTPUT_EXISTS: DiagnosticCode = DiagnosticCode::new("EK0817");
+    /// A run bundle does not contain exactly the six required root files.
+    pub const RUN_BUNDLE_ENTRY_SET_INVALID: DiagnosticCode = DiagnosticCode::new("EK0818");
+    /// A run-bundle root or entry has a forbidden filesystem type.
+    pub const RUN_BUNDLE_ENTRY_TYPE_INVALID: DiagnosticCode = DiagnosticCode::new("EK0819");
+    /// Reading, staging, publishing, or cleaning a run bundle failed.
+    pub const RUN_BUNDLE_IO: DiagnosticCode = DiagnosticCode::new("EK0820");
 
     /// A resolver-plan collection repeats one stable semantic identity.
     pub const RESOLVER_DUPLICATE_IDENTITY: DiagnosticCode = DiagnosticCode::new("EK0901");
@@ -589,6 +597,10 @@ pub mod codes {
         RUNTIME_COMMAND_SCRIPT_INVALID,
         RUNTIME_COMMAND_AMBIGUOUS,
         RUNTIME_EVIDENCE_INCONSISTENT,
+        RUN_BUNDLE_OUTPUT_EXISTS,
+        RUN_BUNDLE_ENTRY_SET_INVALID,
+        RUN_BUNDLE_ENTRY_TYPE_INVALID,
+        RUN_BUNDLE_IO,
         RESOLVER_DUPLICATE_IDENTITY,
         RESOLVER_CLAIM_ENTITY_MISMATCH,
         RESOLVER_ACTIVATION_NAMESPACE_MISSING,

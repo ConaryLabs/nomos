@@ -1,7 +1,8 @@
 //! The `nomos` binary.
 //!
-//! SW-H exposes the Gate K filesystem-authoring commands while leaving runtime,
-//! replay, migration, and explanation commands for their accepted slices.
+//! SW-H exposes the Gate K filesystem-authoring commands. SW-J adds immutable
+//! runtime run bundles while leaving replay, migration, and explanations for
+//! their accepted slices.
 
 use std::io::{self, Write};
 use std::process::ExitCode as ProcessExitCode;

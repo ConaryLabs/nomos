@@ -51,6 +51,25 @@ impl CommandRequest {
         self.argument.as_ref()
     }
 
+    /// Parses the exact single-command spelling used by `nomos command`.
+    ///
+    /// The line has the same token, whitespace, identifier, and argument rules
+    /// as one command-script body line, but has no schema header or line ending.
+    ///
+    /// # Errors
+    ///
+    /// Returns `EK0814` when the line is not the unique accepted spelling of
+    /// one command request.
+    pub fn from_line(line: &str) -> Result<Self, Diagnostic> {
+        let request = parse_request(line)?;
+        if request.to_line() != line {
+            return Err(invalid(
+                "command request does not exactly re-encode from its typed meaning",
+            ));
+        }
+        Ok(request)
+    }
+
     /// Canonical semantic value used by later command-log evidence.
     #[must_use]
     pub fn to_canonical(&self) -> CanonicalValue {

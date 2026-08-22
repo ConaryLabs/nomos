@@ -7,14 +7,22 @@ use std::path::{Path, PathBuf};
 use nomos_compiler::{compile_world_package, inspect_compiled_package};
 use nomos_core::package::MANIFEST_FILE;
 use nomos_core::{CanonicalValue, Diagnostic, RepairClass, SourcePath};
+use nomos_sim::{
+    CommandRequest, CommandScript, PersistedRuntimeState, RunExecution, execute_requests,
+};
 
-use crate::{ExitCode, compile_and_write_world, render_rejection};
+use crate::{
+    ExitCode, OpenedRunBundle, compile_and_write_world, initial_state_from_package,
+    open_compiled_world, render_rejection, require_available_run_output, write_run_bundle,
+};
 
-const ROOT_HELP: &str = "Nomos Gate K filesystem authoring\n\nUsage:\n  nomos validate <source.nomos>\n  nomos compile <source.nomos> --out <new.world/>\n  nomos inspect <world/>\n  nomos --help\n";
+const ROOT_HELP: &str = "Nomos Gate K semantic runtime\n\nUsage:\n  nomos validate <source.nomos>\n  nomos compile <source.nomos> --out <new.world/>\n  nomos inspect <world/>\n  nomos run <world/> --commands <commands> --out <new-run/>\n  nomos command <world/> --state <state.json> \"<command>\" --out <new-run/>\n  nomos --help\n";
 const VALIDATE_HELP: &str = "Validate one Nomos source file without writing artifacts.\n\nUsage:\n  nomos validate <source.nomos>\n";
 const COMPILE_HELP: &str = "Compile one Nomos source file into a new immutable world package.\n\nUsage:\n  nomos compile <source.nomos> --out <new.world/>\n";
 const INSPECT_HELP: &str =
     "Inspect one verified immutable world package.\n\nUsage:\n  nomos inspect <world/>\n";
+const RUN_HELP: &str = "Execute one strict command script from a compiled world's initial state.\n\nUsage:\n  nomos run <world/> --commands <commands> --out <new-run/>\n";
+const COMMAND_HELP: &str = "Execute one command from a verified persisted runtime state.\n\nUsage:\n  nomos command <world/> --state <state.json> \"<command>\" --out <new-run/>\n";
 
 /// One completed command-line execution, including its exact stdout bytes.
 #[derive(Clone, PartialEq, Eq, Debug)]
@@ -40,9 +48,27 @@ impl Execution {
 #[derive(Clone, PartialEq, Eq, Debug)]
 enum Command {
     Help(&'static str),
-    Validate { source: String },
-    Compile { source: String, output: String },
-    Inspect { package: String },
+    Validate {
+        source: String,
+    },
+    Compile {
+        source: String,
+        output: String,
+    },
+    Inspect {
+        package: String,
+    },
+    Run {
+        package: String,
+        commands: String,
+        output: String,
+    },
+    Single {
+        package: String,
+        state: String,
+        request: String,
+        output: String,
+    },
 }
 
 /// Parses and executes exactly one supported command.
@@ -96,6 +122,51 @@ fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Command, Diagnostic
         [name, package] if name == "inspect" && !is_option(package) => Command::Inspect {
             package: package.clone(),
         },
+        [name, help] if name == "run" && help == "--help" => Command::Help(RUN_HELP),
+        [
+            name,
+            package,
+            commands_option,
+            commands,
+            output_option,
+            output,
+        ] if name == "run"
+            && !is_option(package)
+            && commands_option == "--commands"
+            && !is_option(commands)
+            && output_option == "--out"
+            && !is_option(output) =>
+        {
+            Command::Run {
+                package: package.clone(),
+                commands: commands.clone(),
+                output: output.clone(),
+            }
+        }
+        [name, help] if name == "command" && help == "--help" => Command::Help(COMMAND_HELP),
+        [
+            name,
+            package,
+            state_option,
+            state,
+            request,
+            output_option,
+            output,
+        ] if name == "command"
+            && !is_option(package)
+            && state_option == "--state"
+            && !is_option(state)
+            && !is_option(request)
+            && output_option == "--out"
+            && !is_option(output) =>
+        {
+            Command::Single {
+                package: package.clone(),
+                state: state.clone(),
+                request: request.clone(),
+                output: output.clone(),
+            }
+        }
         _ => {
             return Err(usage(
                 "arguments do not match a supported Nomos command; use `nomos --help`",
@@ -112,13 +183,52 @@ fn is_option(argument: &str) -> bool {
 fn execute_command(command: Command) -> Execution {
     let result = match command {
         Command::Help(_) => unreachable!("help is returned before command execution"),
-        Command::Validate { source } => validate(&source),
-        Command::Compile { source, output } => compile(&source, &output),
-        Command::Inspect { package } => inspect(&package),
+        Command::Validate { source } => validate(&source).map(RuntimeOutcome::completed),
+        Command::Compile { source, output } => {
+            compile(&source, &output).map(RuntimeOutcome::completed)
+        }
+        Command::Inspect { package } => inspect(&package).map(RuntimeOutcome::completed),
+        Command::Run {
+            package,
+            commands,
+            output,
+        } => run_script(&package, &commands, &output),
+        Command::Single {
+            package,
+            state,
+            request,
+            output,
+        } => command_once(&package, &state, &request, &output),
     };
     match result {
-        Ok(value) => completed(value),
+        Ok(outcome) => outcome.into_execution(),
         Err(diagnostic) => rejected(ExitCode::for_diagnostic(&diagnostic), &diagnostic),
+    }
+}
+
+#[derive(Clone, PartialEq, Eq, Debug)]
+struct RuntimeOutcome {
+    value: CanonicalValue,
+    rejection: Option<Diagnostic>,
+}
+
+impl RuntimeOutcome {
+    fn completed(value: CanonicalValue) -> Self {
+        Self {
+            value,
+            rejection: None,
+        }
+    }
+
+    fn into_execution(self) -> Execution {
+        let exit = if self.rejection.is_some() {
+            ExitCode::Rejected
+        } else {
+            ExitCode::Completed
+        };
+        let mut stdout = self.value.to_canonical_bytes();
+        stdout.push(b'\n');
+        Execution { exit, stdout }
     }
 }
 
@@ -177,6 +287,135 @@ fn inspect(package: &str) -> Result<CanonicalValue, Diagnostic> {
     inspect_compiled_package(&package)
 }
 
+fn run_script(package: &str, commands: &str, output: &str) -> Result<RuntimeOutcome, Diagnostic> {
+    let package_path = relative_filesystem_path(package)?;
+    let commands_path = relative_filesystem_path(commands)?;
+    let output_path = relative_filesystem_path(output)?;
+    require_available_run_output(&output_path)?;
+    let world = open_compiled_world(&package_path)?;
+    let script = CommandScript::from_bytes(&read_regular_bytes(&commands_path, "command script")?)?;
+    let initial =
+        PersistedRuntimeState::new(world.simulation(), initial_state_from_package(&world)?)?;
+    publish_execution(
+        "run",
+        output,
+        &output_path,
+        &world,
+        execute_requests(
+            world.simulation(),
+            world.package_digest(),
+            initial,
+            script.requests(),
+        )?,
+    )
+}
+
+fn command_once(
+    package: &str,
+    state: &str,
+    request: &str,
+    output: &str,
+) -> Result<RuntimeOutcome, Diagnostic> {
+    let package_path = relative_filesystem_path(package)?;
+    let state_path = relative_filesystem_path(state)?;
+    let output_path = relative_filesystem_path(output)?;
+    require_available_run_output(&output_path)?;
+    let world = open_compiled_world(&package_path)?;
+    let request = CommandRequest::from_line(request)?;
+    let initial = PersistedRuntimeState::from_canonical_bytes(
+        &read_regular_bytes(&state_path, "persisted runtime state")?,
+        world.simulation(),
+    )?;
+    publish_execution(
+        "command",
+        output,
+        &output_path,
+        &world,
+        execute_requests(
+            world.simulation(),
+            world.package_digest(),
+            initial,
+            &[request],
+        )?,
+    )
+}
+
+fn publish_execution(
+    command: &'static str,
+    output_spelling: &str,
+    output_path: &Path,
+    world: &nomos_compiler::OpenedCompiledWorld,
+    execution: RunExecution,
+) -> Result<RuntimeOutcome, Diagnostic> {
+    let rejection = execution.rejection().cloned();
+    let opened = write_run_bundle(&execution, world, output_path)?;
+    Ok(RuntimeOutcome {
+        value: runtime_report(command, output_spelling, &opened, rejection.as_ref()),
+        rejection,
+    })
+}
+
+fn runtime_report(
+    command: &'static str,
+    output: &str,
+    bundle: &OpenedRunBundle,
+    rejection: Option<&Diagnostic>,
+) -> CanonicalValue {
+    let artifacts = [
+        "causal-receipts.json",
+        "command-log.json",
+        "final-state.json",
+        "initial-state.json",
+        "result.json",
+        "state-hashes.json",
+    ]
+    .into_iter()
+    .map(|name| CanonicalValue::text(artifact_path(output, name)))
+    .collect();
+    let diagnostics =
+        rejection.map(|diagnostic| CanonicalValue::Array(vec![diagnostic.to_canonical()]));
+    let mut fields = vec![
+        ("artifacts", CanonicalValue::Array(artifacts)),
+        (
+            "committed_command_count",
+            CanonicalValue::Uint(bundle.result().committed_command_count()),
+        ),
+        ("command", CanonicalValue::text(command)),
+        (
+            "final_state_hash",
+            CanonicalValue::text(bundle.result().final_state_hash().to_hex()),
+        ),
+        (
+            "first_state_hash",
+            CanonicalValue::text(bundle.result().first_state_hash().to_hex()),
+        ),
+        ("output", CanonicalValue::text(output)),
+        (
+            "result_digest",
+            CanonicalValue::text(bundle.result_digest().to_hex()),
+        ),
+        (
+            "status",
+            CanonicalValue::text(bundle.result().status().as_str()),
+        ),
+    ];
+    if let Some(diagnostics) = diagnostics {
+        fields.push(("diagnostics", diagnostics));
+    }
+    CanonicalValue::object_declared(fields)
+}
+
+fn read_regular_bytes(path: &Path, kind: &str) -> Result<Vec<u8>, Diagnostic> {
+    let metadata = fs::metadata(path).map_err(|error| io_failure(path, &error))?;
+    if !metadata.is_file() {
+        return Err(Diagnostic::new(
+            nomos_core::diagnostic::codes::CLI_IO,
+            format!("`{}` is not a regular {kind} file", path.display()),
+        ));
+    }
+    fs::read(path).map_err(|error| io_failure(path, &error))
+}
+
 fn read_source(source: &str) -> Result<String, Diagnostic> {
     let path = Path::new(source);
     let metadata = fs::metadata(path).map_err(|error| io_failure(path, &error))?;
@@ -225,15 +464,6 @@ fn io_failure(path: &Path, error: &std::io::Error) -> Diagnostic {
         nomos_core::diagnostic::codes::CLI_IO,
         format!("`{}`: {error}", path.display()),
     )
-}
-
-fn completed(value: CanonicalValue) -> Execution {
-    let mut stdout = value.to_canonical_bytes();
-    stdout.push(b'\n');
-    Execution {
-        exit: ExitCode::Completed,
-        stdout,
-    }
 }
 
 fn rejected(exit: ExitCode, diagnostic: &Diagnostic) -> Execution {
