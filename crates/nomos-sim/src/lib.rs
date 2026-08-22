@@ -40,6 +40,7 @@ use nomos_core::id::SchemaId;
 
 mod command_language;
 mod commit;
+mod execution;
 mod receipt;
 mod resolver;
 mod run_evidence;
@@ -49,6 +50,7 @@ mod transaction;
 
 pub use command_language::{CommandRequest, CommandScript, resolve_command};
 pub use commit::{CommittedTransaction, commit_transaction, commit_transaction_with_budget};
+pub use execution::{RunExecution, execute_requests, validate_committed_evidence};
 pub use receipt::{CausalReceipt, EffectiveFactRef, EffectiveFactValue, ProjectionDelta};
 pub use resolver::{resolve_light, resolve_movement};
 pub use run_evidence::{
@@ -110,7 +112,7 @@ pub fn causal_receipt_sequence_schema() -> SchemaId {
         .expect("the causal-receipt-sequence schema id is a valid literal")
 }
 
-/// Canonical schema for the future run bundle's content-binding result.
+/// Canonical schema for a run bundle's content-binding result.
 #[must_use]
 pub fn run_result_schema() -> SchemaId {
     SchemaId::new("nomos.run_result", 1).expect("the run-result schema id is a valid literal")

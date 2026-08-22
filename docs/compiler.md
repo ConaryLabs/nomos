@@ -1,6 +1,6 @@
 ---
 title: Gate K compiler
-status: Implementation reference through SW-G
+status: Compiler implementation reference; current through SW-J
 date: 2026-08-22
 applies_to: KERNEL.md sections 1, 2, 4, 9; acceptance 1-3 and 11
 ---
@@ -133,17 +133,17 @@ SW-C corrected the narrower SW-B naming before it became serialized behavior.
 - complete package members, build receipts, schema ownership, and initial state
   reproduce byte-for-byte across clean compilation.
 
-## Still unproved
+## Slice history and remaining work
 
-The CLI remains intentionally unimplemented. Acceptance item 3's observable
-`nomos inspect` command requires a complete package, including projections;
-SW-C proves its expansion/IR half but does not call the criterion satisfied.
-Issue #5 records that scope split.
+At SW-C, the CLI was intentionally unimplemented: acceptance item 3's
+observable `nomos inspect` command required the complete package added by later
+slices. Issue #5 records that historical scope split. SW-H now exposes
+`validate`, `compile`, and `inspect`; SW-J adds `run` and `command` over the
+verified package boundary.
 
 Typed provenance prepares the data needed by `explain-entity`, but the CLI
-surface itself remains unimplemented. SW-G writes complete packages through a
-library boundary, but it does not implement command-line verbs, run outputs,
-replay, migration, or explanations. `produced_schemas()` reports construction
-evidence, stable IR, all four projections, the registry, and compiler receipts.
-Construction versions remain preserved evidence; stable `nomos.world_ir@1` is
-now independently frozen for the later required v1-to-v2 migration.
+explanation surface remains unimplemented. Replay and migration also remain
+outstanding. `produced_schemas()` reports construction evidence, stable IR, all
+four projections, the registry, and compiler receipts. Construction versions
+remain preserved evidence; stable `nomos.world_ir@1` is independently frozen
+for the later required v1-to-v2 migration.

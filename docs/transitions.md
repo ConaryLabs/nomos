@@ -1,7 +1,7 @@
 ---
 title: Gate K transitions and transaction preparation
-status: Implementation reference through SW-F
-date: 2026-08-21
+status: Transition implementation reference; current through SW-J
+date: 2026-08-22
 applies_to: KERNEL.md sections 1, 2, 4; acceptance 4-6
 ---
 
@@ -103,6 +103,6 @@ SW-E's ground `MovementDisposition` facts remain as described in
 [`movement.md`](movement.md). SW-F proves light removal,
 persistence/diagnostics deltas, committed in-memory state, hashes, and typed
 causal receipts as described in [`runtime.md`](runtime.md). SW-G packages those
-artifacts and SW-H exposes filesystem validation, compilation, and inspection.
-Runtime CLI execution, replay, migration, the ten-run target matrix, and
-whole-Gate-K cold-agent acceptance remain open.
+artifacts, SW-H exposes filesystem validation, compilation, and inspection, and
+SW-J executes runtime commands into verified run bundles. Replay, migration,
+the ten-run target matrix, and whole-Gate-K cold-agent acceptance remain open.

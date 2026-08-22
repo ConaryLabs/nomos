@@ -1,4 +1,4 @@
-//! Typed persisted evidence shared by future run and replay orchestration.
+//! Typed persisted evidence shared by run and future replay orchestration.
 
 use nomos_core::canonical::read::parse_canonical;
 use nomos_core::{CanonicalValue, Diagnostic, RepairClass, SchemaId, Sha256Digest, StateHash};

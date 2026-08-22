@@ -1,8 +1,7 @@
 # Handoff — state of the repository
 
-Updated 2026-08-22 for the issue #56 persisted-runtime evidence slice.
-The semantic opener and filesystem-authoring CLI are merged and green; SW-I is
-the active feature branch.
+Updated 2026-08-22 for the issue #58 filesystem-runtime slice.
+SW-I is merged and green; SW-J is the active feature branch.
 This file orients a fresh session; it is rewritten at each slice boundary and
 never accumulates history (git has that).
 
@@ -218,7 +217,7 @@ never accumulates history (git has that).
   complete author proof, PR CI run `32550761498`, and a clean non-author rerun
   with no findings. PR #53 merged as `54e5dd2`, issue #52 closed, and post-merge
   CI run `32551021136` passed.
-- **SW-I implementation is repaired and author-green (#56/#57):** strict typed decoders now
+- **SW-I is merged (#56/#57):** strict typed decoders now
   reconstruct `nomos.runtime_state@1` and every nested value in
   `nomos.causal_receipt@1`. `nomos.persisted_runtime_state@1` binds the unchanged
   inner state hash to exact simulation semantics; `nomos.command_script@1`
@@ -240,22 +239,58 @@ never accumulates history (git has that).
   a successful command/evidence chain beginning from the fixture's persisted
   tick-5 state, plus a wrong-zero-anchor rejection. The four pre-SW-I receipt
   digests and state hashes were compared against untouched checkpoint `94f60eb`
-  and remain frozen as regression goldens. Draft PR #57 remains open for a
-  complete final-head author proof, CI, and a fresh non-author audit/rerun;
-  exact-head disposition is recorded externally in that PR so updating this
-  handoff cannot invalidate it. No runtime CLI command or run-directory
-  publisher was added.
+  and remain frozen as regression goldens. Final head `e890e69` passed the full
+  author proof, PR CI run `32554756895`, and a clean GPT-5.6 Luna max non-author
+  exact-head audit/rerun. PR #57 merged as `3d4a19a`, issue #56 closed, and
+  post-merge CI run `32555728168` passed. SW-I added no runtime CLI command or
+  run-directory publisher.
+- **SW-J is active (#58):** branch `sw-j-runtime-cli-58` implements typed
+  ordered execution, atomic publication and strict opening of the exact
+  six-file run bundle, plus `nomos run` and `nomos command`. The checked-in
+  `fixtures/gaol.commands` drives five deterministic commits; the single-command
+  path resumes from its persisted tick-5 final state. Targeted tests currently
+  cover completed and rejected bundles, empty/partial rejection evidence,
+  deterministic bytes, input immutability, cross-semantics refusal, existing
+  output preservation, noncanonical and digest mutations, exact entry sets,
+  symlink/special-file refusal, and injected staging cleanup. Head `f8eba93`
+  passed the author proof and PR CI run `32556961214`, but the first non-author
+  exact-head audit rejected it. One test attempted to create a Unix socket,
+  which the isolated review sandbox correctly refused; the audit also found a
+  missing final-tick cross-check and asked for stronger evidence that committed
+  artifacts reproduce from the supplied simulation semantics. The repair uses
+  the existing `/dev/null` character device for a read-only special-root check,
+  checks final tick from initial tick plus committed count, re-executes every
+  committed log row on open, and compares the complete regenerated log,
+  receipts, hashes, and final state. It also tests that `nomos run` begins from
+  the exact package-derived initial state and refreshes stale scope text. The
+  audit's proposed inference of a rejected request from `result.json` is not
+  representable under issue #58's explicit rule that rejected bundles bind only
+  committed commands and the stable terminal code; status remains a canonical
+  content claim rather than authenticity, while publication validates it
+  against the in-memory terminal outcome. The repaired tree passes the full
+  author proof and PR CI run `32557756337`. A second fresh non-author audit of
+  `3d2c88c` passed all four proof commands and found one remaining immutability
+  hole: an output nested below the input package could create a directory in the
+  package and invalidate it. The next repair rejects resolved output paths at or
+  below the package or a verified input-state run bundle, including
+  symlinked-ancestor aliases, before execution or publication, with subprocess
+  coverage for both runtime commands. Head `8ff16e5` passed the full author
+  proof and PR CI run `32558458548`. A third fresh non-author exact-head audit
+  passed all four proof commands and found no runtime-code issue, but rejected
+  two stale evidence-boundary sentences in `docs/movement.md` and
+  `docs/transitions.md` that still listed runtime CLI execution as open. Repair
+  commit `3f58532` makes both documents current through SW-J and passes the full
+  author proof. PR #59 is the authoritative live record for the required fresh
+  exact-head CI and non-author rerun before owner merge.
 
 ## What is next
 
-Finish issue #56's evidence chain: publish this documentation head, obtain green
-PR CI, and obtain the required fresh non-author exact-head audit/rerun before
-marking PR #57 ready. Record that immutable disposition in PR #57. The following
-slice may publish verified run bundles and expose runtime `run`/`command`.
-Later work includes replay, explanations, the required stable v1-to-v2 movement
-migration, direct v2 runtime loading/refusal evidence, the Linux aarch64 and
-ten-run matrix, measured Gate K budgets, final schema-ownership review, and the
-formal cold-agent gates.
+Finish issue #58 only after PR #59 records green CI and a clean non-author
+exact-head rerun for the final repair, then perform the owner-authorized merge
+and branch cleanup. Later work includes replay, explanations, the
+required stable v1-to-v2 movement migration, direct v2 runtime loading/refusal
+evidence, the Linux aarch64 and ten-run matrix, measured Gate K budgets, final
+schema-ownership review, and the formal cold-agent gates.
 
 The old `agy` Gemini route remains falsified evidence. Issue #49 qualifies Pi as
 the replacement transport without spending a formal attempt or changing the
@@ -271,8 +306,10 @@ cargo test --workspace --locked
 cargo xtask boundary
 cargo run --locked --bin nomos -- --help
 cargo run --locked --bin nomos -- validate fixtures/gaol.nomos
-cargo run --locked --bin nomos -- compile fixtures/gaol.nomos --out target/tmp/sw-h-proof/gaol.world
-cargo run --locked --bin nomos -- inspect target/tmp/sw-h-proof/gaol.world
+cargo run --locked --bin nomos -- compile fixtures/gaol.nomos --out target/tmp/sw-j-proof/gaol.world
+cargo run --locked --bin nomos -- inspect target/tmp/sw-j-proof/gaol.world
+cargo run --locked --bin nomos -- run target/tmp/sw-j-proof/gaol.world --commands fixtures/gaol.commands --out target/tmp/sw-j-proof/gaol.run
+cargo run --locked --bin nomos -- command target/tmp/sw-j-proof/gaol.world --state target/tmp/sw-j-proof/gaol.run/final-state.json "close north_gate" --out target/tmp/sw-j-proof/after-close.run
 docs/evaluation/test-agy-print-preflight.sh
 docs/evaluation/test-agy-formal-boundary-preflight.sh
 docs/evaluation/test-pi-cold-agent-preflight.sh
@@ -291,9 +328,9 @@ author proof, Luna max exact-head rerun, PR CI, and post-merge CI also passed al
 four commands; the focused release SW-G test passed. SW-F, SW-D, and
 issue #24 have the same author/non-author/CI chain as recorded above. Earlier
 SW-C, revision-4, and Rust-1.98 maintenance reruns also passed.
-Still unproven: Linux aarch64 release, ten runs per target, runtime and
-explanation commands, migration/replay, measured Gate K budgets, and formal
-cold-agent gates. The contract also requires a final explicit schema-ownership
+Still unproven: Linux aarch64 release, ten runs per target, explanation
+commands, migration/replay, measured Gate K budgets, and formal cold-agent
+gates. The contract also requires a final explicit schema-ownership
 source-review receipt after the Gate K schema set stabilizes; that final
 receipt does not exist yet.
 

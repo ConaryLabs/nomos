@@ -1,6 +1,6 @@
 ---
 title: Gate K package evidence boundary
-status: Implementation reference through SW-G semantic-open repair
+status: Package implementation reference; current through SW-J
 date: 2026-08-22
 applies_to: KERNEL.md sections 5-7; acceptance 12
 ---
@@ -30,8 +30,9 @@ typed stable IR and regenerating every projection.
 `nomos-cli::write_compiled_world` and `compile_and_write_world` complete
 assembly and semantic validation before entering the generic writer, and
 `open_compiled_world` crosses that same typed semantic boundary after generic
-integrity checks. These are library orchestration APIs, not command-line verbs.
-Runtime causal receipts never enter an input package and live only in later run
+integrity checks. SW-H exposes this orchestration through `compile` and
+`inspect`; SW-J consumes the opened result through `run` and `command`. Runtime
+causal receipts never enter an input package and live only in separate run
 outputs.
 
 ## Stable artifacts and ownership
@@ -55,8 +56,9 @@ exactly on semantic open.
 This source review enumerates every canonical type newly entering a complete
 package. Repository search confirms no second crate defines any of these
 schemas; crate edges prevent projection/runtime code from naming IR types.
-This is an SW-G receipt, not the final Gate K ownership receipt: replay,
-migration, and run-output schema types have not stabilized yet.
+This began as an SW-G receipt, not the final Gate K ownership receipt. SW-I and
+SW-J subsequently stabilized the current run-output types; replay and migration
+schema ownership remain outstanding.
 
 Stable `nomos.world_ir@1` is not construction v3 with a new label. It preserves
 the construction schema as provenance, adds explicit compiler/catalog versions,
@@ -144,6 +146,7 @@ binds bytes but supplies neither access control nor provenance.
 SHA-256 proves byte identity, not authenticity. Compiler receipts bind exact
 source and artifact bytes inside the package, but they are not signatures.
 SW-H exposes this boundary through filesystem `validate`, `compile`, and
-`inspect` commands. It does not implement signing, guarantee power-loss
-durability, write run directories, execute runtime commands, replay, migrate,
-or satisfy whole-Gate-K acceptance.
+`inspect` commands, and SW-J consumes it without changing the input package to
+write run directories and execute runtime commands. The repository still does
+not implement signing, guarantee power-loss durability, replay, migrate, or
+satisfy whole-Gate-K acceptance.
