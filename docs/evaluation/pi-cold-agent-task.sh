@@ -258,6 +258,11 @@ for event in agent_start agent_end agent_settled; do
   count=$(jq -s --arg event "$event" '[.[] | select(.type == $event)] | length' "$events_out")
   [[ $count -eq 1 ]] || fail "expected one $event event, found $count"
 done
+agent_end_clean=$(jq -s '
+  [.[] | select(.type == "agent_end")] | length == 1 and
+  ([.[] | select(.type == "agent_end")][0].willRetry == false)
+  ' "$events_out")
+[[ $agent_end_clean == true ]] || fail 'agent ended with an unrecorded retry state'
 user_prompt_count=$(jq -s --arg prompt "$prompt" '
   [.[] | select(.type == "message_end" and .message.role == "user" and
     .message.content[0].text == $prompt)] | length
@@ -268,6 +273,14 @@ assistant_count=$(jq -s --arg provider "$provider" --arg model "$model" '
     .message.provider == $provider and .message.model == $model)] | length
   ' "$events_out")
 [[ $assistant_count -ge 1 ]] || fail 'event stream has no matching terminal assistant identity'
+terminal_assistant=$(jq -s --arg provider "$provider" --arg model "$model" '
+  ([.[] | select(.type == "message_end" and .message.role == "assistant")] | last) as $last |
+  $last.message.provider == $provider and
+  $last.message.model == $model and
+  $last.message.stopReason == "stop" and
+  ([$last.message.content[] | select(.type == "text") | .text] | join("") | length) > 0
+  ' "$events_out")
+[[ $terminal_assistant == true ]] || fail 'terminal assistant result identity or completion is missing'
 accounting_count=$(grep -Fc 'NOMOS_PI_ACCOUNTING ' "$stderr_out" || true)
 [[ $accounting_count -eq 1 ]] || fail "expected one accounting record, found $accounting_count"
 

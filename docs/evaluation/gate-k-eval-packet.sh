@@ -293,6 +293,36 @@ plan=$(jq -S -c -n \
       operatorSubstantiveHintsMaximum: 0,
       operatorRetriesMaximum: 0
     },
+    rubric:
+      if $shape == "author" then [
+        "model_packet_tool_and_intervention_eligibility",
+        "declared_brief_satisfied_with_approved_primitives",
+        "distinct_typed_symbolic_ids_resolve",
+        "validation_and_compile_succeed",
+        "kernel_and_unrelated_content_unchanged",
+        "subject_explains_the_change",
+        "independent_checker_reproduces"
+      ]
+      elif $shape == "debug" then [
+        "model_packet_tool_and_intervention_eligibility",
+        "actual_semantic_cause_identified",
+        "forensic_evidence_cited",
+        "plausible_alternatives_excluded",
+        "repair_targets_the_owning_boundary",
+        "content_repair_verified_when_possible",
+        "independent_checker_confirms_hidden_mutation"
+      ]
+      else [
+        "fresh_independent_checker_identity",
+        "subject_result_reproduced_or_rejected",
+        "commands_hashes_and_reasons_recorded"
+      ] end,
+    recording: {
+      eventStream: "complete-ndjson",
+      removedProviderFields: ["textSignature", "thinkingSignature"],
+      commandOrderPreserved: true,
+      transcriptLossLimit: "only-the-two-declared-provider-signature-fields"
+    },
     verdicts: ["pass", "fail", "assisted", "inconclusive"],
     operatorIntervention: "none"
   }

@@ -76,7 +76,7 @@ function blockBoundary(message: string): never {
 function countNomosCommands(command: string, subcommands: readonly string[]): number {
 	const alternatives = subcommands.join("|");
 	const pattern = new RegExp(
-		`(?:^|[\\s;&|()])(?:/workspace/|\\./)?bin/nomos\\s+(?:${alternatives})(?:\\s|$)`,
+		`(?:^|[\\s;&|()])(?:(?:/workspace/|\\./)?bin/)?nomos\\s+(?:${alternatives})(?:\\s|$)`,
 		"g",
 	);
 	return [...command.matchAll(pattern)].length;

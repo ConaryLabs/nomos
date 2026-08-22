@@ -119,6 +119,14 @@ jq -e \
     "operatorSubstantiveHintsMaximum": 0,
     "operatorRetriesMaximum": 0
   } and
+  (.rubric | type) == "array" and (.rubric | length) >= 3 and
+  all(.rubric[]; type == "string" and length > 0) and
+  .recording == {
+    "eventStream": "complete-ndjson",
+    "removedProviderFields": ["textSignature", "thinkingSignature"],
+    "commandOrderPreserved": true,
+    "transcriptLossLimit": "only-the-two-declared-provider-signature-fields"
+  } and
   .operatorIntervention == "none" and
   .verdicts == ["pass", "fail", "assisted", "inconclusive"]
   ' "$packet/plan.json" >/dev/null || fail 'plan does not bind the packet and protocol defaults'

@@ -24,7 +24,7 @@ esac
 for record in "$subject" "$checker"; do
   [[ -d $record && ! -L $record ]] || fail "task record is absent: $record"
   for file in task-receipt.json plan.json packet-manifest.json prompt.txt transcript.ndjson \
-    commands.json accounting.json boundary.json TASK.md; do
+    commands.json accounting.json boundary.json TASK.md pi-qualification.txt launcher.txt pi-stderr.txt; do
     [[ -f $record/$file && ! -L $record/$file ]] || fail "task record file is absent: $record/$file"
   done
   [[ -d $record/artifacts && ! -L $record/artifacts ]] || fail "artifact tree is absent: $record"
@@ -33,6 +33,52 @@ done
 [[ ! -e $out ]] || fail "output already exists: $out"
 out_parent=$(realpath -e "$(dirname "$out")")
 out="$out_parent/$(basename "$out")"
+
+tree_sha() {
+  local root=$1
+  find "$root" -type f -printf '%P\0' | sort -z |
+    while IFS= read -r -d '' relative; do
+      sha256sum "$root/$relative" | sed "s#  $root/#  #"
+    done | sha256sum | cut -d' ' -f1
+}
+
+for record in "$subject" "$checker"; do
+  jq -e '
+    .schema == "nomos.gate_k.task_receipt@1" and
+    .identity.freshEphemeralSession == true and
+    .identity.client == "Pi" and
+    (.identity.clientVersion | type) == "string" and
+    .identity.mode == "json" and
+    .operatorRetries == 0 and
+    .disclosures.persistedSession == false and
+    .disclosures.projectMemory == false and
+    .disclosures.personalContext == false and
+    .disclosures.contextFiles == [] and
+    .disclosures.connectors == [] and
+    .disclosures.webAccess == false and
+    .disclosures.toolNetworkAccess == false and
+    .disclosures.activeTools == ["bash"] and
+    .disclosures.repositoryMounted == false
+    ' "$record/task-receipt.json" >/dev/null || fail "task receipt identity is incomplete: $record"
+  [[ $(sha256sum "$record/packet-manifest.json" | cut -d' ' -f1) == \
+      $(jq -r '.digests.packetManifestSha256' "$record/task-receipt.json") ]] ||
+    fail "packet-manifest digest differs from task receipt: $record"
+  [[ $(sha256sum "$record/transcript.ndjson" | cut -d' ' -f1) == \
+      $(jq -r '.digests.transcriptSha256' "$record/task-receipt.json") ]] ||
+    fail "transcript digest differs from task receipt: $record"
+  [[ $(sha256sum "$record/commands.json" | cut -d' ' -f1) == \
+      $(jq -r '.digests.commandsSha256' "$record/task-receipt.json") ]] ||
+    fail "commands digest differs from task receipt: $record"
+  [[ $(tree_sha "$record/artifacts") == \
+      $(jq -r '.digests.artifactsTreeSha256' "$record/task-receipt.json") ]] ||
+    fail "artifact-tree digest differs from task receipt: $record"
+  [[ $(sha256sum "$record/boundary.json" | cut -d' ' -f1) == \
+      $(jq -r '.digests.boundarySha256' "$record/task-receipt.json") ]] ||
+    fail "boundary digest differs from task receipt: $record"
+  [[ $(sha256sum "$record/pi-qualification.txt" | cut -d' ' -f1) == \
+      $(jq -r '.digests.qualificationSha256' "$record/task-receipt.json") ]] ||
+    fail "qualification digest differs from task receipt: $record"
+done
 
 subject_shape=$(jq -r '.shape' "$subject/task-receipt.json")
 checker_shape=$(jq -r '.shape' "$checker/task-receipt.json")
@@ -118,7 +164,7 @@ cleanup() {
   rm -r -- "$stage"
 }
 trap cleanup EXIT
-install -d -m 755 "$stage/artifacts" "$stage/checker"
+install -d -m 755 "$stage/artifacts" "$stage/subject" "$stage/checker"
 for file in plan.json packet-manifest.json prompt.txt transcript.ndjson commands.json; do
   install -m 644 "$subject/$file" "$stage/$file"
 done
@@ -131,8 +177,13 @@ while IFS= read -r -d '' relative; do
     install -m 644 "$subject/artifacts/$relative" "$stage/artifacts/$relative"
   fi
 done < <(cd "$subject/artifacts" && find . -mindepth 1 -print0 | sort -z)
+for file in TASK.md task-receipt.json accounting.json boundary.json pi-qualification.txt \
+  launcher.txt pi-stderr.txt; do
+  install -m 644 "$subject/$file" "$stage/subject/$file"
+done
 for file in TASK.md task-receipt.json plan.json packet-manifest.json prompt.txt \
-  transcript.ndjson commands.json accounting.json boundary.json artifacts/checker.json; do
+  transcript.ndjson commands.json accounting.json boundary.json pi-qualification.txt \
+  launcher.txt pi-stderr.txt artifacts/checker.json; do
   install -d -m 755 "$(dirname "$stage/checker/$file")"
   install -m 644 "$checker/$file" "$stage/checker/$file"
 done

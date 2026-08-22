@@ -87,6 +87,10 @@ A completed record contains `RUN.md`, `plan.json`, `packet-manifest.json`,
 subject artifacts, and `checker.json` after independent checking. Missing
 identity, transcript, command, artifact, or result fields fail closed. Operator
 intervention is always present, including the literal disposition `none`.
+Sanitization removes only provider `textSignature` and `thinkingSignature`
+fields, matching the existing Pi qualification receipt; `plan.json` declares
+that exact loss limit before launch. No message, tool event, usage row, tool
+result, or model identity is removed.
 
 ## Non-formal rehearsals
 

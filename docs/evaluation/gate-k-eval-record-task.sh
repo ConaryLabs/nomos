@@ -61,8 +61,13 @@ provider=$(printf '%s\n' "$boundary" | jq -r '.provider // empty')
 model=$(printf '%s\n' "$boundary" | jq -r '.model // empty')
 thinking=$(printf '%s\n' "$boundary" | jq -r '.thinking // empty')
 session_id=$(printf '%s\n' "$boundary" | jq -r '.sessionId // empty')
+session_timestamp=$(jq -s -c '[.[] | select(.type == "session")][0].timestamp' "$events")
+pi_version=$(sed -n 's/^PI_VERSION //p' "$qualification")
+host_os=$(sed -n 's/^PI_HOST_OS //p' "$qualification")
 [[ -n $provider && -n $model && -n $thinking && $session_id =~ ^[0-9a-f-]{36}$ ]] ||
   fail 'boundary result identity is incomplete'
+[[ -n $pi_version && -n $host_os && $session_timestamp != null ]] ||
+  fail 'client, environment, or session-date identity is incomplete'
 printf '%s\n' "$assistant_messages" | jq -e \
   --arg provider "$provider" --arg model "$model" '
   all(.[]; .message.provider == $provider and .message.model == $model)
@@ -167,6 +172,8 @@ artifacts_sha=$(find "$stage/artifacts" -type f -printf '%P\0' | sort -z |
   while IFS= read -r -d '' relative; do
     sha256sum "$stage/artifacts/$relative" | sed "s#  $stage/artifacts/#  #"
   done | sha256sum | cut -d' ' -f1)
+boundary_sha=$(sha256sum "$stage/boundary.json" | cut -d' ' -f1)
+qualification_sha=$(sha256sum "$stage/pi-qualification.txt" | cut -d' ' -f1)
 
 result=$(jq -S -c -n \
   --arg shape "$shape" \
@@ -177,12 +184,17 @@ result=$(jq -S -c -n \
   --arg model "$model" \
   --arg thinking "$thinking" \
   --arg session "$session_id" \
+  --argjson session_timestamp "$session_timestamp" \
+  --arg pi_version "$pi_version" \
+  --arg host_os "$host_os" \
   --arg outcome "$outcome" \
   --arg reason "$outcome_reason" \
   --arg manifest_sha "$manifest_sha" \
   --arg transcript_sha "$transcript_sha" \
   --arg commands_sha "$commands_sha" \
   --arg artifacts_sha "$artifacts_sha" \
+  --arg boundary_sha "$boundary_sha" \
+  --arg qualification_sha "$qualification_sha" \
   --argjson accounting "$accounting" '
   {
     schema: "nomos.gate_k.task_receipt@1",
@@ -195,7 +207,23 @@ result=$(jq -S -c -n \
       model: $model,
       thinking: $thinking,
       sessionId: $session,
+      sessionStartedAt: $session_timestamp,
+      client: "Pi",
+      clientVersion: $pi_version,
+      mode: "json",
       freshEphemeralSession: true
+    },
+    environment: {hostOs: $host_os},
+    disclosures: {
+      persistedSession: false,
+      projectMemory: false,
+      personalContext: false,
+      contextFiles: [],
+      connectors: [],
+      webAccess: false,
+      toolNetworkAccess: false,
+      activeTools: ["bash"],
+      repositoryMounted: false
     },
     operatorIntervention: "none",
     operatorRetries: 0,
@@ -206,7 +234,9 @@ result=$(jq -S -c -n \
       packetManifestSha256: $manifest_sha,
       transcriptSha256: $transcript_sha,
       commandsSha256: $commands_sha,
-      artifactsTreeSha256: $artifacts_sha
+      artifactsTreeSha256: $artifacts_sha,
+      boundarySha256: $boundary_sha,
+      qualificationSha256: $qualification_sha
     }
   }
 ')
