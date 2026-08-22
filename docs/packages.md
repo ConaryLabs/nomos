@@ -1,6 +1,6 @@
 ---
 title: Gate K package evidence boundary
-status: Package implementation reference; current through SW-J
+status: Package implementation reference; current through SW-K
 date: 2026-08-22
 applies_to: KERNEL.md sections 5-7; acceptance 12
 ---
@@ -57,8 +57,8 @@ This source review enumerates every canonical type newly entering a complete
 package. Repository search confirms no second crate defines any of these
 schemas; crate edges prevent projection/runtime code from naming IR types.
 This began as an SW-G receipt, not the final Gate K ownership receipt. SW-I and
-SW-J subsequently stabilized the current run-output types; replay and migration
-schema ownership remain outstanding.
+SW-J subsequently stabilized the current run-output types, and SW-K stabilizes
+the strict replay-log input; migration schema ownership remains outstanding.
 
 Stable `nomos.world_ir@1` is not construction v3 with a new label. It preserves
 the construction schema as provenance, adds explicit compiler/catalog versions,
@@ -147,6 +147,7 @@ SHA-256 proves byte identity, not authenticity. Compiler receipts bind exact
 source and artifact bytes inside the package, but they are not signatures.
 SW-H exposes this boundary through filesystem `validate`, `compile`, and
 `inspect` commands, and SW-J consumes it without changing the input package to
-write run directories and execute runtime commands. The repository still does
-not implement signing, guarantee power-loss durability, replay, migrate, or
+write run directories and execute runtime commands. SW-K replays a package-bound
+canonical history through the same immutable output boundary. The repository
+still does not implement signing, guarantee power-loss durability, migrate, or
 satisfy whole-Gate-K acceptance.

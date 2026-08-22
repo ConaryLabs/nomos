@@ -16,12 +16,12 @@ any renderer is built.
 ## Status
 
 - **Architecture status:** exploratory and non-authoritative
-- **Implementation status:** implemented through SW-J: foundations, source and
+- **Implementation status:** implemented through SW-K: foundations, source and
   preserved construction IR, stable `nomos.world_ir@1`, compiled transitions,
   shared movement and light resolution, all four projections, immutable runtime
   commits, complete hash-verified world packages, the filesystem `validate`,
-  `compile`, `inspect`, `run`, and `command` commands, strict persisted runtime
-  evidence, and atomic verified run bundles; no replay, migration, or
+  `compile`, `inspect`, `run`, `command`, and `replay` commands, strict persisted
+  runtime and replay evidence, and atomic verified run bundles; no migration or
   explanation commands
 - **Contract revision:** 6, owner-authorized in decision 0007
 - **Cold-agent protocol revision:** 2, owner-authorized in decision 0008
@@ -95,7 +95,7 @@ README.md          status and reading order
 THESIS.md          the design thesis
 KERNEL.md          the Gate K acceptance contract
 docs/              decisions, evaluation protocols, reviews, workspace notes
-fixtures/          exact Gate K authoring source and later command/replay fixtures
+fixtures/          exact Gate K authoring source, command, and replay fixtures
 crates/            the six Gate K kernel crates named in KERNEL.md section 10
 xtask/             workspace tooling; `cargo xtask boundary`
 .github/workflows/ the verification lane

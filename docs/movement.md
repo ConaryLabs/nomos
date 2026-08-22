@@ -1,6 +1,6 @@
 ---
 title: Gate K ground movement resolution
-status: Movement implementation reference; current through SW-J
+status: Movement implementation reference; current through SW-K
 date: 2026-08-22
 applies_to: KERNEL.md sections 1, 2, 4; acceptance 5
 ---
@@ -73,5 +73,6 @@ SW-E's resolver remains ground-movement-only. SW-F now carries its before/after
 facts into committed typed receipts alongside light facts; the movement plan
 and navigation schema do not change. SW-G packages those artifacts, SW-H
 exposes their filesystem validation, compilation, and inspection, and SW-J
-executes runtime commands into verified run bundles. Replay, migration,
-explanations, and the multi-target/formal cold-agent evidence remain open.
+executes runtime commands into verified run bundles. SW-K deterministically
+replays the same movement evidence. Migration, explanations, and the
+multi-target/formal cold-agent evidence remain open.

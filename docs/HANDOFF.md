@@ -1,7 +1,7 @@
 # Handoff — state of the repository
 
-Updated 2026-08-22 for the issue #58 filesystem-runtime slice.
-SW-I is merged and green; SW-J is the active feature branch.
+Updated 2026-08-22 for the issue #60 deterministic-replay slice.
+SW-J is merged and green; SW-K is the active feature branch.
 This file orients a fresh session; it is rewritten at each slice boundary and
 never accumulates history (git has that).
 
@@ -244,53 +244,34 @@ never accumulates history (git has that).
   exact-head audit/rerun. PR #57 merged as `3d4a19a`, issue #56 closed, and
   post-merge CI run `32555728168` passed. SW-I added no runtime CLI command or
   run-directory publisher.
-- **SW-J is active (#58):** branch `sw-j-runtime-cli-58` implements typed
-  ordered execution, atomic publication and strict opening of the exact
-  six-file run bundle, plus `nomos run` and `nomos command`. The checked-in
-  `fixtures/gaol.commands` drives five deterministic commits; the single-command
-  path resumes from its persisted tick-5 final state. Targeted tests currently
-  cover completed and rejected bundles, empty/partial rejection evidence,
-  deterministic bytes, input immutability, cross-semantics refusal, existing
-  output preservation, noncanonical and digest mutations, exact entry sets,
-  symlink/special-file refusal, and injected staging cleanup. Head `f8eba93`
-  passed the author proof and PR CI run `32556961214`, but the first non-author
-  exact-head audit rejected it. One test attempted to create a Unix socket,
-  which the isolated review sandbox correctly refused; the audit also found a
-  missing final-tick cross-check and asked for stronger evidence that committed
-  artifacts reproduce from the supplied simulation semantics. The repair uses
-  the existing `/dev/null` character device for a read-only special-root check,
-  checks final tick from initial tick plus committed count, re-executes every
-  committed log row on open, and compares the complete regenerated log,
-  receipts, hashes, and final state. It also tests that `nomos run` begins from
-  the exact package-derived initial state and refreshes stale scope text. The
-  audit's proposed inference of a rejected request from `result.json` is not
-  representable under issue #58's explicit rule that rejected bundles bind only
-  committed commands and the stable terminal code; status remains a canonical
-  content claim rather than authenticity, while publication validates it
-  against the in-memory terminal outcome. The repaired tree passes the full
-  author proof and PR CI run `32557756337`. A second fresh non-author audit of
-  `3d2c88c` passed all four proof commands and found one remaining immutability
-  hole: an output nested below the input package could create a directory in the
-  package and invalidate it. The next repair rejects resolved output paths at or
-  below the package or a verified input-state run bundle, including
-  symlinked-ancestor aliases, before execution or publication, with subprocess
-  coverage for both runtime commands. Head `8ff16e5` passed the full author
-  proof and PR CI run `32558458548`. A third fresh non-author exact-head audit
-  passed all four proof commands and found no runtime-code issue, but rejected
-  two stale evidence-boundary sentences in `docs/movement.md` and
-  `docs/transitions.md` that still listed runtime CLI execution as open. Repair
-  commit `3f58532` makes both documents current through SW-J and passes the full
-  author proof. PR #59 is the authoritative live record for the required fresh
-  exact-head CI and non-author rerun before owner merge.
+- **SW-J is merged and green (#58):** `nomos run` and `nomos command` publish and
+  strictly reopen the exact six-file run bundle through verified staging and one
+  rename. Opening re-executes committed requests and requires byte-identical
+  state, log, receipt, and hash evidence; output overlap cannot mutate a package
+  or verified input-state run bundle, including through symlinked ancestors.
+  Final head `ba2061d` passed the full author proof, PR CI run `32559105492`, and
+  a finding-free GPT-5.6 Luna max non-author exact-head audit/rerun. PR #59
+  merged as `593bca2`, issue #58 closed, post-merge CI run `32559562200` passed,
+  and the feature/review worktrees and branches were removed.
+- **SW-K is active (#60):** branch `sw-k-replay-60` defines strict canonical
+  `nomos.replay_log@1`, binds it to the exact package, simulation semantics,
+  package-derived initial state, committed command evidence, and final state,
+  and exposes `nomos replay`. The checked-in `fixtures/gaol.replay` derives from
+  the five-command accepted execution. Replay re-resolves and commits every
+  request, requires the regenerated command log and final state hash to match,
+  then publishes through the unchanged SW-J run-bundle boundary. Current tests
+  cover exact fixture derivation, strict decoding, deterministic byte equality
+  with an ordinary run, wrong input identities, semantically false expected
+  evidence, immutable output collisions/overlap, and all CLI failure classes.
 
 ## What is next
 
-Finish issue #58 only after PR #59 records green CI and a clean non-author
-exact-head rerun for the final repair, then perform the owner-authorized merge
-and branch cleanup. Later work includes replay, explanations, the
-required stable v1-to-v2 movement migration, direct v2 runtime loading/refusal
-evidence, the Linux aarch64 and ten-run matrix, measured Gate K budgets, final
-schema-ownership review, and the formal cold-agent gates.
+Finish issue #60: complete the replay proof and documentation, open its draft
+PR, obtain green CI and a clean non-author exact-head rerun, then perform the
+owner-authorized merge and branch cleanup. Later work includes explanations,
+the required stable v1-to-v2 movement migration, direct v2 runtime
+loading/refusal evidence, the Linux aarch64 and ten-run matrix, measured Gate K
+budgets, final schema-ownership review, and the formal cold-agent gates.
 
 The old `agy` Gemini route remains falsified evidence. Issue #49 qualifies Pi as
 the replacement transport without spending a formal attempt or changing the
@@ -306,10 +287,11 @@ cargo test --workspace --locked
 cargo xtask boundary
 cargo run --locked --bin nomos -- --help
 cargo run --locked --bin nomos -- validate fixtures/gaol.nomos
-cargo run --locked --bin nomos -- compile fixtures/gaol.nomos --out target/tmp/sw-j-proof/gaol.world
-cargo run --locked --bin nomos -- inspect target/tmp/sw-j-proof/gaol.world
-cargo run --locked --bin nomos -- run target/tmp/sw-j-proof/gaol.world --commands fixtures/gaol.commands --out target/tmp/sw-j-proof/gaol.run
-cargo run --locked --bin nomos -- command target/tmp/sw-j-proof/gaol.world --state target/tmp/sw-j-proof/gaol.run/final-state.json "close north_gate" --out target/tmp/sw-j-proof/after-close.run
+cargo run --locked --bin nomos -- compile fixtures/gaol.nomos --out target/tmp/sw-k-proof/gaol.world
+cargo run --locked --bin nomos -- inspect target/tmp/sw-k-proof/gaol.world
+cargo run --locked --bin nomos -- run target/tmp/sw-k-proof/gaol.world --commands fixtures/gaol.commands --out target/tmp/sw-k-proof/gaol.run
+cargo run --locked --bin nomos -- command target/tmp/sw-k-proof/gaol.world --state target/tmp/sw-k-proof/gaol.run/final-state.json "close north_gate" --out target/tmp/sw-k-proof/after-close.run
+cargo run --locked --bin nomos -- replay target/tmp/sw-k-proof/gaol.world --log fixtures/gaol.replay --out target/tmp/sw-k-proof/replay.run
 docs/evaluation/test-agy-print-preflight.sh
 docs/evaluation/test-agy-formal-boundary-preflight.sh
 docs/evaluation/test-pi-cold-agent-preflight.sh
@@ -329,7 +311,7 @@ four commands; the focused release SW-G test passed. SW-F, SW-D, and
 issue #24 have the same author/non-author/CI chain as recorded above. Earlier
 SW-C, revision-4, and Rust-1.98 maintenance reruns also passed.
 Still unproven: Linux aarch64 release, ten runs per target, explanation
-commands, migration/replay, measured Gate K budgets, and formal cold-agent
+commands, migration, measured Gate K budgets, and formal cold-agent
 gates. The contract also requires a final explicit schema-ownership
 source-review receipt after the Gate K schema set stabilizes; that final
 receipt does not exist yet.
