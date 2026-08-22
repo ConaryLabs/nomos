@@ -42,6 +42,7 @@ mod command_language;
 mod commit;
 mod receipt;
 mod resolver;
+mod run_evidence;
 mod state_persistence;
 mod transaction;
 
@@ -49,6 +50,10 @@ pub use command_language::{CommandRequest, CommandScript, resolve_command};
 pub use commit::{CommittedTransaction, commit_transaction, commit_transaction_with_budget};
 pub use receipt::{CausalReceipt, EffectiveFactRef, EffectiveFactValue, ProjectionDelta};
 pub use resolver::{resolve_light, resolve_movement};
+pub use run_evidence::{
+    CommandLog, CommandLogRow, RunArtifactDigest, RunArtifactName, RunResult, RunStatus,
+    StateHashRow, StateHashSequence,
+};
 pub use state_persistence::PersistedRuntimeState;
 pub use transaction::{
     DEFAULT_TRANSITION_BUDGET, PreparedTransaction, RuntimeEntityState, SimulationState,
@@ -84,6 +89,25 @@ pub fn command_script_schema() -> SchemaId {
         .expect("the command-script schema id is a valid literal")
 }
 
+/// Canonical schema for committed command-log evidence.
+#[must_use]
+pub fn command_log_schema() -> SchemaId {
+    SchemaId::new("nomos.command_log", 1).expect("the command-log schema id is a valid literal")
+}
+
+/// Canonical schema for the initial-and-committed state-hash chain.
+#[must_use]
+pub fn state_hash_sequence_schema() -> SchemaId {
+    SchemaId::new("nomos.state_hash_sequence", 1)
+        .expect("the state-hash-sequence schema id is a valid literal")
+}
+
+/// Canonical schema for the future run bundle's content-binding result.
+#[must_use]
+pub fn run_result_schema() -> SchemaId {
+    SchemaId::new("nomos.run_result", 1).expect("the run-result schema id is a valid literal")
+}
+
 /// The typed causal-receipt schema written beside runtime state.
 #[must_use]
 pub fn causal_receipt_schema() -> SchemaId {
@@ -104,19 +128,42 @@ pub fn replay_log_schema() -> SchemaId {
 
 #[cfg(test)]
 mod tests {
-    use super::{causal_receipt_schema, replay_log_schema, runtime_state_schema};
+    use std::collections::BTreeSet;
+
+    use super::{
+        causal_receipt_schema, command_log_schema, command_script_schema,
+        persisted_runtime_state_schema, replay_log_schema, run_result_schema, runtime_state_schema,
+        state_hash_sequence_schema,
+    };
 
     #[test]
     fn runtime_schemas_are_independent_of_the_projections_this_crate_consumes() {
-        let runtime = runtime_state_schema();
-        assert_ne!(runtime.name(), replay_log_schema().name());
-        assert_ne!(runtime.name(), causal_receipt_schema().name());
+        let runtime_schemas = [
+            runtime_state_schema(),
+            persisted_runtime_state_schema(),
+            command_script_schema(),
+            command_log_schema(),
+            state_hash_sequence_schema(),
+            run_result_schema(),
+            causal_receipt_schema(),
+            replay_log_schema(),
+        ];
+        assert_eq!(
+            runtime_schemas
+                .iter()
+                .map(|schema| schema.name())
+                .collect::<BTreeSet<_>>()
+                .len(),
+            runtime_schemas.len()
+        );
         for projection in nomos_projection::all_schemas() {
-            assert_ne!(
-                runtime.name(),
-                projection.name(),
-                "runtime state versions independently of any projection"
-            );
+            for runtime in &runtime_schemas {
+                assert_ne!(
+                    runtime.name(),
+                    projection.name(),
+                    "runtime evidence versions independently of every projection"
+                );
+            }
         }
     }
 }

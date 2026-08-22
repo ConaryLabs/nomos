@@ -291,6 +291,22 @@ pub struct TransitionStep {
 }
 
 impl TransitionStep {
+    pub(crate) fn from_parts(
+        phase: Phase,
+        namespace: NamespaceId,
+        from: Ident,
+        to: Ident,
+        cause: TransitionCause,
+    ) -> Self {
+        Self {
+            phase,
+            namespace,
+            from,
+            to,
+            cause,
+        }
+    }
+
     /// Settlement phase.
     #[must_use]
     pub const fn phase(&self) -> Phase {

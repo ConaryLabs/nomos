@@ -246,7 +246,7 @@ fn simulation_digest(plan: &SimulationPlan) -> Sha256Digest {
     Sha256Digest::of_bytes(&plan.to_canonical_bytes())
 }
 
-fn schema(value: &CanonicalValue, label: &str) -> Result<SchemaId, Diagnostic> {
+pub(crate) fn schema(value: &CanonicalValue, label: &str) -> Result<SchemaId, Diagnostic> {
     let fields = object(value, label)?;
     require_fields(fields, &["name", "version"], label)?;
     let version = u32::try_from(uint(field(fields, "version")?, label)?)
@@ -255,12 +255,12 @@ fn schema(value: &CanonicalValue, label: &str) -> Result<SchemaId, Diagnostic> {
         .map_err(|error| invalid(error.message()))
 }
 
-fn digest(value: &CanonicalValue, label: &str) -> Result<Sha256Digest, Diagnostic> {
+pub(crate) fn digest(value: &CanonicalValue, label: &str) -> Result<Sha256Digest, Diagnostic> {
     Sha256Digest::from_hex(text(value, label)?)
         .ok_or_else(|| invalid(format!("{label} is invalid")))
 }
 
-fn state_hash(value: &CanonicalValue) -> Result<StateHash, Diagnostic> {
+pub(crate) fn state_hash(value: &CanonicalValue) -> Result<StateHash, Diagnostic> {
     StateHash::from_hex(text(value, "state hash")?).ok_or_else(|| invalid("state hash is invalid"))
 }
 
@@ -274,7 +274,7 @@ fn int32(value: &CanonicalValue, label: &str) -> Result<i32, Diagnostic> {
     i32::try_from(value).map_err(|_| invalid(format!("{label} exceeds i32")))
 }
 
-fn uint(value: &CanonicalValue, label: &str) -> Result<u64, Diagnostic> {
+pub(crate) fn uint(value: &CanonicalValue, label: &str) -> Result<u64, Diagnostic> {
     match value {
         CanonicalValue::Uint(value) => Ok(*value),
         CanonicalValue::Int(value) => {
@@ -292,7 +292,7 @@ fn require_empty_array(value: &CanonicalValue, label: &str) -> Result<(), Diagno
     }
 }
 
-fn object<'a>(
+pub(crate) fn object<'a>(
     value: &'a CanonicalValue,
     label: &str,
 ) -> Result<&'a BTreeMap<FieldName, CanonicalValue>, Diagnostic> {
@@ -302,21 +302,24 @@ fn object<'a>(
     Ok(fields)
 }
 
-fn array<'a>(value: &'a CanonicalValue, label: &str) -> Result<&'a [CanonicalValue], Diagnostic> {
+pub(crate) fn array<'a>(
+    value: &'a CanonicalValue,
+    label: &str,
+) -> Result<&'a [CanonicalValue], Diagnostic> {
     let CanonicalValue::Array(values) = value else {
         return Err(invalid(format!("{label} is not an array")));
     };
     Ok(values)
 }
 
-fn text<'a>(value: &'a CanonicalValue, label: &str) -> Result<&'a str, Diagnostic> {
+pub(crate) fn text<'a>(value: &'a CanonicalValue, label: &str) -> Result<&'a str, Diagnostic> {
     let CanonicalValue::Text(value) = value else {
         return Err(invalid(format!("{label} is not text")));
     };
     Ok(value)
 }
 
-fn field<'a>(
+pub(crate) fn field<'a>(
     fields: &'a BTreeMap<FieldName, CanonicalValue>,
     name: &'static str,
 ) -> Result<&'a CanonicalValue, Diagnostic> {
@@ -325,7 +328,7 @@ fn field<'a>(
         .ok_or_else(|| invalid(format!("persisted runtime value has no `{name}` field")))
 }
 
-fn require_fields(
+pub(crate) fn require_fields(
     fields: &BTreeMap<FieldName, CanonicalValue>,
     expected: &[&str],
     label: &str,
@@ -342,7 +345,7 @@ fn require_fields(
     }
 }
 
-fn invalid(message: impl Into<String>) -> Diagnostic {
+pub(crate) fn invalid(message: impl Into<String>) -> Diagnostic {
     Diagnostic::new(
         nomos_core::diagnostic::codes::RUNTIME_PERSISTED_INVALID,
         message,

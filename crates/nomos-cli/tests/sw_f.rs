@@ -162,6 +162,30 @@ fn exact_command_sequence_is_byte_deterministic_from_one_initial_snapshot() {
     let first = run_sequence(&plan, &initial);
     let second = run_sequence(&plan, &initial);
     assert_eq!(first, second);
+    assert_eq!(
+        first
+            .iter()
+            .map(|(_, receipt, _)| Sha256Digest::of_bytes(receipt).to_hex())
+            .collect::<Vec<_>>(),
+        [
+            "f03814a5501a5e63e1464aaf834622dfccff06146c5d70732478708f4b54b48e",
+            "c8f1bab24339dec8f4be88006a18d81b259cdba61f4fa25f9626ff914740dc55",
+            "6461972f898ee79984ecbca85f6e41728dcc1a5e993c257b3fde006738e35691",
+            "c7e9ca01679a6bf14c1c9c92dc78e87e27b89b5d8b32e8b294d595f974554517",
+        ]
+    );
+    assert_eq!(
+        first
+            .iter()
+            .map(|(_, _, state_hash)| state_hash.as_str())
+            .collect::<Vec<_>>(),
+        [
+            "4076b938a5d03134810301257022d1124481343fb0d01bf06fa98772350022ae",
+            "9594a153dd1a65975d3737e5c7080868c14cd6d370482cee9809ac22fbb3aafb",
+            "1753f1f199c33add2827e105ce81af5bced8d25d7d53a918d9f797669f4aa49f",
+            "d9eed238e219747752154bfe8697d79773531df34ba66f96d5e11ee30b29affc",
+        ]
+    );
     assert_eq!(initial.tick(), 0);
 }
 

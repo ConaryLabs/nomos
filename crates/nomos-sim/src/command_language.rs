@@ -10,6 +10,8 @@ use nomos_projection::{
     Command, CommandArgument, CommandRequirement, MachineDefinition, SimulationPlan,
 };
 
+use crate::state_persistence::{field, object, require_fields, text};
+
 const HEADER: &str = "schema nomos.command_script@1";
 
 /// One user-facing request before compiler-projected namespace resolution.
@@ -66,6 +68,38 @@ impl CommandRequest {
             ("argument", argument),
             ("entity", self.entity.to_canonical()),
         ])
+    }
+
+    pub(crate) fn from_canonical(value: &CanonicalValue) -> Result<Self, Diagnostic> {
+        let fields = object(value, "command request")?;
+        require_fields(fields, &["action", "argument", "entity"], "command request")?;
+        let action = Ident::new(text(field(fields, "action")?, "command request action")?)
+            .map_err(|error| invalid(error.message()))?;
+        let entity = EntityId::parse(text(field(fields, "entity")?, "command request entity")?)
+            .map_err(|error| invalid(error.message()))?;
+        let argument = match field(fields, "argument")? {
+            CanonicalValue::Null => None,
+            value => {
+                let fields = object(value, "command request argument")?;
+                require_fields(fields, &["kind", "value"], "command request argument")?;
+                if text(field(fields, "kind")?, "command request argument kind")? != "catalog_value"
+                {
+                    return Err(invalid("command request argument kind is unsupported"));
+                }
+                Some(
+                    CatalogValueId::parse(text(
+                        field(fields, "value")?,
+                        "command request catalog value",
+                    )?)
+                    .map_err(|error| invalid(error.message()))?,
+                )
+            }
+        };
+        Ok(Self {
+            action,
+            entity,
+            argument,
+        })
     }
 
     fn to_line(&self) -> String {

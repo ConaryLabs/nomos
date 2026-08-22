@@ -55,6 +55,15 @@ impl DiagnosticCode {
             && bytes[1] == b'K'
             && bytes[2..].iter().all(u8::is_ascii_digit)
     }
+
+    /// Resolves one known stable diagnostic-code spelling.
+    #[must_use]
+    pub fn parse(code: &str) -> Option<Self> {
+        codes::ALL
+            .iter()
+            .copied()
+            .find(|candidate| candidate.as_str() == code)
+    }
 }
 
 impl fmt::Display for DiagnosticCode {
@@ -575,6 +584,11 @@ pub mod codes {
         RUNTIME_STATE_INVALID,
         RUNTIME_STATE_HASH_MISMATCH,
         RUNTIME_PROJECTION_MISMATCH,
+        RUNTIME_PERSISTED_INVALID,
+        RUNTIME_SEMANTICS_MISMATCH,
+        RUNTIME_COMMAND_SCRIPT_INVALID,
+        RUNTIME_COMMAND_AMBIGUOUS,
+        RUNTIME_EVIDENCE_INCONSISTENT,
         RESOLVER_DUPLICATE_IDENTITY,
         RESOLVER_CLAIM_ENTITY_MISMATCH,
         RESOLVER_ACTIVATION_NAMESPACE_MISSING,

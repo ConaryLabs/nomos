@@ -1,15 +1,17 @@
 ---
-title: Gate K light resolution and runtime commit evidence
-status: Implementation reference for SW-F
+title: Gate K runtime commit and persisted evidence
+status: Implementation reference through SW-I
 date: 2026-08-22
 applies_to: KERNEL.md sections 2, 3, 5, 7, and 9; acceptance 5, 9, 10, and 12
 ---
 
-# Gate K light resolution and runtime commit evidence
+# Gate K runtime commit and persisted evidence
 
 SW-F closes the in-memory transaction boundary. SW-G subsequently assigns
 stable World IR and packages the simulation plan that supplies initial-state
-material; CLI commands, run outputs, replay, and migration remain later. The path is:
+material. SW-I defines the strict persisted values needed by later filesystem
+execution without publishing run outputs or adding runtime CLI commands. The
+path is:
 
 ```text
 nomos-schema construction@3 light-union plan
@@ -75,11 +77,59 @@ tick, and resulting state hash. Extinguishing `brazier_02` emits one light fact
 change to simulation, persistence, and diagnostics. Human-readable explanation
 remains downstream and is not part of the canonical semantic receipt.
 
+SW-I adds the inverse boundary. `CausalReceipt::from_canonical_bytes` strictly
+reconstructs every nested typed command, transition cause and payload,
+effective movement/light fact, claim reason, projection target and delta, tick,
+and state hash. It refuses unknown or missing fields, incompatible schemas,
+wrong variants, noncanonical ordering, invalid IDs, and numeric overflow. It
+also re-derives projection deltas from the decoded before/after facts so a
+canonical JSON tree is not accepted merely because it parses.
+
+## Persisted state binding
+
+`nomos.runtime_state@1` and its constitutional hash domain remain byte-for-byte
+unchanged. A standalone state file uses a separate
+`nomos.persisted_runtime_state@1` envelope containing the inner typed state, its
+state hash, and SHA-256 of the exact canonical `simulation.json` bytes. Opening
+requires a caller-supplied typed `SimulationPlan`; strict state reconstruction
+checks entity identity and binding, namespace ownership, legal machine states,
+empty Gate K counter/event collections, the inner state hash, and the complete
+simulation digest. Same-shape state from different semantics therefore fails.
+
+## Command and run evidence types
+
+The schema-headed `nomos.command_script@1` language preserves the exact request
+text semantics accepted by issue #56. Resolution searches only external
+commands on machines owned by the requested entity and produces one explicit
+typed namespace command; it never reads source or guesses among namespaces.
+
+Three independently versioned canonical evidence types prepare the later run
+publisher:
+
+- `nomos.command_log@1` records zero-based contiguous committed rows. Each row
+  binds the unresolved request, resolved typed command, input/result state
+  hashes, and SHA-256 of one strictly decoded causal receipt.
+- `nomos.state_hash_sequence@1` records snapshot ordinal zero for the initial
+  state and one following hash for each committed command. Validation checks
+  every command-log input and result rather than trusting an untyped hash list.
+- `nomos.run_result@1` binds the input-package digest, simulation-semantics
+  digest, completed/rejected status, first/final hashes, committed count,
+  optional stable rejection code, and exact hashes for `initial-state.json`,
+  `final-state.json`, `command-log.json`, `causal-receipts.json`, and
+  `state-hashes.json`. `result.json` cannot hash itself, so it is deliberately
+  the one run artifact not listed in its own binding rows.
+
+Constructors and decoders enforce ordinal, hash-chain, status/diagnostic,
+artifact-set, count, endpoint, command/receipt, receipt-digest, and tick-chain
+agreement. Human diagnostic wording remains outside `RunResult`; its rejection
+identity is the stable diagnostic code.
+
 ## Evidence boundary
 
 SW-F proves in-memory snapshot immutability and commit evidence; SW-G proves the
 package contains deterministic material for the same initial snapshot; SW-H
-exposes filesystem validation, compilation, and inspection. No slice yet writes
-run directories or command logs, executes runtime commands through the CLI,
-replays, performs the required World IR migration, runs the multi-target ten-run
-matrix, or performs formal cold-agent gates.
+exposes filesystem validation, compilation, and inspection; SW-I proves the
+strict typed values and their cross-object integrity rules. No slice yet writes
+run directories, executes runtime commands through the CLI, replays, performs
+the required World IR migration, runs the multi-target ten-run matrix, or
+performs formal cold-agent gates.
