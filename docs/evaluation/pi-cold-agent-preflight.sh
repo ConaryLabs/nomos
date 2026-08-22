@@ -14,6 +14,7 @@ expected_antigravity_tree_sha=7980e6825a23f18a9d298953c0efc9f13c1231ce4c81439480
 expected_extension_sha=0e481623a0113e9dead8c75a65a2c2171fb3004acadf579655b4e5cc683d4a39
 expected_fake_sha=ef53d9a5d8b10f4392281e488083f5d37311b6f3e5f2c09f83b1b2eb6d4d0cb6
 expected_fake_antigravity_sha=944ab25260d0efee3c682f0d79f84beae674e7fe8a36a585f7615944bcec4417
+expected_deepseek_catalog_sha=7954fb3ef750bed773619c9fe259a8eb923b6f4f8455442a33cf8e1fe2fa3773
 
 fail() {
   printf 'pi cold-agent preflight: FAIL: %s\n' "$*" >&2
@@ -24,8 +25,8 @@ lane=${1:-}
 case $lane in
   deepseek)
     provider=deepseek
-    model=deepseek-v4-pro
-    model_label='DeepSeek V4 Pro'
+    model=deepseek-v4-flash-vision-exp
+    model_label='DeepSeek V4 Flash Vision Exp'
     thinking=max
     expected_auth_type=api_key
     ;;
@@ -40,7 +41,7 @@ case $lane in
     provider=anthropic
     model=claude-opus-5
     model_label='Claude Opus 5'
-    thinking=max
+    thinking=high
     expected_auth_type=oauth
     ;;
   *)
@@ -70,10 +71,12 @@ extension="$script_dir/pi-cold-agent-extension.ts"
 system_prompt_file="$script_dir/pi-cold-agent-system-prompt.txt"
 fake_pi="$script_dir/fixtures/fake-pi-cold-agent"
 fake_antigravity="$script_dir/fixtures/fake-pi-antigravity-provider.ts"
+deepseek_catalog="$script_dir/pi-deepseek-models.json"
 [[ -f $extension ]] || fail "missing Pi boundary extension: $extension"
 [[ -f $system_prompt_file ]] || fail "missing Pi system prompt: $system_prompt_file"
 [[ -x $fake_pi ]] || fail "missing executable Pi fixture: $fake_pi"
 [[ -f $fake_antigravity ]] || fail "missing Pi Antigravity provider fixture: $fake_antigravity"
+[[ -f $deepseek_catalog ]] || fail "missing Pi DeepSeek model catalog: $deepseek_catalog"
 
 command -v "$pi_bin" >/dev/null 2>&1 || fail "Pi executable not found: $pi_bin"
 command -v "$bwrap_bin" >/dev/null 2>&1 || fail "Bubblewrap executable not found: $bwrap_bin"
@@ -97,6 +100,36 @@ fake_antigravity_sha=$(sha256sum "$fake_antigravity")
 fake_antigravity_sha=${fake_antigravity_sha%% *}
 [[ $fake_antigravity_sha == "$expected_fake_antigravity_sha" ]] ||
   fail "Pi Antigravity fixture digest mismatch: $fake_antigravity_sha"
+deepseek_catalog_sha=$(sha256sum "$deepseek_catalog")
+deepseek_catalog_sha=${deepseek_catalog_sha%% *}
+[[ $deepseek_catalog_sha == "$expected_deepseek_catalog_sha" ]] ||
+  fail "Pi DeepSeek model catalog digest mismatch: $deepseek_catalog_sha"
+jq -e '
+  .providers.deepseek.models == [{
+    "id": "deepseek-v4-flash-vision-exp",
+    "name": "DeepSeek V4 Flash Vision Exp",
+    "reasoning": true,
+    "input": ["text", "image"],
+    "cost": {"input": 0.14, "output": 0.28, "cacheRead": 0.0028, "cacheWrite": 0},
+    "contextWindow": 1000000,
+    "maxTokens": 384000,
+    "compat": {
+      "supportsStore": false,
+      "supportsDeveloperRole": false,
+      "maxTokensField": "max_tokens",
+      "requiresReasoningContentOnAssistantMessages": true,
+      "thinkingFormat": "deepseek"
+    },
+    "thinkingLevelMap": {
+      "minimal": null,
+      "low": "low",
+      "medium": null,
+      "high": "high",
+      "xhigh": null,
+      "max": "max"
+    }
+  }]
+' "$deepseek_catalog" >/dev/null || fail 'Pi DeepSeek model catalog has unexpected content'
 
 pi_path=$(command -v "$pi_bin")
 pi_path=$(readlink -f "$pi_path")
@@ -185,10 +218,16 @@ tmp_dir=$(mktemp -d)
 trap 'rm -r -- "$tmp_dir"' EXIT
 config_dir="$tmp_dir/config"
 mkdir -m 700 "$config_dir"
+config_profile=ephemeral-auth-only
 source_auth=${PI_AUTH_FILE:-${HOME:?}/.pi/agent/auth.json}
 if [[ -f $source_auth ]]; then
   cp "$source_auth" "$config_dir/auth.json"
   chmod 600 "$config_dir/auth.json"
+fi
+if [[ $lane == deepseek ]]; then
+  cp "$deepseek_catalog" "$config_dir/models.json"
+  chmod 600 "$config_dir/models.json"
+  config_profile=ephemeral-auth-plus-pinned-model-catalog
 fi
 
 if [[ $lane == gemini && $pi_path != "$fake_path" ]]; then
@@ -378,10 +417,15 @@ printf 'PI_PROVIDER_EXTENSION %s\n' "$provider_extension"
 printf 'PI_PROVIDER_PACKAGE %s\n' "$provider_package"
 printf 'PI_PROVIDER_INSTALL %s\n' "$provider_install"
 printf 'PI_PROVIDER_ENV overrides-cleared prewarm-disabled\n'
+if [[ $lane == deepseek ]]; then
+  printf 'PI_MODEL_CATALOG %s %s\n' "$deepseek_catalog" "$deepseek_catalog_sha"
+else
+  printf 'PI_MODEL_CATALOG none\n'
+fi
 printf 'PI_SYSTEM_PROMPT %s %s\n' "$system_prompt_file" "$system_prompt_sha"
 printf 'PI_WORKSPACE %s\n' "$workspace"
 printf 'PI_WORKTREE_STATUS %s\n' "$worktree_status"
-printf 'PI_CONFIG_ROOT %s ephemeral-auth-only\n' "$config_dir"
+printf 'PI_CONFIG_ROOT %s %s\n' "$config_dir" "$config_profile"
 printf 'PI_SESSION %s ephemeral\n' "$session_id"
 if [[ $provider_extension == none ]]; then
   provider_invocation=''
