@@ -1,7 +1,7 @@
 # Handoff — state of the repository
 
-Updated 2026-08-22 for the issue #45 Antigravity formal-boundary
-falsification. No next semantic implementation slice is currently filed.
+Updated 2026-08-22 for the issue #49 Pi provider-harness qualification. No next
+semantic implementation slice is currently filed.
 This file orients a fresh session; it is rewritten at each slice boundary and
 never accumulates history (git has that).
 
@@ -61,10 +61,12 @@ never accumulates history (git has that).
   covered: IR expansion is proved, but the active observable `nomos inspect`
   command still requires complete packages and projections.
 - **Issue #4 is closed:** revision 3 merged in PR #13.
-- **The whole-kernel cold roster is predeclared:** Gemini 3.7 Flash High through
-  `agy` is the formal cold author; DeepSeek V4 Pro through direct Reasonix is the
-  formal cold debugger; each independently checks the other's output. The plan
-  and invalidation rules are in `docs/evaluation/GATE_K_COLD_AGENT_PLAN.md`.
+- **The whole-kernel cold roster is predeclared:** Gemini 3.7 Flash High is the
+  formal cold author; DeepSeek V4 Flash Vision Exp is the formal cold debugger;
+  each independently checks the other's output. Issue #49 changes their
+  transport to Pi without changing either family or role, and advances the
+  exact DeepSeek-family model by owner direction. The plan and invalidation
+  rules are in `docs/evaluation/GATE_K_COLD_AGENT_PLAN.md`.
 - **The `agy` print path is repaired (#17):** official client 1.1.17 was
   restored after the host reinstall. The old argument order passed `--model` as
   the seven-byte print prompt; a prompt-first invocation now proves the exact
@@ -81,6 +83,26 @@ never accumulates history (git has that).
   No Gemini formal attempt may launch until a future client/route passes that
   guard or the owner approves a new plan. This is tooling falsification, not a
   formal run, roster substitution, or protocol change.
+- **Pi qualifies all three non-Codex lanes (#49):** Pi 0.84.2 now drives
+  `antigravity/gemini-3.7-flash` at high,
+  `deepseek/deepseek-v4-flash-vision-exp` at max, and supplemental
+  `anthropic/claude-opus-5` at high through one common fail-closed launcher.
+  The Gemini lane explicitly loads the separately pinned `pi-antigravity`
+  0.4.0 provider; package discovery remains off. The new DeepSeek model was
+  released after Pi 0.84.2, so that lane supplies a repository-owned,
+  hash-pinned declarative model catalog while retaining Pi's built-in DeepSeek
+  transport; it loads no executable DeepSeek plugin. All three authenticated
+  author probes passed with fresh ephemeral sessions, the exact provider/model,
+  only the repository-owned isolated `bash`, no model-requested tool call, and
+  no credential leakage. Bubblewrap exposes only the target checkout as
+  read-write, clears the child environment, and unshares the network. The
+  offline matrix rejects every issue #49 negative case. Sanitized receipts are
+  under
+  `docs/evaluation/runs/tooling/2026-08-22-pi-provider-qualification/`.
+  Because committing a receipt changes the head it names, final exact-head
+  author and non-author disposition is recorded externally in PR #50. The PR
+  must not merge without a passing non-author comment naming its exact final
+  head and a clean worktree before and after.
 - **CI uses `actions/checkout@v7` (#11):** PR and post-merge verification passed
   without the Node 20 compatibility annotation.
 - **The GPT Pro architecture checkpoint is owner-disposed (#25):** review of
@@ -178,10 +200,10 @@ protocol still names the prototype-era `estate` CLI in its active tool policy.
 It requires an owner-authorized protocol revision that changes only that
 identity to `nomos`; issue #45 deliberately does not amend it.
 
-The selected Gemini route remains a formal cold-author tooling blocker, not a
-blocker for ordinary issue-first semantic implementation. Issue #17 repairs
-only print-mode transport; issue #45 proves that 1.1.17 cannot disclose the
-required formal boundary. Neither result is formal Gate K evidence.
+The old `agy` Gemini route remains falsified evidence. Issue #49 qualifies Pi as
+the replacement transport without spending a formal attempt or changing the
+roster. Neither the historical `agy` result nor the Pi qualification probe is
+formal Gate K evidence.
 
 ## How to prove the current branch
 
@@ -192,6 +214,7 @@ cargo test --workspace --locked
 cargo xtask boundary
 docs/evaluation/test-agy-print-preflight.sh
 docs/evaluation/test-agy-formal-boundary-preflight.sh
+docs/evaluation/test-pi-cold-agent-preflight.sh
 ```
 
 The authenticated formal-boundary command is an expected negative proof on

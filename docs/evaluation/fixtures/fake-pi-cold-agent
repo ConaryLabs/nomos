@@ -1,0 +1,201 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+case ${1:-} in
+  --version)
+    printf '0.84.2\n'
+    exit 0
+    ;;
+  auth)
+    [[ ${2:-} == check ]] || exit 60
+    provider=
+    while [[ $# -gt 0 ]]; do
+      case $1 in
+        --provider)
+          provider=${2:-}
+          shift 2
+          ;;
+        --model)
+          shift 2
+          ;;
+        --json)
+          shift
+          ;;
+        *)
+          shift
+          ;;
+      esac
+    done
+    if [[ $provider == deepseek ]]; then
+      auth_type=api_key
+    else
+      auth_type=oauth
+    fi
+    printf '{"status":"ready","provider":"%s","authType":"%s","source":"fixture"}\n' \
+      "$provider" "$auth_type"
+    exit 0
+    ;;
+esac
+
+provider=
+model=
+thinking=
+mode=
+extensions=()
+tools=
+system_prompt=
+prompt=
+no_session=0
+no_approve=0
+offline=0
+no_extensions=0
+no_skills=0
+no_prompts=0
+no_themes=0
+no_context=0
+no_builtins=0
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --provider)
+      provider=${2:-}
+      shift 2
+      ;;
+    --model)
+      model=${2:-}
+      shift 2
+      ;;
+    --thinking)
+      thinking=${2:-}
+      shift 2
+      ;;
+    --mode)
+      mode=${2:-}
+      shift 2
+      ;;
+    -e | --extension)
+      extensions+=("${2:-}")
+      shift 2
+      ;;
+    --tools)
+      tools=${2:-}
+      shift 2
+      ;;
+    --system-prompt)
+      system_prompt=${2:-}
+      shift 2
+      ;;
+    --no-session) no_session=1; shift ;;
+    --no-approve) no_approve=1; shift ;;
+    --offline) offline=1; shift ;;
+    --no-extensions) no_extensions=1; shift ;;
+    --no-skills) no_skills=1; shift ;;
+    --no-prompt-templates) no_prompts=1; shift ;;
+    --no-themes) no_themes=1; shift ;;
+    --no-context-files) no_context=1; shift ;;
+    --no-builtin-tools) no_builtins=1; shift ;;
+    --*) exit 61 ;;
+    *)
+      [[ -z $prompt ]] || exit 62
+      prompt=$1
+      shift
+      ;;
+  esac
+done
+
+[[ $mode == json ]] || exit 63
+[[ $tools == bash ]] || exit 64
+[[ $no_session == 1 && $no_approve == 1 && $offline == 1 ]] || exit 65
+[[ $no_extensions == 1 && $no_skills == 1 && $no_prompts == 1 ]] || exit 66
+[[ $no_themes == 1 && $no_context == 1 && $no_builtins == 1 ]] || exit 67
+extension=${extensions[${#extensions[@]}-1]:-}
+[[ $extension == */docs/evaluation/pi-cold-agent-extension.ts ]] || exit 68
+if [[ $provider == antigravity ]]; then
+  [[ ${#extensions[@]} -eq 2 ]] || exit 75
+  [[ ${extensions[0]} == */docs/evaluation/fixtures/fake-pi-antigravity-provider.ts ]] || exit 76
+else
+  [[ ${#extensions[@]} -eq 1 ]] || exit 77
+fi
+[[ -n $system_prompt ]] || exit 69
+[[ $prompt == 'Output exactly this line and nothing else: pi boundary preflight' ]] || exit 70
+[[ ${NOMOS_PI_EXPECTED_PROVIDER:-} == "$provider" ]] || exit 71
+[[ ${NOMOS_PI_EXPECTED_MODEL:-} == "$model" ]] || exit 72
+[[ ${NOMOS_PI_EXPECTED_THINKING:-} == "$thinking" ]] || exit 73
+
+mode_name=${FAKE_PI_MODE:-pass}
+workspace=${NOMOS_PI_HOST_WORKSPACE:?}
+session_id=11111111-2222-4333-8444-555555555555
+boundary_provider=$provider
+boundary_model=$model
+boundary_thinking=$thinking
+boundary_workspace=$workspace
+session_workspace=$workspace
+session_file=null
+entry_types='["model_change","thinking_level_change"]'
+active_tools='["bash"]'
+context_files='[]'
+skills='[]'
+sandbox_network=unshared
+sandbox_self_test=pass
+sandbox_target_commit=true
+sandbox_workspace_read=true
+sandbox_workspace_write=true
+sandbox_outside_read_denied=true
+sandbox_outside_write_denied=true
+sandbox_credentials_absent=true
+sandbox_network_denied=true
+sandbox_cargo_available=true
+
+case $mode_name in
+  pass | missing-boundary | missing-session | unexpected-tool | leak-secret) ;;
+  wrong-provider) boundary_provider=wrong-provider ;;
+  wrong-model) boundary_model=wrong-model ;;
+  wrong-worktree) boundary_workspace=/tmp/wrong-worktree; session_workspace=/tmp/wrong-worktree ;;
+  wrong-thinking) boundary_thinking=off ;;
+  reused-session) session_file='"/tmp/reused.jsonl"'; entry_types='["model_change","thinking_level_change","message"]' ;;
+  forbidden-tool) active_tools='["bash","search_web"]' ;;
+  enabled-resource) context_files='["/tmp/AGENTS.md"]' ;;
+  enabled-skill) skills='["web-search"]' ;;
+  absent-isolation) sandbox_network=shared; sandbox_self_test=missing ;;
+  wrong-target-commit) sandbox_target_commit=false ;;
+  outside-read-succeeded) sandbox_outside_read_denied=false ;;
+  outside-write-succeeded) sandbox_outside_write_denied=false ;;
+  network-succeeded) sandbox_network_denied=false ;;
+  *) exit 74 ;;
+esac
+
+system_prompt_sha=$(printf '%s' "$system_prompt" | sha256sum)
+system_prompt_sha=${system_prompt_sha%% *}
+if [[ $mode_name != missing-boundary ]]; then
+  printf 'NOMOS_PI_BOUNDARY {"schema":"nomos.pi_cold_agent_boundary@1","mode":"json","targetCommit":"%s","hostWorkspace":"%s","guestWorkspace":"/workspace","provider":"%s","model":"%s","thinking":"%s","sessionId":"%s","sessionFile":%s,"projectTrusted":false,"entryTypesBeforeRun":%s,"activeTools":%s,"configuredTools":[{"name":"bash","source":{"path":"%s","source":"cli","scope":"temporary","origin":"top-level"}}],"contextFiles":%s,"skills":%s,"systemPromptSha256":"%s","finalSystemPromptSha256":"fixture","sandbox":{"backend":"bubblewrap","binary":"%s","root":"read-only","workspace":"read-write-only-host-mount","network":"%s","environment":"cleared-and-allowlisted","checks":{"targetCommitResolved":%s,"workspaceRead":%s,"workspaceWrite":%s,"outsideReadDenied":%s,"outsideWriteDenied":%s,"credentialEnvironmentAbsent":%s,"networkDenied":%s,"cargoAvailable":%s},"selfTest":"%s"}}\n' \
+    "${NOMOS_PI_TARGET_COMMIT:?}" \
+    "$boundary_workspace" "$boundary_provider" "$boundary_model" "$boundary_thinking" \
+    "$session_id" "$session_file" "$entry_types" "$active_tools" "$extension" \
+    "$context_files" "$skills" "$system_prompt_sha" "${NOMOS_PI_BWRAP:?}" \
+    "$sandbox_network" "$sandbox_target_commit" "$sandbox_workspace_read" \
+    "$sandbox_workspace_write" "$sandbox_outside_read_denied" "$sandbox_outside_write_denied" \
+    "$sandbox_credentials_absent" "$sandbox_network_denied" "$sandbox_cargo_available" \
+    "$sandbox_self_test" >&2
+fi
+
+if [[ $mode_name == missing-session ]]; then
+  exit 0
+fi
+
+printf '{"type":"session","version":3,"id":"%s","timestamp":"2026-08-22T00:00:00Z","cwd":"%s"}\n' "$session_id" "$session_workspace"
+printf '{"type":"agent_start"}\n'
+printf '{"type":"turn_start"}\n'
+printf '{"type":"message_start","message":{"role":"user","content":[{"type":"text","text":"%s"}]}}\n' "$prompt"
+printf '{"type":"message_end","message":{"role":"user","content":[{"type":"text","text":"%s"}]}}\n' "$prompt"
+if [[ $mode_name == unexpected-tool ]]; then
+  printf '{"type":"tool_execution_start","toolCallId":"tool-1","toolName":"bash","args":{"command":"pwd"}}\n'
+  printf '{"type":"tool_execution_end","toolCallId":"tool-1","toolName":"bash","result":"/workspace","isError":false}\n'
+fi
+printf '{"type":"message_start","message":{"role":"assistant","content":[],"provider":"%s","model":"%s"}}\n' "$provider" "$model"
+printf '{"type":"message_end","message":{"role":"assistant","content":[{"type":"text","text":"pi boundary preflight"}],"provider":"%s","model":"%s","stopReason":"stop","usage":{"input":1,"output":1,"cacheRead":0,"cacheWrite":0,"totalTokens":2}}}\n' "$provider" "$model"
+printf '{"type":"turn_end","message":{"role":"assistant","content":[{"type":"text","text":"pi boundary preflight"}],"provider":"%s","model":"%s","stopReason":"stop"},"toolResults":[]}\n' "$provider" "$model"
+printf '{"type":"agent_end","messages":[],"willRetry":false}\n'
+printf '{"type":"agent_settled"}\n'
+if [[ $mode_name == leak-secret ]]; then
+  printf '%s\n' "${NOMOS_PI_TEST_SECRET:?}"
+fi
