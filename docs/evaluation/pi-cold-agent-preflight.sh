@@ -12,7 +12,7 @@ expected_antigravity_version=0.4.0
 expected_antigravity_integrity='sha512-Trl0lWZRDM6TUhw8UjZ+si4Tx2IxCtLLdEwQ10gOS3BUJfgv/C32HY3m/v9PcLNZWYzo+LEfmamiB5+f0jciCg=='
 expected_antigravity_tree_sha=7980e6825a23f18a9d298953c0efc9f13c1231ce4c814394803b9da9bfb565ce
 expected_extension_sha=0e481623a0113e9dead8c75a65a2c2171fb3004acadf579655b4e5cc683d4a39
-expected_fake_sha=c6f7d174f7a111900753945b0d4b3561277cc61859401b23b084a56a6eed4e13
+expected_fake_sha=1dadc2c8c45254c627822289a501112f5786a4c05eff1ba8a82080805ab18128
 expected_fake_antigravity_sha=944ab25260d0efee3c682f0d79f84beae674e7fe8a36a585f7615944bcec4417
 
 fail() {
@@ -166,7 +166,7 @@ rust_toolchain=$(rustup show active-toolchain | awk '{print $1}')
 system_prompt=$(<"$system_prompt_file")
 system_prompt_sha=$(printf '%s' "$system_prompt" | sha256sum)
 system_prompt_sha=${system_prompt_sha%% *}
-prompt='Reply with exactly: pi boundary preflight. Do not call tools.'
+prompt='Output exactly this line and nothing else: pi boundary preflight'
 
 tmp_dir=$(mktemp -d)
 trap 'rm -r -- "$tmp_dir"' EXIT
@@ -312,6 +312,7 @@ printf '%s\n' "$boundary_json" | jq -e \
 while IFS= read -r line; do
   printf '%s\n' "$line" | jq -e . >/dev/null || fail 'Pi JSON stream contains a non-JSON line'
 done <"$tmp_dir/events.ndjson"
+jq -c 'del(.. | .textSignature?)' "$tmp_dir/events.ndjson" >"$tmp_dir/sanitized.ndjson"
 
 session_count=$(jq -s '[.[] | select(.type == "session")] | length' "$tmp_dir/events.ndjson")
 [[ $session_count -eq 1 ]] || fail "expected one session header, found $session_count"
@@ -338,7 +339,7 @@ if ! jq -se --arg provider "$provider" --arg model "$model" --arg prompt "$promp
   ([.[] | select(.type == "message_end" and .message.role == "assistant")][0].message.content | map(select(.type == "text") | .text) | join("")) == "pi boundary preflight"
 ' "$tmp_dir/events.ndjson" >/dev/null; then
   cat "$tmp_dir/stderr.txt" >&2
-  cat "$tmp_dir/events.ndjson" >&2
+  cat "$tmp_dir/sanitized.ndjson" >&2
   fail 'Pi did not return the exact successful neutral response'
 fi
 
@@ -372,6 +373,6 @@ printf 'PI_INVOCATION pi --provider %s --model %s --thinking %s --mode json --no
   "$provider" "$model" "$thinking" "$provider_invocation" "$extension" "$system_prompt_sha"
 printf 'PI_BOUNDARY %s\n' "$boundary_json"
 printf 'PI_EVENTS_BEGIN\n'
-cat "$tmp_dir/events.ndjson"
+cat "$tmp_dir/sanitized.ndjson"
 printf 'PI_EVENTS_END\n'
 printf 'PI_COLD_AGENT_BOUNDARY PASS\n'

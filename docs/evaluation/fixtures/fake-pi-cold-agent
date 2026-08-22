@@ -111,7 +111,7 @@ else
   [[ ${#extensions[@]} -eq 1 ]] || exit 77
 fi
 [[ -n $system_prompt ]] || exit 69
-[[ $prompt == 'Reply with exactly: pi boundary preflight. Do not call tools.' ]] || exit 70
+[[ $prompt == 'Output exactly this line and nothing else: pi boundary preflight' ]] || exit 70
 [[ ${NOMOS_PI_EXPECTED_PROVIDER:-} == "$provider" ]] || exit 71
 [[ ${NOMOS_PI_EXPECTED_MODEL:-} == "$model" ]] || exit 72
 [[ ${NOMOS_PI_EXPECTED_THINKING:-} == "$thinking" ]] || exit 73
