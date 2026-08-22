@@ -49,10 +49,9 @@ head=$(git -C "$repo_root" rev-parse --verify HEAD)
 initial_status=$(git -C "$repo_root" status --porcelain=v1 --untracked-files=all)
 [[ -z $initial_status ]] || fail 'tracked worktree is not clean before evidence run'
 
-case $evidence_arg in
-  /*) evidence_dir=$evidence_arg ;;
-  *) evidence_dir=$repo_root/$evidence_arg ;;
-esac
+[[ $evidence_arg != /* ]] || fail 'evidence destination must be repository-relative'
+evidence_rel=${evidence_arg#./}
+evidence_dir=$repo_root/$evidence_rel
 [[ ! -e $evidence_dir ]] || fail "evidence destination already exists: $evidence_dir"
 mkdir -p "$evidence_dir/runs" "$evidence_dir/semantic"
 
@@ -105,16 +104,17 @@ record_environment
 for iteration in $(seq 1 10); do
   run_name=$(printf 'run-%02d' "$iteration")
   run_dir=$evidence_dir/runs/$run_name
+  run_rel=$evidence_rel/runs/$run_name
   mkdir "$run_dir"
 
   "$binary" compile fixtures/gaol.nomos \
-    --out "$run_dir/gaol.world" >"$run_dir/compile.stdout"
-  "$binary" run "$run_dir/gaol.world" \
+    --out "$run_rel/gaol.world" >"$run_dir/compile.stdout"
+  "$binary" run "$run_rel/gaol.world" \
     --commands fixtures/gaol.commands \
-    --out "$run_dir/gaol.run" >"$run_dir/run.stdout"
-  "$binary" replay "$run_dir/gaol.world" \
+    --out "$run_rel/gaol.run" >"$run_dir/run.stdout"
+  "$binary" replay "$run_rel/gaol.world" \
     --log fixtures/gaol.replay \
-    --out "$run_dir/gaol.replay.run" >"$run_dir/replay.stdout"
+    --out "$run_rel/gaol.replay.run" >"$run_dir/replay.stdout"
 
   compare_run_and_replay "$run_dir"
   checksum_tree "$run_dir" "$run_dir/artifacts.sha256"

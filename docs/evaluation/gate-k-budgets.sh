@@ -26,10 +26,9 @@ head=$(git -C "$repo_root" rev-parse --verify HEAD)
 [[ -z $(git -C "$repo_root" status --porcelain=v1 --untracked-files=all) ]] ||
   fail 'tracked worktree is not clean before budget run'
 
-case $evidence_arg in
-  /*) evidence_dir=$evidence_arg ;;
-  *) evidence_dir=$repo_root/$evidence_arg ;;
-esac
+[[ $evidence_arg != /* ]] || fail 'evidence destination must be repository-relative'
+evidence_rel=${evidence_arg#./}
+evidence_dir=$repo_root/$evidence_rel
 [[ ! -e $evidence_dir ]] || fail "evidence destination already exists: $evidence_dir"
 mkdir -p "$evidence_dir/build" "$evidence_dir/operations" "$evidence_dir/inputs"
 
@@ -99,11 +98,11 @@ build_rss_kb=$(awk -F ': ' '/Maximum resident set size \(kbytes\)/ { print $2 }'
 binary=$build_target/release/nomos
 [[ -x $binary ]] || fail 'release nomos binary is absent after build'
 
-world=$evidence_dir/inputs/gaol.world
-base_run=$evidence_dir/inputs/base.run
-"$binary" compile fixtures/gaol.nomos --out "$world" \
+world_rel=$evidence_rel/inputs/gaol.world
+base_run_rel=$evidence_rel/inputs/base.run
+"$binary" compile fixtures/gaol.nomos --out "$world_rel" \
   >"$evidence_dir/inputs/compile.stdout"
-"$binary" run "$world" --commands fixtures/gaol.commands --out "$base_run" \
+"$binary" run "$world_rel" --commands fixtures/gaol.commands --out "$base_run_rel" \
   >"$evidence_dir/inputs/run.stdout"
 
 replay_commands=$(grep -o '"ordinal"' fixtures/gaol.replay | wc -l)
@@ -135,7 +134,7 @@ run_phase() {
   local phase=$1
   local count=$2
   local table=$3
-  local ordinal name root
+  local ordinal name root root_rel
   for ordinal in $(seq 1 "$count"); do
     name=$(printf '%s-%02d' "$phase" "$ordinal")
 
@@ -145,16 +144,18 @@ run_phase() {
       "$binary" validate fixtures/gaol.nomos
 
     root=$evidence_dir/operations/command/$name
+    root_rel=$evidence_rel/operations/command/$name
     mkdir -p "$(dirname "$root")"
     measure_process "$table" command "$ordinal" "$root" \
-      "$binary" command "$world" --state "$base_run/final-state.json" \
-      'close north_gate' --out "$root.run"
+      "$binary" command "$world_rel" --state "$base_run_rel/final-state.json" \
+      'close north_gate' --out "$root_rel.run"
 
     root=$evidence_dir/operations/replay/$name
+    root_rel=$evidence_rel/operations/replay/$name
     mkdir -p "$(dirname "$root")"
     measure_process "$table" replay "$ordinal" "$root" \
-      "$binary" replay "$world" --log fixtures/gaol.replay \
-      --out "$root.run"
+      "$binary" replay "$world_rel" --log fixtures/gaol.replay \
+      --out "$root_rel.run"
   done
 }
 
