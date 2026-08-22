@@ -1,6 +1,6 @@
 ---
 title: Gate K runtime commit and persisted evidence
-status: Implementation reference through SW-I
+status: Implementation reference through SW-J
 date: 2026-08-22
 applies_to: KERNEL.md sections 2, 3, 5, 7, and 9; acceptance 5, 9, 10, and 12
 ---
@@ -9,9 +9,9 @@ applies_to: KERNEL.md sections 2, 3, 5, 7, and 9; acceptance 5, 9, 10, and 12
 
 SW-F closes the in-memory transaction boundary. SW-G subsequently assigns
 stable World IR and packages the simulation plan that supplies initial-state
-material. SW-I defines the strict persisted values needed by later filesystem
-execution without publishing run outputs or adding runtime CLI commands. The
-path is:
+material. SW-I defines the strict persisted values needed by filesystem
+execution. SW-J publishes those values as verified immutable run bundles and
+exposes the runtime CLI commands. The path is:
 
 ```text
 nomos-schema construction@3 light-union plan
@@ -20,6 +20,7 @@ nomos-schema construction@3 light-union plan
   -> nomos-sim resolve after settlement
   -> nomos.runtime_state@1 snapshot
   -> SHA-256 + nomos.causal_receipt@1
+  -> six-file atomic run bundle
 ```
 
 ## Compiler-owned light semantics
@@ -130,12 +131,40 @@ digest rows and derives every binding from their exact canonical bytes; later
 validation recomputes all five digests. Human diagnostic wording remains
 outside `RunResult`; its rejection identity is the stable diagnostic code.
 
+## Filesystem execution and run bundles
+
+`nomos_sim::execute_requests` resolves and commits requests in order without
+knowing about packages or the filesystem. It stops at the first rejection and
+returns one `RunExecution` whose initial/final state, committed log, causal
+receipts, state hashes, result binding, and optional terminal diagnostic agree.
+The CLI supplies only the digest and typed simulation plan from an already
+verified `OpenedCompiledWorld`.
+
+`nomos run` reads the exact schema-headed command script and begins from the
+package-derived initial state. `nomos command` strictly decodes a persisted
+state against the package simulation semantics and executes one exact request
+line. Runtime rejection is published evidence: only successful commits enter
+the log, the final state is the last committed snapshot, and `result.json`
+records the stable rejection code. CLI input, environment, or publication
+failure returns no partial output.
+
+The publisher writes exactly `initial-state.json`, `final-state.json`,
+`command-log.json`, `causal-receipts.json`, `state-hashes.json`, and
+`result.json` in a fresh sibling staging directory. It strictly reopens all six
+typed artifacts against the input package, recomputes all bindings, then uses
+one rename. Existing destinations are preserved. Roots and entries must be the
+expected directory and regular files; symlinks, special files, missing/extra
+entries, noncanonical bytes, digest changes, cross-package evidence, and
+cross-semantics state reuse fail closed. As with compiled packages, callers own
+a quiescent supported local-filesystem tree; this is integrity, not hostile
+filesystem race safety or authenticity.
+
 ## Evidence boundary
 
 SW-F proves in-memory snapshot immutability and commit evidence; SW-G proves the
 package contains deterministic material for the same initial snapshot; SW-H
 exposes filesystem validation, compilation, and inspection; SW-I proves the
-strict typed values and their cross-object integrity rules. No slice yet writes
-run directories, executes runtime commands through the CLI, replays, performs
-the required World IR migration, runs the multi-target ten-run matrix, or
-performs formal cold-agent gates.
+strict typed values and their cross-object integrity rules; SW-J publishes and
+reopens those exact values through `run` and `command`. No slice yet replays,
+explains causal evidence, performs the required World IR migration, runs the
+multi-target ten-run matrix, or performs formal cold-agent gates.
