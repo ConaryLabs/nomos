@@ -255,11 +255,13 @@ The authenticated formal-boundary command is an expected negative proof on
 print `AGY_FORMAL_BOUNDARY BLOCKED`. A zero exit would require inspection and
 owner disposition before any formal launch.
 
-The issue #54 repair author proof passed all four commands at `200a617`; final
-PR CI and non-author exact-head disposition are recorded externally in PR #55.
-SW-G's original author proof, Luna max exact-head rerun, PR CI, and post-merge
-CI passed all four commands;
-the focused release SW-G test also passed. SW-F, SW-D, and
+The issue #54 repair author proof, PR CI, non-author exact-head rerun, and
+post-merge CI passed as recorded above and externally in PR #55. SW-H's
+refreshed author proof passes all four workspace commands plus the exact CLI
+smoke commands after rebasing onto that repair; final PR CI and non-author
+exact-head disposition are recorded externally in PR #53. SW-G's original
+author proof, Luna max exact-head rerun, PR CI, and post-merge CI also passed all
+four commands; the focused release SW-G test passed. SW-F, SW-D, and
 issue #24 have the same author/non-author/CI chain as recorded above. Earlier
 SW-C, revision-4, and Rust-1.98 maintenance reruns also passed.
 Still unproven: Linux aarch64 release, ten runs per target, runtime and
