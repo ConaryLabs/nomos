@@ -96,6 +96,33 @@ model response or tool call and confirm it again in the exported result. A
 post-task identity failure is reported against that attempt; it never erases an
 unfavorable subject result or creates an unreported retry.
 
+### Mandatory Gemini print-mode preflight
+
+Issue #17 proved that `agy --print --model ... <prompt>` silently sends the
+seven-byte string `--model` as the prompt. Every Gemini print-mode lane must put
+the prompt immediately after `-p` and must pass this repository's cheap harness
+from the exact target worktree before a formal attempt:
+
+```bash
+docs/evaluation/agy-print-preflight.sh
+```
+
+The harness pins `gemini-3.7-flash-high`, high effort, the exact worktree, and
+streaming JSON; disables slash-command expansion; and requires a completed
+terminal-tool `pwd` event whose output is the worktree. A greeting, scratch
+directory, missing tool event, model mismatch, non-success result, or nonzero
+client exit blocks launch. Its prompt-first argument ordering is regression
+tested in CI without contacting the provider.
+
+The successful 1.1.17 repair receipt is under
+`docs/evaluation/runs/tooling/2026-08-22-agy-print-mode-repair/`. The three
+failed 2026-08-21 calls retain zero evidentiary value. Passing this transport
+preflight is necessary but not sufficient for a formal run: the init event's
+effective tools and all freshness/ablation requirements below still require
+separate inspection and approval. Issue #45 tracks that fail-closed tool and
+persisted-context proof; the Gemini formal route remains blocked until it is
+disposed.
+
 ## Freshness and tool boundary
 
 Each formal subject starts in a new conversation and isolated task workspace.

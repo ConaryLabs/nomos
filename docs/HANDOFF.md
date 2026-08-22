@@ -1,6 +1,6 @@
 # Handoff — state of the repository
 
-Updated 2026-08-22 after SW-G merged through issue #40 / PR #42. No next
+Updated 2026-08-22 for the issue #17 Antigravity print-mode repair. No next
 semantic implementation slice is currently filed.
 This file orients a fresh session; it is rewritten at each slice boundary and
 never accumulates history (git has that).
@@ -65,11 +65,15 @@ never accumulates history (git has that).
   `agy` is the formal cold author; DeepSeek V4 Pro through direct Reasonix is the
   formal cold debugger; each independently checks the other's output. The plan
   and invalidation rules are in `docs/evaluation/GATE_K_COLD_AGENT_PLAN.md`.
-- **The `agy` lane is currently broken (#17):** three print-mode prompts,
-  including a `pwd` preflight, were ignored in favor of a canned model greeting.
-  Those attempts have zero evidentiary value. Gemini may not perform the formal
-  cold-author role until #17 proves a working invocation and preflight. The
-  local failure record is under `docs/evaluation/runs/tooling/`.
+- **The `agy` print path is repaired (#17):** official client 1.1.17 was
+  restored after the host reinstall. The old argument order passed `--model` as
+  the seven-byte print prompt; a prompt-first invocation now proves the exact
+  Gemini 3.7 Flash High model and a completed `pwd` tool event in the target
+  worktree. The fail-closed harness and exact receipt are under
+  `docs/evaluation/`. The three 2026-08-21 attempts retain zero evidentiary
+  value. The successful init event also exposed forbidden formal-run tools, so
+  issue #45 now blocks the Gemini cold-agent route pending effective tool and
+  persisted-context ablation proof.
 - **CI uses `actions/checkout@v7` (#11):** PR and post-merge verification passed
   without the Node 20 compatibility annotation.
 - **The GPT Pro architecture checkpoint is owner-disposed (#25):** review of
@@ -163,8 +167,9 @@ movement migration, direct v2 runtime loading/refusal evidence, the Linux
 aarch64 and ten-run matrix, measured Gate K budgets, final schema-ownership
 review, and the formal cold-agent gates.
 
-Issue #17 remains a formal cold-author tooling blocker, not a blocker for
-ordinary issue-first semantic implementation.
+Issue #45 remains a formal cold-author tooling blocker, not a blocker for
+ordinary issue-first semantic implementation. Issue #17 repairs only the
+print-mode transport and command preflight; it is not formal Gate K evidence.
 
 ## How to prove the current branch
 
@@ -173,6 +178,7 @@ cargo fmt --all -- --check
 cargo clippy --workspace --all-targets --locked -- -D warnings
 cargo test --workspace --locked
 cargo xtask boundary
+docs/evaluation/test-agy-print-preflight.sh
 ```
 
 SW-G's author proof, Luna max exact-head rerun, PR CI, and post-merge CI passed
