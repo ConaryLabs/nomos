@@ -1,0 +1,15 @@
+Historical issue #17 invocation reproduced on authenticated agy 1.1.17:
+
+agy --print --model gemini-3.7-flash-high --dangerously-skip-permissions --output-format text --print-timeout 2m "Run pwd in the terminal now and report the exact output. Do not answer with your model name."
+
+Exit: 0
+
+Output:
+
+I am currently powered by **Gemini 3.7 Flash** (with high reasoning / extended thinking enabled).
+
+If you'd like to switch models or configure model settings, you can select a different model from the model selector dropdown in the chat interface or pass the appropriate model configuration in your settings.
+
+Matching local client log line:
+
+ERROR: logging before google.Init: I0822 02:04:34.436033       1 printmode.go:173] Print mode: starting (promptLength=7, model="", conversationID="")

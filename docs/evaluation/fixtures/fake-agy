@@ -1,0 +1,79 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+case ${1:-} in
+  --version)
+    printf '1.1.17\n'
+    exit 0
+    ;;
+  models)
+    printf 'gemini-3.7-flash-high\tGemini 3.7 Flash (High)\n'
+    exit 0
+    ;;
+esac
+
+repo_root=$(git rev-parse --show-toplevel)
+expected_prompt="Use the terminal tool to run pwd exactly once with its working directory set to $repo_root. Report the exact output. Do not infer it and do not answer with your model name."
+[[ ${1:-} == -p ]] || exit 64
+[[ ${2:-} == "$expected_prompt" ]] || exit 65
+shift 2
+
+model=
+effort=
+add_dir=
+output_format=
+print_timeout=
+skip_permissions=0
+slash_commands_disabled=0
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --model)
+      model=${2:-}
+      shift 2
+      ;;
+    --effort)
+      effort=${2:-}
+      shift 2
+      ;;
+    --add-dir)
+      add_dir=${2:-}
+      shift 2
+      ;;
+    --output-format)
+      output_format=${2:-}
+      shift 2
+      ;;
+    --print-timeout)
+      print_timeout=${2:-}
+      shift 2
+      ;;
+    --dangerously-skip-permissions)
+      skip_permissions=1
+      shift
+      ;;
+    --disable-slash-commands)
+      slash_commands_disabled=1
+      shift
+      ;;
+    *)
+      exit 66
+      ;;
+  esac
+done
+
+if [[ ${FAKE_AGY_GREETING_ONLY:-0} == 1 ]]; then
+  printf 'I am currently running on Gemini.\n'
+  exit 0
+fi
+
+[[ $model == gemini-3.7-flash-high ]] || exit 67
+[[ $effort == high ]] || exit 68
+[[ $add_dir == "$repo_root" ]] || exit 69
+[[ $output_format == stream-json ]] || exit 70
+[[ $print_timeout == 2m ]] || exit 71
+[[ $skip_permissions == 1 ]] || exit 72
+[[ $slash_commands_disabled == 1 ]] || exit 73
+printf '{"event":"init","conversation_id":"fixture","init":{"model":"gemini-3.7-flash-high","cwd":"%s","tools":["run_command"],"permission_mode":"always-proceed"}}\n' "$repo_root"
+printf '{"event":"step_update","step_update":{"conversation_id":"fixture","step_index":1,"state":"DONE","step_type":"tool","tool_name":"run_command","tool_info":{"name":"run_command","parameters":{"CommandLine":"pwd"},"output":"%s\\r\\n"}}}\n' "$repo_root"
+printf '{"event":"result","result":{"conversation_id":"fixture","status":"SUCCESS","response":"%s\\n"}}\n' "$repo_root"

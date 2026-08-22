@@ -1,0 +1,1 @@
+Use the terminal tool to run pwd exactly once with its working directory set to /work/signed-dev/src/signed-world. Report the exact output. Do not infer it and do not answer with your model name.

@@ -57,6 +57,9 @@ jobs:
       - name: Dependency boundaries (KERNEL.md section 10, acceptance 15)
         run: cargo xtask boundary
 
+      - name: Agy print preflight harness
+        run: docs/evaluation/test-agy-print-preflight.sh
+
       - name: Determinism
         # The canonical-hash test prints `HASH <name> <hex>` lines. Four runs —
         # debug twice, release twice — must produce byte-identical lines.
