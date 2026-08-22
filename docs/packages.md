@@ -1,6 +1,6 @@
 ---
 title: Gate K package evidence boundary
-status: Implementation reference through SW-G
+status: Implementation reference through SW-G semantic-open repair
 date: 2026-08-22
 applies_to: KERNEL.md sections 5-7; acceptance 12
 ---
@@ -24,12 +24,15 @@ compiler-receipts.json
 The generic `nomos-core::package` layer validates names, canonical bytes,
 hashes, publication, and filesystem structure. SW-G adds the semantic layer:
 `nomos-compiler::CompiledWorld` owns the exact seven members and validates their
-schemas and agreement; `nomos-cli::write_compiled_world` and
-`compile_and_write_world` complete assembly and semantic validation before
-entering the generic writer, and `open_compiled_world` revalidates semantics
-after generic integrity checks. These are library orchestration APIs, not
-command-line verbs. Runtime causal receipts never enter an input package and
-live only in later run outputs.
+schemas and agreement. The read side returns an
+`nomos-compiler::OpenedCompiledWorld` only after reconstructing the complete
+typed stable IR and regenerating every projection.
+`nomos-cli::write_compiled_world` and `compile_and_write_world` complete
+assembly and semantic validation before entering the generic writer, and
+`open_compiled_world` crosses that same typed semantic boundary after generic
+integrity checks. These are library orchestration APIs, not command-line verbs.
+Runtime causal receipts never enter an input package and live only in later run
+outputs.
 
 ## Stable artifacts and ownership
 
@@ -102,10 +105,26 @@ destination.
 
 `open_compiled_world` then refuses the wrong semantic member set, exact-field
 or schema/version mismatches, construction bytes relabelled as stable IR,
-incomplete ownership or compiler receipts, receipt/member digest disagreement,
-and movement/light plans that disagree across projection consumers. These
-checks use `EK0411`–`EK0413`; they apply even when an attacker recomputes a
-generic manifest over the mutated canonical bytes.
+incomplete ownership or compiler receipts, and receipt/member digest
+disagreement. It strictly reconstructs every stable-IR entity, primitive
+expansion, capability, claim, machine transition, interaction, resolver, and
+provenance edge through the authoritative Rust types. The reconstructed IR must
+re-encode byte-for-byte, so persisted semantic arrays must already have their
+declared canonical order rather than becoming valid through decoder sorting.
+The compiler also re-derives the sealed primitive expansions, primitive field
+shapes, movement/light resolver plans, stable-v1 initial movement, approved
+relations, and exact non-positional ownership/derivation edges. It then
+regenerates simulation, navigation, persistence, and diagnostics projections
+and requires byte-identical package members.
+
+The resulting `OpenedCompiledWorld` carries the typed stable IR, all four typed
+projections, exact registry, verified compiler receipts, generic package, and
+package digest. Runtime initialization consumes its regenerated simulation
+plan; no package consumer decodes an initialization subset independently.
+These checks use `EK0411`–`EK0413`. Regression tests mutate nested command and
+handler rows, claims, provenance, semantic ordering, and valid IR meaning while
+refreshing both the compiler receipt artifact hash and the generic manifest;
+semantic open still rejects every case.
 
 The reader lexically normalizes trailing separators and inspects entry types
 without following existing final-component symlinks before reading. Tests cover

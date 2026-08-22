@@ -13,18 +13,19 @@
 mod catalog;
 pub mod diagnostics;
 mod linker;
+mod opened;
 mod package;
 mod parser;
 mod projection;
 mod resolver;
+mod semantic;
 
 use nomos_core::{Diagnostic, SchemaId, SourcePath};
 pub use nomos_projection::{DiagnosticsPlan, NavigationPlan, PersistencePlan, SimulationPlan};
 use nomos_schema::{SourceDocument, StableWorldIr, WorldIr};
 
-pub use package::{
-    CompiledWorld, compile_world_package, compiler_receipts_schema, validate_compiled_package,
-};
+pub use opened::{OpenedCompiledWorld, open_compiled_package, validate_compiled_package};
+pub use package::{CompiledWorld, compile_world_package, compiler_receipts_schema};
 
 /// Semantic compiler version embedded in stable World IR and build receipts.
 pub const COMPILER_VERSION: u32 = 1;

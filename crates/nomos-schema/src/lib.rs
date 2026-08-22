@@ -11,6 +11,7 @@
 #![warn(missing_docs)]
 #![warn(missing_debug_implementations)]
 
+mod decode;
 mod ir;
 mod light;
 mod package;

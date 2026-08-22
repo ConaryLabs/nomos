@@ -1,14 +1,13 @@
 //! Immutable runtime state and atomic transaction preparation.
 
-use std::collections::{BTreeMap, BTreeSet, VecDeque};
+use std::collections::{BTreeMap, VecDeque};
 
 use nomos_core::canonical::keyed_array;
 use nomos_core::id::StableId;
 use nomos_core::{CanonicalValue, Diagnostic, EntityId, Ident, NamespaceId, SchemaId, StateHash};
 use nomos_projection::{
     CausalEdge, Command, CommandArgument, CommandRequirement, EventPayload, MachineDefinition,
-    Phase, ResolvedLightFacts, ResolvedMovementFacts, RuntimeBinding, SimulationInitialization,
-    SimulationPlan,
+    Phase, ResolvedLightFacts, ResolvedMovementFacts, RuntimeBinding, SimulationPlan,
 };
 
 use crate::{resolve_light, resolve_movement};
@@ -139,58 +138,6 @@ impl SimulationState {
             schema: crate::runtime_state_schema(),
             tick: 0,
             entities,
-            machines,
-        })
-    }
-
-    /// Initializes runtime state from the typed subset decoded from a verified
-    /// `simulation.json` package member.
-    ///
-    /// # Errors
-    ///
-    /// Returns `EK0809` when machine ownership or initial states are invalid.
-    pub fn initialize_material(material: &SimulationInitialization) -> Result<Self, Diagnostic> {
-        if material.schema() != &nomos_projection::simulation_schema() {
-            return Err(Diagnostic::new(
-                nomos_core::diagnostic::codes::RUNTIME_STATE_INVALID,
-                "runtime initialization material has the wrong simulation schema",
-            ));
-        }
-        let mut machines = BTreeMap::new();
-        for machine in material.machines() {
-            if !machine.states().contains(machine.initial())
-                || machines
-                    .insert(machine.namespace().clone(), machine.initial().clone())
-                    .is_some()
-            {
-                return Err(Diagnostic::new(
-                    nomos_core::diagnostic::codes::RUNTIME_STATE_INVALID,
-                    "runtime initialization material has an invalid or duplicate machine",
-                ));
-            }
-        }
-        let projected_namespaces = material
-            .entities()
-            .iter()
-            .flat_map(|entity| entity.machines().iter().cloned())
-            .collect::<BTreeSet<_>>();
-        if projected_namespaces != machines.keys().cloned().collect::<BTreeSet<_>>() {
-            return Err(Diagnostic::new(
-                nomos_core::diagnostic::codes::RUNTIME_STATE_INVALID,
-                "runtime initialization material has inconsistent machine ownership",
-            ));
-        }
-        Ok(Self {
-            schema: crate::runtime_state_schema(),
-            tick: 0,
-            entities: material
-                .entities()
-                .iter()
-                .map(|entity| RuntimeEntityState {
-                    id: entity.id().clone(),
-                    binding: entity.binding().clone(),
-                })
-                .collect(),
             machines,
         })
     }

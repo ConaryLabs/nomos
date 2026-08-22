@@ -473,6 +473,12 @@ impl FactOwnershipReceipt {
         self.owner
     }
 
+    /// Source location carried by the compiler's forensic record.
+    #[must_use]
+    pub const fn declared_at(&self) -> &SourceSpan {
+        &self.declared_at
+    }
+
     /// Typed resolved value.
     #[must_use]
     pub fn resolved_to(&self) -> &ResolvedFactValue {

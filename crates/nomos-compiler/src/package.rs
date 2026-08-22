@@ -3,9 +3,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use nomos_core::canonical::keyed_array;
-use nomos_core::package::{
-    COMPILER_RECEIPTS_FILE, MANIFEST_FILE, MemberName, WorldPackage, manifest_schema,
-};
+use nomos_core::package::{COMPILER_RECEIPTS_FILE, MANIFEST_FILE, MemberName, manifest_schema};
 use nomos_core::{
     CanonicalValue, Diagnostic, EntityId, FieldName, RepairClass, SchemaId, Sha256Digest,
     SourcePath,
@@ -34,7 +32,7 @@ pub const DIAGNOSTICS_FILE: &str = "diagnostics.json";
 /// Schema registry member name.
 pub const SCHEMAS_FILE: &str = "schemas.json";
 
-const PACKAGE_MEMBERS: [&str; 7] = [
+pub(crate) const PACKAGE_MEMBERS: [&str; 7] = [
     COMPILER_RECEIPTS_FILE,
     DIAGNOSTICS_FILE,
     NAVIGATION_FILE,
@@ -229,7 +227,7 @@ impl CompiledWorld {
     /// Returns the first member-set, schema, receipt, or cross-projection
     /// diagnostic.
     pub fn validate_artifacts(&self) -> Result<(), Diagnostic> {
-        validate_member_values(&self.member_map())
+        crate::opened::validate_compiled_members(&self.member_map())
     }
 
     fn member_map(&self) -> BTreeMap<String, Vec<u8>> {
@@ -313,47 +311,9 @@ pub fn compile_world_package(source: &str, path: SourcePath) -> Result<CompiledW
     Ok(compiled)
 }
 
-/// Semantically validates a generic hash-verified package as one complete Gate
-/// K compiled world.
-///
-/// # Errors
-///
-/// Returns `EK0411` for the wrong member set, `EK0412` for an invalid member
-/// schema/shape, or `EK0413` when individually canonical members disagree.
-pub fn validate_compiled_package(package: &WorldPackage) -> Result<(), Diagnostic> {
-    let actual = package
-        .manifest()
-        .members()
-        .iter()
-        .map(|record| record.name().as_str().to_owned())
-        .collect::<BTreeSet<_>>();
-    let expected = PACKAGE_MEMBERS
-        .into_iter()
-        .map(str::to_owned)
-        .collect::<BTreeSet<_>>();
-    if actual != expected {
-        return Err(Diagnostic::new(
-            nomos_core::diagnostic::codes::PACKAGE_MEMBER_SET_INVALID,
-            format!("compiled package member set is {actual:?}; expected {expected:?}"),
-        )
-        .with_repair(RepairClass::RebuildFromSource));
-    }
-    let mut members = BTreeMap::new();
-    for name in PACKAGE_MEMBERS {
-        let member = MemberName::new(name)?;
-        let bytes = package.member_bytes(&member).ok_or_else(|| {
-            Diagnostic::new(
-                nomos_core::diagnostic::codes::PACKAGE_MEMBER_MISSING,
-                format!("compiled package has no `{name}` member"),
-            )
-            .with_repair(RepairClass::SupplyMissingMember)
-        })?;
-        members.insert(name.to_owned(), bytes.to_vec());
-    }
-    validate_member_values(&members)
-}
-
-fn validate_member_values(members: &BTreeMap<String, Vec<u8>>) -> Result<(), Diagnostic> {
+pub(crate) fn validate_member_integrity(
+    members: &BTreeMap<String, Vec<u8>>,
+) -> Result<(), Diagnostic> {
     let values = members
         .iter()
         .map(|(name, bytes)| {
@@ -376,11 +336,6 @@ fn validate_member_values(members: &BTreeMap<String, Vec<u8>>) -> Result<(), Dia
             "schema",
         ],
         SIMULATION_FILE,
-    )?;
-    nomos_projection::SimulationInitialization::from_canonical_bytes(
-        members
-            .get(SIMULATION_FILE)
-            .expect("the exact member set includes simulation.json"),
     )?;
     validate_projection(
         member(&values, NAVIGATION_FILE)?,
@@ -697,7 +652,7 @@ fn validate_receipts(
     Ok(())
 }
 
-fn expected_registry() -> Result<SchemaRegistry, Diagnostic> {
+pub(crate) fn expected_registry() -> Result<SchemaRegistry, Diagnostic> {
     SchemaRegistry::new(vec![
         SchemaRegistration::new(
             COMPILER_RECEIPTS_FILE,
