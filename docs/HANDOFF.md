@@ -416,6 +416,7 @@ of #69's result.
 
 ## Remaining evidence points
 
-The mechanical evidence gaps are closed by issue #69's dedicated exact-head
-workflow and independent audit. The whole-kernel roster and invalidation rules
-are resolved; the formal runs remain unperformed.
+Issue #69's dedicated workflow supplies the mechanical evidence artifacts; the
+exact-head non-author disposition lives externally on PR #75 and must pass
+before the slice is called green. The whole-kernel roster and invalidation
+rules are resolved; the formal runs remain unperformed.

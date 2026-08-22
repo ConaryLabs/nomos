@@ -35,6 +35,16 @@ grep -Fx 'lane x86_64-release' "$x86_release/receipt.txt" >/dev/null ||
   fail 'x86_64 release receipt has the wrong lane'
 grep -Fx 'lane aarch64-release' "$arm_release/receipt.txt" >/dev/null ||
   fail 'aarch64 release receipt has the wrong lane'
+grep -Fx 'profile debug' "$x86_debug/receipt.txt" >/dev/null ||
+  fail 'x86_64 debug receipt has the wrong profile'
+for directory in "$x86_release" "$arm_release"; do
+  grep -Fx 'profile release' "$directory/receipt.txt" >/dev/null ||
+    fail "release receipt has the wrong profile: $directory"
+done
+for directory in "$x86_debug" "$x86_release" "$arm_release"; do
+  grep -Fx 'executions 10' "$directory/receipt.txt" >/dev/null ||
+    fail "target receipt does not record ten executions: $directory"
+done
 
 diff -qr "$x86_debug/semantic" "$x86_release/semantic" >/dev/null ||
   fail 'x86_64 debug and release semantic artifacts differ'
@@ -52,9 +62,12 @@ for lane in x86_64-debug x86_64-release aarch64-release; do
     x86_64-release) source_dir=$x86_release ;;
     aarch64-release) source_dir=$arm_release ;;
   esac
-  cp "$source_dir/receipt.txt" "$receipt_dir/$lane.receipt.txt"
-  sha256sum "$source_dir/receipt.txt" >>"$receipt_dir/source-receipts.sha256"
+  receipt_name=$lane.receipt.txt
+  cp "$source_dir/receipt.txt" "$receipt_dir/$receipt_name"
+  (cd "$receipt_dir" && sha256sum "$receipt_name") >>"$receipt_dir/source-receipts.sha256"
 done
+(cd "$receipt_dir" && sha256sum -c source-receipts.sha256 >/dev/null) ||
+  fail 'copied target receipts do not verify against their checksum table'
 
 {
   printf 'GATE_K_CROSS_TARGET PASS\n'
