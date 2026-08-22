@@ -16,13 +16,14 @@ any renderer is built.
 ## Status
 
 - **Architecture status:** exploratory and non-authoritative
-- **Implementation status:** implemented through SW-K: foundations, source and
-  preserved construction IR, stable `nomos.world_ir@1`, compiled transitions,
+- **Implementation status:** implemented through SW-M on the active feature
+  branch: foundations, source and preserved construction IR, stable
+  `nomos.world_ir@2` plus strict v1 migration, compiled transitions,
   shared movement and light resolution, all four projections, immutable runtime
   commits, complete hash-verified world packages, the filesystem `validate`,
   `compile`, `inspect`, `run`, `command`, and `replay` commands, strict persisted
-  runtime and replay evidence, and atomic verified run bundles; no migration or
-  explanation commands
+  runtime and replay evidence, atomic verified run bundles, and the immutable
+  `migrate` command; no explanation commands
 - **Contract revision:** 6, owner-authorized in decision 0007
 - **Cold-agent protocol revision:** 2, owner-authorized in decision 0008
 - **Scope:** greenfield / vacuum architecture exercise
@@ -78,14 +79,16 @@ it.
    shared simulation/navigation movement semantics, and SW-E evidence.
 17. [docs/packages.md](docs/packages.md) — atomic package publication, exact
    manifest/member verification, and the revision-5 evidence boundary.
-18. [docs/provenance.md](docs/provenance.md) — typed fact identities, resolved
+18. [docs/migration.md](docs/migration.md) — stable-v1 to stable-v2 movement
+   migration, normalized runtime proof, and digest mapping.
+19. [docs/provenance.md](docs/provenance.md) — typed fact identities, resolved
     values, causal inputs, and the boundary between semantics and display text.
-19. [docs/runtime.md](docs/runtime.md) — compiler-owned light union, immutable
+20. [docs/runtime.md](docs/runtime.md) — compiler-owned light union, immutable
     runtime snapshots, state hashes, atomic commit, and typed causal receipts.
-20. [docs/review/2026-08-21-founding-review.md](docs/review/2026-08-21-founding-review.md)
+21. [docs/review/2026-08-21-founding-review.md](docs/review/2026-08-21-founding-review.md)
    — the condensed primary record of the founding adversarial review, written
    in the originating session, with its provenance limits stated.
-21. [docs/review/2026-08-21-founding-review-synthesis.md](docs/review/2026-08-21-founding-review-synthesis.md)
+22. [docs/review/2026-08-21-founding-review-synthesis.md](docs/review/2026-08-21-founding-review-synthesis.md)
     — the contract-revision-2 edited synthesis of that review.
 
 ## Layout

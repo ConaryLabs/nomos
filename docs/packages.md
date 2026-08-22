@@ -1,6 +1,6 @@
 ---
 title: Gate K package evidence boundary
-status: Package implementation reference; current through SW-K
+status: Package implementation reference; current through SW-M
 date: 2026-08-22
 applies_to: KERNEL.md sections 5-7; acceptance 12
 ---
@@ -40,7 +40,7 @@ outputs.
 | Member | Schema | Authoritative type owner |
 | --- | --- | --- |
 | `manifest.json` | `nomos.package.manifest@1` | `nomos-core::package::PackageManifest` |
-| `world-ir.json` | `nomos.world_ir@1` | `nomos-schema::StableWorldIr` |
+| `world-ir.json` | `nomos.world_ir@2` | `nomos-schema::StableWorldIr` |
 | `simulation.json` | `nomos.projection.simulation@3` | `nomos-projection::SimulationPlan` |
 | `navigation.json` | `nomos.projection.navigation@1` | `nomos-projection::NavigationPlan` |
 | `persistence.json` | `nomos.projection.persistence@1` | `nomos-projection::PersistencePlan` |
@@ -57,15 +57,20 @@ This source review enumerates every canonical type newly entering a complete
 package. Repository search confirms no second crate defines any of these
 schemas; crate edges prevent projection/runtime code from naming IR types.
 This began as an SW-G receipt, not the final Gate K ownership receipt. SW-I and
-SW-J subsequently stabilized the current run-output types, and SW-K stabilizes
-the strict replay-log input; migration schema ownership remains outstanding.
+SW-J subsequently stabilized the current run-output types, SW-K stabilized the
+strict replay-log input, and SW-M adds the schema-owned legacy-v1 decoder plus
+active stable-v2 types. The final whole-Gate ownership receipt is still
+outstanding.
 
-Stable `nomos.world_ir@1` is not construction v3 with a new label. It preserves
+Legacy stable `nomos.world_ir@1` is not construction v3 with a new label. It preserves
 the construction schema as provenance, adds explicit compiler/catalog versions,
 and carries the contract-required initial v1 movement rows. Its frozen fixture
 digest is `555017cf5e13a33b4bb5b18bae14b7577fd1fc38abf89b1f6f475874600fa493`.
 The complete fixture package manifest digest is
 `f1af0cc92ea44fd09ba93815bb99cc6c24517b56888f39be33a9d47b1299bab7`.
+SW-M preserves those exact bytes under `fixtures/gaol-v1.world/`. Active
+packages instead carry `nomos.world_ir@2`; [`migration.md`](migration.md)
+records the representation change and old-to-new digest mapping.
 
 ## Publication
 
@@ -114,7 +119,7 @@ provenance edge through the authoritative Rust types. The reconstructed IR must
 re-encode byte-for-byte, so persisted semantic arrays must already have their
 declared canonical order rather than becoming valid through decoder sorting.
 The compiler also re-derives the sealed primitive expansions, primitive field
-shapes, movement/light resolver plans, stable-v1 initial movement, approved
+shapes, movement/light resolver plans, stable-v2 initial movement, approved
 relations, and exact non-positional ownership/derivation edges. It then
 regenerates simulation, navigation, persistence, and diagnostics projections
 and requires byte-identical package members.
@@ -148,6 +153,7 @@ source and artifact bytes inside the package, but they are not signatures.
 SW-H exposes this boundary through filesystem `validate`, `compile`, and
 `inspect` commands, and SW-J consumes it without changing the input package to
 write run directories and execute runtime commands. SW-K replays a package-bound
-canonical history through the same immutable output boundary. The repository
-still does not implement signing, guarantee power-loss durability, migrate, or
-satisfy whole-Gate-K acceptance.
+canonical history through the same immutable output boundary. SW-M applies the
+same verified staging boundary to v1-to-v2 migration and refuses direct v1
+runtime use. The repository still does not implement signing, guarantee
+power-loss durability, or satisfy whole-Gate-K acceptance.

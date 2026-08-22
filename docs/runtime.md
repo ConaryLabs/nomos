@@ -1,6 +1,6 @@
 ---
 title: Gate K runtime commit and persisted evidence
-status: Implementation reference through SW-K
+status: Implementation reference through SW-M
 date: 2026-08-22
 applies_to: KERNEL.md sections 2, 3, 5, 7, and 9; acceptance 5, 9, 10, and 12
 ---
@@ -18,7 +18,7 @@ nomos-schema construction@3 light-union plan
   -> nomos-compiler validation
   -> simulation@3 + persistence@1 + diagnostics@1
   -> nomos-sim resolve after settlement
-  -> nomos.runtime_state@1 snapshot
+  -> nomos.runtime_state@2 snapshot
   -> SHA-256 + nomos.causal_receipt@1
   -> six-file atomic run bundle
 ```
@@ -40,7 +40,7 @@ identities but retain different meanings.
 
 ## Runtime snapshot and hash domain
 
-`SimulationState` is the immutable `nomos.runtime_state@1` snapshot. Its
+`SimulationState` is the immutable `nomos.runtime_state@2` snapshot. Its
 canonical envelope contains only:
 
 - schema identity and deterministic tick;
@@ -88,9 +88,10 @@ canonical JSON tree is not accepted merely because it parses.
 
 ## Persisted state binding
 
-`nomos.runtime_state@1` and its constitutional hash domain remain byte-for-byte
-unchanged. A standalone state file uses a separate
-`nomos.persisted_runtime_state@1` envelope containing the inner typed state, its
+SW-M advances the active snapshot to `nomos.runtime_state@2` so legacy and
+migrated stable-IR meaning share one explicit normalization boundary; v1 bytes
+are never accepted or relabelled as v2. A standalone state file uses a separate
+`nomos.persisted_runtime_state@2` envelope containing the inner typed state, its
 state hash, and SHA-256 of the exact canonical `simulation.json` bytes. Opening
 requires a caller-supplied typed `SimulationPlan`; strict state reconstruction
 checks entity identity and binding, namespace ownership, legal machine states,
@@ -200,6 +201,8 @@ package contains deterministic material for the same initial snapshot; SW-H
 exposes filesystem validation, compilation, and inspection; SW-I proves the
 strict typed values and their cross-object integrity rules; SW-J publishes and
 reopens those exact values through `run` and `command`; SW-K binds and reproduces
-them through `replay`. No slice yet explains causal evidence, performs the
-required World IR migration, runs the multi-target ten-run matrix, or performs
-formal cold-agent gates.
+them through `replay`. SW-M proves that strict legacy-v1 migration produces the
+same normalized runtime-v2 state, command, receipt, movement, light, and
+hash-chain evidence as active v2 meaning. No slice yet explains causal
+evidence, runs the multi-target ten-run matrix, or performs formal cold-agent
+gates.

@@ -1,6 +1,6 @@
 ---
 title: Gate K transitions and transaction preparation
-status: Transition implementation reference; current through SW-K
+status: Transition implementation reference; current through SW-M
 date: 2026-08-22
 applies_to: KERNEL.md sections 1, 2, 4; acceptance 4-6
 ---
@@ -82,7 +82,7 @@ staged after-state, ordered `Local` then `Causal` transition steps, and
 effective movement and light facts resolved before and after complete causal
 settlement. It is not a committed snapshot. SW-F's `commit_transaction`
 consumes the successful preparation privately, advances the tick with checked
-arithmetic, and returns a new `nomos.runtime_state@1` snapshot, its state hash,
+arithmetic, and returns a new `nomos.runtime_state@2` snapshot, its state hash,
 and a typed `nomos.causal_receipt@1`. No commit evidence is returned on rejection.
 
 Any `EK08xx` failure discards the staged clone. Tests compare both Rust equality
@@ -105,5 +105,7 @@ persistence/diagnostics deltas, committed in-memory state, hashes, and typed
 causal receipts as described in [`runtime.md`](runtime.md). SW-G packages those
 artifacts, SW-H exposes filesystem validation, compilation, and inspection, and
 SW-J executes runtime commands into verified run bundles. SW-K deterministically
-replays the same transition and receipt evidence. Migration, the ten-run target
-matrix, and whole-Gate-K cold-agent acceptance remain open.
+replays the same transition and receipt evidence. SW-M proves the same ordered
+transition and receipt evidence after stable-v1 movement migration and
+runtime-v2 normalization. The ten-run target matrix and whole-Gate-K cold-agent
+acceptance remain open.
