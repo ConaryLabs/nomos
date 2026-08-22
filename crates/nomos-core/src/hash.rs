@@ -102,6 +102,12 @@ impl StateHash {
     pub fn to_hex(&self) -> String {
         self.0.to_hex()
     }
+
+    /// Parses the one lowercase hexadecimal state-hash spelling.
+    #[must_use]
+    pub fn from_hex(text: &str) -> Option<Self> {
+        Sha256Digest::from_hex(text).map(Self)
+    }
 }
 
 impl fmt::Display for StateHash {

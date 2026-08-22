@@ -32,6 +32,10 @@ pub struct RuntimeEntityState {
 }
 
 impl RuntimeEntityState {
+    pub(crate) fn from_parts(id: EntityId, binding: RuntimeBinding) -> Self {
+        Self { id, binding }
+    }
+
     /// Stable entity ID.
     #[must_use]
     pub const fn id(&self) -> &EntityId {
@@ -53,6 +57,20 @@ impl RuntimeEntityState {
 }
 
 impl SimulationState {
+    pub(crate) fn from_parts(
+        schema: SchemaId,
+        tick: u64,
+        entities: Vec<RuntimeEntityState>,
+        machines: BTreeMap<NamespaceId, Ident>,
+    ) -> Self {
+        Self {
+            schema,
+            tick,
+            entities,
+            machines,
+        }
+    }
+
     /// Initializes every runtime machine from its projected initial state.
     ///
     /// # Errors
@@ -170,6 +188,24 @@ impl SimulationState {
     #[must_use]
     pub fn to_canonical_bytes(&self) -> Vec<u8> {
         self.to_canonical().to_canonical_bytes()
+    }
+
+    /// Reconstructs one exact canonical state and validates it against its plan.
+    ///
+    /// # Errors
+    ///
+    /// Returns a canonical, persisted-runtime, or plan disagreement diagnostic.
+    pub fn from_canonical_bytes(bytes: &[u8], plan: &SimulationPlan) -> Result<Self, Diagnostic> {
+        crate::state_persistence::decode_state(bytes, plan)
+    }
+
+    /// Validates this snapshot against the supplied runtime semantics.
+    ///
+    /// # Errors
+    ///
+    /// Returns `EK0809` when identities, bindings, namespaces, or states differ.
+    pub fn validate_against(&self, plan: &SimulationPlan) -> Result<(), Diagnostic> {
+        validate_current_state(plan, self)
     }
 
     /// SHA-256 identity of the canonical runtime-state envelope only.
@@ -528,7 +564,7 @@ pub fn prepare_transaction_with_budget(
     })
 }
 
-fn validate_current_state(
+pub(crate) fn validate_current_state(
     plan: &SimulationPlan,
     current: &SimulationState,
 ) -> Result<(), Diagnostic> {

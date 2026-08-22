@@ -38,14 +38,18 @@
 
 use nomos_core::id::SchemaId;
 
+mod command_language;
 mod commit;
 mod receipt;
 mod resolver;
+mod state_persistence;
 mod transaction;
 
+pub use command_language::{CommandRequest, CommandScript, resolve_command};
 pub use commit::{CommittedTransaction, commit_transaction, commit_transaction_with_budget};
 pub use receipt::{CausalReceipt, EffectiveFactRef, EffectiveFactValue, ProjectionDelta};
 pub use resolver::{resolve_light, resolve_movement};
+pub use state_persistence::PersistedRuntimeState;
 pub use transaction::{
     DEFAULT_TRANSITION_BUDGET, PreparedTransaction, RuntimeEntityState, SimulationState,
     TransitionCause, TransitionStep, prepare_transaction, prepare_transaction_with_budget,
@@ -64,6 +68,20 @@ pub use transaction::{
 #[must_use]
 pub fn runtime_state_schema() -> SchemaId {
     SchemaId::new("nomos.runtime_state", 1).expect("the runtime state schema id is a valid literal")
+}
+
+/// Schema for a standalone state file bound to exact simulation semantics.
+#[must_use]
+pub fn persisted_runtime_state_schema() -> SchemaId {
+    SchemaId::new("nomos.persisted_runtime_state", 1)
+        .expect("the persisted runtime-state schema id is a valid literal")
+}
+
+/// Schema identity named by strict persisted command scripts.
+#[must_use]
+pub fn command_script_schema() -> SchemaId {
+    SchemaId::new("nomos.command_script", 1)
+        .expect("the command-script schema id is a valid literal")
 }
 
 /// The typed causal-receipt schema written beside runtime state.

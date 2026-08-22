@@ -476,6 +476,16 @@ pub mod codes {
     pub const RUNTIME_STATE_HASH_MISMATCH: DiagnosticCode = DiagnosticCode::new("EK0810");
     /// Runtime commit evidence disagrees with compiler-projected consumers.
     pub const RUNTIME_PROJECTION_MISMATCH: DiagnosticCode = DiagnosticCode::new("EK0811");
+    /// Persisted runtime evidence has an invalid schema or semantic shape.
+    pub const RUNTIME_PERSISTED_INVALID: DiagnosticCode = DiagnosticCode::new("EK0812");
+    /// A persisted state belongs to different compiled runtime semantics.
+    pub const RUNTIME_SEMANTICS_MISMATCH: DiagnosticCode = DiagnosticCode::new("EK0813");
+    /// A command script or request violates the accepted language.
+    pub const RUNTIME_COMMAND_SCRIPT_INVALID: DiagnosticCode = DiagnosticCode::new("EK0814");
+    /// A user command resolves to more than one owned machine namespace.
+    pub const RUNTIME_COMMAND_AMBIGUOUS: DiagnosticCode = DiagnosticCode::new("EK0815");
+    /// Persisted logs, hashes, receipts, or result evidence disagree.
+    pub const RUNTIME_EVIDENCE_INCONSISTENT: DiagnosticCode = DiagnosticCode::new("EK0816");
 
     /// A resolver-plan collection repeats one stable semantic identity.
     pub const RESOLVER_DUPLICATE_IDENTITY: DiagnosticCode = DiagnosticCode::new("EK0901");
