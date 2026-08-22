@@ -77,13 +77,13 @@ pub use transaction::{
 /// tests rule out.
 #[must_use]
 pub fn runtime_state_schema() -> SchemaId {
-    SchemaId::new("nomos.runtime_state", 1).expect("the runtime state schema id is a valid literal")
+    SchemaId::new("nomos.runtime_state", 2).expect("the runtime state schema id is a valid literal")
 }
 
 /// Schema for a standalone state file bound to exact simulation semantics.
 #[must_use]
 pub fn persisted_runtime_state_schema() -> SchemaId {
-    SchemaId::new("nomos.persisted_runtime_state", 1)
+    SchemaId::new("nomos.persisted_runtime_state", 2)
         .expect("the persisted runtime-state schema id is a valid literal")
 }
 

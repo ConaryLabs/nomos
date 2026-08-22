@@ -3,8 +3,8 @@
 use std::path::Path;
 
 use nomos_compiler::{
-    CompiledWorld, OpenedCompiledWorld, compile_world_package, open_compiled_package,
-    validate_compiled_package,
+    CompiledWorld, MigratedCompiledWorld, OpenedCompiledWorld, compile_world_package,
+    migrate_world_package_v1, open_compiled_package, validate_compiled_package,
 };
 use nomos_core::package::{MemberName, WorldPackage};
 use nomos_core::{Diagnostic, SourcePath};
@@ -25,6 +25,21 @@ pub fn compile_and_write_world(
 ) -> Result<WorldPackage, Diagnostic> {
     let compiled = compile_world_package(source, source_path)?;
     write_compiled_world(&compiled, root)
+}
+
+/// Strictly migrates one stable-v1 package and publishes a new active-v2 package.
+///
+/// # Errors
+///
+/// Returns the first legacy-open, migration, active-assembly, publication, or
+/// verification diagnostic. Neither the input nor an existing output changes.
+pub fn migrate_and_write_world(
+    input: &Path,
+    output: &Path,
+) -> Result<(MigratedCompiledWorld, WorldPackage), Diagnostic> {
+    let migrated = migrate_world_package_v1(input)?;
+    let package = write_compiled_world(migrated.compiled_world(), output)?;
+    Ok((migrated, package))
 }
 
 /// Publishes a complete compiled world through the generic immutable package

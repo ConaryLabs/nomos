@@ -5,13 +5,39 @@ use std::collections::{BTreeMap, BTreeSet};
 use nomos_core::{Diagnostic, EntityId, RepairClass};
 use nomos_schema::{
     DerivationInput, DerivationPass, DerivationProducer, DerivationStep, FactIdentity, FactOwner,
-    FactOwnershipReceipt, IrEntity, ProjectionConsumer, ResolvedFactValue, StableWorldIr,
+    FactOwnershipReceipt, IrEntity, LegacyStableWorldIrV1, ProjectionConsumer, ResolvedFactValue,
+    StableWorldIr, WorldIr,
 };
 
 use crate::catalog::{self, ApprovedKind};
 
 pub(crate) fn validate_rehydrated_ir(ir: &StableWorldIr) -> Result<(), Diagnostic> {
-    let construction = ir.construction();
+    let entities = validate_construction(ir.construction())?;
+    let expected_movement_v2 = crate::projection::initial_movement_v2(ir.construction())
+        .map_err(|error| invalid(error.message()))?;
+    if ir.movement_v2() != expected_movement_v2 {
+        return Err(invalid(
+            "stable-v2 movement rows are not the exact compiler consequence of initial resolver state",
+        ));
+    }
+    validate_receipts(ir.construction(), &entities)
+}
+
+pub(crate) fn validate_legacy_rehydrated_ir(ir: &LegacyStableWorldIrV1) -> Result<(), Diagnostic> {
+    let entities = validate_construction(ir.construction())?;
+    let expected_movement_v1 = crate::projection::initial_movement_v1(ir.construction())
+        .map_err(|error| invalid(error.message()))?;
+    if ir.movement_v1() != expected_movement_v1 {
+        return Err(invalid(
+            "stable-v1 movement rows are not the exact compiler consequence of initial resolver state",
+        ));
+    }
+    validate_receipts(ir.construction(), &entities)
+}
+
+fn validate_construction(
+    construction: &WorldIr,
+) -> Result<BTreeMap<EntityId, &IrEntity>, Diagnostic> {
     let catalog_values = construction
         .catalog_values()
         .iter()
@@ -52,14 +78,6 @@ pub(crate) fn validate_rehydrated_ir(ir: &StableWorldIr) -> Result<(), Diagnosti
             "light resolver is not the exact compiler consequence of entity claims",
         ));
     }
-    let expected_movement_v1 = crate::projection::initial_movement_v1(construction)
-        .map_err(|error| invalid(error.message()))?;
-    if ir.movement_v1() != expected_movement_v1 {
-        return Err(invalid(
-            "stable-v1 movement rows are not the exact compiler consequence of initial resolver state",
-        ));
-    }
-
     let entities = construction
         .entities()
         .iter()
@@ -78,7 +96,7 @@ pub(crate) fn validate_rehydrated_ir(ir: &StableWorldIr) -> Result<(), Diagnosti
             )));
         }
     }
-    validate_receipts(ir, &entities)
+    Ok(entities)
 }
 
 fn validate_entity_shape(
@@ -116,11 +134,10 @@ fn validate_entity_shape(
 }
 
 fn validate_receipts(
-    ir: &StableWorldIr,
+    construction: &WorldIr,
     entities: &BTreeMap<EntityId, &IrEntity>,
 ) -> Result<(), Diagnostic> {
-    let receipts = ir
-        .construction()
+    let receipts = construction
         .ownership_receipts()
         .iter()
         .map(|receipt| (receipt.fact().clone(), receipt))
@@ -136,13 +153,16 @@ fn validate_receipts(
             expected_facts.insert(FactIdentity::EntityCredential(entity.id().clone()));
         }
     }
-    expected_facts.extend(ir.construction().relations().iter().map(|relation| {
-        FactIdentity::Relation {
-            subject: relation.subject().clone(),
-            kind: relation.kind().clone(),
-            object: relation.object().clone(),
-        }
-    }));
+    expected_facts.extend(
+        construction
+            .relations()
+            .iter()
+            .map(|relation| FactIdentity::Relation {
+                subject: relation.subject().clone(),
+                kind: relation.kind().clone(),
+                object: relation.object().clone(),
+            }),
+    );
     if receipts.keys().cloned().collect::<BTreeSet<_>>() != expected_facts {
         return Err(invalid(
             "ownership receipts do not exactly cover compiler-owned world facts",

@@ -15,8 +15,9 @@ use nomos_projection::{
 use nomos_schema::{
     Binding, CapabilityKind, ClaimActivation, ClaimTemplate, ClaimValue, Direction,
     GroundConnectivity, InteractionPhase, LightCompositionLaw, MovementCompositionLaw,
-    ProjectionConsumer, StableGroundMovementV1, TransitionDefinition, TransitionInput,
-    TransitionTrigger, WorldIr,
+    ProjectionConsumer, StableGroundMovementV1, StableGroundMovementV2,
+    StableMovementDispositionGround, TransitionDefinition, TransitionInput, TransitionTrigger,
+    WorldIr,
 };
 
 pub(crate) fn simulation_plan(ir: &WorldIr) -> Result<SimulationPlan, Diagnostic> {
@@ -144,6 +145,58 @@ pub(crate) fn initial_movement_v1(ir: &WorldIr) -> Result<Vec<StableGroundMoveme
         )?);
     }
     Ok(rows)
+}
+
+pub(crate) fn initial_movement_v2(ir: &WorldIr) -> Result<Vec<StableGroundMovementV2>, Diagnostic> {
+    let projected = movement_plan(ir)?;
+    let initial_states: BTreeMap<NamespaceId, Ident> = ir
+        .entities()
+        .iter()
+        .flat_map(|entity| entity.expansion().machines())
+        .map(|machine| (machine.namespace().clone(), machine.initial().clone()))
+        .collect();
+    projected
+        .subjects()
+        .iter()
+        .map(|subject| {
+            let mut blockers = Vec::new();
+            let mut costs = Vec::new();
+            for claim in subject.claims() {
+                if !projected_activation_is_true(claim.activation(), &initial_states)? {
+                    continue;
+                }
+                match claim {
+                    MovementClaim::Blocker {
+                        id, value: true, ..
+                    } => blockers.push(id.clone()),
+                    MovementClaim::TraversalCost { id, cost, .. } => {
+                        costs.push((id.clone(), *cost));
+                    }
+                    MovementClaim::Blocker { value: false, .. } => {}
+                }
+            }
+            let disposition = if blockers.is_empty() {
+                let cost = costs
+                    .iter()
+                    .map(|(_, cost)| *cost)
+                    .max()
+                    .unwrap_or(projected.base_cost());
+                StableMovementDispositionGround::traversable(
+                    cost,
+                    costs
+                        .into_iter()
+                        .filter_map(|(id, claim_cost)| (claim_cost == cost).then_some(id))
+                        .collect(),
+                )?
+            } else {
+                StableMovementDispositionGround::blocked(blockers)?
+            };
+            Ok(StableGroundMovementV2::new(
+                subject.entity().clone(),
+                disposition,
+            ))
+        })
+        .collect()
 }
 
 fn light_plan(ir: &WorldIr) -> Result<ProjectedLightResolverPlan, Diagnostic> {

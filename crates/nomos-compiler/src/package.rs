@@ -2,6 +2,10 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
+mod migration;
+
+pub use migration::{MigratedCompiledWorld, migrate_world_package_v1};
+
 use nomos_core::canonical::keyed_array;
 use nomos_core::package::{COMPILER_RECEIPTS_FILE, MANIFEST_FILE, MemberName, manifest_schema};
 use nomos_core::{
@@ -55,12 +59,25 @@ const PASSES: [&str; 10] = [
     "assemble_package_members",
 ];
 
+const MIGRATION_PASSES: [&str; 10] = [
+    "open_stable_v1",
+    "validate_legacy_semantics",
+    "migrate_movement_v2",
+    "project_simulation",
+    "project_navigation",
+    "project_persistence",
+    "project_diagnostics",
+    "validate_projection_agreement",
+    "assemble_package_members",
+    "verify_migrated_package",
+];
+
 const INVARIANTS: [&str; 5] = [
     "canonical_members",
     "complete_section_4",
     "exact_package_member_set",
     "projection_agreement",
-    "stable_v1_movement",
+    "stable_v2_movement",
 ];
 
 /// Schema for the canonical compiler build receipt member.
@@ -89,12 +106,17 @@ impl ArtifactDigest {
 struct CompilerReceipts {
     source_digest: Sha256Digest,
     artifacts: Vec<ArtifactDigest>,
+    passes: &'static [&'static str],
 }
 
 impl CompilerReceipts {
-    fn new(source: &[u8], artifacts: &BTreeMap<String, Vec<u8>>) -> Self {
+    fn from_digest(
+        source_digest: Sha256Digest,
+        artifacts: &BTreeMap<String, Vec<u8>>,
+        passes: &'static [&'static str],
+    ) -> Self {
         Self {
-            source_digest: Sha256Digest::of_bytes(source),
+            source_digest,
             artifacts: artifacts
                 .iter()
                 .map(|(name, bytes)| ArtifactDigest {
@@ -102,6 +124,7 @@ impl CompilerReceipts {
                     digest: Sha256Digest::of_bytes(bytes),
                 })
                 .collect(),
+            passes,
         }
     }
 
@@ -130,7 +153,13 @@ impl CompilerReceipts {
             ),
             (
                 "passes",
-                CanonicalValue::Array(PASSES.into_iter().map(CanonicalValue::text).collect()),
+                CanonicalValue::Array(
+                    self.passes
+                        .iter()
+                        .copied()
+                        .map(CanonicalValue::text)
+                        .collect(),
+                ),
             ),
             (
                 "primitive_catalog_version",
@@ -206,7 +235,7 @@ impl CompiledWorld {
         &self.registry
     }
 
-    /// Exact canonical member set for [`WorldPackage::write`].
+    /// Exact canonical member set for [`nomos_core::package::WorldPackage::write`].
     ///
     /// # Errors
     ///
@@ -266,6 +295,18 @@ impl CompiledWorld {
 /// member-validation diagnostic. No filesystem path is written.
 pub fn compile_world_package(source: &str, path: SourcePath) -> Result<CompiledWorld, Diagnostic> {
     let stable_ir = compile_world(source, path)?;
+    assemble_world(
+        stable_ir,
+        Sha256Digest::of_bytes(source.as_bytes()),
+        &PASSES,
+    )
+}
+
+fn assemble_world(
+    stable_ir: StableWorldIr,
+    source_digest: Sha256Digest,
+    passes: &'static [&'static str],
+) -> Result<CompiledWorld, Diagnostic> {
     let simulation = compile_simulation_plan(&stable_ir)?;
     let navigation = compile_navigation_plan(&stable_ir)?;
     let persistence = compile_persistence_plan(&stable_ir)?;
@@ -297,7 +338,8 @@ pub fn compile_world_package(source: &str, path: SourcePath) -> Result<CompiledW
         (SIMULATION_FILE.to_owned(), simulation.to_canonical_bytes()),
         (WORLD_IR_FILE.to_owned(), stable_ir.to_canonical_bytes()),
     ]);
-    let receipts = CompilerReceipts::new(source.as_bytes(), &artifacts).to_canonical_bytes();
+    let receipts =
+        CompilerReceipts::from_digest(source_digest, &artifacts, passes).to_canonical_bytes();
     let compiled = CompiledWorld {
         stable_ir,
         simulation,
@@ -398,7 +440,7 @@ fn validate_world_ir(value: &CanonicalValue) -> Result<(), Diagnostic> {
             "entities",
             "light_resolver",
             "movement_resolver",
-            "movement_v1",
+            "movement_v2",
             "ownership_receipts",
             "primitive_catalog_version",
             "relations",
@@ -422,10 +464,10 @@ fn validate_world_ir(value: &CanonicalValue) -> Result<(), Diagnostic> {
         PRIMITIVE_CATALOG_VERSION,
         WORLD_IR_FILE,
     )?;
-    let CanonicalValue::Array(rows) = field(fields, "movement_v1", WORLD_IR_FILE)? else {
+    let CanonicalValue::Array(rows) = field(fields, "movement_v2", WORLD_IR_FILE)? else {
         return Err(invalid_member(
             WORLD_IR_FILE,
-            "`movement_v1` is not an array",
+            "`movement_v2` is not an array",
         ));
     };
     let mut entities = BTreeSet::new();
@@ -433,8 +475,8 @@ fn validate_world_ir(value: &CanonicalValue) -> Result<(), Diagnostic> {
         let row_fields = object(row, WORLD_IR_FILE)?;
         require_exact_fields(
             row_fields,
-            &["blocked_ground", "entity", "traversal_cost_ground"],
-            "world-ir movement_v1 row",
+            &["entity", "movement_disposition_ground"],
+            "world-ir movement_v2 row",
         )?;
         let CanonicalValue::Text(entity) = field(row_fields, "entity", WORLD_IR_FILE)? else {
             return Err(invalid_member(WORLD_IR_FILE, "movement entity is not text"));
@@ -443,35 +485,61 @@ fn validate_world_ir(value: &CanonicalValue) -> Result<(), Diagnostic> {
         if !entities.insert(entity.clone()) {
             return Err(invalid_member(
                 WORLD_IR_FILE,
-                "`movement_v1` repeats an entity",
+                "`movement_v2` repeats an entity",
             ));
         }
-        let blocked = match field(row_fields, "blocked_ground", WORLD_IR_FILE)? {
-            CanonicalValue::Bool(value) => *value,
+        let disposition = object(
+            field(row_fields, "movement_disposition_ground", WORLD_IR_FILE)?,
+            "world-ir movement disposition",
+        )?;
+        let CanonicalValue::Text(kind) = field(disposition, "kind", WORLD_IR_FILE)? else {
+            return Err(invalid_member(WORLD_IR_FILE, "movement kind is not text"));
+        };
+        match kind.as_str() {
+            "blocked" => require_exact_fields(
+                disposition,
+                &["kind", "reasons"],
+                "blocked world-ir movement disposition",
+            )?,
+            "traversable" => {
+                require_exact_fields(
+                    disposition,
+                    &["cost", "kind", "reasons"],
+                    "traversable world-ir movement disposition",
+                )?;
+                if !unsigned(field(disposition, "cost", WORLD_IR_FILE)?)
+                    .is_some_and(|cost| cost > 0)
+                {
+                    return Err(invalid_member(
+                        WORLD_IR_FILE,
+                        "traversable movement cost is not positive",
+                    ));
+                }
+            }
             _ => {
                 return Err(invalid_member(
                     WORLD_IR_FILE,
-                    "`blocked_ground` is not boolean",
+                    "stable-v2 movement disposition kind is unsupported",
                 ));
             }
-        };
-        let cost = field(row_fields, "traversal_cost_ground", WORLD_IR_FILE)?;
-        let valid = if blocked {
-            matches!(cost, CanonicalValue::Null)
-        } else {
-            unsigned(cost).is_some_and(|value| value > 0)
-        };
-        if !valid {
+        }
+        let CanonicalValue::Array(reasons) = field(disposition, "reasons", WORLD_IR_FILE)? else {
             return Err(invalid_member(
                 WORLD_IR_FILE,
-                "stable v1 movement is not blocked/null or traversable/positive-cost",
+                "movement reasons are not an array",
+            ));
+        };
+        if kind == "blocked" && reasons.is_empty() {
+            return Err(invalid_member(
+                WORLD_IR_FILE,
+                "blocked movement has no reason",
             ));
         }
     }
     if rows.is_empty() {
         return Err(invalid_member(
             WORLD_IR_FILE,
-            "stable World IR has no v1 movement subjects",
+            "stable World IR has no v2 movement subjects",
         ));
     }
     let resolver = object(
@@ -512,7 +580,7 @@ fn validate_world_ir(value: &CanonicalValue) -> Result<(), Diagnostic> {
     }
     if entities != resolver_entities {
         return Err(inconsistent(
-            "stable-v1 movement rows do not match movement resolver subjects",
+            "stable-v2 movement rows do not match movement resolver subjects",
         ));
     }
     Ok(())
@@ -533,6 +601,25 @@ fn validate_receipts(
     value: &CanonicalValue,
     members: &BTreeMap<String, Vec<u8>>,
 ) -> Result<(), Diagnostic> {
+    validate_receipts_profile(
+        value,
+        members,
+        COMPILER_VERSION,
+        &[&PASSES, &MIGRATION_PASSES],
+        &INVARIANTS,
+        package_schema_ids(),
+    )
+    .map(|_| ())
+}
+
+fn validate_receipts_profile(
+    value: &CanonicalValue,
+    members: &BTreeMap<String, Vec<u8>>,
+    compiler_version: u32,
+    allowed_passes: &[&[&str]],
+    invariants: &[&str],
+    produced_schemas: Vec<SchemaId>,
+) -> Result<Sha256Digest, Diagnostic> {
     let fields = object(value, COMPILER_RECEIPTS_FILE)?;
     require_exact_fields(
         fields,
@@ -571,7 +658,7 @@ fn validate_receipts(
     require_version(
         fields,
         "compiler_version",
-        COMPILER_VERSION,
+        compiler_version,
         COMPILER_RECEIPTS_FILE,
     )?;
     require_version(
@@ -580,10 +667,20 @@ fn validate_receipts(
         PRIMITIVE_CATALOG_VERSION,
         COMPILER_RECEIPTS_FILE,
     )?;
-    require_text_array(fields, "passes", &PASSES, COMPILER_RECEIPTS_FILE)?;
-    require_text_array(fields, "invariants", &INVARIANTS, COMPILER_RECEIPTS_FILE)?;
+    let actual_passes = field(fields, "passes", COMPILER_RECEIPTS_FILE)?;
+    let accepted_passes = allowed_passes.iter().any(|passes| {
+        actual_passes
+            == &CanonicalValue::Array(passes.iter().copied().map(CanonicalValue::text).collect())
+    });
+    if !accepted_passes {
+        return Err(invalid_member(
+            COMPILER_RECEIPTS_FILE,
+            "compiler receipt pass sequence is not an accepted build path",
+        ));
+    }
+    require_text_array(fields, "invariants", invariants, COMPILER_RECEIPTS_FILE)?;
     let expected_schemas = CanonicalValue::Array(
-        package_schema_ids()
+        produced_schemas
             .into_iter()
             .map(|schema| schema.to_canonical())
             .collect(),
@@ -601,12 +698,12 @@ fn validate_receipts(
             "`source_sha256` is not text",
         ));
     };
-    if Sha256Digest::from_hex(source_digest).is_none() {
-        return Err(invalid_member(
+    let source_digest = Sha256Digest::from_hex(source_digest).ok_or_else(|| {
+        invalid_member(
             COMPILER_RECEIPTS_FILE,
             "`source_sha256` is not a lowercase SHA-256 digest",
-        ));
-    }
+        )
+    })?;
     let CanonicalValue::Array(artifacts) = field(fields, "artifacts", COMPILER_RECEIPTS_FILE)?
     else {
         return Err(invalid_member(
@@ -649,10 +746,14 @@ fn validate_receipts(
             ));
         }
     }
-    Ok(())
+    Ok(source_digest)
 }
 
 pub(crate) fn expected_registry() -> Result<SchemaRegistry, Diagnostic> {
+    registry_for(stable_world_ir_schema())
+}
+
+fn registry_for(world_ir_schema: SchemaId) -> Result<SchemaRegistry, Diagnostic> {
     SchemaRegistry::new(vec![
         SchemaRegistration::new(
             COMPILER_RECEIPTS_FILE,
@@ -681,11 +782,15 @@ pub(crate) fn expected_registry() -> Result<SchemaRegistry, Diagnostic> {
             nomos_projection::simulation_schema(),
             SchemaOwner::Projection,
         ),
-        SchemaRegistration::new(WORLD_IR_FILE, stable_world_ir_schema(), SchemaOwner::Schema),
+        SchemaRegistration::new(WORLD_IR_FILE, world_ir_schema, SchemaOwner::Schema),
     ])
 }
 
 fn package_schema_ids() -> Vec<SchemaId> {
+    package_schema_ids_for(stable_world_ir_schema())
+}
+
+fn package_schema_ids_for(world_ir_schema: SchemaId) -> Vec<SchemaId> {
     vec![
         compiler_receipts_schema(),
         nomos_projection::diagnostics_schema(),
@@ -694,7 +799,7 @@ fn package_schema_ids() -> Vec<SchemaId> {
         nomos_projection::persistence_schema(),
         schema_registry_schema(),
         nomos_projection::simulation_schema(),
-        stable_world_ir_schema(),
+        world_ir_schema,
     ]
 }
 
@@ -783,10 +888,10 @@ fn require_version(
     }
 }
 
-fn require_text_array<const N: usize>(
+fn require_text_array(
     fields: &BTreeMap<FieldName, CanonicalValue>,
     name: &'static str,
-    expected: &[&str; N],
+    expected: &[&str],
     context: &str,
 ) -> Result<(), Diagnostic> {
     let value = CanonicalValue::Array(

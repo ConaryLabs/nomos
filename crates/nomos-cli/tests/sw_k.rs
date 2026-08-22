@@ -314,7 +314,7 @@ fn replay_cli_reproduces_the_exact_run_deterministically() {
     );
     assert_eq!(
         field(&report, "final_state_hash"),
-        &CanonicalValue::text("e34f62421c5ba8d0385853db5d8c6c694086c8ff0ab5896f94e2e9029b2d21cf")
+        &CanonicalValue::text("3e06b9639cdef2ccd1c2795ae4b5a6581138de79ec04296d381b2334ab05bfdc")
     );
 
     let world = open_compiled_world(&cwd.join("gaol.world")).unwrap();

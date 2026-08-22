@@ -38,7 +38,8 @@ mod run_bundle;
 
 pub use command::{Execution, execute};
 pub use package::{
-    compile_and_write_world, initial_state_from_package, open_compiled_world, write_compiled_world,
+    compile_and_write_world, initial_state_from_package, migrate_and_write_world,
+    open_compiled_world, write_compiled_world,
 };
 pub use run_bundle::{
     OpenedRunBundle, open_run_bundle, require_available_run_output, write_run_bundle,

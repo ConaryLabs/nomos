@@ -6,7 +6,7 @@ use std::path::Path;
 use nomos_core::package::{MemberName, PackageManifest, WorldPackage};
 use nomos_core::{Diagnostic, RepairClass, Sha256Digest};
 use nomos_projection::{DiagnosticsPlan, NavigationPlan, PersistencePlan, SimulationPlan};
-use nomos_schema::{SchemaRegistry, StableWorldIr};
+use nomos_schema::{LegacyStableWorldIrV1, SchemaRegistry, StableWorldIr};
 
 use crate::package::{
     DIAGNOSTICS_FILE, NAVIGATION_FILE, PACKAGE_MEMBERS, PERSISTENCE_FILE, SCHEMAS_FILE,
@@ -93,6 +93,7 @@ impl OpenedCompiledWorld {
     }
 
     fn from_package(package: WorldPackage) -> Result<Self, Diagnostic> {
+        reject_legacy_runtime_input(&package)?;
         let members = package_members(&package)?;
         let rehydrated = rehydrate_members(&members)?;
         Ok(Self {
@@ -109,6 +110,21 @@ impl OpenedCompiledWorld {
                 .clone(),
         })
     }
+}
+
+fn reject_legacy_runtime_input(package: &WorldPackage) -> Result<(), Diagnostic> {
+    let name = MemberName::new(WORLD_IR_FILE)?;
+    let Some(bytes) = package.member_bytes(&name) else {
+        return Ok(());
+    };
+    if LegacyStableWorldIrV1::from_canonical_bytes(bytes).is_ok() {
+        return Err(Diagnostic::new(
+            nomos_core::diagnostic::codes::WORLD_IR_MIGRATION_REQUIRED,
+            "stable World IR v1 must be migrated explicitly before active v2 loading",
+        )
+        .with_repair(RepairClass::WriteToNewOutputPath));
+    }
+    Ok(())
 }
 
 /// Opens one package and proves its complete persisted semantics.

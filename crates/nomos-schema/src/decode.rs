@@ -3,6 +3,7 @@
 use std::collections::BTreeMap;
 
 mod provenance;
+mod stable;
 
 use provenance::{decode_consumer, decode_receipt};
 
@@ -16,41 +17,15 @@ use nomos_core::{
 use crate::{
     Binding, CapabilityKind, Cell, ClaimActivation, ClaimTemplate, ClaimValue, Direction,
     GroundConnectivity, GroundMovementCoherence, InteractionDefinition, InteractionPhase,
-    InteractionTrigger, IrEntity, IrRelation, LightCompositionLaw, LightResolverPlan,
-    LightResolverSubject, MachineTemplate, MovementCompositionLaw, MovementResolverPlan,
-    MovementResolverSubject, PrimitiveExpansion, StableGroundMovementV1, StableWorldIr,
-    TransitionDefinition, TransitionInput, TransitionTrigger, WorldIr,
-    construction_world_ir_schema, source_schema, stable_world_ir_schema,
+    InteractionTrigger, IrEntity, IrRelation, LegacyStableWorldIrV1, LightCompositionLaw,
+    LightResolverPlan, LightResolverSubject, MachineTemplate, MovementCompositionLaw,
+    MovementResolverPlan, MovementResolverSubject, PrimitiveExpansion, StableGroundMovementV1,
+    StableGroundMovementV2, StableMovementDispositionGround, StableWorldIr, TransitionDefinition,
+    TransitionInput, TransitionTrigger, WorldIr, construction_world_ir_schema,
+    legacy_stable_world_ir_schema, source_schema, stable_world_ir_schema,
 };
 
-impl StableWorldIr {
-    /// Strictly reconstructs the complete active stable World IR from canonical
-    /// bytes.
-    ///
-    /// Every nested object and closed vocabulary is decoded into its owning
-    /// Rust type. Typed constructors reapply semantic invariants, and the final
-    /// typed value must re-encode byte-for-byte to the supplied evidence. That
-    /// last comparison rejects persisted arrays that would require sorting or
-    /// any other normalization.
-    ///
-    /// # Errors
-    ///
-    /// Returns `EK0412` when bytes are malformed, fields or kinds are unknown,
-    /// typed invariants fail, semantic ordering is not already canonical, or
-    /// the reconstructed value does not reproduce the original bytes.
-    pub fn from_canonical_bytes(bytes: &[u8]) -> Result<Self, Diagnostic> {
-        let value = parse_canonical(bytes).map_err(|error| invalid(error.message()))?;
-        let decoded = decode_stable_world_ir(&value)?;
-        if decoded.to_canonical_bytes() != bytes {
-            return Err(invalid(
-                "stable World IR changes when reconstructed; persisted semantic ordering or shape is not canonical",
-            ));
-        }
-        Ok(decoded)
-    }
-}
-
-fn decode_stable_world_ir(value: &CanonicalValue) -> Result<StableWorldIr, Diagnostic> {
+pub(super) fn decode_stable_world_ir(value: &CanonicalValue) -> Result<StableWorldIr, Diagnostic> {
     let fields = object(value, "stable World IR")?;
     exact_fields(
         fields,
@@ -61,7 +36,7 @@ fn decode_stable_world_ir(value: &CanonicalValue) -> Result<StableWorldIr, Diagn
             "entities",
             "light_resolver",
             "movement_resolver",
-            "movement_v1",
+            "movement_v2",
             "ownership_receipts",
             "primitive_catalog_version",
             "relations",
@@ -119,12 +94,12 @@ fn decode_stable_world_ir(value: &CanonicalValue) -> Result<StableWorldIr, Diagn
     )?
     .with_movement_resolver(movement)
     .with_light_resolver(light);
-    let movement_v1 = array(
-        field(fields, "movement_v1", "stable World IR")?,
-        "movement_v1",
+    let movement_v2 = array(
+        field(fields, "movement_v2", "stable World IR")?,
+        "movement_v2",
     )?
     .iter()
-    .map(decode_stable_movement)
+    .map(stable::decode_stable_movement_v2)
     .collect::<Result<Vec<_>, _>>()?;
     rebuild(
         StableWorldIr::new(
@@ -137,9 +112,117 @@ fn decode_stable_world_ir(value: &CanonicalValue) -> Result<StableWorldIr, Diagn
                 field(fields, "primitive_catalog_version", "stable World IR")?,
                 "primitive catalog version",
             )?,
-            movement_v1,
+            movement_v2,
         ),
         "stable World IR",
+    )
+}
+
+pub(super) fn decode_legacy_stable_world_ir(
+    value: &CanonicalValue,
+) -> Result<LegacyStableWorldIrV1, Diagnostic> {
+    let fields = object(value, "legacy stable World IR")?;
+    exact_fields(
+        fields,
+        &[
+            "catalog_values",
+            "compiler_version",
+            "construction_schema",
+            "entities",
+            "light_resolver",
+            "movement_resolver",
+            "movement_v1",
+            "ownership_receipts",
+            "primitive_catalog_version",
+            "relations",
+            "schema",
+            "source_schema",
+        ],
+        "legacy stable World IR",
+    )?;
+    require_schema(
+        field(fields, "schema", "legacy stable World IR")?,
+        &legacy_stable_world_ir_schema(),
+    )?;
+    require_schema(
+        field(fields, "construction_schema", "legacy stable World IR")?,
+        &construction_world_ir_schema(),
+    )?;
+    require_schema(
+        field(fields, "source_schema", "legacy stable World IR")?,
+        &source_schema(),
+    )?;
+    let catalog_values = array(
+        field(fields, "catalog_values", "legacy stable World IR")?,
+        "catalog values",
+    )?
+    .iter()
+    .map(|value| parse_catalog_value(value, "catalog value"))
+    .collect::<Result<Vec<_>, _>>()?;
+    let entities = array(
+        field(fields, "entities", "legacy stable World IR")?,
+        "entities",
+    )?
+    .iter()
+    .map(decode_entity)
+    .collect::<Result<Vec<_>, _>>()?;
+    let relations = array(
+        field(fields, "relations", "legacy stable World IR")?,
+        "relations",
+    )?
+    .iter()
+    .map(decode_relation)
+    .collect::<Result<Vec<_>, _>>()?;
+    let receipts = array(
+        field(fields, "ownership_receipts", "legacy stable World IR")?,
+        "ownership receipts",
+    )?
+    .iter()
+    .map(decode_receipt)
+    .collect::<Result<Vec<_>, _>>()?;
+    let movement = decode_movement_plan(field(
+        fields,
+        "movement_resolver",
+        "legacy stable World IR",
+    )?)?;
+    let light = decode_light_plan(field(fields, "light_resolver", "legacy stable World IR")?)?;
+    let construction = rebuild(
+        WorldIr::new(
+            source_schema(),
+            catalog_values,
+            entities,
+            relations,
+            receipts,
+        ),
+        "construction World IR",
+    )?
+    .with_movement_resolver(movement)
+    .with_light_resolver(light);
+    let movement_v1 = array(
+        field(fields, "movement_v1", "legacy stable World IR")?,
+        "movement_v1",
+    )?
+    .iter()
+    .map(stable::decode_stable_movement_v1)
+    .collect::<Result<Vec<_>, _>>()?;
+    rebuild(
+        LegacyStableWorldIrV1::new(
+            construction,
+            unsigned_u32(
+                field(fields, "compiler_version", "legacy stable World IR")?,
+                "compiler version",
+            )?,
+            unsigned_u32(
+                field(
+                    fields,
+                    "primitive_catalog_version",
+                    "legacy stable World IR",
+                )?,
+                "primitive catalog version",
+            )?,
+            movement_v1,
+        ),
+        "legacy stable World IR",
     )
 }
 
@@ -706,33 +789,6 @@ fn decode_light_plan(value: &CanonicalValue) -> Result<LightResolverPlan, Diagno
     rebuild(
         LightResolverPlan::new(LightCompositionLaw::Union, consumers, subjects),
         "light resolver",
-    )
-}
-
-fn decode_stable_movement(value: &CanonicalValue) -> Result<StableGroundMovementV1, Diagnostic> {
-    let fields = object(value, "stable movement row")?;
-    exact_fields(
-        fields,
-        &["blocked_ground", "entity", "traversal_cost_ground"],
-        "stable movement row",
-    )?;
-    let cost = match field(fields, "traversal_cost_ground", "stable movement row")? {
-        CanonicalValue::Null => None,
-        value => Some(unsigned_u32(value, "stable traversal cost")?),
-    };
-    rebuild(
-        StableGroundMovementV1::new(
-            parse_entity(
-                field(fields, "entity", "stable movement row")?,
-                "stable movement entity",
-            )?,
-            boolean(
-                field(fields, "blocked_ground", "stable movement row")?,
-                "blocked_ground",
-            )?,
-            cost,
-        ),
-        "stable movement row",
     )
 }
 

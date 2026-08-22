@@ -23,14 +23,17 @@ mod semantic;
 
 use nomos_core::{Diagnostic, SchemaId, SourcePath};
 pub use nomos_projection::{DiagnosticsPlan, NavigationPlan, PersistencePlan, SimulationPlan};
-use nomos_schema::{SourceDocument, StableWorldIr, WorldIr};
+use nomos_schema::{LegacyStableWorldIrV1, SourceDocument, StableWorldIr, WorldIr};
 
 pub use inspect::inspect_compiled_package;
 pub use opened::{OpenedCompiledWorld, open_compiled_package, validate_compiled_package};
-pub use package::{CompiledWorld, compile_world_package, compiler_receipts_schema};
+pub use package::{
+    CompiledWorld, MigratedCompiledWorld, compile_world_package, compiler_receipts_schema,
+    migrate_world_package_v1,
+};
 
 /// Semantic compiler version embedded in stable World IR and build receipts.
-pub const COMPILER_VERSION: u32 = 1;
+pub const COMPILER_VERSION: u32 = 2;
 
 /// Semantic version of the sealed Gate K primitive catalog.
 pub const PRIMITIVE_CATALOG_VERSION: u32 = 1;
@@ -64,7 +67,7 @@ pub fn compile_source(source: &str, path: SourcePath) -> Result<WorldIr, Diagnos
     link_source(&document)
 }
 
-/// Validates and promotes one construction snapshot into stable World IR v1.
+/// Validates and promotes one construction snapshot into active stable World IR v2.
 ///
 /// # Errors
 ///
@@ -84,7 +87,24 @@ pub fn promote_world_ir(ir: &WorldIr) -> Result<StableWorldIr, Diagnostic> {
         ir.clone(),
         COMPILER_VERSION,
         PRIMITIVE_CATALOG_VERSION,
-        projection::initial_movement_v1(ir)?,
+        projection::initial_movement_v2(ir)?,
+    )
+}
+
+/// Converts one strictly decoded stable-v1 value into active stable-v2 meaning.
+///
+/// # Errors
+///
+/// Returns the first legacy-semantic or stable-v2 construction diagnostic.
+pub fn migrate_world_ir_v1_to_v2(
+    legacy: &LegacyStableWorldIrV1,
+) -> Result<StableWorldIr, Diagnostic> {
+    semantic::validate_legacy_rehydrated_ir(legacy)?;
+    StableWorldIr::new(
+        legacy.construction().clone(),
+        COMPILER_VERSION,
+        PRIMITIVE_CATALOG_VERSION,
+        projection::initial_movement_v2(legacy.construction())?,
     )
 }
 
@@ -163,6 +183,7 @@ pub fn consumed_schemas() -> Vec<SchemaId> {
     vec![
         nomos_schema::source_schema(),
         nomos_schema::construction_world_ir_schema(),
+        nomos_schema::legacy_stable_world_ir_schema(),
         nomos_schema::stable_world_ir_schema(),
     ]
 }

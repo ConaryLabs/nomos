@@ -42,7 +42,10 @@ pub use source::{
     ForbiddenFactOwner, SourceDocument, SourceEntity, SourceField, SourceRelation, Spanned,
 };
 pub use spatial::{Binding, Cell, Direction};
-pub use stable::{StableGroundMovementV1, StableWorldIr};
+pub use stable::{
+    LegacyStableWorldIrV1, StableGroundMovementV1, StableGroundMovementV2,
+    StableMovementDispositionGround, StableWorldIr,
+};
 pub use transition::{
     InteractionDefinition, InteractionPhase, InteractionTrigger, TransitionDefinition,
     TransitionInput, TransitionTrigger,
@@ -67,13 +70,16 @@ pub fn construction_world_ir_schema() -> SchemaId {
         .expect("the construction world IR schema id is a valid literal")
 }
 
-/// The first contract-complete Canonical World IR schema.
-///
-/// This identity is separate from every construction snapshot. Its first
-/// incompatible change is reserved for the required movement migration.
+/// The legacy contract-complete Canonical World IR schema accepted by migration.
+#[must_use]
+pub fn legacy_stable_world_ir_schema() -> SchemaId {
+    SchemaId::new("nomos.world_ir", 1).expect("the legacy stable world IR schema is valid")
+}
+
+/// The active Canonical World IR schema after the required movement migration.
 #[must_use]
 pub fn stable_world_ir_schema() -> SchemaId {
-    SchemaId::new("nomos.world_ir", 1).expect("the stable world IR schema id is a valid literal")
+    SchemaId::new("nomos.world_ir", 2).expect("the stable world IR schema id is a valid literal")
 }
 
 /// The package schema-registry artifact.
@@ -85,7 +91,8 @@ pub fn schema_registry_schema() -> SchemaId {
 #[cfg(test)]
 mod tests {
     use super::{
-        construction_world_ir_schema, schema_registry_schema, source_schema, stable_world_ir_schema,
+        construction_world_ir_schema, legacy_stable_world_ir_schema, schema_registry_schema,
+        source_schema, stable_world_ir_schema,
     };
 
     #[test]
@@ -100,7 +107,8 @@ mod tests {
         );
         assert_eq!(source_schema().version(), 1);
         assert_eq!(construction_world_ir_schema().version(), 3);
-        assert_eq!(stable_world_ir_schema().version(), 1);
+        assert_eq!(legacy_stable_world_ir_schema().version(), 1);
+        assert_eq!(stable_world_ir_schema().version(), 2);
         assert_eq!(schema_registry_schema().version(), 1);
     }
 
@@ -118,7 +126,7 @@ mod tests {
         );
         assert_eq!(
             stable_world_ir_schema().to_canonical().to_canonical_bytes(),
-            br#"{"name":"nomos.world_ir","version":1}"#.to_vec()
+            br#"{"name":"nomos.world_ir","version":2}"#.to_vec()
         );
     }
 }

@@ -13,14 +13,16 @@ use nomos_sim::{
 
 use crate::{
     ExitCode, OpenedRunBundle, compile_and_write_world, initial_state_from_package,
-    open_compiled_world, render_rejection, require_available_run_output, write_run_bundle,
+    migrate_and_write_world, open_compiled_world, render_rejection, require_available_run_output,
+    write_run_bundle,
 };
 
-const ROOT_HELP: &str = "Nomos Gate K semantic runtime\n\nUsage:\n  nomos validate <source.nomos>\n  nomos compile <source.nomos> --out <new.world/>\n  nomos inspect <world/>\n  nomos run <world/> --commands <commands> --out <new-run/>\n  nomos command <world/> --state <state.json> \"<command>\" --out <new-run/>\n  nomos replay <world/> --log <replay> --out <new-run/>\n  nomos --help\n";
+const ROOT_HELP: &str = "Nomos Gate K semantic runtime\n\nUsage:\n  nomos validate <source.nomos>\n  nomos compile <source.nomos> --out <new.world/>\n  nomos inspect <world/>\n  nomos migrate <v1-world/> --to 2 --out <new-v2-world/>\n  nomos run <world/> --commands <commands> --out <new-run/>\n  nomos command <world/> --state <state.json> \"<command>\" --out <new-run/>\n  nomos replay <world/> --log <replay> --out <new-run/>\n  nomos --help\n";
 const VALIDATE_HELP: &str = "Validate one Nomos source file without writing artifacts.\n\nUsage:\n  nomos validate <source.nomos>\n";
 const COMPILE_HELP: &str = "Compile one Nomos source file into a new immutable world package.\n\nUsage:\n  nomos compile <source.nomos> --out <new.world/>\n";
 const INSPECT_HELP: &str =
     "Inspect one verified immutable world package.\n\nUsage:\n  nomos inspect <world/>\n";
+const MIGRATE_HELP: &str = "Migrate one immutable stable-v1 world into a new stable-v2 package.\n\nUsage:\n  nomos migrate <v1-world/> --to 2 --out <new-v2-world/>\n";
 const RUN_HELP: &str = "Execute one strict command script from a compiled world's initial state.\n\nUsage:\n  nomos run <world/> --commands <commands> --out <new-run/>\n";
 const COMMAND_HELP: &str = "Execute one command from a verified persisted runtime state.\n\nUsage:\n  nomos command <world/> --state <state.json> \"<command>\" --out <new-run/>\n";
 const REPLAY_HELP: &str = "Reproduce one strict replay log against a compiled world's initial state.\n\nUsage:\n  nomos replay <world/> --log <replay> --out <new-run/>\n";
@@ -58,6 +60,11 @@ enum Command {
     },
     Inspect {
         package: String,
+    },
+    Migrate {
+        package: String,
+        target: String,
+        output: String,
     },
     Run {
         package: String,
@@ -128,6 +135,21 @@ fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Command, Diagnostic
         [name, package] if name == "inspect" && !is_option(package) => Command::Inspect {
             package: package.clone(),
         },
+        [name, help] if name == "migrate" && help == "--help" => Command::Help(MIGRATE_HELP),
+        [name, package, target_option, target, output_option, output]
+            if name == "migrate"
+                && !is_option(package)
+                && target_option == "--to"
+                && !is_option(target)
+                && output_option == "--out"
+                && !is_option(output) =>
+        {
+            Command::Migrate {
+                package: package.clone(),
+                target: target.clone(),
+                output: output.clone(),
+            }
+        }
         [name, help] if name == "run" && help == "--help" => Command::Help(RUN_HELP),
         [
             name,
@@ -209,6 +231,11 @@ fn execute_command(command: Command) -> Execution {
             compile(&source, &output).map(RuntimeOutcome::completed)
         }
         Command::Inspect { package } => inspect(&package).map(RuntimeOutcome::completed),
+        Command::Migrate {
+            package,
+            target,
+            output,
+        } => migrate(&package, &target, &output).map(RuntimeOutcome::completed),
         Command::Run {
             package,
             commands,
@@ -311,6 +338,67 @@ fn compile(source: &str, output: &str) -> Result<CanonicalValue, Diagnostic> {
 fn inspect(package: &str) -> Result<CanonicalValue, Diagnostic> {
     let package = relative_filesystem_path(package)?;
     inspect_compiled_package(&package)
+}
+
+fn migrate(package: &str, target: &str, output: &str) -> Result<CanonicalValue, Diagnostic> {
+    if target != "2" {
+        return Err(Diagnostic::new(
+            nomos_core::diagnostic::codes::MIGRATION_TARGET_UNSUPPORTED,
+            format!("stable World IR migration target `{target}` is unsupported; expected `2`"),
+        )
+        .with_repair(RepairClass::RebuildFromSource));
+    }
+    let package_path = relative_filesystem_path(package)?;
+    let output_path = relative_filesystem_path(output)?;
+    require_migration_output_outside_package(&package_path, &output_path)?;
+    let (migrated, written) = migrate_and_write_world(&package_path, &output_path)?;
+    let artifacts = std::iter::once(MANIFEST_FILE)
+        .chain(
+            written
+                .manifest()
+                .members()
+                .iter()
+                .map(|record| record.name().as_str()),
+        )
+        .map(|name| CanonicalValue::text(artifact_path(output, name)))
+        .collect();
+    Ok(CanonicalValue::object_declared([
+        ("artifacts", CanonicalValue::Array(artifacts)),
+        ("command", CanonicalValue::text("migrate")),
+        ("output", CanonicalValue::text(output)),
+        (
+            "source_package_digest",
+            CanonicalValue::text(migrated.source_package_digest().to_hex()),
+        ),
+        (
+            "source_world_ir_digest",
+            CanonicalValue::text(migrated.source_world_ir_digest().to_hex()),
+        ),
+        (
+            "source_world_ir_schema",
+            CanonicalValue::object_declared([
+                ("name", CanonicalValue::text("nomos.world_ir")),
+                ("version", CanonicalValue::Uint(1)),
+            ]),
+        ),
+        ("status", CanonicalValue::text("completed")),
+        (
+            "target_manifest_digest",
+            CanonicalValue::text(written.manifest().digest().to_hex()),
+        ),
+        (
+            "target_runtime_state_schema",
+            nomos_sim::runtime_state_schema().to_canonical(),
+        ),
+        (
+            "target_world_ir_schema",
+            migrated
+                .compiled_world()
+                .stable_ir()
+                .schema()
+                .to_canonical(),
+        ),
+    ]))
 }
 
 fn run_script(package: &str, commands: &str, output: &str) -> Result<RuntimeOutcome, Diagnostic> {
@@ -512,6 +600,22 @@ fn require_output_outside_package(package: &Path, output: &Path) -> Result<(), D
     let output = resolve_with_missing_tail(output)?;
     if output.starts_with(&package) {
         return Err(output_overlap("package"));
+    }
+    Ok(())
+}
+
+fn require_migration_output_outside_package(
+    package: &Path,
+    output: &Path,
+) -> Result<(), Diagnostic> {
+    let package = fs::canonicalize(package).map_err(|error| io_failure(package, &error))?;
+    let output = resolve_with_missing_tail(output)?;
+    if output.starts_with(&package) {
+        return Err(Diagnostic::new(
+            nomos_core::diagnostic::codes::MIGRATION_OUTPUT_OVERLAPS_INPUT,
+            "migration output overlaps the immutable stable-v1 input package",
+        )
+        .with_repair(RepairClass::WriteToNewOutputPath));
     }
     Ok(())
 }

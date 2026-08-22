@@ -445,6 +445,12 @@ pub mod codes {
     pub const PACKAGE_MEMBER_SCHEMA_INVALID: DiagnosticCode = DiagnosticCode::new("EK0412");
     /// Canonical package members disagree with one another.
     pub const PACKAGE_MEMBER_INCONSISTENT: DiagnosticCode = DiagnosticCode::new("EK0413");
+    /// A stable-v1 compiled world requires explicit migration before active use.
+    pub const WORLD_IR_MIGRATION_REQUIRED: DiagnosticCode = DiagnosticCode::new("EK0414");
+    /// A migration target is absent or unsupported.
+    pub const MIGRATION_TARGET_UNSUPPORTED: DiagnosticCode = DiagnosticCode::new("EK0415");
+    /// A migration output would overlap its immutable input package.
+    pub const MIGRATION_OUTPUT_OVERLAPS_INPUT: DiagnosticCode = DiagnosticCode::new("EK0416");
 
     /// A transition refers to a source machine namespace that does not exist.
     pub const TRANSITION_SOURCE_NAMESPACE_MISSING: DiagnosticCode = DiagnosticCode::new("EK0701");
@@ -581,6 +587,9 @@ pub mod codes {
         PACKAGE_MEMBER_SET_INVALID,
         PACKAGE_MEMBER_SCHEMA_INVALID,
         PACKAGE_MEMBER_INCONSISTENT,
+        WORLD_IR_MIGRATION_REQUIRED,
+        MIGRATION_TARGET_UNSUPPORTED,
+        MIGRATION_OUTPUT_OVERLAPS_INPUT,
         TRANSITION_SOURCE_NAMESPACE_MISSING,
         INTERACTION_TARGET_NAMESPACE_MISSING,
         TRANSITION_STATE_MISSING,
