@@ -99,7 +99,10 @@ never accumulates history (git has that).
   offline matrix rejects every issue #49 negative case. Sanitized receipts are
   under
   `docs/evaluation/runs/tooling/2026-08-22-pi-provider-qualification/`.
-  Exact-head non-author reruns are required before the slice is green.
+  Because committing a receipt changes the head it names, final exact-head
+  author and non-author disposition is recorded externally in PR #50. The PR
+  must not merge without a passing non-author comment naming its exact final
+  head and a clean worktree before and after.
 - **CI uses `actions/checkout@v7` (#11):** PR and post-merge verification passed
   without the Node 20 compatibility annotation.
 - **The GPT Pro architecture checkpoint is owner-disposed (#25):** review of

@@ -1,13 +1,13 @@
 # Pi provider-harness qualification
 
-**Verdict:** all three author probes PASS; exact-head non-author reruns remain
-pending
+**Verdict:** all three committed author probes PASS; merge remains blocked
+unless PR #50 records a passing non-author rerun of its exact final head
 
 **Date:** 2026-08-22
 
 **Issue:** #49
 
-**Probe commit:** `791c2749e3a61ae0cd9495acbe8fb3334e8a7f8f`
+**Committed transcript target:** `791c2749e3a61ae0cd9495acbe8fb3334e8a7f8f`
 
 This is transport and isolation evidence only. It launches no formal
 cold-author or cold-debug attempt, spends no formal attempt budget, changes no
@@ -143,7 +143,13 @@ credential marker. CI runs this proof without contacting any provider.
 
 ## Remaining disposition
 
-The tooling slice is not green until a non-author reruns the exact head through
-the offline proof and all three authenticated probes. Claude remains
-supplemental review only; its successful transport probe does not make the
-Claude family eligible for a formal whole-Gate-K subject role.
+Committing a transcript necessarily creates a new commit after the transcript's
+target, so a committed file cannot identify its own containing commit as the
+tested head. The final author and non-author exact-head reruns are therefore
+recorded in PR #50's discussion, where the receipt does not mutate the commit
+it names. The PR must not merge unless that external receipt names its exact
+final head, covers the offline proof and all three authenticated probes, and
+records a clean worktree before and after.
+
+Claude remains supplemental review only; its successful transport probe does
+not make the Claude family eligible for a formal whole-Gate-K subject role.
