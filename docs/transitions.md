@@ -109,3 +109,17 @@ replays the same transition and receipt evidence. SW-M proves the same ordered
 transition and receipt evidence after stable-v1 movement migration and
 runtime-v2 normalization. The ten-run target matrix and whole-Gate-K cold-agent
 acceptance remain open.
+
+## Explanation verification boundary
+
+Decision 0009 resolves the issue #62 contract ambiguity without implementing
+the explanation surface. A future `explain-transition` command must receive an
+explicit `--world <world/>`, strictly open that package, and then strictly open
+and re-execute the supplied run against it before rendering any explanation.
+The run's package and simulation digests bind the supplied bytes but cannot
+locate or reconstruct the package by themselves.
+
+The tick-7 brazier example uses separate seven-command run evidence. It does not
+change the accepted five-command command script or replay fixture. Explanation
+remains downstream human-readable output over existing typed evidence; this
+decision adds no persisted schema or alternate runtime path.

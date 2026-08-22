@@ -1,13 +1,14 @@
 # Handoff — state of the repository
 
-Updated 2026-08-22 for the issue #63 stable-migration slice.
-SW-K is merged and green; SW-M is the active feature branch.
+Updated 2026-08-22 for the issue #62 explanation-boundary contract repair.
+SW-M is merged and green; the contract-revision-7 repair is active on branch
+`contract-transition-explanation-62`.
 This file orients a fresh session; it is rewritten at each slice boundary and
 never accumulates history (git has that).
 
 ## Where things stand
 
-- **Nomos is the active project identity:** contract revision 6
+- **Nomos is the active project identity:** contract revision 7
   and decision 0007 rename the runtime/project to Nomos while retaining The
   Signed World as the thesis name. Active crates use `nomos-*`, the binary is
   `nomos`, authoring source uses `.nomos`, schemas use `nomos.*`, and the fresh
@@ -267,24 +268,37 @@ never accumulates history (git has that).
   and a clean GPT-5.6 Luna max non-author exact-head audit/rerun. PR #61 merged
   as `c0e77a6`, issue #60 closed, post-merge CI run `32560842827` passed, and
   the feature/review worktrees and branches were removed.
-- **SW-M is active (#63):** branch `sw-m-migration-63` preserves the exact
-  accepted stable-v1 package, advances new compilation to tagged stable
-  `nomos.world_ir@2`, and normalizes active runtime and persisted state at v2.
+- **SW-M is merged and green (#63/#64):** the accepted implementation
+  preserves the exact accepted stable-v1 package, advances new compilation to
+  tagged stable `nomos.world_ir@2`, and normalizes active runtime and persisted
+  state at v2.
   `nomos migrate <v1-world/> --to 2 --out <v2-world/>` strictly validates all
   legacy package meaning, regenerates every active artifact, and publishes
   immutably. Focused tests prove deterministic output, direct-v1 refusal,
   strict v1/v2 mutation rejection, and identical normalized five-command state,
   command, receipt, movement, light, projection-delta, and hash-chain evidence.
-  Transition explanation remains blocked on owner disposition of issue #62;
-  it is deliberately outside SW-M.
+  Final head `946b98b` passed the full author proof, PR CI run `32564268648`,
+  and a clean GPT-5.6 Luna max non-author exact-head audit/rerun after two prior
+  audits found and drove repairs to exported path-alias and typed-decoder
+  boundaries. PR #64 merged as `0b9d948`, issue #63 closed, post-merge CI run
+  `32573036770` passed, and the feature/review worktrees and branches were
+  removed.
+- **Contract revision 7 is owner-authorized (#62):** decision 0009 requires
+  `explain-transition` to receive `--world <world/>`, strictly verify that world,
+  and strictly open and re-execute the run against it before explaining a
+  receipt. The tick-7 brazier example uses separate seven-command evidence, so
+  the accepted five-command command/replay fixture remains unchanged. This
+  repair adds no run member, package locator, persisted schema, or weaker
+  standalone forensic path. The explanation commands remain a later
+  implementation slice.
 
 ## What is next
 
-Finish issue #63: complete the full proof, open its draft PR, obtain green CI
-and a clean non-author exact-head rerun, then leave merge disposition to the
-owner. Later work includes explanations after issue #62 is resolved, the Linux
-aarch64 and ten-run matrix, measured Gate K budgets, final schema-ownership
-review, and the formal cold-agent gates.
+Finish issue #62: land decision 0009 and the contract-revision-7 wording after
+the full proof, green CI, and a clean non-author exact-head rerun. Then implement
+the package-bound entity and transition explanation surface in issue #65 on its
+own branch. Later work includes the Linux aarch64 and ten-run matrix, measured
+Gate K budgets, final schema-ownership review, and the formal cold-agent gates.
 
 The old `agy` Gemini route remains falsified evidence. Issue #49 qualifies Pi as
 the replacement transport without spending a formal attempt or changing the
@@ -324,9 +338,9 @@ author proof, Luna max exact-head rerun, PR CI, and post-merge CI also passed al
 four commands; the focused release SW-G test passed. SW-F, SW-D, and
 issue #24 have the same author/non-author/CI chain as recorded above. Earlier
 SW-C, revision-4, and Rust-1.98 maintenance reruns also passed.
-Still unproven: Linux aarch64 release, ten runs per target, explanation
-commands pending issue #62, measured Gate K budgets, and formal cold-agent
-gates. The contract also requires a final explicit schema-ownership
+Still unproven: Linux aarch64 release, ten runs per target, explanation command
+implementation, measured Gate K budgets, and formal cold-agent gates. The
+contract also requires a final explicit schema-ownership
 source-review receipt after the Gate K schema set stabilizes; that final
 receipt does not exist yet.
 

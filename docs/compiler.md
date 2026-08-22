@@ -150,9 +150,11 @@ slices. Issue #5 records that historical scope split. SW-H now exposes
 verified package boundary; SW-K adds `replay`, and SW-M adds strict `migrate`
 without exposing legacy execution through ordinary runtime commands.
 
-Typed provenance prepares the data needed by `explain-entity`, but the CLI
-explanation surface remains unimplemented pending owner disposition of issue
-#62.
+Typed provenance prepares the data needed by `explain-entity`. Decision 0009
+resolves issue #62 by requiring `explain-transition` to receive and verify an
+explicit world package before strictly opening and re-executing its run. The CLI
+explanation surface remains a later implementation slice.
+
 `produced_schemas()` reports construction evidence, stable IR, all
 four projections, the registry, and compiler receipts. Construction versions
 remain preserved evidence; stable `nomos.world_ir@1` is frozen as migration

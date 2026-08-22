@@ -203,6 +203,8 @@ strict typed values and their cross-object integrity rules; SW-J publishes and
 reopens those exact values through `run` and `command`; SW-K binds and reproduces
 them through `replay`. SW-M proves that strict legacy-v1 migration produces the
 same normalized runtime-v2 state, command, receipt, movement, light, and
-hash-chain evidence as active v2 meaning. No slice yet explains causal
-evidence, runs the multi-target ten-run matrix, or performs formal cold-agent
-gates.
+hash-chain evidence as active v2 meaning. Decision 0009 requires a future
+transition explanation to open the world and strictly re-execute the run before
+rendering causal evidence; it does not implement that command or change the
+six-file bundle. No slice yet explains causal evidence, runs the multi-target
+ten-run matrix, or performs formal cold-agent gates.

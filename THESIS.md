@@ -10,14 +10,14 @@ applies_to_the_mortal_estate: No, unless separately adopted by an explicit proje
 authors: Claude Fable 5 and GPT-5.6 Pro, in adversarial review, with Peter Permenter as owner and referee
 date: 2026-08-21
 revision: 2
-contract_revision: 6
-decision_record: docs/decisions/0007-adopt-nomos-identity.md
+contract_revision: 7
+decision_record: docs/decisions/0009-transition-explanation-input-boundary.md
 ---
 
 # The Signed World
 
 **Nomos** is the project and runtime attempting to prove this thesis. **The Signed
-World** remains the architectural argument; revision 6 does not rename it.
+World** remains the architectural argument; revision 7 does not rename it.
 
 > **The agent names the thing. Namespaces own state. Capabilities define
 > obligations. The resolver composes effective facts. Projection compilers own
@@ -43,7 +43,9 @@ canonical-profile and workspace-evidence closure found by SW-B.
 revision-4 construction-lineage repair.
 [Decision 0006](docs/decisions/0006-package-evidence-boundary.md) records the revision-5
 package-evidence repair. [Decision 0007](docs/decisions/0007-adopt-nomos-identity.md)
-records the revision-6 Nomos identity and construction-epoch repair.
+records the revision-6 Nomos identity and construction-epoch repair. [Decision
+0009](docs/decisions/0009-transition-explanation-input-boundary.md) records the
+revision-7 package-bound transition-explanation input repair.
 
 Contract changes follow `AGENTS.md`. Contradictions and falsified assumptions may
 be repaired explicitly; criteria may not be silently weakened because code
