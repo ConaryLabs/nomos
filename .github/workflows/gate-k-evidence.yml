@@ -1,0 +1,133 @@
+name: gate-k-evidence
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_INCREMENTAL: 0
+  CARGO_TERM_COLOR: always
+
+jobs:
+  determinism:
+    name: determinism (${{ matrix.lane }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - lane: x86_64-debug
+            runner: ubuntu-24.04
+            profile: debug
+          - lane: x86_64-release
+            runner: ubuntu-24.04
+            profile: release
+          - lane: aarch64-release
+            runner: ubuntu-24.04-arm
+            profile: release
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install the pinned toolchain
+        run: |
+          rustup show
+          rustc --version
+          cargo --version
+
+      - name: Build once for the declared profile
+        run: |
+          set -euo pipefail
+          if [[ '${{ matrix.profile }}' == release ]]; then
+            cargo build --locked --release --bin nomos
+          else
+            cargo build --locked --bin nomos
+          fi
+
+      - name: Run ten independent process-level executions
+        run: |
+          docs/evaluation/gate-k-determinism.sh \
+            '${{ matrix.lane }}' \
+            'target/gate-k-evidence/${{ matrix.lane }}'
+
+      - name: Upload target evidence
+        uses: actions/upload-artifact@v7
+        with:
+          name: gate-k-determinism-${{ matrix.lane }}
+          path: target/gate-k-evidence/${{ matrix.lane }}
+          if-no-files-found: error
+          retention-days: 90
+
+  cross-target:
+    name: determinism (cross-target)
+    needs: determinism
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Download x86_64 debug evidence
+        uses: actions/download-artifact@v8
+        with:
+          name: gate-k-determinism-x86_64-debug
+          path: target/downloaded/x86_64-debug
+
+      - name: Download x86_64 release evidence
+        uses: actions/download-artifact@v8
+        with:
+          name: gate-k-determinism-x86_64-release
+          path: target/downloaded/x86_64-release
+
+      - name: Download aarch64 release evidence
+        uses: actions/download-artifact@v8
+        with:
+          name: gate-k-determinism-aarch64-release
+          path: target/downloaded/aarch64-release
+
+      - name: Require byte-identical cross-target semantics
+        run: |
+          docs/evaluation/gate-k-compare-targets.sh \
+            target/downloaded/x86_64-debug \
+            target/downloaded/x86_64-release \
+            target/downloaded/aarch64-release \
+            target/gate-k-evidence/cross-target
+
+      - name: Upload cross-target receipt
+        uses: actions/upload-artifact@v7
+        with:
+          name: gate-k-determinism-cross-target
+          path: target/gate-k-evidence/cross-target
+          if-no-files-found: error
+          retention-days: 90
+
+  budgets:
+    name: measured budgets (x86_64 release)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install the pinned toolchain
+        run: |
+          rustup show
+          rustc --version
+          cargo --version
+          /usr/bin/time --version
+
+      - name: Measure clean build and public CLI operations
+        run: |
+          docs/evaluation/gate-k-budgets.sh \
+            target/gate-k-evidence/budgets-x86_64-release
+
+      - name: Upload raw budget evidence
+        uses: actions/upload-artifact@v7
+        with:
+          name: gate-k-budgets-x86_64-release
+          path: target/gate-k-evidence/budgets-x86_64-release
+          if-no-files-found: error
+          retention-days: 90
