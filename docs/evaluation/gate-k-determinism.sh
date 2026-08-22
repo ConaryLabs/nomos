@@ -144,6 +144,7 @@ done
   printf 'lane %s\n' "$lane"
   printf 'profile %s\n' "$profile"
   printf 'executions 10\n'
+  printf 'initial_tree_clean yes\n'
   printf 'package_manifest_sha256 %s\n' "$(sha256sum "$evidence_dir/semantic/gaol.world/manifest.json" | cut -d' ' -f1)"
   printf 'world_ir_sha256 %s\n' "$(sha256sum "$evidence_dir/semantic/gaol.world/world-ir.json" | cut -d' ' -f1)"
   printf 'simulation_semantics_sha256 %s\n' "$(sha256sum "$evidence_dir/semantic/gaol.world/simulation.json" | cut -d' ' -f1)"
@@ -162,5 +163,6 @@ final_status=$(git -C "$repo_root" status --porcelain=v1 --untracked-files=all)
 [[ -z $final_status ]] || fail 'tracked worktree changed during evidence run'
 [[ $(git -C "$repo_root" rev-parse --verify HEAD) == "$head" ]] ||
   fail 'HEAD changed during evidence run'
+printf 'final_tree_clean yes\n' >>"$evidence_dir/receipt.txt"
 
 printf 'gate-k determinism: PASS: %s\n' "$lane"

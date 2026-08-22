@@ -59,12 +59,10 @@ else
   printf 'lscpu unavailable\n' >"$evidence_dir/lscpu.txt"
 fi
 
-cat >"$evidence_dir/commands.txt" <<EOF
-CARGO_TARGET_DIR=$build_target cargo build --workspace --release --locked
-$build_target/release/nomos validate fixtures/gaol.nomos
-$build_target/release/nomos command <verified-world> --state <verified-six-file-run>/final-state.json "close north_gate" --out <fresh-output>
-$build_target/release/nomos replay <verified-world> --log fixtures/gaol.replay --out <fresh-output>
-EOF
+commands=$evidence_dir/commands.txt
+printf 'phase\toperation\tordinal\tcommand\n' >"$commands"
+printf 'build\tworkspace\t0\tCARGO_TARGET_DIR=%q cargo build --workspace --release --locked\n' \
+  "$build_target" >>"$commands"
 
 disk_samples=$evidence_dir/build/disk-samples.tsv
 printf 'timestamp_ns\ttarget_kb\n' >"$disk_samples"
@@ -100,8 +98,12 @@ binary=$build_target/release/nomos
 
 world_rel=$evidence_rel/inputs/gaol.world
 base_run_rel=$evidence_rel/inputs/base.run
+printf 'setup\tcompile\t0\t%q compile %q --out %q\n' \
+  "$binary" fixtures/gaol.nomos "$world_rel" >>"$commands"
 "$binary" compile fixtures/gaol.nomos --out "$world_rel" \
   >"$evidence_dir/inputs/compile.stdout"
+printf 'setup\trun\t0\t%q run %q --commands %q --out %q\n' \
+  "$binary" "$world_rel" fixtures/gaol.commands "$base_run_rel" >>"$commands"
 "$binary" run "$world_rel" --commands fixtures/gaol.commands --out "$base_run_rel" \
   >"$evidence_dir/inputs/run.stdout"
 
@@ -121,6 +123,12 @@ measure_process() {
   shift 4
   local time_file=$output_stem.time
   local start_ns end_ns rss_kb
+  {
+    printf '%s\t%s\t%s\t/usr/bin/time -f %%M -o %q' \
+      "${output_stem##*/}" "$operation" "$ordinal" "$time_file"
+    printf ' %q' "$@"
+    printf ' >%q 2>%q\n' "$output_stem.stdout" "$output_stem.stderr"
+  } >>"$commands"
   start_ns=$(date +%s%N)
   /usr/bin/time -f '%M' -o "$time_file" "$@" \
     >"$output_stem.stdout" 2>"$output_stem.stderr"
@@ -193,6 +201,7 @@ commands_per_second=$(awk -v count="$samples" -v commands="$replay_commands" -v 
   printf 'commit %s\n' "$head"
   printf 'warmups %s\n' "$warmups"
   printf 'measured_samples %s\n' "$samples"
+  printf 'initial_tree_clean yes\n'
   printf 'clean_release_build_time_ns %s\n' "$((build_end_ns - build_start_ns))"
   printf 'sampled_peak_target_disk_kib %s\n' "$peak_target_kb"
   printf 'final_target_disk_kib %s\n' "$final_target_kb"
@@ -207,5 +216,6 @@ commands_per_second=$(awk -v count="$samples" -v commands="$replay_commands" -v 
   fail 'tracked worktree changed during budget run'
 [[ $(git -C "$repo_root" rev-parse --verify HEAD) == "$head" ]] ||
   fail 'HEAD changed during budget run'
+printf 'final_tree_clean yes\n' >>"$evidence_dir/receipt.txt"
 
 printf 'gate-k budgets: PASS\n'

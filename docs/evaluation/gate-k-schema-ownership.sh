@@ -12,7 +12,7 @@ repo_root=$(cd "$script_dir/../.." && pwd -P)
 receipt=$script_dir/SCHEMA_OWNERSHIP.md
 [[ -f $receipt ]] || fail 'SCHEMA_OWNERSHIP.md is absent'
 
-for command in git rg awk sort diff wc mktemp; do
+for command in git grep awk sort diff wc mktemp; do
   command -v "$command" >/dev/null 2>&1 || fail "required executable not found: $command"
 done
 
@@ -56,7 +56,7 @@ assert_source() {
   local file=$1
   local fragment=$2
   [[ -f $repo_root/$file ]] || fail "owner source is absent: $file"
-  rg -F "$fragment" "$repo_root/$file" >/dev/null ||
+  grep -F "$fragment" "$repo_root/$file" >/dev/null ||
     fail "owner source assertion absent from $file: $fragment"
 }
 
@@ -81,7 +81,7 @@ assert_source crates/nomos-sim/src/lib.rs 'SchemaId::new("nomos.run_result", 1)'
 assert_source crates/nomos-sim/src/lib.rs 'SchemaId::new("nomos.causal_receipt", 1)'
 assert_source crates/nomos-sim/src/lib.rs 'SchemaId::new("nomos.replay_log", 1)'
 
-rg -n 'SchemaId::new\("nomos\.' "$repo_root"/crates/*/src --glob '*.rs' |
+grep -R -n -E --include='*.rs' 'SchemaId::new\("nomos\.' "$repo_root"/crates/*/src |
   sort >"$tmp_dir/source-constructors.txt"
 [[ $(wc -l <"$tmp_dir/source-constructors.txt") -eq 16 ]] ||
   fail 'literal schema constructor set changed outside the reviewed inventory'
@@ -95,7 +95,7 @@ printf '%s\n' \
 diff -u "$tmp_dir/expected-constructor-files.txt" "$tmp_dir/constructor-files.txt" >/dev/null ||
   fail 'a literal schema constructor moved outside its reviewed owner module'
 
-[[ $(rg -c '^[[:space:]]+[a-z_]+_schema => "nomos\.projection\.' "$repo_root/crates/nomos-projection/src/lib.rs") -eq 4 ]] ||
+[[ $(grep -E -c '^[[:space:]]+[a-z_]+_schema => "nomos\.projection\.' "$repo_root/crates/nomos-projection/src/lib.rs") -eq 4 ]] ||
   fail 'projection schema macro no longer declares exactly four identities'
 
 head=$(git -C "$repo_root" rev-parse --verify HEAD)

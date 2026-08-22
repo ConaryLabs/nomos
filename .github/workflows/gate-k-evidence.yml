@@ -149,6 +149,7 @@ jobs:
 
       - name: Verify the final twenty-identity source review
         run: |
+          set -o pipefail
           mkdir -p target/gate-k-evidence/schema-ownership
           docs/evaluation/gate-k-schema-ownership.sh | \
             tee target/gate-k-evidence/schema-ownership/receipt.txt
