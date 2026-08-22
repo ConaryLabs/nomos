@@ -312,7 +312,7 @@ printf '%s\n' "$boundary_json" | jq -e \
 while IFS= read -r line; do
   printf '%s\n' "$line" | jq -e . >/dev/null || fail 'Pi JSON stream contains a non-JSON line'
 done <"$tmp_dir/events.ndjson"
-jq -c 'del(.. | .textSignature?, .. | .thinkingSignature?)' \
+jq -c 'walk(if type == "object" then del(.textSignature, .thinkingSignature) else . end)' \
   "$tmp_dir/events.ndjson" >"$tmp_dir/sanitized.ndjson"
 
 session_count=$(jq -s '[.[] | select(.type == "session")] | length' "$tmp_dir/events.ndjson")
