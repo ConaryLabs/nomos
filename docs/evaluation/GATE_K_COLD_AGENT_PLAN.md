@@ -119,9 +119,29 @@ The successful 1.1.17 repair receipt is under
 failed 2026-08-21 calls retain zero evidentiary value. Passing this transport
 preflight is necessary but not sufficient for a formal run: the init event's
 effective tools and all freshness/ablation requirements below still require
-separate inspection and approval. Issue #45 tracks that fail-closed tool and
-persisted-context proof; the Gemini formal route remains blocked until it is
-disposed.
+separate inspection and approval.
+
+Issue #45 tested that boundary on 2026-08-22 with a new project and conversation,
+sandboxing, slash-command expansion disabled, and a custom main agent declaring
+only `view_file`, `replace_file_content`, and `run_command`. `agy` 1.1.17 still
+reported 57 tools in its init event, including browser, web, MCP, persisted
+knowledge, messaging, scheduling, and subagent capabilities. The event omitted
+the project ID, context-source set, and memory state. Model text claiming some
+forbidden tools were unavailable is not effective-configuration evidence.
+
+The exact receipt is under
+`docs/evaluation/runs/tooling/2026-08-22-agy-formal-boundary-falsification/`.
+The committed guard must pass before any Gemini formal launch:
+
+```bash
+docs/evaluation/agy-formal-boundary-preflight.sh
+```
+
+On 1.1.17 it correctly exits `1` with `AGY_FORMAL_BOUNDARY BLOCKED`. This
+falsifies the selected client's current eligibility; it does not weaken the
+protocol or authorize a substitute. A future client or route must expose the
+exact allowlisted tools and explicit empty-context/memory/project evidence, or
+the owner must approve a new plan.
 
 ## Freshness and tool boundary
 

@@ -1,0 +1,11 @@
+{
+  "id":  "9dab0c3c-2fb1-43d4-a594-4f46571d2b87",
+  "name":  "signed-world",
+  "projectResources":  {
+    "resources":  [
+      {
+        "folderUri":  "file:///work/signed-dev/src/signed-world"
+      }
+    ]
+  }
+}
