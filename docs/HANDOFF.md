@@ -310,7 +310,9 @@ never accumulates history (git has that).
   added. Implementation head `f6a7eb3bd9222459ccfb5d37f20ddd5fd522a993`
   passed the exact-head author proof and PR CI run `32586792897`. A fresh
   GPT-5.6 Luna high non-author audit reran all four proof commands on that exact
-  head with a clean detached tree and no findings. PR #67 merged as
+  head with a clean detached tree and no findings; its durable receipt is
+  [PR #67 comment 5381611726](https://github.com/ConaryLabs/nomos/pull/67#issuecomment-5381611726).
+  PR #67 merged as
   `05ba8e1007fe507288bae0c7f4019ba7d750f0f8`, issue #65 closed, and post-merge
   CI run `32587114490` passed.
 
