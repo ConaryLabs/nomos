@@ -1,7 +1,7 @@
 # Handoff — state of the repository
 
-Updated 2026-08-22 for the issue #49 Pi provider-harness qualification. No next
-semantic implementation slice is currently filed.
+Updated 2026-08-22 for the issue #47 cold-agent protocol identity correction.
+No next semantic implementation slice is currently filed.
 This file orients a fresh session; it is rewritten at each slice boundary and
 never accumulates history (git has that).
 
@@ -100,9 +100,15 @@ never accumulates history (git has that).
   under
   `docs/evaluation/runs/tooling/2026-08-22-pi-provider-qualification/`.
   Because committing a receipt changes the head it names, final exact-head
-  author and non-author disposition is recorded externally in PR #50. The PR
-  must not merge without a passing non-author comment naming its exact final
-  head and a clean worktree before and after.
+  author and non-author disposition is recorded externally in PR #50. GPT-5.6
+  Luna reran exact head `64cd3c7` green; PR #50 merged as `1ea9b44`, issue #49
+  closed, and post-merge CI run `32545891569` passed.
+- **Cold-agent protocol revision 2 is owner-authorized (#47):** decision 0008
+  changes the active default tool wording from the published `estate` CLI to
+  the published `nomos` CLI. Tool scope, packet boundaries, budgets, rubric,
+  roster, attempt accounting, existing verdicts, and immutable prototype-era
+  receipts do not change. The revision becomes effective when this change
+  merges; no formal cold-agent attempt is launched by it.
 - **CI uses `actions/checkout@v7` (#11):** PR and post-merge verification passed
   without the Node 20 compatibility annotation.
 - **The GPT Pro architecture checkpoint is owner-disposed (#25):** review of
@@ -194,11 +200,6 @@ CLI surface, run-directory artifacts, replay, the required stable v1-to-v2
 movement migration, direct v2 runtime loading/refusal evidence, the Linux
 aarch64 and ten-run matrix, measured Gate K budgets, final schema-ownership
 review, and the formal cold-agent gates.
-
-Issue #47 is the next scoped maintenance item: the contractual cold-agent
-protocol still names the prototype-era `estate` CLI in its active tool policy.
-It requires an owner-authorized protocol revision that changes only that
-identity to `nomos`; issue #45 deliberately does not amend it.
 
 The old `agy` Gemini route remains falsified evidence. Issue #49 qualifies Pi as
 the replacement transport without spending a formal attempt or changing the
