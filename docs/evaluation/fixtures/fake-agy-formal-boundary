@@ -1,0 +1,144 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+case ${1:-} in
+  --version)
+    printf '1.1.17\n'
+    exit 0
+    ;;
+  models)
+    printf 'gemini-3.7-flash-high\tGemini 3.7 Flash (High)\n'
+    exit 0
+    ;;
+  agent | agents)
+    printf 'nomos-cold-subject\n'
+    exit 0
+    ;;
+esac
+
+repo_root=$(git rev-parse --show-toplevel)
+expected_prompt='Reply with exactly: formal boundary preflight. Do not call tools.'
+[[ ${1:-} == -p ]] || exit 64
+[[ ${2:-} == "$expected_prompt" ]] || exit 65
+shift 2
+
+agent=
+model=
+effort=
+new_project=0
+sandbox=0
+slash_commands_disabled=0
+output_format=
+print_timeout=
+log_file=
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --agent)
+      agent=${2:-}
+      shift 2
+      ;;
+    --model)
+      model=${2:-}
+      shift 2
+      ;;
+    --effort)
+      effort=${2:-}
+      shift 2
+      ;;
+    --new-project)
+      new_project=1
+      shift
+      ;;
+    --sandbox)
+      sandbox=1
+      shift
+      ;;
+    --disable-slash-commands)
+      slash_commands_disabled=1
+      shift
+      ;;
+    --output-format)
+      output_format=${2:-}
+      shift 2
+      ;;
+    --print-timeout)
+      print_timeout=${2:-}
+      shift 2
+      ;;
+    --log-file)
+      log_file=${2:-}
+      shift 2
+      ;;
+    *)
+      exit 66
+      ;;
+  esac
+done
+
+[[ $agent == nomos-cold-subject ]] || exit 67
+[[ $model == gemini-3.7-flash-high ]] || exit 68
+[[ $effort == high ]] || exit 69
+[[ $new_project == 1 ]] || exit 70
+[[ $sandbox == 1 ]] || exit 71
+[[ $slash_commands_disabled == 1 ]] || exit 72
+[[ $output_format == stream-json ]] || exit 73
+[[ $print_timeout == 2m ]] || exit 74
+[[ -n $log_file ]] || exit 75
+
+project_id=11111111-2222-4333-8444-555555555555
+conversation_id=aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee
+log_dir=${log_file%/*}
+project_record="$log_dir/projects/$project_id.json"
+mkdir -p "$log_dir/projects"
+printf 'project: created project "fixture" (id=%s) at %s\n' \
+  "$project_id" "$project_record" >"$log_file"
+printf '{\n  "id": "%s",\n  "projectResources": {"resources": [{"folderUri": "file://%s"}]},\n  "permissions": null\n}\n' \
+  "$project_id" "$repo_root" >"$project_record"
+
+mode=${FAKE_AGY_FORMAL_MODE:-pass}
+if [[ $mode == missing-init ]]; then
+  printf '{"event":"result","result":{"conversation_id":"%s","status":"SUCCESS","response":"formal boundary preflight\\n","num_turns":1,"usage":{"cache_read_tokens":0}}}\n' "$conversation_id"
+  exit 0
+fi
+
+init_model=$model
+init_cwd=$repo_root
+tools='"view_file","replace_file_content","run_command"'
+context='"project_id":"'"$project_id"'","context_sources":[],"memory_enabled":false,'
+case $mode in
+  forbidden-tool)
+    tools='"view_file","replace_file_content","run_command","search_web"'
+    ;;
+  wrong-model)
+    init_model=gemini-3.7-flash-medium
+    ;;
+  wrong-worktree)
+    init_cwd=/tmp/wrong-worktree
+    ;;
+  missing-context)
+    context=
+    ;;
+  pass | reused-context | tool-call)
+    ;;
+  *)
+    exit 76
+    ;;
+esac
+
+printf '{"event":"init","conversation_id":"%s","init":{"model":"%s","cwd":"%s","agent":"nomos-cold-subject",%s"tools":[%s],"permission_mode":"request-review"}}\n' \
+  "$conversation_id" "$init_model" "$init_cwd" "$context" "$tools"
+
+if [[ $mode == tool-call ]]; then
+  printf '{"event":"step_update","step_update":{"conversation_id":"%s","step_index":1,"state":"DONE","step_type":"tool","tool_name":"run_command"}}\n' \
+    "$conversation_id"
+fi
+
+num_turns=1
+cache_read_tokens=0
+if [[ $mode == reused-context ]]; then
+  num_turns=2
+  cache_read_tokens=1
+fi
+printf '{"event":"result","result":{"conversation_id":"%s","status":"SUCCESS","response":"formal boundary preflight\\n","num_turns":%s,"usage":{"cache_read_tokens":%s}}}\n' \
+  "$conversation_id" "$num_turns" "$cache_read_tokens"
