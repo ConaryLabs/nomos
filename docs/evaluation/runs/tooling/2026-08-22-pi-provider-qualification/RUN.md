@@ -7,7 +7,7 @@ exact-head non-author reruns remain pending
 
 **Issue:** #49
 
-**Probe commit:** `535932f9b64becd851c4868338a283e1e6aaf880`
+**Probe commit:** `8fa139918eb58b1159a93151f9879d5bb4885678`
 
 This is transport and isolation evidence only. It launches no formal
 cold-author or cold-debug attempt, spends no formal attempt budget, changes no
@@ -90,6 +90,9 @@ second 136 MiB Pi installation; only its declared `undici` runtime dependency
 was installed. Package discovery remained disabled. The launcher loaded this
 one entry point explicitly, disabled its optional connection prewarm, and the
 machine-readable Pi catalog still contained only the repository-owned `bash`.
+Every supported endpoint, project, runtime-model, OAuth-client, user-agent,
+transport, and debug-dump environment override (including the legacy `NOAGY_`
+forms) was cleared; connection prewarming alone was explicitly disabled.
 
 This is an unofficial Google integration and is therefore trusted only as the
 exact named, hashed provider transport above. It does not enter the kernel
@@ -99,8 +102,8 @@ workspace or the subject's callable tool boundary.
 
 | Lane | Exact route | Thinking | Session | Result |
 | --- | --- | --- | --- | --- |
-| Gemini | `antigravity/gemini-3.7-flash` | `high` | `01a02723-b888-71d4-afe9-10d8ecaf573d` | PASS |
-| Claude | `anthropic/claude-opus-5` | `max` | `01a02723-cc4e-7b31-89e6-8b4ddad164ac` | PASS |
+| Gemini | `antigravity/gemini-3.7-flash` | `high` | `01a02726-658b-7299-8987-debf85730d59` | PASS |
+| Claude | `anthropic/claude-opus-5` | `max` | `01a02726-75fa-7fa1-b9d7-af63c239a3e7` | PASS |
 | DeepSeek | `deepseek/deepseek-v4-pro` | `max` | not launched | BLOCKED: no Pi API credential configured |
 
 Each passing lane returned exactly `pi boundary preflight`, emitted one fresh
