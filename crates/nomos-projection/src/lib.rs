@@ -35,14 +35,12 @@
 use nomos_core::id::SchemaId;
 
 mod artifacts;
-mod initialization;
 mod light;
 mod movement;
 mod simulation;
 mod state;
 
 pub use artifacts::{DiagnosticsPlan, PersistencePlan, validate_light_projection_agreement};
-pub use initialization::{InitialMachine, SimulationInitialization};
 pub use light::{
     LightClaim, LightProjectionConsumer, LightResolverPlan, LightSubject, ResolvedLight,
     ResolvedLightFacts,

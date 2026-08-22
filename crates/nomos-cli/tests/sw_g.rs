@@ -145,6 +145,34 @@ fn complete_package_is_deterministic_and_initializes_the_same_state() {
         }
     }
     let reopened = nomos_cli::open_compiled_world(&first_path).unwrap();
+    assert_eq!(
+        reopened.stable_ir().to_canonical_bytes(),
+        first.stable_ir().to_canonical_bytes()
+    );
+    assert_eq!(
+        reopened.simulation().to_canonical_bytes(),
+        first.simulation().to_canonical_bytes()
+    );
+    assert_eq!(
+        reopened.navigation().to_canonical_bytes(),
+        first.navigation().to_canonical_bytes()
+    );
+    assert_eq!(
+        reopened.persistence().to_canonical_bytes(),
+        first.persistence().to_canonical_bytes()
+    );
+    assert_eq!(
+        reopened.diagnostics().to_canonical_bytes(),
+        first.diagnostics().to_canonical_bytes()
+    );
+    assert_eq!(reopened.registry(), first.registry());
+    assert_eq!(
+        reopened.compiler_receipts(),
+        first_package
+            .member_bytes(&member("compiler-receipts.json"))
+            .unwrap()
+    );
+    assert_eq!(reopened.package_digest(), first_package.manifest().digest());
     let package_state = nomos_cli::initial_state_from_package(&reopened).unwrap();
     assert_eq!(
         package_state.to_canonical_bytes(),
@@ -293,7 +321,7 @@ fn semantic_opener_rejects_receipt_ownership_and_projection_disagreement() {
             CanonicalValue::text("missing"),
         );
     });
-    assert_semantic_rejection("invalid-initial-state", invalid_initial, "EK0412");
+    assert_semantic_rejection("invalid-initial-state", invalid_initial, "EK0413");
 
     let ownership = mutate_member(&compiled, "schemas.json", |fields| {
         let CanonicalValue::Array(entries) = fields
@@ -318,6 +346,376 @@ fn semantic_opener_rejects_receipt_ownership_and_projection_disagreement() {
     assert_semantic_rejection("malformed-receipts", receipts, "EK0412");
 }
 
+#[test]
+fn semantic_opener_rejects_deep_tampering_with_fresh_integrity_hashes() {
+    let compiled = compile();
+
+    let command = mutate_member_with_fresh_receipt(&compiled, "simulation.json", |fields| {
+        let CanonicalValue::Array(machines) = fields
+            .get_mut(&FieldName::declared("machines"))
+            .expect("simulation machines exist")
+        else {
+            panic!("simulation machines are an array")
+        };
+        let command = machines
+            .iter_mut()
+            .filter_map(|machine| match machine {
+                CanonicalValue::Object(fields) => fields
+                    .get_mut(&FieldName::declared("commands"))
+                    .and_then(|commands| match commands {
+                        CanonicalValue::Array(commands) => commands.first_mut(),
+                        _ => None,
+                    }),
+                _ => None,
+            })
+            .next()
+            .expect("the fixture has an external command");
+        let CanonicalValue::Object(command) = command else {
+            panic!("a command row is an object")
+        };
+        command.insert(FieldName::declared("smuggled"), CanonicalValue::Bool(true));
+    });
+    assert_semantic_rejection("fresh-command-shape", command, "EK0413");
+
+    let handler = mutate_member_with_fresh_receipt(&compiled, "simulation.json", |fields| {
+        let CanonicalValue::Array(machines) = fields
+            .get_mut(&FieldName::declared("machines"))
+            .expect("simulation machines exist")
+        else {
+            panic!("simulation machines are an array")
+        };
+        let handler = machines
+            .iter_mut()
+            .filter_map(|machine| match machine {
+                CanonicalValue::Object(fields) => fields
+                    .get_mut(&FieldName::declared("handlers"))
+                    .and_then(|handlers| match handlers {
+                        CanonicalValue::Array(handlers) => handlers.first_mut(),
+                        _ => None,
+                    }),
+                _ => None,
+            })
+            .next()
+            .expect("the fixture has an internal handler");
+        let CanonicalValue::Object(handler) = handler else {
+            panic!("a handler row is an object")
+        };
+        handler.insert(FieldName::declared("smuggled"), CanonicalValue::Bool(true));
+    });
+    assert_semantic_rejection("fresh-handler-shape", handler, "EK0413");
+
+    let primitive = mutate_member_with_fresh_receipt(&compiled, "world-ir.json", |fields| {
+        let CanonicalValue::Array(entities) = fields
+            .get_mut(&FieldName::declared("entities"))
+            .expect("World IR entities exist")
+        else {
+            panic!("World IR entities are an array")
+        };
+        let CanonicalValue::Object(entity) = &mut entities[0] else {
+            panic!("an entity row is an object")
+        };
+        entity.insert(
+            FieldName::declared("primitive"),
+            CanonicalValue::text("primitive/shallow_water_region"),
+        );
+    });
+    assert_semantic_rejection("fresh-primitive-disagreement", primitive, "EK0412");
+
+    let transition = mutate_member_with_fresh_receipt(&compiled, "world-ir.json", |fields| {
+        let CanonicalValue::Array(entities) = fields
+            .get_mut(&FieldName::declared("entities"))
+            .expect("World IR entities exist")
+        else {
+            panic!("World IR entities are an array")
+        };
+        let transition = entities
+            .iter_mut()
+            .filter_map(|entity| match entity {
+                CanonicalValue::Object(entity) => entity
+                    .get_mut(&FieldName::declared("expansion"))
+                    .and_then(|expansion| match expansion {
+                        CanonicalValue::Object(expansion) => {
+                            expansion.get_mut(&FieldName::declared("machines"))
+                        }
+                        _ => None,
+                    })
+                    .and_then(|machines| match machines {
+                        CanonicalValue::Array(machines) => machines.first_mut(),
+                        _ => None,
+                    })
+                    .and_then(|machine| match machine {
+                        CanonicalValue::Object(machine) => {
+                            machine.get_mut(&FieldName::declared("transitions"))
+                        }
+                        _ => None,
+                    })
+                    .and_then(|transitions| match transitions {
+                        CanonicalValue::Array(transitions) => transitions.first_mut(),
+                        _ => None,
+                    }),
+                _ => None,
+            })
+            .next()
+            .expect("the fixture has a World IR transition");
+        let CanonicalValue::Object(transition) = transition else {
+            panic!("a transition row is an object")
+        };
+        transition.insert(FieldName::declared("smuggled"), CanonicalValue::Bool(true));
+    });
+    assert_semantic_rejection("fresh-transition-shape", transition, "EK0412");
+
+    let interaction = mutate_member_with_fresh_receipt(&compiled, "world-ir.json", |fields| {
+        let CanonicalValue::Array(entities) = fields
+            .get_mut(&FieldName::declared("entities"))
+            .expect("World IR entities exist")
+        else {
+            panic!("World IR entities are an array")
+        };
+        let interaction = entities
+            .iter_mut()
+            .filter_map(|entity| match entity {
+                CanonicalValue::Object(entity) => entity
+                    .get_mut(&FieldName::declared("expansion"))
+                    .and_then(|expansion| match expansion {
+                        CanonicalValue::Object(expansion) => {
+                            expansion.get_mut(&FieldName::declared("interactions"))
+                        }
+                        _ => None,
+                    })
+                    .and_then(|interactions| match interactions {
+                        CanonicalValue::Array(interactions) => interactions.first_mut(),
+                        _ => None,
+                    }),
+                _ => None,
+            })
+            .next()
+            .expect("the fixture has a World IR interaction");
+        let CanonicalValue::Object(interaction) = interaction else {
+            panic!("an interaction row is an object")
+        };
+        interaction.insert(FieldName::declared("smuggled"), CanonicalValue::Bool(true));
+    });
+    assert_semantic_rejection("fresh-interaction-shape", interaction, "EK0412");
+
+    let binding = mutate_member_with_fresh_receipt(&compiled, "world-ir.json", |fields| {
+        let CanonicalValue::Array(entities) = fields
+            .get_mut(&FieldName::declared("entities"))
+            .expect("World IR entities exist")
+        else {
+            panic!("World IR entities are an array")
+        };
+        let CanonicalValue::Object(entity) = &mut entities[0] else {
+            panic!("an entity row is an object")
+        };
+        let CanonicalValue::Object(binding) = entity
+            .get_mut(&FieldName::declared("binding"))
+            .expect("the entity has a binding")
+        else {
+            panic!("the binding is an object")
+        };
+        binding.insert(FieldName::declared("smuggled"), CanonicalValue::Bool(true));
+    });
+    assert_semantic_rejection("fresh-binding-shape", binding, "EK0412");
+
+    let related = compile_world_package(
+        &format!("{SOURCE}\nrelation north_gate owns brazier_02\n"),
+        SourcePath::new("fixtures/gaol.nomos").unwrap(),
+    )
+    .unwrap();
+    let relation = mutate_member_with_fresh_receipt(&related, "world-ir.json", |fields| {
+        let CanonicalValue::Array(relations) = fields
+            .get_mut(&FieldName::declared("relations"))
+            .expect("the related World IR has relations")
+        else {
+            panic!("World IR relations are an array")
+        };
+        let CanonicalValue::Object(relation) = &mut relations[0] else {
+            panic!("a relation row is an object")
+        };
+        relation.insert(FieldName::declared("smuggled"), CanonicalValue::Bool(true));
+    });
+    assert_semantic_rejection("fresh-relation-shape", relation, "EK0412");
+
+    let claim = mutate_member_with_fresh_receipt(&compiled, "world-ir.json", |fields| {
+        let CanonicalValue::Array(entities) = fields
+            .get_mut(&FieldName::declared("entities"))
+            .expect("World IR entities exist")
+        else {
+            panic!("World IR entities are an array")
+        };
+        let CanonicalValue::Object(entity) = &mut entities[0] else {
+            panic!("an entity row is an object")
+        };
+        let CanonicalValue::Object(expansion) = entity
+            .get_mut(&FieldName::declared("expansion"))
+            .expect("the entity has a primitive expansion")
+        else {
+            panic!("the primitive expansion is an object")
+        };
+        let CanonicalValue::Array(claims) = expansion
+            .get_mut(&FieldName::declared("claims"))
+            .expect("the expansion has claims")
+        else {
+            panic!("claims are an array")
+        };
+        let CanonicalValue::Object(claim) = &mut claims[0] else {
+            panic!("a claim row is an object")
+        };
+        claim.insert(FieldName::declared("smuggled"), CanonicalValue::Bool(true));
+    });
+    assert_semantic_rejection("fresh-claim-shape", claim, "EK0412");
+
+    let capabilities = mutate_member_with_fresh_receipt(&compiled, "world-ir.json", |fields| {
+        let CanonicalValue::Array(entities) = fields
+            .get_mut(&FieldName::declared("entities"))
+            .expect("World IR entities exist")
+        else {
+            panic!("World IR entities are an array")
+        };
+        let CanonicalValue::Object(entity) = &mut entities[0] else {
+            panic!("an entity row is an object")
+        };
+        let CanonicalValue::Object(expansion) = entity
+            .get_mut(&FieldName::declared("expansion"))
+            .expect("the entity has a primitive expansion")
+        else {
+            panic!("the primitive expansion is an object")
+        };
+        let CanonicalValue::Array(capabilities) = expansion
+            .get_mut(&FieldName::declared("capabilities"))
+            .expect("the expansion has capabilities")
+        else {
+            panic!("capabilities are an array")
+        };
+        capabilities.swap(0, 1);
+    });
+    assert_semantic_rejection("fresh-capability-order", capabilities, "EK0412");
+
+    let provenance = mutate_member_with_fresh_receipt(&compiled, "world-ir.json", |fields| {
+        let CanonicalValue::Array(receipts) = fields
+            .get_mut(&FieldName::declared("ownership_receipts"))
+            .expect("World IR ownership receipts exist")
+        else {
+            panic!("ownership receipts are an array")
+        };
+        let CanonicalValue::Object(receipt) = &mut receipts[0] else {
+            panic!("an ownership receipt is an object")
+        };
+        let CanonicalValue::Array(derivation) = receipt
+            .get_mut(&FieldName::declared("derivation"))
+            .expect("the receipt has derivation steps")
+        else {
+            panic!("derivation is an array")
+        };
+        let CanonicalValue::Object(step) = &mut derivation[0] else {
+            panic!("a derivation step is an object")
+        };
+        step.insert(FieldName::declared("smuggled"), CanonicalValue::Bool(true));
+    });
+    assert_semantic_rejection("fresh-provenance-shape", provenance, "EK0412");
+
+    let ordering = mutate_member_with_fresh_receipt(&compiled, "world-ir.json", |fields| {
+        let CanonicalValue::Array(entities) = fields
+            .get_mut(&FieldName::declared("entities"))
+            .expect("World IR entities exist")
+        else {
+            panic!("World IR entities are an array")
+        };
+        entities.swap(0, 1);
+    });
+    assert_semantic_rejection("fresh-semantic-order", ordering, "EK0412");
+
+    let resolver = mutate_member_with_fresh_receipt(&compiled, "world-ir.json", |fields| {
+        let CanonicalValue::Object(resolver) = fields
+            .get_mut(&FieldName::declared("movement_resolver"))
+            .expect("World IR has a movement resolver")
+        else {
+            panic!("the movement resolver is an object")
+        };
+        let CanonicalValue::Array(coherence) = resolver
+            .get_mut(&FieldName::declared("coherence"))
+            .expect("the movement resolver has coherence")
+        else {
+            panic!("movement coherence is an array")
+        };
+        let CanonicalValue::Object(ground) = &mut coherence[0] else {
+            panic!("a movement coherence row is an object")
+        };
+        ground.insert(FieldName::declared("base_cost"), CanonicalValue::Uint(2));
+    });
+    assert_semantic_rejection("fresh-resolver-disagreement", resolver, "EK0412");
+
+    let stable_movement = mutate_member_with_fresh_receipt(&compiled, "world-ir.json", |fields| {
+        let CanonicalValue::Array(rows) = fields
+            .get_mut(&FieldName::declared("movement_v1"))
+            .expect("stable movement rows exist")
+        else {
+            panic!("stable movement rows are an array")
+        };
+        let CanonicalValue::Object(row) = &mut rows[0] else {
+            panic!("a stable movement row is an object")
+        };
+        row.insert(
+            FieldName::declared("traversal_cost_ground"),
+            CanonicalValue::Uint(4),
+        );
+    });
+    assert_semantic_rejection("fresh-stable-movement", stable_movement, "EK0412");
+
+    let valid_but_stale = mutate_member_with_fresh_receipt(&compiled, "world-ir.json", |fields| {
+        let CanonicalValue::Array(entities) = fields
+            .get_mut(&FieldName::declared("entities"))
+            .expect("World IR entities exist")
+        else {
+            panic!("World IR entities are an array")
+        };
+        let north_gate = entities
+            .iter_mut()
+            .find(|entity| {
+                matches!(
+                    entity,
+                    CanonicalValue::Object(fields)
+                        if fields.get(&FieldName::declared("id"))
+                            == Some(&CanonicalValue::text("north_gate"))
+                )
+            })
+            .expect("the fixture has north_gate");
+        let CanonicalValue::Object(entity) = north_gate else {
+            unreachable!()
+        };
+        let CanonicalValue::Object(expansion) = entity
+            .get_mut(&FieldName::declared("expansion"))
+            .expect("north_gate has a primitive expansion")
+        else {
+            panic!("the primitive expansion is an object")
+        };
+        let CanonicalValue::Array(claims) = expansion
+            .get_mut(&FieldName::declared("claims"))
+            .expect("north_gate has claims")
+        else {
+            panic!("claims are an array")
+        };
+        let CanonicalValue::Object(claim) = &mut claims[1] else {
+            panic!("a claim row is an object")
+        };
+        let CanonicalValue::Object(activation) = claim
+            .get_mut(&FieldName::declared("activation"))
+            .expect("the claim has an activation")
+        else {
+            panic!("claim activation is an object")
+        };
+        activation.insert(
+            FieldName::declared("state"),
+            CanonicalValue::text("unsealed"),
+        );
+    });
+    assert_semantic_rejection(
+        "fresh-ir-projection-disagreement",
+        valid_but_stale,
+        "EK0412",
+    );
+}
+
 fn mutate_member(
     compiled: &nomos_compiler::CompiledWorld,
     name: &str,
@@ -333,6 +731,53 @@ fn mutate_member(
     };
     mutate(&mut fields);
     *bytes = CanonicalValue::Object(fields).to_canonical_bytes();
+    members
+}
+
+fn mutate_member_with_fresh_receipt(
+    compiled: &nomos_compiler::CompiledWorld,
+    name: &str,
+    mutate: impl FnOnce(&mut std::collections::BTreeMap<FieldName, CanonicalValue>),
+) -> Vec<(MemberName, Vec<u8>)> {
+    let mut members = mutate_member(compiled, name, mutate);
+    let digest = Sha256Digest::of_bytes(
+        &members
+            .iter()
+            .find(|(member, _)| member.as_str() == name)
+            .expect("the mutated member exists")
+            .1,
+    )
+    .to_hex();
+    let receipt_bytes = &mut members
+        .iter_mut()
+        .find(|(member, _)| member.as_str() == "compiler-receipts.json")
+        .expect("compiler receipts exist")
+        .1;
+    let CanonicalValue::Object(mut receipt) = parse_canonical(receipt_bytes).unwrap() else {
+        panic!("compiler receipts are an object")
+    };
+    let CanonicalValue::Array(artifacts) = receipt
+        .get_mut(&FieldName::declared("artifacts"))
+        .expect("compiler receipts contain artifact hashes")
+    else {
+        panic!("compiler receipt artifacts are an array")
+    };
+    let row = artifacts
+        .iter_mut()
+        .find(|row| {
+            matches!(
+                row,
+                CanonicalValue::Object(fields)
+                    if fields.get(&FieldName::declared("name"))
+                        == Some(&CanonicalValue::text(name))
+            )
+        })
+        .expect("the receipt hashes the mutated artifact");
+    let CanonicalValue::Object(row) = row else {
+        unreachable!()
+    };
+    row.insert(FieldName::declared("sha256"), CanonicalValue::text(digest));
+    *receipt_bytes = CanonicalValue::Object(receipt).to_canonical_bytes();
     members
 }
 

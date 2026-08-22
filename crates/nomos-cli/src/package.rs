@@ -2,7 +2,10 @@
 
 use std::path::Path;
 
-use nomos_compiler::{CompiledWorld, compile_world_package, validate_compiled_package};
+use nomos_compiler::{
+    CompiledWorld, OpenedCompiledWorld, compile_world_package, open_compiled_package,
+    validate_compiled_package,
+};
 use nomos_core::package::{MemberName, WorldPackage};
 use nomos_core::{Diagnostic, SourcePath};
 use nomos_sim::SimulationState;
@@ -66,29 +69,21 @@ where
 /// # Errors
 ///
 /// Returns the first generic integrity or compiled-world semantic diagnostic.
-pub fn open_compiled_world(root: &Path) -> Result<WorldPackage, Diagnostic> {
-    let package = WorldPackage::open(root)?;
-    validate_compiled_package(&package)?;
-    Ok(package)
+pub fn open_compiled_world(root: &Path) -> Result<OpenedCompiledWorld, Diagnostic> {
+    open_compiled_package(root)
 }
 
 /// Reconstructs the initial runtime snapshot exclusively from a verified
-/// package's `simulation.json` member.
+/// package's typed, regenerated simulation projection.
 ///
 /// # Errors
 ///
 /// Returns a package or runtime-state diagnostic when the member is absent or
 /// does not contain valid initialization material.
-pub fn initial_state_from_package(package: &WorldPackage) -> Result<SimulationState, Diagnostic> {
-    let name = nomos_core::package::MemberName::new("simulation.json")?;
-    let bytes = package.member_bytes(&name).ok_or_else(|| {
-        Diagnostic::new(
-            nomos_core::diagnostic::codes::PACKAGE_MEMBER_MISSING,
-            "verified package has no `simulation.json` member",
-        )
-    })?;
-    let material = nomos_projection::SimulationInitialization::from_canonical_bytes(bytes)?;
-    SimulationState::initialize_material(&material)
+pub fn initial_state_from_package(
+    package: &OpenedCompiledWorld,
+) -> Result<SimulationState, Diagnostic> {
+    SimulationState::initialize(package.simulation())
 }
 
 #[cfg(test)]
