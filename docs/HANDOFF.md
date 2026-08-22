@@ -1,8 +1,8 @@
 # Handoff — state of the repository
 
-Updated 2026-08-22 for the issue #52 filesystem-authoring CLI integration.
-The SW-G semantic-open repair is merged; SW-H is rebased onto that boundary and
-its refreshed proof and exact-head disposition remain pending.
+Updated 2026-08-22 for the issue #56 persisted-runtime evidence slice.
+The semantic opener and filesystem-authoring CLI are merged and green; SW-I is
+the active feature branch.
 This file orients a fresh session; it is rewritten at each slice boundary and
 never accumulates history (git has that).
 
@@ -203,7 +203,7 @@ never accumulates history (git has that).
   disagreement. Exact repair head `d43150a736cd91c7307da22c16992c720e8827e6`
   passed PR CI and a clean non-author rerun; PR #55 merged as `15661d2`, and
   post-merge CI run `32550461102` passed.
-- **SW-H is implemented on issue #52's feature branch:** the `nomos` binary now
+- **SW-H is merged (#52/#53):** the `nomos` binary now
   exposes exact dependency-free `validate`, `compile`, and `inspect` command
   grammars. Non-help results are one canonical JSON value; source, argv,
   package, and host failures use the fixed four exit classes. Compilation uses
@@ -214,17 +214,26 @@ never accumulates history (git has that).
   `nomos-schema` to the CLI.
   The end-to-end subprocess suite proves all four exits, determinism,
   no-artifact validation, tamper/extra-entry refusal, symlink policy, staging
-  cleanup, and existing-output preservation. Draft PR #53 must receive a fresh
-  author proof, PR CI, and non-author exact-head rerun after this rebase before
-  the slice is green.
+  cleanup, and existing-output preservation. Exact head `8288e71` passed the
+  complete author proof, PR CI run `32550761498`, and a clean non-author rerun
+  with no findings. PR #53 merged as `54e5dd2`, issue #52 closed, and post-merge
+  CI run `32551021136` passed.
+- **SW-I is in progress (#56):** the accepted slice defines strict persisted
+  runtime state/receipt evidence, the exact command-script language and typed
+  namespace resolution, command logs, state-hash chains, and the future run
+  result binding record without exposing runtime CLI commands. The first
+  checkpoint implements strict `SimulationState` rehydration, a separate
+  `nomos.persisted_runtime_state@1` envelope bound to canonical simulation
+  bytes, and exact command-script parsing/resolution while preserving the
+  frozen `nomos.runtime_state@1` hash domain.
 
 ## What is next
 
-Finish issue #52 through refreshed author proof, PR CI, non-author exact-head
-rerun, and owner merge. Do not begin another semantic implementation without a
-new issue. After SW-H, the next slice defines persisted runtime types and the
-command language before runtime `run`/`command`; later work includes verified
-run bundles, replay, explanations, the required stable v1-to-v2 movement
+Finish issue #56: complete causal-receipt decoding and the typed command-log,
+state-hash-sequence, and run-result evidence records; add refreshed-integrity
+mutation proof; then run the full author/CI/non-author chain. The following
+slice may publish verified run bundles and expose runtime `run`/`command`.
+Later work includes replay, explanations, the required stable v1-to-v2 movement
 migration, direct v2 runtime loading/refusal evidence, the Linux aarch64 and
 ten-run matrix, measured Gate K budgets, final schema-ownership review, and the
 formal cold-agent gates.
@@ -257,9 +266,8 @@ owner disposition before any formal launch.
 
 The issue #54 repair author proof, PR CI, non-author exact-head rerun, and
 post-merge CI passed as recorded above and externally in PR #55. SW-H's
-refreshed author proof passes all four workspace commands plus the exact CLI
-smoke commands after rebasing onto that repair; final PR CI and non-author
-exact-head disposition are recorded externally in PR #53. SW-G's original
+refreshed author proof, PR CI, non-author rerun, and post-merge CI passed as
+recorded above and externally in PR #53. SW-G's original
 author proof, Luna max exact-head rerun, PR CI, and post-merge CI also passed all
 four commands; the focused release SW-G test passed. SW-F, SW-D, and
 issue #24 have the same author/non-author/CI chain as recorded above. Earlier
