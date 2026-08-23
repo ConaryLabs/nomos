@@ -495,7 +495,7 @@ for record in "${records[@]}"; do
     .contextFiles == [] and .skills == [] and
     .systemPromptSha256 ==
       (if .schema == "nomos.pi_cold_agent_boundary@4"
-       then "8ec97369e7dc5407a0e3b5aa95b747e556b7ded999941cfee7d35a3ebc7fb5f7"
+       then "c1c41bf11dd3fc42f47c174b9d431e36dd87afb60aa04d08062dd6e11963c333"
        else "2cec3aeebce2f8359cde337d3b1b2ec1601913711f282ab0289ab276b02dee79" end) and
     .finalSystemPromptSha256 ==
       (if .schema == "nomos.pi_cold_agent_boundary@4"
