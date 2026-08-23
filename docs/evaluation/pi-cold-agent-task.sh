@@ -26,7 +26,15 @@ esac
 script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)
 preflight="$script_dir/pi-cold-agent-preflight.sh"
 verify_packet="$script_dir/gate-k-eval-verify-packet.sh"
-[[ -x $preflight && -x $verify_packet ]] || fail 'required repository tooling is absent'
+transcript_validator="$script_dir/gate-k-eval-validate-transcript.py"
+json_validator="$script_dir/gate-k-eval-validate-json.py"
+transcript_sanitizer="$script_dir/gate-k-eval-sanitize-transcript.py"
+attempt_validator="$script_dir/gate-k-eval-attempt-ledger.py"
+attempt_ledger="$script_dir/gate-k-formal-attempt-ledger.jsonl"
+repo_root=$(realpath -e "$script_dir/../..")
+[[ -x $preflight && -x $verify_packet && -x $transcript_validator && -x $json_validator &&
+  -x $attempt_validator && -f $attempt_ledger ]] ||
+  fail 'required repository tooling is absent'
 
 for name in jq sha256sum timeout realpath git mktemp cp chmod grep sed; do
   command -v "$name" >/dev/null 2>&1 || fail "required executable not found: $name"
@@ -50,6 +58,7 @@ done
 
 "$verify_packet" "$packet" "$commit" >/dev/null
 shape=$(jq -r '.task.shape' "$packet/plan.json")
+classification=$(jq -r '.task.classification' "$packet/plan.json")
 writable=$(jq -r '.packet.writablePaths[0]' "$packet/plan.json")
 manifest_sha=$(sha256sum "$packet/packet-manifest.json")
 manifest_sha=${manifest_sha%% *}
@@ -68,6 +77,7 @@ grep -Fx 'PI_COLD_AGENT_BOUNDARY PASS' "$qualification_out" >/dev/null ||
 pi_bin=${PI_BIN:-pi}
 pi_path=$(command -v "$pi_bin")
 pi_path=$(readlink -f "$pi_path")
+pi_sha=$(sha256sum "$pi_path" | cut -d' ' -f1)
 extension_line=$(grep -F 'PI_EXTENSION ' "$qualification_out")
 extension=${extension_line#PI_EXTENSION }
 extension=${extension% *}
@@ -75,6 +85,7 @@ extension_sha=${extension_line##* }
 [[ $(sha256sum "$extension" | cut -d' ' -f1) == "$extension_sha" ]] ||
   fail 'qualified boundary extension changed before task launch'
 provider_extension=$(sed -n 's/^PI_PROVIDER_EXTENSION //p' "$qualification_out")
+worktree_status=$(sed -n 's/^PI_WORKTREE_STATUS //p' "$qualification_out")
 model_line=$(sed -n 's/^PI_MODEL //p' "$qualification_out")
 IFS=$'\t' read -r provider model model_label thinking <<<"$model_line"
 [[ -n $provider && -n $model && -n $model_label && -n $thinking ]] ||
@@ -87,6 +98,41 @@ system_prompt=$(<"$system_prompt_file")
   fail 'qualified system prompt changed before task launch'
 bwrap=$(sed -n 's/^PI_BOUNDARY //p' "$qualification_out" | jq -r '.sandbox.binary')
 [[ -x $bwrap ]] || fail "qualified Bubblewrap binary is absent: $bwrap"
+bwrap_sha=$(sha256sum "$bwrap" | cut -d' ' -f1)
+[[ $bwrap_sha == $(sed -n 's/^PI_BWRAP_SHA256 //p' "$qualification_out") ]] ||
+  fail 'qualified Bubblewrap changed before task launch'
+provider_extension_sha=none
+if [[ $provider_extension != none ]]; then
+  provider_extension=$(readlink -f "$provider_extension")
+  provider_extension_sha=$(sha256sum "$provider_extension" | cut -d' ' -f1)
+fi
+if [[ $worktree_status == clean ]]; then
+  [[ $pi_path == */lib/node_modules/@earendil-works/pi-coding-agent/dist/cli.js &&
+    $pi_sha == 840d1e8e689ed9e4937bcb00b9a810e02a8567d9afb10a47097f11ca93ea1521 ]] ||
+    fail 'Pi executable differs from the pinned package entry point'
+  [[ $bwrap == /usr/bin/bwrap &&
+    $bwrap_sha == 6ad2138a73d592acb43525432965e3c66f6fad8a2f3d610c6ca0b6855e993cbe ]] ||
+    fail 'Bubblewrap executable differs from the pinned binary'
+  if [[ $provider_extension != none ]]; then
+    [[ $provider_extension == */lib/node_modules/pi-antigravity/src/index.ts &&
+      $provider_extension_sha == 1c41a45c2820eb52f1b41955ae5fbb833470cba2203226d3b0c626c6f9dbe10b ]] ||
+      fail 'provider extension differs from the pinned package entry point'
+  fi
+fi
+
+attempt_id=
+attempt_ledger_commit=
+if [[ $classification == formal ]]; then
+  [[ $worktree_status == clean ]] || fail 'formal launch requires an authenticated clean qualification'
+  attempt_id=${NOMOS_FORMAL_ATTEMPT_ID:-}
+  [[ -n $attempt_id ]] || fail 'formal launch requires NOMOS_FORMAL_ATTEMPT_ID'
+  [[ -z $(git -C "$repo_root" status --porcelain=v1 --untracked-files=all) ]] ||
+    fail 'formal launch tooling and attempt ledger must be a clean committed checkout'
+  attempt_ledger_commit=$(python3 "$attempt_validator" verify-launch "$attempt_ledger" \
+    "$attempt_id" "$commit" "$shape" "$provider" "$model" "$thinking" \
+    "$manifest_sha" "$prompt_sha" --committed-repo "$repo_root") ||
+    fail 'formal launch lacks an exact committed launch marker'
+fi
 
 tmp_dir=$(mktemp -d)
 cleanup() {
@@ -133,6 +179,11 @@ set +e
   PI_TELEMETRY=0 \
   NOMOS_PI_HOST_WORKSPACE="$packet" \
   NOMOS_PI_BWRAP="$bwrap" \
+  NOMOS_PI_BWRAP_SHA256="$bwrap_sha" \
+  NOMOS_PI_CLIENT_PATH="$pi_path" \
+  NOMOS_PI_CLIENT_SHA256="$pi_sha" \
+  NOMOS_PI_PROVIDER_EXTENSION_PATH="$provider_extension" \
+  NOMOS_PI_PROVIDER_EXTENSION_SHA256="$provider_extension_sha" \
   NOMOS_PI_BOUNDARY_KIND=packet-run \
   NOMOS_PI_EXPECTED_PROVIDER="$provider" \
   NOMOS_PI_EXPECTED_MODEL="$model" \
@@ -188,13 +239,17 @@ fi
 while IFS= read -r line; do
   printf '%s\n' "$line" | jq -e . >/dev/null || fail 'task event stream contains a non-JSON line'
 done <"$raw_events"
-jq -c 'walk(if type == "object" then del(.textSignature, .thinkingSignature) else . end)' \
-  "$raw_events" >"$events_out"
+python3 "$transcript_sanitizer" "$raw_events" >"$events_out" ||
+  fail 'raw task stream has invalid JSON or misplaced provider signatures'
+python3 "$transcript_validator" "$events_out" --syntax-only ||
+  fail 'sanitized task event stream contains invalid JSON'
 cp "$raw_stderr" "$stderr_out"
 
 boundary_count=$(grep -Fc 'NOMOS_PI_BOUNDARY ' "$stderr_out" || true)
 [[ $boundary_count -eq 1 ]] || fail "expected one task boundary record, found $boundary_count"
 boundary_json=$(sed -n 's/^NOMOS_PI_BOUNDARY //p' "$stderr_out")
+printf '%s\n' "$boundary_json" | python3 "$json_validator" - ||
+  fail 'task boundary contains invalid or duplicate-key JSON'
 printf '%s\n' "$boundary_json" | jq -e \
   --arg commit "$commit" \
   --arg packet "$packet" \
@@ -205,8 +260,14 @@ printf '%s\n' "$boundary_json" | jq -e \
   --arg binary_sha "$binary_sha" \
   --arg prompt_sha "$prompt_sha" \
   --arg shape "$shape" \
+  --arg pi_path "$pi_path" \
+  --arg pi_sha "$pi_sha" \
+  --arg bwrap "$bwrap" \
+  --arg bwrap_sha "$bwrap_sha" \
+  --arg provider_extension "$provider_extension" \
+  --arg provider_extension_sha "$provider_extension_sha" \
   --arg writable "$writable" '
-  .schema == "nomos.pi_cold_agent_boundary@2" and
+  .schema == "nomos.pi_cold_agent_boundary@3" and
   .boundaryKind == "packet-run" and
   .targetCommit == $commit and
   .hostWorkspace == $packet and
@@ -220,6 +281,11 @@ printf '%s\n' "$boundary_json" | jq -e \
   .taskPromptSha256 == $prompt_sha and
   .taskShape == $shape and
   .writablePaths == [$writable] and
+  .runtimeIdentity.pi == {"path":$pi_path,"sha256":$pi_sha} and
+  .runtimeIdentity.bubblewrap == {"path":$bwrap,"sha256":$bwrap_sha} and
+  .runtimeIdentity.providerExtension ==
+    (if $provider_extension == "none" then null else
+      {"path":$provider_extension,"sha256":$provider_extension_sha} end) and
   .sandbox.root == "read-only" and
   .sandbox.workspace == "read-only-packet-with-declared-writable-paths" and
   .sandbox.network == "unshared" and
@@ -281,6 +347,11 @@ terminal_assistant=$(jq -s --arg provider "$provider" --arg model "$model" \
   )
   ' "$events_out")
 [[ $terminal_assistant == true ]] || fail 'terminal assistant result identity or completion is missing'
+session_timestamp=$(jq -sr 'map(select(.type == "session"))[0].timestamp // empty' "$events_out")
+python3 "$transcript_validator" "$events_out" \
+  --prompt "$prompt" --provider "$provider" --model "$model" \
+  --session "$session_id" --started "$session_timestamp" --workspace "$packet" >/dev/null ||
+  fail 'task transcript is not a complete ordered Pi lifecycle'
 
 # The writable subtree is expected to change. Everything else remains exactly
 # bound to the prelaunch manifest, and no new undeclared path may appear.
@@ -305,6 +376,14 @@ printf 'PI_TASK_MODEL %s\t%s\t%s\t%s\n' "$provider" "$model" "$model_label" "$th
 printf 'PI_TASK_SESSION %s ephemeral\n' "$session_id"
 printf 'PI_TASK_COMMIT %s\n' "$commit"
 printf 'PI_TASK_PACKET_MANIFEST_SHA256 %s\n' "$manifest_sha"
+printf 'PI_TASK_RAW_EVENTS_SHA256 %s\n' "$(sha256sum "$raw_events" | cut -d' ' -f1)"
 printf 'PI_TASK_EVENTS_SHA256 %s\n' "$(sha256sum "$events_out" | cut -d' ' -f1)"
 printf 'PI_TASK_STDERR_SHA256 %s\n' "$(sha256sum "$stderr_out" | cut -d' ' -f1)"
+printf 'PI_TASK_QUALIFICATION_SHA256 %s\n' \
+  "$(sha256sum "$qualification_out" | cut -d' ' -f1)"
+if [[ $classification == formal ]]; then
+  printf 'PI_TASK_ATTEMPT_ID %s\n' "$attempt_id"
+  printf 'PI_TASK_ATTEMPT_LEDGER_SHA256 %s\n' "$(sha256sum "$attempt_ledger" | cut -d' ' -f1)"
+  printf 'PI_TASK_ATTEMPT_LEDGER_COMMIT %s\n' "$attempt_ledger_commit"
+fi
 printf 'PI_COLD_AGENT_TASK RECORDED\n'

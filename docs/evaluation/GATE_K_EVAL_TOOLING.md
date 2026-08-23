@@ -1,8 +1,8 @@
 ---
 title: Gate K cold-agent packet and run tooling
-status: Issue 70 pre-formal tooling plan
+status: Gate K evidence-authentication tooling; current through issue 79
 date: 2026-08-23
-protocol: docs/evaluation/COLD_AGENT_PROTOCOL.md revision 3
+protocol: docs/evaluation/COLD_AGENT_PROTOCOL.md revision 5
 roster: docs/evaluation/GATE_K_COLD_AGENT_PLAN.md
 ---
 
@@ -72,6 +72,14 @@ outside-host paths, and unshared network before the first provider request.
 
 Every build requires the exact forty-character candidate commit, a clean Git
 worktree at that commit, and an absent output directory outside the worktree.
+Checker construction rejects final-component aliases on the subject-record and
+input-tree roots, then runs the shared exact document, strict JSON, and NDJSON
+validators over the complete structured subject record before any `jq` field
+extraction or packet emission. Every other JSON packet input passes the shared
+strict loader before manifest construction inspects its optional schema identity.
+Object-form schema identities require a positive integer version, and the exact
+manifest validator must accept the completed manifest before the staging tree is
+published.
 It builds `nomos` in release mode before packet construction. Packet files use
 fixed modes and repository-independent relative paths. `plan.json` and
 `packet-manifest.json` use canonical compact JSON with sorted object keys; the
@@ -110,11 +118,104 @@ recorded substantive intervention as `assisted` and a transport/harness failure
 that prevents fair evaluation as `inconclusive`. Final task merit belongs to the
 independent checker and owner.
 
+Before final assembly, an independent reviewer examines every subject and
+checker command and writes `nomos.gate_k.command_adjudication@1` JSON. The
+record binds the candidate, both task receipts, both complete command files,
+their reviewed command counts, the adjudicator, and the owner disposition. Each
+finding binds its subject/checker command ordinal and SHA-256 and records the
+outside-workspace path token and reason. `gate-k-eval-validate-adjudication.py`
+validates that structure and every binding without trying to infer shell
+semantics. This is deliberate: arbitrary Bash can contain nested interpreters,
+heredocs, comments, and quoted scan data, so a partial shell parser is neither a
+sound access detector nor a reliable way to distinguish evidence text from an
+operand. A bound finding takes precedence over transport or intervention state
+and mechanically derives overall `fail`, even when `checker.json` self-reports
+`pass`; finalization refuses an absent, incomplete, stale, or internally
+contradictory adjudication.
+
+The adjudication has this exact top-level shape (digests and identities shown as
+placeholders):
+
+```json
+{
+  "schema": "nomos.gate_k.command_adjudication@1",
+  "candidateCommit": "<40 lowercase hex>",
+  "subjectTaskReceiptSha256": "<sha256>",
+  "checkerTaskReceiptSha256": "<sha256>",
+  "subjectCommandsSha256": "<sha256>",
+  "checkerCommandsSha256": "<sha256>",
+  "reviewedAllCommands": true,
+  "reviewedCommandCounts": {"subject": 1, "checker": 1},
+  "findings": [],
+  "verdict": "pass",
+  "reason": "<independent review disposition>",
+  "adjudicator": "<identity>",
+  "ownerDisposition": "<owner identity and disposition>"
+}
+```
+
+Each finding has exactly `record`, `commandOrdinal`, `commandSha256`, `kind`,
+`pathToken`, and `reason`. Version 1 supports only the
+`outside_workspace_path` kind. An empty array requires adjudication verdict
+`pass`; one or more findings require `fail`. That verdict concerns the command
+review. The finalizer still derives the overall `pass`, `fail`, `assisted`, or
+`inconclusive` run verdict from the complete protocol record, with a command
+finding taking highest precedence.
+
+`commands.json` is not trusted as a self-reported inventory. Recording and
+finalization both derive its exact canonical bytes from paired
+`tool_execution_start` and `tool_execution_end` events in `transcript.ndjson`.
+Before sanitization or derivation, every NDJSON object is parsed with duplicate-
+key rejection. The transcript validator requires the exact outer lifecycle,
+paired turns and messages, one unassisted user prompt, terminal settlement,
+strict nonempty session identity, complete provider identity and integer usage,
+and correctly paired tool events. The derivation rejects missing, duplicate,
+unpaired, or end-before-start tool-call lifecycles. The
+adjudication validator then requires exact command-document and row fields,
+contiguous exact-integer ordinals, unique nonempty call IDs, completed Bash
+calls, boolean error flags, one nonempty shell-command argument, and exact
+positive-integer review counts. Duplicate-key-rejecting parsers cover every
+JSON document consumed during finalization, including every NDJSON event and
+the checker result. The adjudication validator
+also checks the adjudication candidate directly against both bound task
+receipts.
+
 A completed record contains `RUN.md`, `plan.json`, `packet-manifest.json`,
 `prompt.txt`, the complete sanitized NDJSON event stream, `commands.json`,
-the complete subject and checker artifact trees, and `checker.json` after
-independent checking. Finalization recomputes both artifact-tree digests after
-copying them into the durable run. Missing
+the complete subject and checker artifact trees, `checker.json` after
+independent checking, and `adjudication.json`. Finalization recomputes both
+artifact-tree digests after copying them into the durable run. It also proves
+that each task receipt agrees with its plan, packet manifest, and sandbox
+boundary; that the packet's candidate marker is the exact candidate plus one
+newline; that the sandbox independently matched the supplied candidate binary;
+that the candidate exists in repository history; and that the checker packet
+manifest binds the exact supplied subject receipt, commands, and every artifact.
+The qualification, launcher, stderr boundary, and accounting records must agree
+exactly with the task receipt and complete transcript. Qualification validation
+requires the complete ordered neutral-preflight header, event envelope, sandbox
+proof, and terminal disposition; new launchers bind its digest. Session, agent,
+retry, prompt, terminal assistant, and usage accounting are rederived during
+finalization; truncated launch or qualification receipts fail closed.
+Finalization reopens the recorded packet root and verifies the exact immutable
+member set plus every member's entry type, size, mode, and digest instead of
+trusting selected copied metadata. The writable task subtree is excluded from
+the prelaunch immutable-member set because the subject is required to change it,
+then its complete final tree is compared with the task receipt's artifact-tree
+digest. Post-record additions, deletions, symlinks, special entries, empty
+directories, and byte changes fail closed.
+Writable paths are exact by shape (`workspace` only for author subjects;
+`output` for the other three shapes) and must agree across the plan, manifest,
+boundary, and sandbox receipt. Output may overlap neither a task record nor its
+reopened packet. Formal records are pinned to the four exact task-receipt
+SHA-256 identities from the completed #71/#72 attempts, exact `gate-k-rc1` commit
+`d8a0b85c55aa33c20f46e5dfd9e0d1f317e1f1c9` and release-binary SHA-256
+`4af70accf3d1680f6b0e78f860be5ac62c5ab11b470026a83f01eb5b95051fd1`;
+non-formal rehearsals must target the finalizer checkout and cannot satisfy Gate
+K. Re-finalizing those exact records is allowed; constructing any new formal
+record at the invalidated candidate is not. A future formal candidate requires
+an owner-authorized tooling revision.
+Checker command/reason arrays are validated
+element by element. The output must be outside both immutable input records. Missing
 identity, transcript, command, artifact, or result fields fail closed. Operator
 intervention is always present, including the literal disposition `none`.
 Checker prompts declare the finalizer-owned `nomos.gate_k.checker_result@1`
@@ -227,6 +328,74 @@ were quoted scan patterns, not access attempts. Durable records live at
 `docs/evaluation/runs/rehearsal/2026-08-23-claude-opus-5-debug-r6/`.
 
 ## Invalidation
+
+### Formal `gate-k-rc1` finalizer finding
+
+The four formal sessions against exact candidate
+`d8a0b85c55aa33c20f46e5dfd9e0d1f317e1f1c9` completed in their predeclared
+order. The Gemini author subject produced a correct second door, and the
+DeepSeek author checker reproduced it byte-for-byte. That checker nevertheless
+requested `/dev/null` at command ordinals 1 and 16, then improperly self-waived
+the violation and returned `pass`. The prior finalizer trusted that self-verdict
+and would not encode the evidence-backed failure.
+
+Issue #79 adds the hash-bound structured adjudication and a regression
+containing a `pass` checker result plus an independently recorded forbidden
+redirection. The finalizer refuses a finding paired with an adjudication
+self-verdict of `pass`, and a valid bound finding mechanically produces overall
+`fail`. A companion fixture records no finding for forbidden-path strings used
+only as quoted grep, sed, or Python scan data. Further regressions reject stale
+subject/checker pairing, phantom candidate bindings, and output nested beneath
+immutable input evidence. They also reject commands absent from the transcript,
+malformed command or checker-result rows, and a self-consistent receipt chain
+whose packet marker names different candidate bytes. The DeepSeek debug
+subject's ordinals 1, 48, and 65 are recorded through the same structured path;
+its Gemini checker correctly returned `reject` independently.
+
+Peter Permenter dispositioned both formal attempts `fail` on 2026-08-23. Their
+subject and checker records are immutable, and no retry is authorized or
+planned. This tooling repair does not retroactively change those sessions or
+their candidate binding. It does invalidate `gate-k-rc1` for any later
+exact-head evidence: a future launch would require a newly frozen
+`gate-k-rcN`, combined-head proof, and explicit owner authorization.
+
+Protocol revision 5 closes the remaining evidence-authentication gaps found
+during issue #79. The four frozen task receipts are imported, explicitly without
+retroactive prelaunch proof, into the hash-chained formal-attempt ledger. A
+future formal launcher requires an exact open reservation and a distinct
+provider-launch event already committed in that ledger, then records the launch
+ledger commit and digest in its task receipt. The
+completion event is derived from the complete task record. The reserved prompt
+digest must equal the plan-bound prompt digest. The exact canonical
+receipt and exact launcher schema must bind the retained transcript, commands,
+manifest, qualification, stderr, boundary, and artifact tree; launcher status
+derives the outcome, and the bound ledger commit must be the committed HEAD.
+The close invokes the same single-record semantic validation used by final
+assembly, including lifecycle, command derivation, qualification, boundary,
+accounting, immutable packet, and artifact proofs. Only then does the event
+close the reservation with the receipt hash and outcome;
+another reservation cannot hide or overtake an unfinished task.
+A prelaunch cancellation instead appends `discarded-before-launch` plus its
+reason only while no launch marker exists. Once marked launched, the attempt
+must close from a complete task record, including an inconclusive transport.
+The four historical imports are exact authenticated events, not a permissive
+event class. Final assembly accepts only their exact frozen four-event inventory;
+any later event requires a new candidate and explicit protocol/tooling revision
+so it cannot be omitted from Gate K disposition.
+
+Public plans, packet manifests, and task receipts now have exact allowlisted
+schemas and canonical bytes. All evaluation JSON rejects duplicate keys and
+non-finite or host-overflowing numbers. Raw Pi streams are validated before only the two
+documented provider signature fields are removed, and their raw digest is
+retained. Boundary schema `nomos.pi_cold_agent_boundary@3` binds the resolved
+Pi, provider-extension, and Bubblewrap paths and hashes into both the runtime
+boundary and task receipt. Legacy `@2` boundaries remain admissible only through
+the four exact frozen formal task receipts.
+Record close and final assembly reopen the packet through the complete shape
+verifier used before launch, excluding only the declared mutable subtree from
+prelaunch byte comparison. The plan's prompt and brief digests must match the
+reopened immutable bytes, and path roots reject final-component symlink aliases
+even when written with trailing separators.
 
 Any packet allowlist, public packet document, prompt, constraint, runner, recorder,
 checker construction, or boundary-extension change after a candidate is tagged
