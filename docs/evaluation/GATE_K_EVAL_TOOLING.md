@@ -91,6 +91,8 @@ A completed record contains `RUN.md`, `plan.json`, `packet-manifest.json`,
 subject artifacts, and `checker.json` after independent checking. Missing
 identity, transcript, command, artifact, or result fields fail closed. Operator
 intervention is always present, including the literal disposition `none`.
+Checker prompts declare the finalizer-owned `nomos.gate_k.checker_result@1`
+schema and its required verdict, command, and reason fields before launch.
 Sanitization removes only provider `textSignature` and `thinkingSignature`
 fields, matching the existing Pi qualification receipt; `plan.json` declares
 that exact loss limit before launch. No message, tool event, usage row, tool

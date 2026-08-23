@@ -126,6 +126,8 @@ jq -e '.outcome == "eligible-for-checker" and .formalAttempt == false' \
   --commands "$tmp_dir/author-subject-record/commands.json" \
   --out "$tmp_dir/author-checker-2" >/dev/null
 diff -r "$tmp_dir/author-checker-1" "$tmp_dir/author-checker-2" >/dev/null
+grep -F 'schema` exactly `nomos.gate_k.checker_result@1' \
+  "$tmp_dir/author-checker-1/prompt.txt" >/dev/null
 launch_task author-checker "$tmp_dir/author-checker-1"
 record_task author-checker "$tmp_dir/author-checker-1"
 "$finalizer" "$tmp_dir/author-subject-record" "$tmp_dir/author-checker-record" \
@@ -144,6 +146,8 @@ record_task debug-subject "$tmp_dir/debug-1"
   --debug-evidence "$tmp_dir/debug-2/input" \
   --hidden-mutation "$tmp_dir/debug-seed/hidden-mutation.json" \
   --out "$tmp_dir/debug-checker" >/dev/null
+grep -F 'schema` exactly `nomos.gate_k.checker_result@1' \
+  "$tmp_dir/debug-checker/prompt.txt" >/dev/null
 launch_task debug-checker "$tmp_dir/debug-checker"
 record_task debug-checker "$tmp_dir/debug-checker"
 "$finalizer" "$tmp_dir/debug-subject-record" "$tmp_dir/debug-checker-record" \
