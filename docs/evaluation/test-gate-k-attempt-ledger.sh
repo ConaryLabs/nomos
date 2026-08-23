@@ -189,5 +189,8 @@ assert_blocked 'does not name the one open formal attempt' python3 "$validator" 
 sed '2s/"previousEventSha256":"[0-9a-f]*"/"previousEventSha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"/' \
   "$ledger_copy" >"$tmp_dir/tampered.jsonl"
 assert_blocked 'breaks the hash chain' python3 "$validator" validate "$tmp_dir/tampered.jsonl"
+sed '1s/"sequence":1/"sequence":1.0/' "$ledger_copy" >"$tmp_dir/float-sequence.jsonl"
+assert_blocked 'invalid schema or sequence' python3 "$validator" validate \
+  "$tmp_dir/float-sequence.jsonl"
 
 printf 'gate-k formal-attempt ledger harness: PASS\n'

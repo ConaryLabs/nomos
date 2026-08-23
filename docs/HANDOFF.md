@@ -44,7 +44,11 @@ weakened exact scalar checks, and tooling metadata still named revision 3. The
 current repair validates the complete task record and committed ledger HEAD,
 admits legacy evidence only by exact frozen receipt hash, restricts sanitization
 to explicit Pi message/result content locations, type-checks every fixed scalar,
-and identifies protocol revision 5 consistently. A fresh exact-head audit remains.
+and identifies protocol revision 5 consistently. The tenth audit then reproduced
+one remaining scalar alias at `ac0f125`: Pi
+session `version: 3.0` compared equal to integer `3`. The current repair requires
+the exact integer type for Pi session versions and ledger sequence numbers and
+adds adversarial regressions for both. A fresh exact-head audit remains.
 This file orients a fresh session; it is rewritten at each slice boundary and
 never accumulates history (git has that).
 

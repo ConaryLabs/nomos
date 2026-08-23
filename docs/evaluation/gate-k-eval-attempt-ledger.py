@@ -38,7 +38,8 @@ def validate_event(event: object, sequence: int, previous: str | None) -> dict[s
     else:
         optional = {"outcome", "reason"}
     require_keys(event, BASE | optional, set(), f"ledger event {sequence}")
-    if event["schema"] != "nomos.gate_k.formal_attempt_event@1" or event["sequence"] != sequence:
+    if (event["schema"] != "nomos.gate_k.formal_attempt_event@1" or
+            type(event["sequence"]) is not int or event["sequence"] != sequence):
         fail(f"ledger event {sequence} has invalid schema or sequence")
     if event["previousEventSha256"] != previous:
         fail(f"ledger event {sequence} breaks the hash chain")

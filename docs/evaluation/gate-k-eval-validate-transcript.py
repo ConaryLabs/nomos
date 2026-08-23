@@ -52,7 +52,7 @@ def validate(events: list[dict[str, object]], args: argparse.Namespace) -> dict[
     if len(events) < 10:
         fail("transcript is truncated")
     session = require_keys(events[0], {"type", "version", "id", "timestamp", "cwd"}, set(), "session")
-    if session["type"] != "session" or session["version"] != 3:
+    if session["type"] != "session" or type(session["version"]) is not int or session["version"] != 3:
         fail("transcript does not begin with a Pi v3 session")
     require_keys(events[1], {"type"}, set(), "agent_start")
     if events[1]["type"] != "agent_start":
