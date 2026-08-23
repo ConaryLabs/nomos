@@ -1,10 +1,11 @@
 # Handoff — state of the repository
 
-Updated 2026-08-23 for the combined issue #69/#70 evidence closure. Semantic
-implementation is complete through SW-N and frozen on `main`; issue #68 merged
-as PR #74, issue #69 merged as PR #75, and issue #70 is owner-approved in PR
-#76. Gate K remains explicitly unaccepted pending combined-head proof and the
-formal gates.
+Updated 2026-08-23 for issue #79. Semantic implementation is complete through
+SW-N. Combined issue #69/#70 evidence closure produced exact candidate
+`gate-k-rc1` at `d8a0b85`. All four formal subject/checker sessions are complete,
+and the owner dispositioned both formal attempts `fail`; Gate K is explicitly
+unaccepted. Issue #79 repairs the finalizer without rewriting or retrying those
+attempts.
 This file orients a fresh session; it is rewritten at each slice boundary and
 never accumulates history (git has that).
 
@@ -410,27 +411,16 @@ never accumulates history (git has that).
 
 ## What is next
 
-Complete PR #76 integration, then rerun the issue #69 mechanical matrix and the
-issue #70 evaluation-tooling proof on the same clean combined head. Only after
-those candidate-bound proofs pass may the owner tag `gate-k-rc1`. No new
-semantic feature slice is authorized before final Gate K disposition. An
-evidence-driven defect may still be repaired through the issue-first flow; any
-acceptance-contract correction still requires an owner-authorized decision
-record.
+Complete #79, then assemble the immutable #71 and #72 records as the
+owner-disposed failures and merge their evidence PRs #77 and #78. Issue #73 then
+maps all nineteen acceptance criteria and records the final Gate K disposition.
+No formal retry or new semantic feature slice is authorized.
 
-The remaining formal order is:
-
-1. #71 — Gemini formal cold-author subject;
-2. #72 — DeepSeek formal cold-debug subject;
-3. #71 — DeepSeek independent author checker;
-4. #72 — Gemini independent debugger checker;
-5. #73 — complete nineteen-criterion owner disposition.
-
-After a `gate-k-rcN` candidate is frozen, any later code, schema, CLI, public
-packet documentation, or evaluation-harness change requires a new candidate
-and invalidates later exact-head evidence against the old candidate. No
-release-candidate tag exists yet, and implementation completion alone does not
-make Gate K green.
+`gate-k-rc1` remains the exact historical subject of the completed formal
+attempts. Because #79 changes evaluation-harness code after the tag, it is
+invalid for any later exact-head evidence. A future formal launch would require
+a new candidate, combined-head proof, and explicit owner authorization; issue
+#79 itself does not authorize one.
 
 The old `agy` Gemini route remains falsified evidence. Issue #49 qualifies Pi as
 the replacement transport without spending a formal attempt or changing the
@@ -479,13 +469,14 @@ issue #24 have the same author/non-author/CI chain as recorded above. Earlier
 SW-C, revision-4, and Rust-1.98 maintenance reruns also passed.
 Issue #69 closes the final exact-head disposition for Linux aarch64 release,
 ten runs per target, measured Gate K budgets, and the final explicit schema-
-ownership source review. Formal cold-agent gates remain unperformed regardless
-of #69's result.
+ownership source review at `gate-k-rc1`. The formal cold-agent sessions are now
+performed, but neither criterion 17 nor 18 passes.
 
 ## Remaining evidence points
 
-Issue #69's dedicated workflow supplies the merged mechanical evidence
-artifacts, and issue #70 supplies the evaluation harness and non-formal
-rehearsals. Their proofs must still pass together on the combined clean head
-before `gate-k-rc1` is tagged. The whole-kernel roster and invalidation rules
-are resolved; the formal runs remain unperformed.
+Issues #69 and #70 supply the merged mechanical evidence, evaluation harness,
+and non-formal rehearsals behind `gate-k-rc1`. Draft PR #77 preserves the
+Gemini author and DeepSeek checker; draft PR #78 preserves the DeepSeek debugger
+and Gemini checker. The semantic authoring and diagnosis were correct, but
+recorded outside-workspace requests make both formal attempts fail under the
+frozen rubric. Issue #79 is the only active tooling repair before #73.

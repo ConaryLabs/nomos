@@ -15,6 +15,8 @@ verdict=$3
 adjudicator=$4
 owner=$5
 out=$6
+script_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+command_boundary_audit="$script_dir/gate-k-eval-command-boundary.py"
 
 case $verdict in
   pass | fail | assisted | inconclusive) ;;
@@ -121,6 +123,12 @@ jq -e '
   (.reasons | type) == "array" and (.reasons | length) > 0
   ' "$checker_result" >/dev/null || fail 'checker result is incomplete'
 checker_verdict=$(jq -r '.verdict' "$checker_result")
+subject_boundary_json=$(python3 "$command_boundary_audit" "$subject/commands.json" subject) ||
+  fail 'subject command boundary audit failed'
+checker_boundary_json=$(python3 "$command_boundary_audit" "$checker/commands.json" checker) ||
+  fail 'checker command boundary audit failed'
+subject_boundary_verdict=$(jq -r '.verdict' <<<"$subject_boundary_json")
+checker_boundary_verdict=$(jq -r '.verdict' <<<"$checker_boundary_json")
 
 logical_verdict=pass
 logical_reason='subject completed within protocol and the independent checker passed'
@@ -131,6 +139,9 @@ elif [[ $(jq -r '.operatorIntervention' "$subject/task-receipt.json") != none ||
         $(jq -r '.operatorIntervention' "$checker/task-receipt.json") != none ]]; then
   logical_verdict=assisted
   logical_reason='substantive operator intervention was recorded'
+elif [[ $subject_boundary_verdict != pass || $checker_boundary_verdict != pass ]]; then
+  logical_verdict=fail
+  logical_reason='recorded subject or checker commands requested a path outside the declared workspace'
 elif [[ $subject_outcome != eligible-for-checker || $checker_outcome != completed-checker ||
         $checker_verdict != pass ]]; then
   logical_verdict=fail
@@ -240,6 +251,8 @@ result=$(jq -S -c -n \
   --arg shape "$subject_shape" \
   --arg classification "$subject_class" \
   --argjson formal "$subject_formal" \
+  --argjson subject_boundary "$subject_boundary_json" \
+  --argjson checker_boundary "$checker_boundary_json" \
   --slurpfile subject "$subject/task-receipt.json" \
   --slurpfile checker "$checker/task-receipt.json" '
   {
@@ -252,6 +265,10 @@ result=$(jq -S -c -n \
     shape: $shape,
     classification: $classification,
     formalAttempt: $formal,
+    commandBoundaryAudits: {
+      subject: $subject_boundary,
+      checker: $checker_boundary
+    },
     subject: $subject[0],
     checker: $checker[0]
   }
@@ -278,6 +295,8 @@ printf '%s\n' \
   '- Operator retries: `0` for subject and checker' \
   "- Adjudicator: $adjudicator" \
   "- Owner disposition: $owner" \
+  "- Subject command boundary: \`$subject_boundary_verdict\`" \
+  "- Checker command boundary: \`$checker_boundary_verdict\`" \
   '' \
   'The complete subject transcript, ordered commands, artifacts, independent checker' \
   'record, packet identities, model identities, and accounting are stored beside this file.' \

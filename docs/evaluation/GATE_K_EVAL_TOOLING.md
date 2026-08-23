@@ -110,6 +110,15 @@ recorded substantive intervention as `assisted` and a transport/harness failure
 that prevents fair evaluation as `inconclusive`. Final task merit belongs to the
 independent checker and owner.
 
+Before final assembly, `gate-k-eval-command-boundary.py` independently audits
+the subject and checker command records. It tokenizes the recorded top-level
+shell command, excludes heredoc bodies from shell-operand analysis, normalizes
+literal absolute and parent-traversal path tokens, and records the command
+ordinal, command digest, and outside-workspace token for every finding. A
+finding mechanically derives `fail` even when `checker.json` self-reports
+`pass`. Forbidden-path strings embedded as quoted Python or heredoc scan data
+are not top-level path tokens and do not become false access findings.
+
 A completed record contains `RUN.md`, `plan.json`, `packet-manifest.json`,
 `prompt.txt`, the complete sanitized NDJSON event stream, `commands.json`,
 the complete subject and checker artifact trees, and `checker.json` after
@@ -227,6 +236,31 @@ were quoted scan patterns, not access attempts. Durable records live at
 `docs/evaluation/runs/rehearsal/2026-08-23-claude-opus-5-debug-r6/`.
 
 ## Invalidation
+
+### Formal `gate-k-rc1` finalizer finding
+
+The four formal sessions against exact candidate
+`d8a0b85c55aa33c20f46e5dfd9e0d1f317e1f1c9` completed in their predeclared
+order. The Gemini author subject produced a correct second door, and the
+DeepSeek author checker reproduced it byte-for-byte. That checker nevertheless
+requested `/dev/null` at command ordinals 1 and 16, then improperly self-waived
+the violation and returned `pass`. The prior finalizer trusted that self-verdict
+and would not encode the evidence-backed failure.
+
+Issue #79 adds the independent command audit and a regression containing a
+`pass` checker result with an actual forbidden redirection. The finalizer now
+refuses to assemble that fixture as pass and records the exact boundary finding
+when the owner requests the mechanically derived `fail`. A companion fixture
+proves that a quoted forbidden-path string used only as scan data remains a
+pass. The DeepSeek debug subject's ordinals 1, 48, and 65 are detected by the
+same mechanism; its Gemini checker correctly returned `reject` independently.
+
+Peter Permenter dispositioned both formal attempts `fail` on 2026-08-23. Their
+subject and checker records are immutable, and no retry is authorized or
+planned. This tooling repair does not retroactively change those sessions or
+their candidate binding. It does invalidate `gate-k-rc1` for any later
+exact-head evidence: a future launch would require a newly frozen
+`gate-k-rcN`, combined-head proof, and explicit owner authorization.
 
 Any packet allowlist, public packet document, prompt, constraint, runner, recorder,
 checker construction, or boundary-extension change after a candidate is tagged

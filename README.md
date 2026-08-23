@@ -26,8 +26,11 @@ any renderer is built.
   runtime and replay evidence, atomic verified run bundles, the immutable
   `migrate` command, and package-bound read-only entity and transition
   explanations
-- **Gate K status:** evidence closure is in progress. The implementation-complete
-  tree is not yet a frozen `gate-k-rcN`, and Gate K is not accepted or green
+- **Gate K status:** `gate-k-rc1` freezes exact candidate `d8a0b85`. Both formal
+  cold-agent attempts are complete and owner-disposed `fail` after otherwise
+  correct semantic work because a subject or checker requested a forbidden
+  outside-workspace path. Issue #79 repairs fail-closed final assembly; Gate K
+  is not accepted or green
 - **Contract revision:** 7, owner-authorized in decision 0009
 - **Cold-agent protocol revision:** 3, owner-authorized in decision 0010
 - **Scope:** greenfield / vacuum architecture exercise

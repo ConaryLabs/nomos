@@ -79,6 +79,23 @@ tree_sha() {
     done | sha256sum | cut -d' ' -f1
 }
 
+rebind_recorded_commands() {
+  local record=$1
+  local command=$2
+  local commands_update receipt_update digest
+  commands_update=$(mktemp "$tmp_dir/commands-update.XXXXXX")
+  jq -S -c --arg command "$command" \
+    '.commands[0].arguments.command = $command' \
+    "$record/commands.json" >"$commands_update"
+  mv -- "$commands_update" "$record/commands.json"
+  digest=$(sha256sum "$record/commands.json" | cut -d' ' -f1)
+  receipt_update=$(mktemp "$tmp_dir/receipt-update.XXXXXX")
+  jq -S -c --arg digest "$digest" \
+    '.digests.commandsSha256 = $digest' \
+    "$record/task-receipt.json" >"$receipt_update"
+  mv -- "$receipt_update" "$record/task-receipt.json"
+}
+
 "$seed_builder" "$candidate" "$commit" "$tmp_dir/debug-seed" >/dev/null
 
 build_author() {
@@ -308,6 +325,39 @@ jq -e '.verdict == "pass" and .formalAttempt == false and .shape == "author"' \
 [[ $(tree_sha "$tmp_dir/author-run/checker/artifacts") == \
     $(jq -r '.digests.artifactsTreeSha256' \
       "$tmp_dir/author-run/checker/task-receipt.json") ]]
+
+cp -R "$tmp_dir/author-checker-record" "$tmp_dir/outside-path-checker-record"
+rebind_recorded_commands "$tmp_dir/outside-path-checker-record" \
+  'cat /workspace/brief.txt 2>/dev/null'
+assert_blocked 'requested verdict pass contradicts mechanically derived verdict fail' \
+  finalizer-checker-outside-path-pass \
+  "$finalizer" "$tmp_dir/author-subject-record" "$tmp_dir/outside-path-checker-record" \
+  pass fixture-adjudicator fixture-owner "$tmp_dir/outside-path-pass-run"
+"$finalizer" "$tmp_dir/author-subject-record" "$tmp_dir/outside-path-checker-record" \
+  fail fixture-adjudicator fixture-owner "$tmp_dir/outside-path-fail-run" >/dev/null
+jq -e '
+  .verdict == "fail" and
+  .reason == "recorded subject or checker commands requested a path outside the declared workspace" and
+  .commandBoundaryAudits.subject.verdict == "pass" and
+  .commandBoundaryAudits.checker.verdict == "reject" and
+  .commandBoundaryAudits.checker.findings == [{
+    commandOrdinal: 0,
+    commandSha256: "b06bf6c464f4bd1ca528655a03218278a7def04a1e77f26161ad5937941e2a43",
+    kind: "outside_workspace_path",
+    pathToken: "/dev/null"
+  }]
+  ' "$tmp_dir/outside-path-fail-run/result.json" >/dev/null
+
+cp -R "$tmp_dir/author-checker-record" "$tmp_dir/quoted-path-checker-record"
+rebind_recorded_commands "$tmp_dir/quoted-path-checker-record" \
+  'python3 -c "print('\''scan data: /dev/null'\'')"'
+"$finalizer" "$tmp_dir/author-subject-record" "$tmp_dir/quoted-path-checker-record" \
+  pass fixture-adjudicator fixture-owner "$tmp_dir/quoted-path-pass-run" >/dev/null
+jq -e '
+  .verdict == "pass" and
+  .commandBoundaryAudits.checker.verdict == "pass" and
+  .commandBoundaryAudits.checker.findings == []
+  ' "$tmp_dir/quoted-path-pass-run/result.json" >/dev/null
 
 launch_task debug-subject "$tmp_dir/debug-1"
 record_task debug-subject "$tmp_dir/debug-1"
