@@ -14,7 +14,8 @@ Gate K is closed as **failed**. Peter Permenter's owner disposition is
 - implementation: complete through SW-N;
 - acceptance: criteria 1–16 and 19 pass; criteria 17 and 18 fail;
 - formal retries: none authorized;
-- renderer or Gate 0 work: not authorized by this result.
+- renderer, executable Gate 0 work, and semantic development: not authorized;
+- one static, quarantined gaol target-pack study: authorized by decision 0014.
 
 The exact 1–19 matrix, owner consequence, protocol boundary, and limitations
 are in decision 0013. The machine-readable content-addressed inventory is
@@ -107,10 +108,17 @@ record hashes.
 
 ## What is next
 
-There is no active implementation target. Gate K failed, so this repository
-does not proceed automatically to Gate 0 or a renderer. Any continuation needs
-a new owner decision and a falsifiable issue that preserves this result; it may
-not weaken contract revision 7 or quietly retry either formal attempt.
+Issue #83 is the only authorized active slice after decision 0014 merges. It may
+create one static Gate 0-format study under
+`experiments/gate-0-gaol-target-pack/` using the existing gaol fixture as its
+brief. It may not add executable code, a renderer, rendering projection, asset
+pipeline, visual primitive catalog, dependency, semantic feature, formal retry,
+or claim of Gate K/Gate 0 acceptance.
+
+The study ends after one coherent target pack and Peter's explicit disposition:
+`visual thesis rejected`, `visual thesis promising`, or
+`visual thesis compelling`. Even a compelling result requires a fresh,
+prospectively governed Gate K attempt before renderer architecture or adoption.
 
 Decision 0005's temporary zero-third-party-dependency policy ended with the
 Gate K disposition. That does not admit any dependency automatically; a future
