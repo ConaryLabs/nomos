@@ -73,7 +73,7 @@ Issues #68–#72 and #79 are closed. Their PRs are merged:
 | #71 | #77 | formal Gemini author plus DeepSeek checker; failed |
 | #72 | #78 | formal DeepSeek debugger plus Gemini checker; failed |
 | #79 | #80 | fail-closed evidence authentication and deterministic assembly |
-| #73 | disposition PR | final owner verdict |
+| #73 | #81 | final owner verdict |
 
 Issue #79 changed evidence tooling and protocol documentation after the
 candidate was frozen. It changed no kernel crate, fixture, Cargo input, CLI,
