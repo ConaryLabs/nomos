@@ -36,9 +36,10 @@ any renderer is built.
   Gate K is not green
 - **Visual-study status:** decision 0014 authorizes one quarantined, static
   Gate 0-format study of the Gate K gaol under `experiments/`. Issue #83 has
-  assembled the coherent static target pack and is awaiting Peter's owner
-  disposition. It is non-authoritative, contains no renderer or executable
-  work, and cannot satisfy Gate K or count as a formal Gate 0 pass
+  assembled the coherent static target pack; Peter's owner disposition is
+  **visual thesis compelling**. It is non-authoritative, contains no renderer
+  or executable work, and cannot satisfy Gate K or count as a formal Gate 0
+  pass
 - **Contract revision:** 7, owner-authorized in decision 0009
 - **Cold-agent protocol revision:** 5, owner-authorized in decision 0012
 - **Scope:** greenfield / vacuum architecture exercise
@@ -52,9 +53,10 @@ way to fail before graphics, networking, audio, or a general engine grow around
 it.
 
 That falsification has now happened at the cold-agent boundary. Nomos remains a
-useful semantic experiment. The decision-0014 static visual study now awaits
-owner review of its ordinary gameplay frame and supporting tests; no renderer,
-formal Gate 0 implementation, or further semantic slice is authorized.
+useful semantic experiment. The decision-0014 static visual study produced a
+compelling owner-approved target from its ordinary gameplay frame and supporting
+tests. A fresh prospectively governed Gate K attempt is still required before
+renderer architecture or adoption; no such work is authorized here.
 
 ## Read in this order
 
@@ -63,8 +65,8 @@ formal Gate 0 implementation, or further semantic slice is authorized.
 2. [docs/decisions/0014-quarantined-gaol-visual-target-experiment.md](docs/decisions/0014-quarantined-gaol-visual-target-experiment.md)
    — the narrow authorization for a non-authoritative static gaol target pack.
 3. [experiments/gate-0-gaol-target-pack/TARGET.md](experiments/gate-0-gaol-target-pack/TARGET.md)
-   — the static visual invariants, frame intent, provenance, risks, and pending
-   owner disposition for issue #83.
+   — the static visual invariants, frame intent, provenance, risks, and
+   compelling owner disposition for issue #83.
 4. [THESIS.md](THESIS.md) — the design, boundaries, proof gates, resolved
    disagreements, and adoption criteria.
 5. [KERNEL.md](KERNEL.md) — the revisioned acceptance contract for Gate K, the

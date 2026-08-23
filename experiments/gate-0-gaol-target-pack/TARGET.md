@@ -1,6 +1,6 @@
 # Gate 0 gaol visual target
 
-Status: **awaiting owner disposition**
+Status: **owner-disposed: visual thesis compelling**
 
 Issue: [#83](https://github.com/ConaryLabs/nomos/issues/83)
 
@@ -169,13 +169,12 @@ Exact accepted output hashes and generation/edit relationships are recorded in
 
 ## Owner disposition
 
-**Pending Peter Permenter's review.** This branch and issue remain incomplete
-until Peter records exactly one authorized outcome here:
+Peter Permenter reviewed the complete pack on 2026-08-23, including the normal
+gameplay-camera frame as the primary surface, and recorded:
 
-- `visual thesis rejected`;
-- `visual thesis promising`; or
-- `visual thesis compelling`.
+> **visual thesis compelling**
 
-A `promising` or `compelling` verdict still requires a fresh, prospectively
-governed Gate K attempt before renderer architecture or project adoption. No
-verdict silently authorizes implementation.
+The pack is preserved as the desired visual target. Decision 0014 still
+requires a fresh, prospectively governed Gate K attempt before renderer
+architecture or project adoption. This verdict does not amend the failed Gate K
+record and does not authorize implementation.

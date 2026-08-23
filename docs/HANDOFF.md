@@ -16,7 +16,8 @@ Gate K is closed as **failed**. Peter Permenter's owner disposition is
 - formal retries: none authorized;
 - renderer, executable Gate 0 work, and semantic development: not authorized;
 - one static, quarantined gaol target-pack study: authorized by decision 0014,
-  assembled under issue #83, and awaiting Peter's explicit disposition.
+  assembled under issue #83, and owner-disposed as
+  `visual thesis compelling`.
 
 The exact 1–19 matrix, owner consequence, protocol boundary, and limitations
 are in decision 0013. The machine-readable content-addressed inventory is
@@ -119,10 +120,11 @@ The pack adds no executable code, renderer, rendering projection, asset
 pipeline, visual primitive catalog, dependency, semantic feature, formal retry,
 or claim of Gate K/Gate 0 acceptance.
 
-The remaining acceptance step is Peter's explicit disposition in `TARGET.md`:
-`visual thesis rejected`, `visual thesis promising`, or
-`visual thesis compelling`. Even a compelling result requires a fresh,
-prospectively governed Gate K attempt before renderer architecture or adoption.
+Peter reviewed the complete pack, including the ordinary gameplay-camera frame
+as the primary surface, and recorded `visual thesis compelling` in `TARGET.md`.
+The pack is the preserved desired target. A fresh, prospectively governed Gate K
+attempt remains required before renderer architecture or adoption; neither is
+authorized by the visual verdict.
 
 Decision 0005's temporary zero-third-party-dependency policy ended with the
 Gate K disposition. That does not admit any dependency automatically; a future
