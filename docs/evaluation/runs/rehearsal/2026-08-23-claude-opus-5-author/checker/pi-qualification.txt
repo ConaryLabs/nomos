@@ -1,0 +1,47 @@
+PI_VERSION 0.84.2
+PI_INSTALL npm install -g --ignore-scripts @earendil-works/pi-coding-agent@0.84.2
+PI_NPM_INTEGRITY sha512-l4E+B7hgXKWddRo8bC/eSue2aWZjEgJ9xIpf5p0Og+lq8a2TArCwJ0HCoCPCgaBP/tN4zbYH/wOwvx9pJpeLCA==
+PI_PACKAGE_TREE_SHA256 63a9dd14b0ae82cee2db30c56822682af19145d145febb58b613d5de4dbb27af
+PI_NODE v26.7.0
+PI_NPM 12.0.2
+PI_BWRAP bubblewrap 0.11.2
+PI_BWRAP_SHA256 6ad2138a73d592acb43525432965e3c66f6fad8a2f3d610c6ca0b6855e993cbe
+PI_RUST_TOOLCHAIN 1.98.0-x86_64-unknown-linux-gnu
+PI_HOST_OS Linux 7.1.8-arch1-3 x86_64
+PI_TARGET_COMMIT 71093eb46805c6811100e4b552595048a11b5346
+PI_LANE claude
+PI_MODEL anthropic	claude-opus-5	Claude Opus 5	high
+PI_AUTH_TYPE oauth
+PI_EXTENSION /work/signed-dev/src/signed-world/docs/evaluation/pi-cold-agent-extension.ts 2e1b18887996660e37b36d2a096a985ac05041fbfb03518207dc5cb5d63869fb
+PI_PROVIDER_EXTENSION none
+PI_PROVIDER_PACKAGE none
+PI_PROVIDER_INSTALL none
+PI_PROVIDER_ENV overrides-cleared prewarm-disabled
+PI_MODEL_CATALOG none
+PI_SYSTEM_PROMPT /work/signed-dev/src/signed-world/docs/evaluation/pi-cold-agent-system-prompt.txt 2d29828a0cf0b96a372be5b35548e09f7a237154cef674356c133b2583622902
+PI_WORKSPACE /work/signed-dev/src/signed-world
+PI_WORKTREE_STATUS clean
+PI_CONFIG_ROOT /tmp/tmp.hkeu2jvqkU/config ephemeral-auth-only
+PI_SESSION 01a02c48-2e00-79a6-ae1f-3c6c89c6d5ea ephemeral
+PI_INVOCATION pi --provider anthropic --model claude-opus-5 --thinking high --mode json --no-session --no-approve --offline --no-extensions -e /work/signed-dev/src/signed-world/docs/evaluation/pi-cold-agent-extension.ts --no-skills --no-prompt-templates --no-themes --no-context-files --no-builtin-tools --tools bash --system-prompt <sha256:2d29828a0cf0b96a372be5b35548e09f7a237154cef674356c133b2583622902> <neutral-prompt>
+PI_BOUNDARY {"schema":"nomos.pi_cold_agent_boundary@2","boundaryKind":"source-preflight","mode":"json","targetCommit":"71093eb46805c6811100e4b552595048a11b5346","hostWorkspace":"/work/signed-dev/src/signed-world","guestWorkspace":"/workspace","provider":"anthropic","model":"claude-opus-5","thinking":"high","sessionId":"01a02c48-2e00-79a6-ae1f-3c6c89c6d5ea","sessionFile":null,"projectTrusted":false,"entryTypesBeforeRun":["model_change","thinking_level_change"],"activeTools":["bash"],"configuredTools":[{"name":"bash","source":{"path":"/work/signed-dev/src/signed-world/docs/evaluation/pi-cold-agent-extension.ts","source":"cli","scope":"temporary","origin":"top-level"}}],"contextFiles":[],"skills":[],"systemPromptSha256":"2d29828a0cf0b96a372be5b35548e09f7a237154cef674356c133b2583622902","finalSystemPromptSha256":"2a191332cb643a9679184d8b6f64f4ca2d30e55a90b25c580121c2386ba35f48","packetManifestSha256":null,"binarySha256":null,"taskPromptSha256":null,"taskShape":null,"writablePaths":[],"budgets":null,"sandbox":{"backend":"bubblewrap","binary":"/usr/bin/bwrap","root":"read-only","workspace":"read-write-only-host-mount","network":"unshared","environment":"cleared-and-allowlisted","checks":{"targetCommitResolved":true,"workspaceRead":true,"outsideReadDenied":true,"outsideWriteDenied":true,"credentialEnvironmentAbsent":true,"networkDenied":true,"workspaceWrite":true,"cargoAvailable":true},"selfTest":"pass"}}
+PI_EVENTS_BEGIN
+{"type":"session","version":3,"id":"01a02c48-2e00-79a6-ae1f-3c6c89c6d5ea","timestamp":"2026-08-23T01:42:03.008Z","cwd":"/work/signed-dev/src/signed-world"}
+{"type":"agent_start"}
+{"type":"turn_start"}
+{"type":"message_start","message":{"role":"user","content":[{"type":"text","text":"Output exactly this line and nothing else: pi boundary preflight"}],"timestamp":1787449323061}}
+{"type":"message_end","message":{"role":"user","content":[{"type":"text","text":"Output exactly this line and nothing else: pi boundary preflight"}],"timestamp":1787449323061}}
+{"type":"message_start","message":{"role":"assistant","content":[],"api":"anthropic-messages","provider":"anthropic","model":"claude-opus-5","usage":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"totalTokens":0,"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"total":0}},"stopReason":"pending","timestamp":1787449323105}}
+{"type":"message_update","usage":{"input":2,"output":6,"cacheRead":673,"cacheWrite":0,"totalTokens":681,"cost":{"input":0.00001,"output":0.00015000000000000001,"cacheRead":0.0003365,"cacheWrite":0,"total":0.0004965},"cacheWrite1h":0},"assistantMessageEvent":{"type":"thinking_start","contentIndex":0}}
+{"type":"message_update","usage":{"input":2,"output":6,"cacheRead":673,"cacheWrite":0,"totalTokens":681,"cost":{"input":0.00001,"output":0.00015000000000000001,"cacheRead":0.0003365,"cacheWrite":0,"total":0.0004965},"cacheWrite1h":0},"assistantMessageEvent":{"type":"thinking_delta","contentIndex":0,"delta":"The"}}
+{"type":"message_update","usage":{"input":2,"output":6,"cacheRead":673,"cacheWrite":0,"totalTokens":681,"cost":{"input":0.00001,"output":0.00015000000000000001,"cacheRead":0.0003365,"cacheWrite":0,"total":0.0004965},"cacheWrite1h":0},"assistantMessageEvent":{"type":"thinking_delta","contentIndex":0,"delta":" instruction is simple enough - I just need to output that exact line as requested."}}
+{"type":"message_update","usage":{"input":2,"output":6,"cacheRead":673,"cacheWrite":0,"totalTokens":681,"cost":{"input":0.00001,"output":0.00015000000000000001,"cacheRead":0.0003365,"cacheWrite":0,"total":0.0004965},"cacheWrite1h":0},"assistantMessageEvent":{"type":"thinking_end","contentIndex":0,"content":"The instruction is simple enough - I just need to output that exact line as requested."}}
+{"type":"message_update","usage":{"input":2,"output":6,"cacheRead":673,"cacheWrite":0,"totalTokens":681,"cost":{"input":0.00001,"output":0.00015000000000000001,"cacheRead":0.0003365,"cacheWrite":0,"total":0.0004965},"cacheWrite1h":0},"assistantMessageEvent":{"type":"text_start","contentIndex":1}}
+{"type":"message_update","usage":{"input":2,"output":6,"cacheRead":673,"cacheWrite":0,"totalTokens":681,"cost":{"input":0.00001,"output":0.00015000000000000001,"cacheRead":0.0003365,"cacheWrite":0,"total":0.0004965},"cacheWrite1h":0},"assistantMessageEvent":{"type":"text_delta","contentIndex":1,"delta":"pi boundary preflight"}}
+{"type":"message_update","usage":{"input":2,"output":6,"cacheRead":673,"cacheWrite":0,"totalTokens":681,"cost":{"input":0.00001,"output":0.00015000000000000001,"cacheRead":0.0003365,"cacheWrite":0,"total":0.0004965},"cacheWrite1h":0},"assistantMessageEvent":{"type":"text_end","contentIndex":1,"content":"pi boundary preflight"}}
+{"type":"message_end","message":{"role":"assistant","content":[{"type":"thinking","thinking":"The instruction is simple enough - I just need to output that exact line as requested."},{"type":"text","text":"pi boundary preflight"}],"api":"anthropic-messages","provider":"anthropic","model":"claude-opus-5","usage":{"input":2,"output":58,"cacheRead":673,"cacheWrite":0,"totalTokens":733,"cost":{"input":0.00001,"output":0.0014500000000000001,"cacheRead":0.0003365,"cacheWrite":0,"total":0.0017965000000000001},"cacheWrite1h":0,"reasoning":48},"stopReason":"stop","timestamp":1787449323105,"responseId":"msg_011CeJq7oF4v52TJ8nwBvvwk","rawStopReason":"end_turn"}}
+{"type":"turn_end","message":{"role":"assistant","content":[{"type":"thinking","thinking":"The instruction is simple enough - I just need to output that exact line as requested."},{"type":"text","text":"pi boundary preflight"}],"api":"anthropic-messages","provider":"anthropic","model":"claude-opus-5","usage":{"input":2,"output":58,"cacheRead":673,"cacheWrite":0,"totalTokens":733,"cost":{"input":0.00001,"output":0.0014500000000000001,"cacheRead":0.0003365,"cacheWrite":0,"total":0.0017965000000000001},"cacheWrite1h":0,"reasoning":48},"stopReason":"stop","timestamp":1787449323105,"responseId":"msg_011CeJq7oF4v52TJ8nwBvvwk","rawStopReason":"end_turn"},"toolResults":[]}
+{"type":"agent_end","messages":[{"role":"user","content":[{"type":"text","text":"Output exactly this line and nothing else: pi boundary preflight"}],"timestamp":1787449323061},{"role":"assistant","content":[{"type":"thinking","thinking":"The instruction is simple enough - I just need to output that exact line as requested."},{"type":"text","text":"pi boundary preflight"}],"api":"anthropic-messages","provider":"anthropic","model":"claude-opus-5","usage":{"input":2,"output":58,"cacheRead":673,"cacheWrite":0,"totalTokens":733,"cost":{"input":0.00001,"output":0.0014500000000000001,"cacheRead":0.0003365,"cacheWrite":0,"total":0.0017965000000000001},"cacheWrite1h":0,"reasoning":48},"stopReason":"stop","timestamp":1787449323105,"responseId":"msg_011CeJq7oF4v52TJ8nwBvvwk","rawStopReason":"end_turn"}],"willRetry":false}
+{"type":"agent_settled"}
+PI_EVENTS_END
+PI_COLD_AGENT_BOUNDARY PASS

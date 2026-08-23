@@ -1,0 +1,2 @@
+schema nomos.command_script@2
+unlock north_gate with credential/gaoler_key

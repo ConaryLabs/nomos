@@ -1,8 +1,10 @@
 # Handoff — state of the repository
 
-Updated 2026-08-22 for issue #68 after SW-N merged. Semantic implementation is
-complete through SW-N on `main`; the post-SW-N disposition is active on branch
-`post-sw-n-freeze-68`. Gate K evidence closure remains in progress.
+Updated 2026-08-23 for issue #70 after both non-formal cold-agent rehearsals
+passed. Semantic implementation is complete through SW-N on `main`; issue #68
+merged as PR #74, issue #69 is implemented in draft PR #75, and issue #70 is
+active in draft PR #76 on branch `gate-k-eval-tooling-70`. Gate K evidence
+closure remains in progress.
 This file orients a fresh session; it is rewritten at each slice boundary and
 never accumulates history (git has that).
 
@@ -116,8 +118,17 @@ never accumulates history (git has that).
   after Opus rehearsals showed they added termination and shell-parsing failure
   modes. Tokens, turns, tool calls, and exact commands remain recorded. Fresh
   sessions, no coaching, no retry after model failure, packet isolation,
-  eligibility, and rubrics remain unchanged. No formal attempt has begun, and
-  the superseded rehearsal transports are not reclassified.
+  eligibility, and rubrics remain unchanged. The final non-formal Opus author
+  subject/checker pair and debug subject/checker pair passed against exact clean
+  candidate `71093eb46805c6811100e4b552595048a11b5346`; complete receipts live
+  under `docs/evaluation/runs/rehearsal/2026-08-23-claude-opus-5-author/`
+  and `docs/evaluation/runs/rehearsal/2026-08-23-claude-opus-5-debug/`.
+  The author pair recorded 17/15 assistant turns, 25/23 tool calls, and
+  278,826/637,121 provider-reported tokens. The debug pair recorded 20/17
+  assistant turns, 32/26 tool calls, and 750,160/719,023 provider-reported
+  tokens. All four sessions were distinct, neither rehearsal was formal, and
+  the Gemini and DeepSeek formal attempt counts remain zero. Superseded
+  rehearsal transports are not reclassified.
 - **CI uses `actions/checkout@v7` (#11):** PR and post-merge verification passed
   without the Node 20 compatibility annotation.
 - **The GPT Pro architecture checkpoint is owner-disposed (#25):** review of
@@ -325,27 +336,24 @@ never accumulates history (git has that).
 
 ## What is next
 
-Finish issue #68 without changing semantic behavior. It records the
-implementation-complete boundary while keeping Gate K explicitly unaccepted.
+Finish issue #70 by running the exact-head repository proof and obtaining the
+required non-author audit of packet allowlists, isolation composition,
+accounting, and rehearsal evidence. Issue #69 is separately implemented and
+green in draft PR #75; issue #70 is implemented and rehearsed in draft PR #76.
 No new semantic feature slice is authorized before final Gate K disposition.
 An evidence-driven defect may still be repaired through the repository's
 issue-first flow; any acceptance-contract correction still requires an
 owner-authorized decision record.
 
-The only planned work after #68 is:
+After #69 and #70 are owner-disposed and merged, rerun their candidate-bound
+proofs on the same clean combined head. Only then may the owner tag
+`gate-k-rc1`. The remaining order is:
 
-1. #69 — the full determinism matrix, measured budgets, and final schema-
-   ownership source review;
-2. #70 — formal packet/checker tooling and non-formal Opus rehearsals;
-3. #71 — the formal Gemini cold-author subject and later DeepSeek checker;
-4. #72 — the formal DeepSeek cold-debug subject and later Gemini checker;
-5. #73 — the complete nineteen-criterion owner disposition.
-
-Issues #69 and #70 may proceed in parallel after #68. After both are merged,
-their candidate-bound proofs must be rerun on the same clean combined head.
-Only then may the owner tag `gate-k-rc1`. The formal order is Gemini author
-subject, DeepSeek debugger subject, DeepSeek author checker, Gemini debugger
-checker, then final disposition.
+1. #71 — Gemini formal cold-author subject;
+2. #72 — DeepSeek formal cold-debug subject;
+3. #71 — DeepSeek independent author checker;
+4. #72 — Gemini independent debugger checker;
+5. #73 — complete nineteen-criterion owner disposition.
 
 After a `gate-k-rcN` candidate is frozen, any later code, schema, CLI, public
 packet documentation, or evaluation-harness change requires a new candidate
@@ -382,6 +390,7 @@ cargo run --locked --bin nomos -- replay target/tmp/gate-k-proof/gaol.world --lo
 docs/evaluation/test-agy-print-preflight.sh
 docs/evaluation/test-agy-formal-boundary-preflight.sh
 docs/evaluation/test-pi-cold-agent-preflight.sh
+docs/evaluation/test-gate-k-eval-tooling.sh
 ```
 
 The authenticated formal-boundary command is an expected negative proof on

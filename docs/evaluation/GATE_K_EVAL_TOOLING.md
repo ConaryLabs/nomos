@@ -106,7 +106,16 @@ The committed rehearsal inputs are explicitly ineligible:
 
 The debug mutation record is supplied only to its checker packet. It is not the
 formal DeepSeek mutation. Rehearsal records live under
-`docs/evaluation/runs/rehearsal/` and state `formal_attempt: false`.
+`docs/evaluation/runs/rehearsal/` and state `formalAttempt: false`.
+
+The final issue #70 rehearsals target exact clean candidate
+`71093eb46805c6811100e4b552595048a11b5346`. Both the author subject/checker
+pair and debug subject/checker pair passed without operator intervention or
+retry. Their complete records are stored at
+`docs/evaluation/runs/rehearsal/2026-08-23-claude-opus-5-author/` and
+`docs/evaluation/runs/rehearsal/2026-08-23-claude-opus-5-debug/`. Every task
+receipt states `formalAttempt: false`; these records spend no Gemini or
+DeepSeek formal attempt and cannot satisfy acceptance 17 or 18.
 
 ## Invalidation
 
