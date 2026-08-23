@@ -15,7 +15,9 @@ Gate K is closed as **failed**. Peter Permenter's owner disposition is
 - acceptance: criteria 1–16 and 19 pass; criteria 17 and 18 fail;
 - formal retries: none authorized;
 - renderer, executable Gate 0 work, and semantic development: not authorized;
-- one static, quarantined gaol target-pack study: authorized by decision 0014.
+- one static, quarantined gaol target-pack study: authorized by decision 0014,
+  assembled under issue #83, and owner-disposed as
+  `visual thesis compelling`.
 
 The exact 1–19 matrix, owner consequence, protocol boundary, and limitations
 are in decision 0013. The machine-readable content-addressed inventory is
@@ -75,6 +77,7 @@ Issues #68–#72 and #79 are closed. Their PRs are merged:
 | #72 | #78 | formal DeepSeek debugger plus Gemini checker; failed |
 | #79 | #80 | fail-closed evidence authentication and deterministic assembly |
 | #73 | #81 | final owner verdict |
+| #82 | #84 | authorize the quarantined gaol visual-target experiment |
 
 Issue #79 changed evidence tooling and protocol documentation after the
 candidate was frozen. It changed no kernel crate, fixture, Cargo input, CLI,
@@ -108,17 +111,25 @@ record hashes.
 
 ## What is next
 
-Issue #83 is the only authorized active slice after decision 0014 merges. It may
-create one static Gate 0-format study under
-`experiments/gate-0-gaol-target-pack/` using the existing gaol fixture as its
-brief. It may not add executable code, a renderer, rendering projection, asset
+Issue #83 completes the only slice authorized by decision 0014. Its nine
+coherent static bitmaps, `TARGET.md`, and hash-checked `manifest.json` are under
+`experiments/gate-0-gaol-target-pack/`. The ordinary gameplay-camera frame is
+the primary surface; the other images test environment, silhouette overlap,
+combat, spell, low-light, UI, palette/material, and motion-timing failure modes.
+The pack adds no executable code, renderer, rendering projection, asset
 pipeline, visual primitive catalog, dependency, semantic feature, formal retry,
 or claim of Gate K/Gate 0 acceptance.
 
-The study ends after one coherent target pack and Peter's explicit disposition:
-`visual thesis rejected`, `visual thesis promising`, or
-`visual thesis compelling`. Even a compelling result requires a fresh,
-prospectively governed Gate K attempt before renderer architecture or adoption.
+Peter reviewed the complete pack, including the ordinary gameplay-camera frame
+as the primary surface, and recorded `visual thesis compelling` in `TARGET.md`.
+The pack is the preserved desired target. A fresh, prospectively governed Gate K
+attempt remains required before renderer architecture or adoption; neither is
+authorized by the visual verdict.
+
+After #83 merges there is no active implementation slice. Any Gate K round two
+requires a new owner decision that prospectively revises the protocol, names a
+fresh candidate, preserves the failed revision-3 attempts, and authorizes new
+formal work. Renderer architecture and project adoption remain out of scope.
 
 Decision 0005's temporary zero-third-party-dependency policy ended with the
 Gate K disposition. That does not admit any dependency automatically; a future

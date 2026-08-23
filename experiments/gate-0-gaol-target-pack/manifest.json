@@ -1,0 +1,134 @@
+{
+  "schemaVersion": 1,
+  "experiment": "gate-0-gaol-target-pack",
+  "issue": 83,
+  "decision": "docs/decisions/0014-quarantined-gaol-visual-target-experiment.md",
+  "createdAt": "2026-08-23",
+  "authority": "none; static quarantined visual research",
+  "shippingAssetClaim": false,
+  "externalReferences": [],
+  "tool": {
+    "name": "OpenAI built-in image_gen",
+    "mode": "generate and reference-guided edit",
+    "promptRecord": "TARGET.md#provenance-and-prompt-record"
+  },
+  "bitmaps": [
+    {
+      "path": "actor-silhouettes.png",
+      "width": 1672,
+      "height": 941,
+      "bytes": 1747660,
+      "sha256": "d040c28808a1753ab0a6f285a09fe6e9ec854546d9a9e2554f6ddb016ed073c4",
+      "provenance": {
+        "kind": "ai-generated",
+        "operation": "reference-guided generation",
+        "inputs": ["gameplay-camera.png"],
+        "humanPixelEdits": false
+      }
+    },
+    {
+      "path": "combat-overlap.png",
+      "width": 1672,
+      "height": 941,
+      "bytes": 1705425,
+      "sha256": "194c1ab09814038d5f581264937c655324ed17498a17009378d0c8d1266ff4ab",
+      "provenance": {
+        "kind": "ai-generated",
+        "operation": "reference-guided generation",
+        "inputs": ["gameplay-camera.png"],
+        "humanPixelEdits": false
+      }
+    },
+    {
+      "path": "gameplay-camera.png",
+      "width": 1672,
+      "height": 941,
+      "bytes": 1751130,
+      "sha256": "329029c801707ec172f21841fe3ea583a12764de74ffcb6637c65187f57717d0",
+      "provenance": {
+        "kind": "ai-generated",
+        "operation": "text-to-image generation",
+        "inputs": [],
+        "humanPixelEdits": false
+      }
+    },
+    {
+      "path": "hero-environment.png",
+      "width": 1672,
+      "height": 941,
+      "bytes": 1718551,
+      "sha256": "592467991cbec80b4157ae4c85cf7e08f486f715ebcd294e6eb647f2078667a0",
+      "provenance": {
+        "kind": "ai-generated",
+        "operation": "reference-guided generation",
+        "inputs": ["gameplay-camera.png"],
+        "humanPixelEdits": false
+      }
+    },
+    {
+      "path": "low-light.png",
+      "width": 1672,
+      "height": 941,
+      "bytes": 1717806,
+      "sha256": "0786849351fdb799d8958283189605f4849fccb0f4e377d83a77defd2b62b744",
+      "provenance": {
+        "kind": "ai-generated",
+        "operation": "reference-guided generation followed by targeted spell removal",
+        "inputs": ["gameplay-camera.png", "unretained low-light draft"],
+        "humanPixelEdits": false
+      }
+    },
+    {
+      "path": "materials-palette.png",
+      "width": 1672,
+      "height": 941,
+      "bytes": 1689692,
+      "sha256": "25496e912a287635ac0854c8a216d62313632e31d9163facc1accff3f73be1c3",
+      "provenance": {
+        "kind": "ai-generated",
+        "operation": "reference-guided generation",
+        "inputs": ["gameplay-camera.png"],
+        "humanPixelEdits": false
+      }
+    },
+    {
+      "path": "motion-timing.png",
+      "width": 1672,
+      "height": 941,
+      "bytes": 1581809,
+      "sha256": "129e012a94561a358521e22e484a7a4999033d09d37c8ee734f09b3403fc0f13",
+      "provenance": {
+        "kind": "ai-generated",
+        "operation": "reference-guided generation",
+        "inputs": ["gameplay-camera.png"],
+        "humanPixelEdits": false
+      }
+    },
+    {
+      "path": "spell-effect.png",
+      "width": 1672,
+      "height": 941,
+      "bytes": 1695127,
+      "sha256": "e43efb08e29d453a9571ea3c69d4175023d5a921dc809047461756d80330fc31",
+      "provenance": {
+        "kind": "ai-generated",
+        "operation": "reference-guided generation",
+        "inputs": ["gameplay-camera.png"],
+        "humanPixelEdits": false
+      }
+    },
+    {
+      "path": "ui-overlay.png",
+      "width": 1672,
+      "height": 941,
+      "bytes": 1717104,
+      "sha256": "51da68acaa7f779c11df8f130ba29d582a0367d006f03baedf3f0252baded47c",
+      "provenance": {
+        "kind": "ai-generated",
+        "operation": "reference-guided generation",
+        "inputs": ["gameplay-camera.png"],
+        "humanPixelEdits": false
+      }
+    }
+  ]
+}
