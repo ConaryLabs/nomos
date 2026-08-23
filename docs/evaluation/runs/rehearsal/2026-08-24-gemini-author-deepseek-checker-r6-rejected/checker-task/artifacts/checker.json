@@ -1,0 +1,293 @@
+{
+  "schema": "nomos.gate_k.checker_result@2",
+  "protocolRevision": 6,
+  "verdict": "pass",
+  "commands": [
+    {
+      "ordinal": 0,
+      "tool": "bash",
+      "completed": true,
+      "isError": false,
+      "command": "ls -la /workspace",
+      "resultSnippet": "total 40\ndrwx------ 6 1002 1002 4096 Aug 23 22:22 .\ndrwxr-xr-x 8 1002 1002  220 Aug 23 22:22 ..\n-rw-r--r-- 1 1002 1002   41 Aug 23 22:22 .nomos-candidate-commit"
+    },
+    {
+      "ordinal": 1,
+      "tool": "bash",
+      "completed": true,
+      "isError": false,
+      "command": "cat /workspace/brief.txt",
+      "resultSnippet": "Non-formal Gate K author rehearsal. Add one approved `primitive/extinguishable_light` instance to the supplied source fixture. Use the distinct entity ID `watch"
+    },
+    {
+      "ordinal": 2,
+      "tool": "bash",
+      "completed": true,
+      "isError": false,
+      "command": "cat /workspace/plan.json",
+      "resultSnippet": "{\"budgets\":{\"freshSessions\":1,\"operatorRetriesMaximum\":0,\"operatorSubstantiveHintsMaximum\":0},\"candidate\":{\"binaryPath\":\"bin/nomos\",\"binarySha256\":\"4af70accf3d1"
+    },
+    {
+      "ordinal": 3,
+      "tool": "bash",
+      "completed": true,
+      "isError": false,
+      "command": "ls -la /workspace/input /workspace/reference /workspace/workspace",
+      "resultSnippet": "/workspace/input:\ntotal 12\ndrwxr-xr-x 2 1002 1002 4096 Aug 23 22:22 .\ndrwx------ 6 1002 1002 4096 Aug 23 22:22 ..\n-rw-r--r-- 1 1002 1002  324 Aug 23 22:22 gaol."
+    },
+    {
+      "ordinal": 4,
+      "tool": "bash",
+      "completed": true,
+      "isError": false,
+      "command": "cat /workspace/workspace/gaol.nomos",
+      "resultSnippet": "schema nomos.source@1\ncatalog credential/gaoler_key\n\nentity north_gate primitive/iron_barred_door\n  anchor face 5 0 0 north\n  credential credential/gaoler_key\ne"
+    },
+    {
+      "ordinal": 5,
+      "tool": "bash",
+      "completed": true,
+      "isError": false,
+      "command": "cat /workspace/reference/nomos-help.txt",
+      "resultSnippet": "Nomos Gate K semantic runtime\n\nUsage:\n  nomos validate <source.nomos>\n  nomos compile <source.nomos> --out <new.world/>\n  nomos inspect <world/>\n  nomos migrate"
+    },
+    {
+      "ordinal": 6,
+      "tool": "bash",
+      "completed": true,
+      "isError": false,
+      "command": "cat /workspace/reference/authoring.md",
+      "resultSnippet": "# Gate K `.nomos` authoring reference\n\nGate K source schema version 1 is a small line-oriented language. It contains\nprimitive instances and source-owned facts "
+    },
+    {
+      "ordinal": 7,
+      "tool": "bash",
+      "completed": true,
+      "isError": false,
+      "command": "cat /workspace/reference/compiler.md",
+      "resultSnippet": "---\ntitle: Gate K compiler\nstatus: Compiler implementation reference; current through SW-N\ndate: 2026-08-22\napplies_to: KERNEL.md sections 1, 2, 4, 9; acceptanc"
+    },
+    {
+      "ordinal": 8,
+      "tool": "bash",
+      "completed": true,
+      "isError": false,
+      "command": "cat /workspace/reference/KERNEL-authoring-excerpt.md",
+      "resultSnippet": "## 1. Exact base fixture\n\nOne source file describes exactly three world primitive instances in the base\nfixture:\n\n```text\nRoom contents:\n  north_gate       prim"
+    },
+    {
+      "ordinal": 9,
+      "tool": "bash",
+      "completed": true,
+      "isError": false,
+      "command": "/workspace/bin/nomos --help",
+      "resultSnippet": "Nomos Gate K semantic runtime\n\nUsage:\n  nomos validate <source.nomos>\n  nomos compile <source.nomos> --out <new.world/>\n  nomos inspect <world/>\n  nomos migrate"
+    },
+    {
+      "ordinal": 10,
+      "tool": "bash",
+      "completed": true,
+      "isError": true,
+      "command": "/workspace/bin/nomos validate /workspace/workspace/gaol.nomos",
+      "resultSnippet": "{\"diagnostics\":[{\"code\":\"EK0102\",\"message\":\"source path `/workspace/workspace/gaol.nomos` is not repository-relative\",\"repairs\":[\"use_supported_identifier_shape"
+    },
+    {
+      "ordinal": 11,
+      "tool": "bash",
+      "completed": true,
+      "isError": false,
+      "command": "/workspace/bin/nomos validate workspace/gaol.nomos",
+      "resultSnippet": "{\"artifacts\":[\"compiler-receipts.json\",\"diagnostics.json\",\"navigation.json\",\"persistence.json\",\"schemas.json\",\"simulation.json\",\"world-ir.json\"],\"command\":\"vali"
+    },
+    {
+      "ordinal": 12,
+      "tool": "bash",
+      "completed": true,
+      "isError": false,
+      "command": "/workspace/bin/nomos compile workspace/gaol.nomos --out workspace/test.world",
+      "resultSnippet": "{\"artifacts\":[\"workspace/test.world/manifest.json\",\"workspace/test.world/compiler-receipts.json\",\"workspace/test.world/diagnostics.json\",\"workspace/test.world/n"
+    },
+    {
+      "ordinal": 13,
+      "tool": "bash",
+      "completed": true,
+      "isError": false,
+      "command": "rm -rf workspace/test.world",
+      "resultSnippet": "(no output)"
+    },
+    {
+      "ordinal": 14,
+      "tool": "bash",
+      "completed": true,
+      "isError": false,
+      "command": "cat << 'EOF' > /workspace/workspace/gaol.nomos\nschema nomos.source@1\ncatalog credential/gaoler_key\n\nentity north_gate primitive/iron_barred_door\n  anchor face 5 0 0 north\n  credential credential/gaoler_key\nend\n\nentity flooded_section primitive/shallow_water_region\n  anchor region 2 2 0 4 3 0\nend\n\nentity brazier_02 primitive/extinguishable_light\n  anchor cell 3 1 0\nend\n\nentity watch_lamp primitive/extinguishable_light\n  anchor cell 4 0 1\nend\nEOF",
+      "resultSnippet": "(no output)"
+    },
+    {
+      "ordinal": 15,
+      "tool": "bash",
+      "completed": true,
+      "isError": false,
+      "command": "/workspace/bin/nomos validate workspace/gaol.nomos",
+      "resultSnippet": "{\"artifacts\":[\"compiler-receipts.json\",\"diagnostics.json\",\"navigation.json\",\"persistence.json\",\"schemas.json\",\"simulation.json\",\"world-ir.json\"],\"command\":\"vali"
+    },
+    {
+      "ordinal": 16,
+      "tool": "bash",
+      "completed": true,
+      "isError": false,
+      "command": "/workspace/bin/nomos compile workspace/gaol.nomos --out workspace/compiled.world",
+      "resultSnippet": "{\"artifacts\":[\"workspace/compiled.world/manifest.json\",\"workspace/compiled.world/compiler-receipts.json\",\"workspace/compiled.world/diagnostics.json\",\"workspace/"
+    },
+    {
+      "ordinal": 17,
+      "tool": "bash",
+      "completed": true,
+      "isError": false,
+      "command": "/workspace/bin/nomos inspect workspace/compiled.world",
+      "resultSnippet": "{\"command\":\"inspect\",\"compiler_version\":2,\"construction_schema\":{\"name\":\"nomos.world_ir.construction\",\"version\":3},\"entities\":[{\"capabilities\":[\"machine\",\"inter"
+    },
+    {
+      "ordinal": 18,
+      "tool": "bash",
+      "completed": true,
+      "isError": false,
+      "command": "/workspace/bin/nomos explain-entity workspace/compiled.world watch_lamp",
+      "resultSnippet": "{\"active_initial_claims\":[\"watch_lamp.emission#emits_light\"],\"command\":\"explain-entity\",\"effective_initial_facts\":{\"ground_movement\":null,\"light_emission\":{\"emi"
+    },
+    {
+      "ordinal": 19,
+      "tool": "bash",
+      "completed": true,
+      "isError": false,
+      "command": "cat << 'EOF' > /workspace/workspace/SUBJECT.md\n# Gate K Author Rehearsal: Subject Explanation\n\n## Changes Made\nAdded one approved `primitive/extinguishable_light` instance named `watch_lamp` to `/workspace/workspace/gaol.nomos` anchored at cell `4 0 1`. All existing catalog declarations and entity instances (`north_gate`, `flooded_section`, `brazier_02`) were preserved unchanged.\n\nAdded entity block in `/workspace/workspace/gaol.nomos`:\n```text\nentity watch_lamp primitive/extinguishable_light\n  anchor cell 4 0 1\nend\n```\n\n## Why the Compiler Accepted It\n1. **Schema & Grammar Compliance**: The entity declaration conforms to `nomos.source@1` syntax, using valid identifiers and terminating cleanly with `end`.\n2. **Approved Primitive**: `primitive/extinguishable_light` is one of the three approved primitive kinds in Gate K.\n3. **Correct Field Shape**: The primitive requires exactly a cell anchor (`anchor cell 4 0 1`) and no extraneous or forbidden source-owned fields (e.g., no raw transforms, lattice relations, or derived facts).\n4. **Distinct Symbol Identity**: The entity ID `watch_lamp` is unique within the symbol table and resolves cleanly without collision.\n5. **Successful Expansion & Projection**: The compiler expanded `watch_lamp` into its compiler-owned `emission` state machine (initial state `lit`, `extinguish` transition), linked its `emits_light` claim, resolved spatial lattice bindings at cell `(4, 0, 1)`, and emitted valid projections (simulation, persistence, navigation, diagnostics) and fact-ownership receipts without causal cycles.\n\n## Exact Reproduction Commands\nFrom the `/workspace` directory:\n\n```bash\n# Validate the modified source fixture\n/workspace/bin/nomos validate workspace/gaol.nomos\n\n# Compile into a world package\n/workspace/bin/nomos compile workspace/gaol.nomos --out workspace/compiled.world\n\n# Inspect the compiled world package\n/workspace/bin/nomos inspect workspace/compiled.world\n\n# Explain the added entity\n/workspace/bin/nomos explain-entity workspace/compiled.world watch_lamp\n```\nEOF",
+      "resultSnippet": "(no output)"
+    },
+    {
+      "ordinal": 20,
+      "tool": "bash",
+      "completed": true,
+      "isError": false,
+      "command": "cat /workspace/workspace/gaol.nomos",
+      "resultSnippet": "schema nomos.source@1\ncatalog credential/gaoler_key\n\nentity north_gate primitive/iron_barred_door\n  anchor face 5 0 0 north\n  credential credential/gaoler_key\ne"
+    },
+    {
+      "ordinal": 21,
+      "tool": "bash",
+      "completed": true,
+      "isError": true,
+      "command": "/workspace/bin/nomos validate workspace/gaol.nomos && /workspace/bin/nomos compile workspace/gaol.nomos --out workspace/compiled.world && /workspace/bin/nomos inspect workspace/compiled.world > /dev/null",
+      "resultSnippet": "{\"artifacts\":[\"compiler-receipts.json\",\"diagnostics.json\",\"navigation.json\",\"persistence.json\",\"schemas.json\",\"simulation.json\",\"world-ir.json\"],\"command\":\"vali"
+    },
+    {
+      "ordinal": 22,
+      "tool": "bash",
+      "completed": true,
+      "isError": false,
+      "command": "rm -rf /workspace/workspace/compiled.world",
+      "resultSnippet": "(no output)"
+    },
+    {
+      "ordinal": 23,
+      "tool": "bash",
+      "completed": true,
+      "isError": false,
+      "command": "/workspace/bin/nomos validate workspace/gaol.nomos && /workspace/bin/nomos compile workspace/gaol.nomos --out workspace/compiled.world && /workspace/bin/nomos inspect workspace/compiled.world > /dev/null",
+      "resultSnippet": "{\"artifacts\":[\"compiler-receipts.json\",\"diagnostics.json\",\"navigation.json\",\"persistence.json\",\"schemas.json\",\"simulation.json\",\"world-ir.json\"],\"command\":\"vali"
+    },
+    {
+      "ordinal": 24,
+      "tool": "bash",
+      "completed": true,
+      "isError": false,
+      "command": "ls -la /workspace /workspace/workspace",
+      "resultSnippet": "/workspace:\ntotal 40\ndrwx------ 6 1002 1002 4096 Aug 23 22:22 .\ndrwxr-xr-x 8 1002 1002  220 Aug 23 22:23 ..\n-rw-r--r-- 1 1002 1002   41 Aug 23 22:22 .nomos-cand"
+    },
+    {
+      "ordinal": 25,
+      "tool": "bash",
+      "completed": true,
+      "isError": false,
+      "command": "sha256sum /workspace/brief.txt /workspace/input/gaol.nomos /workspace/bin/nomos",
+      "resultSnippet": "8a967afa3e65422f970095a7ead163eafdd9d708831a8bc916af55066cd0f17b  /workspace/brief.txt\na69582e7400921cb0fed84fde16469c21081363af4ebaba93411e59ae3ca4725  /worksp"
+    },
+    {
+      "ordinal": 26,
+      "tool": "bash",
+      "completed": true,
+      "isError": false,
+      "command": "cat /workspace/packet-manifest.json",
+      "resultSnippet": "{\"candidateCommit\":\"66c96f4fef7552b047a260c28168bb52f7e06566\",\"files\":[{\"bytes\":41,\"mode\":\"644\",\"path\":\".nomos-candidate-commit\",\"schemaIdentity\":null,\"sha256\":"
+    }
+  ],
+  "checkerReproduction": [
+    {
+      "stage": "validate",
+      "command": "/workspace/bin/nomos validate workspace/gaol.nomos",
+      "cwd": "/workspace/output",
+      "exit": 0,
+      "summary": "status completed; world_ir_schema nomos.world_ir@2"
+    },
+    {
+      "stage": "compile",
+      "command": "/workspace/bin/nomos compile workspace/gaol.nomos --out compiled.world",
+      "cwd": "/workspace/output",
+      "exit": 0,
+      "manifest_digest": "a4bf38b57c2374dae36418b3064c720ea0c0775f8b32c759bb4587ea191ca487"
+    },
+    {
+      "stage": "inspect",
+      "command": "/workspace/bin/nomos inspect compiled.world",
+      "cwd": "/workspace/output",
+      "exit": 0,
+      "summary": "watch_lamp present with primitive primitive/extinguishable_light, cell binding (4,0,1)"
+    },
+    {
+      "stage": "explain-entity",
+      "command": "/workspace/bin/nomos explain-entity compiled.world watch_lamp",
+      "cwd": "/workspace/output",
+      "exit": 0,
+      "summary": "light_emission emitting:true via watch_lamp.emission#emits_light"
+    }
+  ],
+  "reasons": [
+    "Checker reproduction: `nomos validate workspace/gaol.nomos` completed cleanly (exit 0) with the same status JSON as the subject, and `nomos compile` reproduced the package byte-for-byte (manifest digest a4bf38b57c2374dae36418b3064c720ea0c0775f8b32c759bb4587ea191ca487; all 8 members SHA-256 identical to subject/artifacts/compiled.world).",
+    "Exact source change verified: the only delta from the recorded unmodified fixture (transcript ordinal 4, sha a69582e7400921cb0fed84fde16469c21081363af4ebaba93411e59ae3ca4725) is the appended entity `watch_lamp primitive/extinguishable_light` anchored at cell `4 0 1` (final source sha 6e3b29965d59bc788563be3dc9985bc403299f062e258f71ad87d69aeaf8f372).",
+    "Brief merit satisfied: one approved `primitive/extinguishable_light` instance added with distinct ID watch_lamp and legal cell anchor 4 0 1; existing entities (north_gate, flooded_section, brazier_02), catalog declaration `credential/gaoler_key`, and the three approved primitive kinds are preserved; no new door was added; no unapproved primitive introduced.",
+    "Compiled package semantics confirmed: watch_lamp expands to emission machine (lit/extinguished), resolves to cell (4,0,1), contributes emits_light claim, and appears in simulation, navigation, persistence, diagnostics and world-ir projections with ownership receipts.",
+    "Operational compliance: all 27 recorded commands are bash, all completed, and every path reference stayed inside /workspace. The only /dev use was `inspect ... > /dev/null` redirection sinks (ordinals 21 and 23), i.e., the exact permitted non-information-bearing device. No /tmp, /home, /etc, /workspace/.., /proc, /sys, /usr, mount, kernel, or network access was attempted or recorded; no unapproved write outside the declared writable path (workspace).",
+    "Hash-bound record integrity: subject artifact tree (cbb9e7a49e7d5058a4ad15dc86a798dec791b334c2ac2429f1b4d5ab012cc6ce), commands log (1657f40ab8b9fcc0faa024300219fb04660e28baa5f8107decab6bfbe94d0d12), packet manifest (56da98d6847b356ef8b01f9b2181b279236575e4dccf2895575d2bc76d129a8e), and supplied nomos binary (4af70accf3d1680f6b0e78f860be5ac62c5ab11b470026a83f01eb5b95051fd1) all match the packet manifest; subject explains the change in SUBJECT.md.",
+    "The two recorded non-zero exits are benign and self-corrected: ordinal 10 (absolute source path rejected as non-repository-relative, EK0102) and ordinal 21 (immutable output path already existed, EK0401) \u2014 followed by removal and a successful clean recompile at ordinal 23; neither indicates a forbidden access or unapproved change."
+  ],
+  "evidence": {
+    "nomosBinary": "4af70accf3d1680f6b0e78f860be5ac62c5ab11b470026a83f01eb5b95051fd1",
+    "candidateCommit": "66c96f4fef7552b047a260c28168bb52f7e06566",
+    "sourceModifiedSha256": "6e3b29965d59bc788563be3dc9985bc403299f062e258f71ad87d69aeaf8f372",
+    "sourceOriginalSha256": "a69582e7400921cb0fed84fde16469c21081363af4ebaba93411e59ae3ca4725",
+    "packageManifestDigest": "a4bf38b57c2374dae36418b3064c720ea0c0775f8b32c759bb4587ea191ca487",
+    "packageMembersSha256": {
+      "compiler-receipts.json": "3a6ce80e34f6cf55700092b1877146656803ece055abe4f88b616da62a608c99",
+      "diagnostics.json": "11aea747b614f3fcd87d729ce2c8dce859c059d6afa56501a63024788d46c473",
+      "manifest.json": "5440a5e136b4cee3cba329bec1c41b3181382571210264173fd8351808255749",
+      "navigation.json": "f8fa6e85d65f8e696747722ac37bb88a30bedd2b2e000b75e8d2795cd5a6ec86",
+      "persistence.json": "21a00c7ec3fa6de5a9ce2716bd41f99482a1296f236cfd84b9a8ee6bb41199e5",
+      "schemas.json": "724b92a6ca4d9e25a5d35114b753b7be40e386627283e1235ca127145a2ac3b9",
+      "simulation.json": "feb52a9e8c37c0c9e299e27a7d8ee85d7b76712737e9b11f7c3ed025bec7b913",
+      "world-ir.json": "c04f74248c3030889a9d81dd50acd2cb95b7e3dfa4f43df9ccc01a0a29fba480"
+    },
+    "artifactTreeSha256": "cbb9e7a49e7d5058a4ad15dc86a798dec791b334c2ac2429f1b4d5ab012cc6ce",
+    "commandsLogSha256": "1657f40ab8b9fcc0faa024300219fb04660e28baa5f8107decab6bfbe94d0d12",
+    "addedSourceBlock": "entity watch_lamp primitive/extinguishable_light\n  anchor cell 4 0 1\nend",
+    "watchLampPrimitive": "primitive/extinguishable_light",
+    "watchLampAnchorCell": {
+      "x": 4,
+      "y": 0,
+      "z": 1
+    },
+    "approvedPrimitiveKindsUsed": [
+      "primitive/iron_barred_door",
+      "primitive/shallow_water_region",
+      "primitive/extinguishable_light"
+    ]
+  }
+}

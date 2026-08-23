@@ -306,7 +306,7 @@ def validate_checker(value: object, digest: str) -> None:
     if current:
         base.add("protocolRevision")
     legacy = digest in LEGACY_CHECKER_SHA256S
-    if keys not in (base, base | {"evidence"}) and not legacy:
+    if (current and keys != base) or (not current and keys != base and not legacy):
         fail("checker result top-level fields differ from a declared protocol shape")
     if value["schema"] not in (
         "nomos.gate_k.checker_result@1",

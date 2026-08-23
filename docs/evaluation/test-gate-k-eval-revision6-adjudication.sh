@@ -4,6 +4,14 @@
 
 revision6_base="$tmp_dir/author-adjudication.json"
 
+jq '.checkerReproduction = []' \
+  "$tmp_dir/author-checker-record/artifacts/checker.json" \
+  >"$tmp_dir/revision6-extra-checker-field.json"
+assert_blocked 'top-level fields differ from a declared protocol shape' \
+  revision6-extra-checker-field python3 \
+  "$repo_root/docs/evaluation/gate-k-eval-validate-documents.py" checker-result \
+  "$tmp_dir/revision6-extra-checker-field.json"
+
 jq 'del(.records.subject.dimensions.semantic_merit)' "$revision6_base" \
   >"$tmp_dir/revision6-missing-dimension.json"
 assert_blocked 'dimension names differ from the protocol' revision6-missing-dimension \
