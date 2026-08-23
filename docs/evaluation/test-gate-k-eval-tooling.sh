@@ -94,6 +94,10 @@ build_author "$tmp_dir/author-1"
 build_author "$tmp_dir/author-2"
 build_debug "$tmp_dir/debug-1"
 build_debug "$tmp_dir/debug-2"
+grep -F 'Any attempted access outside `/workspace` makes the rehearsal ineligible' \
+  "$tmp_dir/author-1/prompt.txt" >/dev/null
+grep -F 'Any attempted outside access makes the rehearsal ineligible' \
+  "$tmp_dir/debug-1/prompt.txt" >/dev/null
 diff -r "$tmp_dir/author-1" "$tmp_dir/author-2" >/dev/null
 diff -r "$tmp_dir/debug-1" "$tmp_dir/debug-2" >/dev/null
 "$packet_verifier" "$tmp_dir/author-1" "$commit" >/dev/null
@@ -193,6 +197,8 @@ jq -e '.outcome == "eligible-for-checker" and .formalAttempt == false' \
 diff -r "$tmp_dir/author-checker-1" "$tmp_dir/author-checker-2" >/dev/null
 grep -F 'schema` exactly `nomos.gate_k.checker_result@1' \
   "$tmp_dir/author-checker-1/prompt.txt" >/dev/null
+grep -F 'even when the sandbox denied it' \
+  "$tmp_dir/author-checker-1/prompt.txt" >/dev/null
 launch_task author-checker "$tmp_dir/author-checker-1"
 record_task author-checker "$tmp_dir/author-checker-1"
 "$finalizer" "$tmp_dir/author-subject-record" "$tmp_dir/author-checker-record" \
@@ -216,6 +222,8 @@ record_task debug-subject "$tmp_dir/debug-1"
   --hidden-mutation "$tmp_dir/debug-seed/hidden-mutation.json" \
   --out "$tmp_dir/debug-checker" >/dev/null
 grep -F 'schema` exactly `nomos.gate_k.checker_result@1' \
+  "$tmp_dir/debug-checker/prompt.txt" >/dev/null
+grep -F 'even when the sandbox denied it' \
   "$tmp_dir/debug-checker/prompt.txt" >/dev/null
 launch_task debug-checker "$tmp_dir/debug-checker"
 record_task debug-checker "$tmp_dir/debug-checker"

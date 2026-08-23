@@ -132,8 +132,12 @@ never accumulates history (git has that).
   defects: copied input trees were insufficiently allowlisted, packet-run
   `/tmp` remained writable, and durable finalization omitted checker
   reproduction artifacts. The branch repairs all three and extends the
-  falsification suite; both rehearsal pairs must be rerun before issue #70 can
-  be green. No superseded rehearsal transport is reclassified.
+  falsification suite. The first repaired-boundary author rerun then attempted
+  two forbidden `/tmp` paths; Bubblewrap denied them, but its checker wrongly
+  treated the attempts as minor and passed. The prompts and rubric now state
+  explicitly that a denied model-requested outside access is still a rejection.
+  Both rehearsal pairs must be rerun before issue #70 can be green. No
+  superseded rehearsal transport is reclassified.
 - **CI uses `actions/checkout@v7` (#11):** PR and post-merge verification passed
   without the Node 20 compatibility annotation.
 - **The GPT Pro architecture checkpoint is owner-disposed (#25):** review of

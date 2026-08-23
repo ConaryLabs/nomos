@@ -35,6 +35,12 @@ declared task directory accepts a write. Source-only neutral qualification keeps
 its disposable `/tmp` because Cargo needs temporary storage; that worktree is a
 separate preflight boundary and is never the callable task packet.
 
+The task and checker prompts name `/tmp`, `/home`, `/etc`, and `/workspace/..`
+as forbidden explicitly. A checker must inspect every subject command and
+reject a model-requested outside-path access even if Bubblewrap denied it; a
+checker that probes those paths itself is likewise ineligible. This is task
+merit review on top of the structural sandbox, not shell parsing by the runner.
+
 The extension verifies the candidate binding, packet-manifest digest, binary,
 read-only packet root, declared writable path, absent credentials, absent
 outside-host paths, and unshared network before the first provider request.
@@ -132,7 +138,11 @@ audit of `97a9c7c` invalidated their pass disposition: it found fail-open copied
 tree allowlists, a writable packet-run `/tmp`, and omitted checker reproduction
 artifacts in the durable final record. They remain immutable rehearsal findings,
 not passing issue #70 evidence. The repaired harness requires fresh author and
-debug rehearsal pairs.
+debug rehearsal pairs. An uncommitted follow-up author rerun proved the repaired
+filesystem denied two subject-requested `/tmp` paths, but its checker treated
+those attempts as a minor deviation and passed. That run is not promoted. The
+prompts and rubric now make any model-requested outside-path access a rejection,
+including when the sandbox denies it; another clean-candidate rerun is required.
 
 ## Invalidation
 
