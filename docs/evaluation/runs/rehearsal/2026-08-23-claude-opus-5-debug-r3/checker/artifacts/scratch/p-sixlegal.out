@@ -1,0 +1,1 @@
+{"diagnostics":[{"code":"EK0002","message":"filesystem path `/workspace/input/debug-evidence/world/` is not a safe relative spelling","repairs":["use_supported_identifier_shape"]}],"status":"rejected"}

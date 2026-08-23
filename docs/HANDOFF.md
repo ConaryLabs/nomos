@@ -136,7 +136,15 @@ never accumulates history (git has that).
   two forbidden `/tmp` paths; Bubblewrap denied them, but its checker wrongly
   treated the attempts as minor and passed. The prompts and rubric now state
   explicitly that a denied model-requested outside access is still a rejection.
-  Both rehearsal pairs must be rerun before issue #70 can be green. No
+  Replacement r3 author and debug pairs passed against exact clean candidate
+  `0072f9970cbc88c8936f3741b8cf9f48495a8c13`. The author pair recorded 15/17
+  turns, 21/25 tool calls, and 241,568/519,793 provider-reported tokens; the
+  debug pair recorded 23/19 turns, 37/25 tool calls, and 675,963/651,191
+  provider-reported tokens. All four task sessions are distinct, record no
+  intervention or retry, state `formalAttempt: false`, and have recomputable
+  complete subject/checker artifact trees. The durable r3 receipts are under
+  `docs/evaluation/runs/rehearsal/2026-08-23-claude-opus-5-author-r3/` and
+  `docs/evaluation/runs/rehearsal/2026-08-23-claude-opus-5-debug-r3/`. No
   superseded rehearsal transport is reclassified.
 - **CI uses `actions/checkout@v7` (#11):** PR and post-merge verification passed
   without the Node 20 compatibility annotation.
@@ -345,11 +353,11 @@ never accumulates history (git has that).
 
 ## What is next
 
-Finish issue #70 by rerunning both non-formal rehearsal pairs against the
-audit-repaired harness, then rerun exact-head repository proof and obtain a
-replacement non-author audit of packet allowlists, isolation composition,
-accounting, and rehearsal evidence. Issue #69 is separately implemented and
-green in draft PR #75; issue #70 remains active in draft PR #76.
+Finish issue #70 by running the exact-head repository proof and obtaining a
+replacement non-author audit of the repaired packet allowlists, isolation
+composition, accounting, and r3 rehearsal evidence. Issue #69 is separately
+implemented and green in draft PR #75; issue #70 remains active in draft PR
+#76.
 No new semantic feature slice is authorized before final Gate K disposition.
 An evidence-driven defect may still be repaired through the repository's
 issue-first flow; any acceptance-contract correction still requires an

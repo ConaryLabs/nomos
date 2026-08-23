@@ -142,7 +142,21 @@ debug rehearsal pairs. An uncommitted follow-up author rerun proved the repaired
 filesystem denied two subject-requested `/tmp` paths, but its checker treated
 those attempts as a minor deviation and passed. That run is not promoted. The
 prompts and rubric now make any model-requested outside-path access a rejection,
-including when the sandbox denies it; another clean-candidate rerun is required.
+including when the sandbox denies it.
+
+The replacement r3 rehearsal set targets exact clean candidate
+`0072f9970cbc88c8936f3741b8cf9f48495a8c13`. Both subject/checker pairs passed,
+and each checker distinguished forbidden-path strings quoted in the subject's
+own boundary-compliance prose from actual command operands. Neither subject nor
+checker requested an outside-path access. The finalizer preserved both complete
+checker artifact trees and recomputed all four subject/checker tree digests.
+Durable records live at
+`docs/evaluation/runs/rehearsal/2026-08-23-claude-opus-5-author-r3/` and
+`docs/evaluation/runs/rehearsal/2026-08-23-claude-opus-5-debug-r3/`. A neutral
+Claude qualification probe twice emitted two turns and failed closed before a
+task launch; replacement neutral probes passed without changing either task
+packet. No failed probe received a task prompt or spent a rehearsal/formal
+attempt.
 
 ## Invalidation
 

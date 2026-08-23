@@ -1,0 +1,128 @@
+============================== ordinal 7
+CMD: cd /workspace/workspace && /workspace/bin/nomos --help; echo "exit=$?"
+Nomos Gate K semantic runtime
+
+Usage:
+  nomos validate <source.nomos>
+  nomos compile <source.nomos> --out <new.world/>
+  nomos inspect <world/>
+  nomos migrate <v1-world/> --to 2 --out <new-v2-world/>
+  nomos run <world/> --commands <commands> --out <new-run/>
+  nomos command <world/> --state <state.json> "<command>" --out <new-run/>
+  nomos replay <world/> --log <replay> --out <new-run/>
+  nomos explain-entity <world/> <entity>
+  nomos explain-transition <run/> <entity> --tick <tick> --world <world/>
+  nomos --help
+exit=0
+
+============================== ordinal 8
+CMD: cd /workspace/workspace && /workspace/bin/nomos validate gaol.nomos; echo "exit=$?"
+{"artifacts":["compiler-receipts.json","diagnostics.json","navigation.json","persistence.json","schemas.json","simulation.json","world-ir.json"],"command":"validate","source":"gaol.nomos","status":"completed","world_ir_schema":{"name":"nomos.world_ir","version":2}}
+exit=0
+
+============================== ordinal 10
+CMD: cd /workspace/workspace && diff gaol.nomos.orig.bak gaol.nomos; echo "--- diff exit=$? ---"; diff /workspace/input/gaol.nomos gaol.nomos.orig.bak && echo "backup == packet input: unchanged baseline"
+15a16,19
+> 
+> entity watch_lamp primitive/extinguishable_light
+>   anchor cell 4 0 1
+> end
+--- diff exit=1 ---
+backup == packet input: unchanged baseline
+
+============================== ordinal 11
+CMD: cd /workspace/workspace && /workspace/bin/nomos validate gaol.nomos; echo "validate exit=$?"
+{"artifacts":["compiler-receipts.json","diagnostics.json","navigation.json","persistence.json","schemas.json","simulation.json","world-ir.json"],"command":"validate","source":"gaol.nomos","status":"completed","world_ir_schema":{"name":"nomos.world_ir","version":2}}
+validate exit=0
+
+============================== ordinal 12
+CMD: cd /workspace/workspace && rm -rf gaol.world && /workspace/bin/nomos compile gaol.nomos --out gaol.world; echo "compile exit=$?"; echo "--- world members ---"; ls -la gaol.world
+{"artifacts":["gaol.world/manifest.json","gaol.world/compiler-receipts.json","gaol.world/diagnostics.json","gaol.world/navigation.json","gaol.world/persistence.json","gaol.world/schemas.json","gaol.world/simulation.json","gaol.world/world-ir.json"],"command":"compile","manifest_digest":"0ca6bd71e61c158786feb711dca102eb24c005f45a80cb2579f71709d6f2d8a6","output":"gaol.world","source":"gaol.nomos","status":"completed"}
+compile exit=0
+--- world members ---
+total 44
+drwxr-xr-x 2 1002 1002   200 Aug 23 02:43 .
+drwxr-xr-x 3 1002 1002   100 Aug 23 02:43 ..
+-rw-r--r-- 1 1002 1002  1700 Aug 23 02:43 compiler-receipts.json
+-rw-r--r-- 1 1002 1002  1278 Aug 23 02:43 diagnostics.json
+-rw-r--r-- 1 1002 1002   961 Aug 23 02:43 manifest.json
+-rw-r--r-- 1 1002 1002  1340 Aug 23 02:43 navigation.json
+-rw-r--r-- 1 1002 1002  1278 Aug 23 02:43 persistence.json
+-rw-r--r-- 1 1002 1002   971 Aug 23 02:43 schemas.json
+-rw-r--r-- 1 1002 1002  4266 Aug 23 02:43 simulation.json
+-rw-r--r-- 1 1002 1002 12089 Aug 23 02:43 world-ir.json
+
+============================== ordinal 13
+CMD: cd /workspace/workspace && /workspace/bin/nomos inspect gaol.world; echo "inspect exit=$?"
+{"command":"inspect","compiler_version":2,"construction_schema":{"name":"nomos.world_ir.construction","version":3},"entities":[{"capabilities":["machine","interactable","emits_light","authority","persisted"],"claims":[{"activation":{"kind":"state_equals","namespace":"brazier_02.emission","state":"lit"},"capability":"emits_light","id":"brazier_02.emission#emits_light","value":true}],"id":"brazier_02","machines":[{"initial":"lit","namespace":"brazier_02.emission","states":["lit","extinguished"],"transitions":[{"effect":{"kind":"set_state","state":"extinguished"},"source":"lit","trigger":{"input":{"kind":"none"},"kind":"command","name":"extinguish"}}]}],"primitive":"primitive/extinguishable_light","source":{"byte_end":323,"byte_start":251,"column":1,"line":13,"path":"gaol.nomos"}},{"capabilities":["traversal_cost_ground","region","authority","persisted"],"claims":[{"activation":{"kind":"always"},"capability":"traversal_cost_ground","id":"flooded_section.region#traversal_cost_ground","value":3}],"id":"flooded_section","machines":[],"primitive":"primitive/shallow_water_region","source":{"byte_end":249,"byte_start":164,"column":1,"line":9,"path":"gaol.nomos"}},{"capabilities":["boundary","portal","blocks_ground","machine","interactable","authority","persisted"],"claims":[{"activation":{"child":{"children":[{"kind":"state_equals","namespace":"north_gate.access","state":"open"},{"kind":"state_equals","namespace":"north_gate.integrity","state":"destroyed"}],"kind":"any"},"kind":"not"},"capability":"blocks_ground","id":"north_gate.portal#blocks_ground","value":true},{"activation":{"kind":"state_equals","namespace":"north_gate.ward","state":"sealed"},"capability":"blocks_ground","id":"north_gate.ward#blocks_ground","value":true}],"id":"north_gate","machines":[{"initial":"locked","namespace":"north_gate.access","states":["locked","closed","open"],"transitions":[{"effect":{"kind":"set_state","state":"closed"},"source":"open","trigger":{"input":{"kind":"none"},"kind":"command","name":"close"}},{"effect":{"kind":"set_state","state":"open"},"source":"closed","trigger":{"input":{"kind":"none"},"kind":"command","name":"open"}},{"effect":{"kind":"set_state","state":"closed"},"source":"locked","trigger":{"input":{"kind":"resolved_entity_credential"},"kind":"command","name":"unlock"}}]},{"initial":"cold","namespace":"north_gate.combustion","states":["cold","burning","spent"],"transitions":[{"effect":{"kind":"set_state","state":"burning"},"source":"cold","trigger":{"input":{"kind":"none"},"kind":"command","name":"ignite"}}]},{"initial":"intact","namespace":"north_gate.integrity","states":["intact","damaged","destroyed"],"transitions":[{"effect":{"kind":"set_state","state":"destroyed"},"source":"intact","trigger":{"input":{"amount":2,"channel":"fire","kind":"damage"},"kind":"event","name":"apply_damage"}}]},{"initial":"sealed","namespace":"north_gate.ward","states":["sealed","unsealed"],"transitions":[{"effect":{"kind":"set_state","state":"unsealed"},"source":"sealed","trigger":{"input":{"kind":"none"},"kind":"command","name":"unseal"}}]}],"primitive":"primitive/iron_barred_door","source":{"byte_end":162,"byte_start":53,"column":1,"line":4,"path":"gaol.nomos"}},{"capabilities":["machine","interactable","emits_light","authority","persisted"],"claims":[{"activation":{"kind":"state_equals","namespace":"watch_lamp.emission","state":"lit"},"capability":"emits_light","id":"watch_lamp.emission#emits_light","value":true}],"id":"watch_lamp","machines":[{"initial":"lit","namespace":"watch_lamp.emission","states":["lit","extinguished"],"transitions":[{"effect":{"kind":"set_state","state":"extinguished"},"source":"lit","trigger":{"input":{"kind":"none"},"kind":"command","name":"extinguish"}}]}],"primitive":"primitive/extinguishable_light","source":{"byte_end":397,"byte_start":325,"column":1,"line":17,"path":"gaol.nomos"}}],"manifest_digest":"0ca6bd71e61c158786feb711dca102eb24c005f45a80cb2579f71709d6f2d8a6","package_schema":{"name":"nomos.package.manifest","version":1},"primitive_catalog_version":1,"status":"completed","world_ir_schema":{"name":"nomos.world_ir","version":2}}
+inspect exit=0
+
+============================== ordinal 14
+CMD: cd /workspace/workspace && /workspace/bin/nomos explain-entity gaol.world watch_lamp; echo "explain exit=$?"
+{"active_initial_claims":["watch_lamp.emission#emits_light"],"command":"explain-entity","effective_initial_facts":{"ground_movement":null,"light_emission":{"emitting":true,"reasons":["watch_lamp.emission#emits_light"]}},"entity":{"binding":{"cell":{"x":4,"y":0,"z":1},"kind":"cell"},"credential":null,"expansion":{"capabilities":["machine","interactable","emits_light","authority","persisted"],"claims":[{"activation":{"kind":"state_equals","namespace":"watch_lamp.emission","state":"lit"},"capability":"emits_light","id":"watch_lamp.emission#emits_light","value":true}],"interactions":[],"machines":[{"initial":"lit","namespace":"watch_lamp.emission","states":["lit","extinguished"],"transitions":[{"effect":{"kind":"set_state","state":"extinguished"},"source":"lit","trigger":{"input":{"kind":"none"},"kind":"command","name":"extinguish"}}]}]},"id":"watch_lamp","primitive":"primitive/extinguishable_light","source":{"byte_end":397,"byte_start":325,"column":1,"line":17,"path":"gaol.nomos"}},"ownership_receipts":[{"consumers":["diagnostics","persistence","simulation"],"declared_at":{"byte_end":342,"byte_start":332,"column":8,"line":17,"path":"gaol.nomos"},"derivation":[{"inputs":[],"pass":"declare_entity","producer":"source"}],"fact":{"entity":"watch_lamp","kind":"entity_identity"},"owner":"graph","resolved_to":{"entity":"watch_lamp","kind":"entity"}},{"consumers":["diagnostics","navigation","simulation"],"declared_at":{"byte_end":393,"byte_start":376,"column":3,"line":18,"path":"gaol.nomos"},"derivation":[{"inputs":[{"fact":{"entity":"watch_lamp","kind":"entity_identity"},"kind":"fact"}],"pass":"declare_spatial_anchor","producer":"source"}],"fact":{"entity":"watch_lamp","kind":"entity_spatial_anchor"},"owner":"lattice","resolved_to":{"binding":{"cell":{"x":4,"y":0,"z":1},"kind":"cell"},"kind":"binding"}},{"consumers":["diagnostics","navigation","persistence","simulation"],"declared_at":{"byte_end":393,"byte_start":376,"column":3,"line":18,"path":"gaol.nomos"},"derivation":[{"inputs":[{"fact":{"entity":"watch_lamp","kind":"entity_spatial_anchor"},"kind":"fact"},{"kind":"primitive","primitive":"primitive/extinguishable_light"}],"pass":"resolve_spatial_binding","producer":"world_linker"}],"fact":{"entity":"watch_lamp","kind":"entity_spatial_binding"},"owner":"world_linker","resolved_to":{"binding":{"cell":{"x":4,"y":0,"z":1},"kind":"cell"},"kind":"binding"}}],"package_digest":"0ca6bd71e61c158786feb711dca102eb24c005f45a80cb2579f71709d6f2d8a6","schemas":{"construction_world_ir":{"name":"nomos.world_ir.construction","version":3},"package_members":[{"artifact":"compiler-receipts.json","owner":"nomos-compiler","schema":{"name":"nomos.compiler_receipts","version":1}},{"artifact":"diagnostics.json","owner":"nomos-projection","schema":{"name":"nomos.projection.diagnostics","version":1}},{"artifact":"manifest.json","owner":"nomos-core","schema":{"name":"nomos.package.manifest","version":1}},{"artifact":"navigation.json","owner":"nomos-projection","schema":{"name":"nomos.projection.navigation","version":1}},{"artifact":"persistence.json","owner":"nomos-projection","schema":{"name":"nomos.projection.persistence","version":1}},{"artifact":"schemas.json","owner":"nomos-schema","schema":{"name":"nomos.package.schemas","version":1}},{"artifact":"simulation.json","owner":"nomos-projection","schema":{"name":"nomos.projection.simulation","version":3}},{"artifact":"world-ir.json","owner":"nomos-schema","schema":{"name":"nomos.world_ir","version":2}}],"runtime_state":{"name":"nomos.runtime_state","version":2},"source":{"name":"nomos.source","version":1},"world_ir":{"name":"nomos.world_ir","version":2}},"status":"completed"}
+explain exit=0
+
+============================== ordinal 15
+CMD: cd /workspace/workspace && rm -rf gaol.world.repeat && /workspace/bin/nomos compile gaol.nomos --out gaol.world.repeat >/dev/null 2>&1 && for f in manifest.json world-ir.json simulation.json; do a=$(sha256sum gaol.world/$f|cut -d' ' -f1); b=$(sha256sum gaol.world.repeat/$f|cut -d' ' -f1); [ "$a" = "
+OK deterministic: manifest.json
+OK deterministic: world-ir.json
+OK deterministic: simulation.json
+--- light resolver subjects ---
+"watch_lamp"
+"watch_lamp.emission"
+"watch_lamp.emission#emits_light"
+"brazier_02"
+"brazier_02.emission"
+"brazier_02.emission#emits_light"
+
+============================== ordinal 16
+CMD: cd /workspace && python3 - <<'EOF'
+import json,hashlib,os
+m=json.load(open('packet-manifest.json'))
+for f in m['files']:
+    p=f['path']
+    if p.startswith('workspace/'):
+        print('SKIP (writable)', p); continue
+    h=hashlib.sha256(open(p,'rb').read()).hexdigest()
+    print('OK ' if h==f['sha
+OK  .nomos-candidate-commit
+OK  bin/nomos
+OK  brief.txt
+OK  input/gaol.nomos
+OK  plan.json
+OK  prompt.txt
+OK  reference/KERNEL-authoring-excerpt.md
+OK  reference/README.md
+OK  reference/authoring.md
+OK  reference/compiler.md
+OK  reference/nomos-help.txt
+SKIP (writable) workspace/gaol.nomos
+
+============================== ordinal 17
+CMD: cd /workspace/workspace && sed 's/^entity watch_lamp/entity brazier_02/' gaol.nomos > scratch-dup-id.nomos && /workspace/bin/nomos validate scratch-dup-id.nomos; echo "exit=$? (expected non-zero: duplicate id must fail)"
+{"diagnostics":[{"code":"EK0601","message":"entity `brazier_02` is declared more than once","repairs":["remove_duplicate_declaration"],"span":{"byte_end":342,"byte_start":332,"column":8,"line":17,"path":"scratch-dup-id.nomos"}}],"status":"rejected"}
+exit=1 (expected non-zero: duplicate id must fail)
+
+============================== ordinal 19
+CMD: cd /workspace/workspace && sed -i 's|^> +  anchor cell 4 0 1$|>   anchor cell 4 0 1|' SUBJECT.md && sed -n '/```diff/,/```/p' SUBJECT.md
+```diff
+15a16,19
+> 
+> entity watch_lamp primitive/extinguishable_light
+>   anchor cell 4 0 1
+> end
+```
+
+============================== ordinal 20
+CMD: cd /workspace/workspace && rm -rf gaol.world && /workspace/bin/nomos validate gaol.nomos && echo "VALIDATE exit=$?" && /workspace/bin/nomos compile gaol.nomos --out gaol.world && echo "COMPILE exit=$?" && echo "--- entities/kinds ---" && /workspace/bin/nomos inspect gaol.world | python3 -c 'import j
+{"artifacts":["compiler-receipts.json","diagnostics.json","navigation.json","persistence.json","schemas.json","simulation.json","world-ir.json"],"command":"validate","source":"gaol.nomos","status":"completed","world_ir_schema":{"name":"nomos.world_ir","version":2}}
+VALIDATE exit=0
+{"artifacts":["gaol.world/manifest.json","gaol.world/compiler-receipts.json","gaol.world/diagnostics.json","gaol.world/navigation.json","gaol.world/persistence.json","gaol.world/schemas.json","gaol.world/simulation.json","gaol.world/world-ir.json"],"command":"compile","manifest_digest":"0ca6bd71e61c158786feb711dca102eb24c005f45a80cb2579f71709d6f2d8a6","output":"gaol.world","source":"gaol.nomos","status":"completed"}
+COMPILE exit=0
+--- entities/kinds ---
+  brazier_02 primitive/extinguishable_light
+  flooded_section primitive/shallow_water_region
+  north_gate primitive/iron_barred_door
+  watch_lamp primitive/extinguishable_light
+ kinds: 3 instances: 4
+
