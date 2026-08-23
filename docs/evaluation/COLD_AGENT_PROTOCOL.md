@@ -355,10 +355,14 @@ shape is inspected.
 Pi event streams are parsed before provider signatures are removed. Only
 `textSignature` on a text content block and `thinkingSignature` on a thinking
 content block may be removed, and the raw-stream digest is retained. Boundary
-schema `nomos.pi_cold_agent_boundary@3` records the resolved path and SHA-256 of
-Pi, Bubblewrap, and any provider extension; the task receipt repeats the exact
-runtime identity. The four frozen `gate-k-rc1` task records retain their legacy
-`@2` boundaries and are not retroactively upgraded.
+schema `nomos.pi_cold_agent_boundary@4` records the resolved path and SHA-256 of
+Pi, Bubblewrap, and any provider extension, and proves that `/dev` contains
+exactly the readable and writable device `/dev/null`; the task receipt repeats
+the exact runtime identity. Revision-6 plans, packet manifests, task receipts,
+checker results, adjudications, checker receipts, and run results use their
+strict `@2` generations and carry `protocolRevision: 6`. The four frozen
+`gate-k-rc1` task records retain their legacy document generations and `@2`
+boundaries and are not retroactively upgraded.
 
 `RUN.md` records:
 

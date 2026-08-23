@@ -1,10 +1,10 @@
 ---
 title: Gate K cold-agent eligibility and roster plan
 status: Owner-authorized routing; effective on merge
-date: 2026-08-22
+date: 2026-08-24
 issue: 7
-protocol: docs/evaluation/COLD_AGENT_PROTOCOL.md revision 5
-protocol_decision: docs/decisions/0012-cold-agent-evidence-authentication.md
+protocol: docs/evaluation/COLD_AGENT_PROTOCOL.md revision 6
+protocol_decision: docs/decisions/0015-gate-k-round-two.md
 ---
 
 # Gate K cold-agent eligibility and roster plan
@@ -212,9 +212,11 @@ catalog, and the isolated command boundary. If either lane cannot prove that
 state at run time, that subject is ineligible until the owner approves a new
 plan.
 
-The protocol's fresh-session, zero-substantive-hint, and resource-accounting
-rules apply. No model fallback or cross-model rescue is allowed inside a formal
-attempt. A transport restart follows the protocol exactly and remains disclosed.
+The protocol's fresh-session, zero-substantive-hint, zero-retry, and
+resource-accounting rules apply. The exact `/dev/null` device is the sole
+outside-workspace path exception; it conveys no information and remains in the
+ordered command record. No model fallback or cross-model rescue is allowed
+inside a formal attempt.
 
 ## Eligibility invalidation
 
@@ -240,4 +242,6 @@ the exact DeepSeek-family route to that model at maximum effort and Claude Opus
 5 to high effort. Issue #49 does not change family or role: Gemini remains the
 cold author, DeepSeek remains the cold debugger, and each remains the other's
 independent checker. Claude through Pi is supplemental only. The updated
-routing becomes effective when the owner merges the issue #49 change.
+routing became effective when the owner merged the issue #49 change. Decision
+0015 retains those formal roles for a prospectively governed round two; no
+round-two provider attempt has been reserved or launched.

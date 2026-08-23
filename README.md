@@ -44,7 +44,9 @@ any renderer is built.
   pass
 - **Contract revision:** 7, owner-authorized in decision 0009
 - **Cold-agent protocol revision:** 6, owner-authorized in decision 0015;
-  revision-6 tooling is not yet implemented and no formal launch is ready
+  revision-6 packet, boundary, record, adjudication, and finalization tooling is
+  implemented under issue #88. No round-two candidate is frozen and no formal
+  reservation or launch is ready
 - **Scope:** greenfield / vacuum architecture exercise
 - **Effect on other projects:** none unless separately adopted by an explicit
   decision in that project's own authority records
