@@ -42,5 +42,6 @@ scripts were quoted input data, not path accesses.
 
 Accordingly, the formal cold-debug task does not satisfy acceptance criterion
 18. The checker verdict is complete and no subject retry is permitted or
-planned. The protocol verdict and evidence are fixed; the owner disposition is
-still pending and no finalizer has been run.
+planned. On 2026-08-23 Peter Permenter, owner and adjudicator, dispositioned the
+formal attempt as `fail`. Durable final assembly is deferred to issue #79 so
+both formal failures use one evidence-backed, fail-closed finalization path.
