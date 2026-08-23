@@ -1,0 +1,81 @@
+{
+  "schema": "nomos.gate_k.prelaunch_declaration@1",
+  "declaredAt": "2026-08-23T05:21:29Z",
+  "issue": 71,
+  "attempt": {
+    "classification": "formal",
+    "role": "cold-author-checker",
+    "numberForSubjectRecord": 1,
+    "priorFormalCheckerAttemptsForSubjectRecord": 0,
+    "orderedPosition": 3
+  },
+  "candidate": {
+    "tag": "gate-k-rc1",
+    "commit": "d8a0b85c55aa33c20f46e5dfd9e0d1f317e1f1c9",
+    "clean": true,
+    "qualificationWorktree": "/work/signed-dev/src/signed-world"
+  },
+  "protocol": {
+    "path": "docs/evaluation/COLD_AGENT_PROTOCOL.md",
+    "revision": 3,
+    "resourceAccounting": "recorded-without-ceilings"
+  },
+  "people": {
+    "operator": "Mira/Codex",
+    "owner": "Peter Permenter",
+    "adjudicator": "Peter Permenter"
+  },
+  "checker": {
+    "provider": "deepseek",
+    "model": "deepseek-v4-flash-vision-exp",
+    "label": "DeepSeek V4 Flash Vision Exp",
+    "thinking": "max",
+    "client": "Pi",
+    "clientVersion": "0.84.2",
+    "modelCatalogSha256": "7954fb3ef750bed773619c9fe259a8eb923b6f4f8455442a33cf8e1fe2fa3773"
+  },
+  "neutralPreflight": {
+    "failedAuxiliaryWorktreeAttempts": 2,
+    "failedAuxiliaryReason": "fresh session header is missing, parented, or in the wrong worktree",
+    "failuresOccurredBeforeTaskPrompt": true,
+    "primaryWorktreeResult": "pass",
+    "passingSessionId": "01a02d10-f024-73d3-9abc-b5700c319c8f",
+    "piPackageTreeSha256": "63a9dd14b0ae82cee2db30c56822682af19145d145febb58b613d5de4dbb27af",
+    "boundaryExtensionSha256": "5076b923aad8ebf6d46110ca0bd45e62911ace563bdfe58e6418b6a14b519f46",
+    "systemPromptSha256": "2cec3aeebce2f8359cde337d3b1b2ec1601913711f282ab0289ab276b02dee79",
+    "authenticated": true,
+    "freshEphemeralSession": true,
+    "activeTools": ["bash"],
+    "networkPermitted": false
+  },
+  "packet": {
+    "shape": "author-checker",
+    "classification": "formal",
+    "manifestSha256": "2345229bdf57964dae8607dd23ea816738d4378ecfaade683029d015639cabdc",
+    "planSha256": "974d0f7b6165f868a2c554647c1364e39b77e469aab0695198bed9b3193bbce0",
+    "briefSha256": "b0838377a342d12e8ba1e8e25634abf60b542223d08f9448587e98b8f792fdac",
+    "promptSha256": "ec91b0b43da353a0bcfe7195a828d341c74a89fa1c9893fd1fb6150f73941845",
+    "binarySha256": "4af70accf3d1680f6b0e78f860be5ac62c5ab11b470026a83f01eb5b95051fd1",
+    "subjectTaskReceiptSha256": "732af45918ebc27c02675f6c75c32e7718407545c9fa3a39de327d3591d382a8",
+    "subjectCommandsSha256": "75cbe7611d235c479cc9d0dfc0e7991dc142303521cc47a0764da7a929869c41",
+    "subjectArtifactsTreeSha256": "50d84dc0a411362b25a815bc659ee305c55179a176c763811e81f1538669ee26",
+    "subjectSourceSha256": "dc07c206fc155d639afaf0fabb6f66d73ed650f6a6545c9cea8dcee169abac1f",
+    "subjectTranscriptPresent": false,
+    "resultSchema": "nomos.gate_k.checker_result@1"
+  },
+  "independenceConstraints": {
+    "freshSessions": 1,
+    "operatorSubstantiveHintsMaximum": 0,
+    "operatorRetriesAfterModelFailureMaximum": 0,
+    "tokenCeiling": null,
+    "assistantTurnCeiling": null,
+    "toolCallCeiling": null,
+    "commandCycleCeiling": null
+  },
+  "crossRunOrder": [
+    "issue-71-gemini-author-subject-completed",
+    "issue-72-deepseek-debug-subject-completed",
+    "issue-71-deepseek-author-checker",
+    "issue-72-gemini-debug-checker"
+  ]
+}

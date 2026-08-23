@@ -1,0 +1,44 @@
+PI_VERSION 0.84.2
+PI_INSTALL npm install -g --ignore-scripts @earendil-works/pi-coding-agent@0.84.2
+PI_NPM_INTEGRITY sha512-l4E+B7hgXKWddRo8bC/eSue2aWZjEgJ9xIpf5p0Og+lq8a2TArCwJ0HCoCPCgaBP/tN4zbYH/wOwvx9pJpeLCA==
+PI_PACKAGE_TREE_SHA256 63a9dd14b0ae82cee2db30c56822682af19145d145febb58b613d5de4dbb27af
+PI_NODE v26.7.0
+PI_NPM 12.0.2
+PI_BWRAP bubblewrap 0.11.2
+PI_BWRAP_SHA256 6ad2138a73d592acb43525432965e3c66f6fad8a2f3d610c6ca0b6855e993cbe
+PI_RUST_TOOLCHAIN 1.98.0-x86_64-unknown-linux-gnu
+PI_HOST_OS Linux 7.1.8-arch1-3 x86_64
+PI_TARGET_COMMIT d8a0b85c55aa33c20f46e5dfd9e0d1f317e1f1c9
+PI_LANE gemini
+PI_MODEL antigravity	gemini-3.7-flash	Gemini 3.7 Flash	high
+PI_AUTH_TYPE oauth
+PI_EXTENSION /work/signed-dev/src/signed-world/docs/evaluation/pi-cold-agent-extension.ts 5076b923aad8ebf6d46110ca0bd45e62911ace563bdfe58e6418b6a14b519f46
+PI_PROVIDER_EXTENSION /work/signed-dev/.local/lib/node_modules/pi-antigravity/src/index.ts
+PI_PROVIDER_PACKAGE pi-antigravity@0.4.0 sha512-Trl0lWZRDM6TUhw8UjZ+si4Tx2IxCtLLdEwQ10gOS3BUJfgv/C32HY3m/v9PcLNZWYzo+LEfmamiB5+f0jciCg== 7980e6825a23f18a9d298953c0efc9f13c1231ce4c814394803b9da9bfb565ce
+PI_PROVIDER_INSTALL npm install -g --ignore-scripts --legacy-peer-deps pi-antigravity@0.4.0
+PI_PROVIDER_ENV overrides-cleared prewarm-disabled
+PI_MODEL_CATALOG none
+PI_SYSTEM_PROMPT /work/signed-dev/src/signed-world/docs/evaluation/pi-cold-agent-system-prompt.txt 2cec3aeebce2f8359cde337d3b1b2ec1601913711f282ab0289ab276b02dee79
+PI_WORKSPACE /work/signed-dev/src/signed-world
+PI_WORKTREE_STATUS clean
+PI_CONFIG_ROOT /tmp/tmp.VhydmV9IQS/config ephemeral-auth-only
+PI_SESSION 01a02cf9-9a58-7b3f-b679-22eac3819fd5 ephemeral
+PI_INVOCATION pi --provider antigravity --model gemini-3.7-flash --thinking high --mode json --no-session --no-approve --offline --no-extensions -e /work/signed-dev/.local/lib/node_modules/pi-antigravity/src/index.ts -e /work/signed-dev/src/signed-world/docs/evaluation/pi-cold-agent-extension.ts --no-skills --no-prompt-templates --no-themes --no-context-files --no-builtin-tools --tools bash --system-prompt <sha256:2cec3aeebce2f8359cde337d3b1b2ec1601913711f282ab0289ab276b02dee79> <neutral-prompt>
+PI_BOUNDARY {"schema":"nomos.pi_cold_agent_boundary@2","boundaryKind":"source-preflight","mode":"json","targetCommit":"d8a0b85c55aa33c20f46e5dfd9e0d1f317e1f1c9","hostWorkspace":"/work/signed-dev/src/signed-world","guestWorkspace":"/workspace","provider":"antigravity","model":"gemini-3.7-flash","thinking":"high","sessionId":"01a02cf9-9a58-7b3f-b679-22eac3819fd5","sessionFile":null,"projectTrusted":false,"entryTypesBeforeRun":["model_change","thinking_level_change"],"activeTools":["bash"],"configuredTools":[{"name":"bash","source":{"path":"/work/signed-dev/src/signed-world/docs/evaluation/pi-cold-agent-extension.ts","source":"cli","scope":"temporary","origin":"top-level"}}],"contextFiles":[],"skills":[],"systemPromptSha256":"2cec3aeebce2f8359cde337d3b1b2ec1601913711f282ab0289ab276b02dee79","finalSystemPromptSha256":"a78cae9025d8b63562a13c111e79e9f27c32ab20e726a53d2d9d8c094712e2b7","packetManifestSha256":null,"binarySha256":null,"taskPromptSha256":null,"taskShape":null,"writablePaths":[],"budgets":null,"sandbox":{"backend":"bubblewrap","binary":"/usr/bin/bwrap","root":"read-only","workspace":"read-write-only-host-mount","network":"unshared","environment":"cleared-and-allowlisted","checks":{"targetCommitResolved":true,"workspaceRead":true,"outsideReadDenied":true,"outsideWriteDenied":true,"credentialEnvironmentAbsent":true,"networkDenied":true,"workspaceWrite":true,"cargoAvailable":true},"selfTest":"pass"}}
+PI_EVENTS_BEGIN
+{"type":"session","version":3,"id":"01a02cf9-9a58-7b3f-b679-22eac3819fd5","timestamp":"2026-08-23T04:55:50.616Z","cwd":"/work/signed-dev/src/signed-world"}
+{"type":"agent_start"}
+{"type":"turn_start"}
+{"type":"message_start","message":{"role":"user","content":[{"type":"text","text":"Output exactly this line and nothing else: pi boundary preflight"}],"timestamp":1787460950924}}
+{"type":"message_end","message":{"role":"user","content":[{"type":"text","text":"Output exactly this line and nothing else: pi boundary preflight"}],"timestamp":1787460950924}}
+{"type":"message_start","message":{"role":"assistant","content":[{"type":"text","text":"pi boundary preflight"}],"api":"antigravity-api","provider":"antigravity","model":"gemini-3.7-flash","usage":{"input":410,"output":102,"cacheRead":0,"cacheWrite":0,"totalTokens":512,"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"total":0}},"stopReason":"stop","timestamp":1787460951047}}
+{"type":"message_update","usage":{"input":410,"output":102,"cacheRead":0,"cacheWrite":0,"totalTokens":512,"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"total":0}},"assistantMessageEvent":{"type":"text_start","contentIndex":0}}
+{"type":"message_update","usage":{"input":410,"output":102,"cacheRead":0,"cacheWrite":0,"totalTokens":512,"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"total":0}},"assistantMessageEvent":{"type":"text_delta","contentIndex":0,"delta":"pi boundary preflight"}}
+{"type":"message_update","usage":{"input":410,"output":102,"cacheRead":0,"cacheWrite":0,"totalTokens":512,"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"total":0}},"assistantMessageEvent":{"type":"text_delta","contentIndex":0,"delta":""}}
+{"type":"message_update","usage":{"input":410,"output":102,"cacheRead":0,"cacheWrite":0,"totalTokens":512,"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"total":0}},"assistantMessageEvent":{"type":"text_end","contentIndex":0,"content":"pi boundary preflight"}}
+{"type":"message_end","message":{"role":"assistant","content":[{"type":"text","text":"pi boundary preflight"}],"api":"antigravity-api","provider":"antigravity","model":"gemini-3.7-flash","usage":{"input":410,"output":102,"cacheRead":0,"cacheWrite":0,"totalTokens":512,"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"total":0}},"stopReason":"stop","timestamp":1787460951047}}
+{"type":"turn_end","message":{"role":"assistant","content":[{"type":"text","text":"pi boundary preflight"}],"api":"antigravity-api","provider":"antigravity","model":"gemini-3.7-flash","usage":{"input":410,"output":102,"cacheRead":0,"cacheWrite":0,"totalTokens":512,"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"total":0}},"stopReason":"stop","timestamp":1787460951047},"toolResults":[]}
+{"type":"agent_end","messages":[{"role":"user","content":[{"type":"text","text":"Output exactly this line and nothing else: pi boundary preflight"}],"timestamp":1787460950924},{"role":"assistant","content":[{"type":"text","text":"pi boundary preflight"}],"api":"antigravity-api","provider":"antigravity","model":"gemini-3.7-flash","usage":{"input":410,"output":102,"cacheRead":0,"cacheWrite":0,"totalTokens":512,"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"total":0}},"stopReason":"stop","timestamp":1787460951047}],"willRetry":false}
+{"type":"agent_settled"}
+PI_EVENTS_END
+PI_COLD_AGENT_BOUNDARY PASS
