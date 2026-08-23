@@ -12,10 +12,14 @@ non-author audit rejected `a7d0d5a` because command records and the candidate
 marker remained self-bound. A third audit rejected `5340158` because the
 candidate packet and writable paths were still self-asserted, checker JSON
 allowed duplicate keys, tool ends could precede starts, and numeric validation
-accepted floats. The current repair reopens each recorded immutable packet,
-hashes its actual marker, binary, and manifest, binds the complete Pi receipt
-chain, and fails closed on all five adversarial cases. Its exact-head non-author
-rerun remains.
+accepted floats. A fourth audit rejected `0bf8155`: selected hashes did not
+re-prove lifecycle/retry/accounting, qualification and launcher records could be
+truncated, immutable packet members were not fully reopened, output could enter
+a packet, and formal/candidate identity remained relabelable. The current repair
+revalidates the complete Pi lifecycle and receipt chain, verifies every
+immutable packet member, forbids packet/output overlap, and pins formal evidence
+to the exact `gate-k-rc1` commit and binary. Its exact-head non-author rerun
+remains.
 This file orients a fresh session; it is rewritten at each slice boundary and
 never accumulates history (git has that).
 
@@ -421,7 +425,7 @@ never accumulates history (git has that).
 
 ## What is next
 
-Commit the five-finding repair, complete its exact-head non-author rerun, and
+Commit the complete evidence-chain repair, complete its exact-head non-author rerun, and
 finish CI for #79. The externally assembled immutable #71 and #72 structured
 results still have SHA-256
 `e6990dacde903f527d1cb46784a54d938a7e130f1193e51bb830a4a2284f07dc` and

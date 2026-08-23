@@ -45,6 +45,7 @@ COMMAND_KEYS = {
     "tool",
     "toolCallId",
 }
+ACCOUNTING_KEYS = {"assistantTurns", "providerReportedTokens", "toolCalls"}
 
 
 def fail(message: str) -> None:
@@ -130,6 +131,22 @@ def load_commands(path: Path) -> list[dict[str, Any]]:
     return commands
 
 
+def load_accounting(path: Path) -> dict[str, Any]:
+    document = load_json(path)
+    if set(document) != ACCOUNTING_KEYS:
+        fail(f"accounting fields differ from the schema allowlist: {path}")
+    for field in ("assistantTurns", "toolCalls"):
+        value = document.get(field)
+        if isinstance(value, bool) or not isinstance(value, int) or value < 1:
+            fail(f"accounting {field} must be a positive integer: {path}")
+    tokens = document.get("providerReportedTokens")
+    if tokens is not None and (
+        isinstance(tokens, bool) or not isinstance(tokens, int) or tokens < 0
+    ):
+        fail(f"accounting providerReportedTokens must be null or an integer: {path}")
+    return document
+
+
 def command_text(row: dict[str, Any]) -> str:
     arguments = row["arguments"]
     assert isinstance(arguments, dict)
@@ -146,13 +163,13 @@ def validate(
     # duplicate-key-rejecting loader before any final output can be constructed.
     for record in (subject, checker):
         for name in (
-            "accounting.json",
             "boundary.json",
             "packet-manifest.json",
             "plan.json",
             "task-receipt.json",
         ):
             load_json(record / name)
+        load_accounting(record / "accounting.json")
     load_json(checker / "artifacts" / "checker.json")
     if set(document) != ROOT_KEYS:
         fail("adjudication fields differ from the schema allowlist")

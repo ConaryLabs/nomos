@@ -30,10 +30,10 @@ any renderer is built.
   cold-agent attempts are complete and owner-disposed `fail` after otherwise
   correct semantic work because a subject or checker requested a forbidden
   outside-workspace path. Draft PR #80 repairs fail-closed final assembly with
-  hash-bound structured command adjudication. Three non-author audits found
+  hash-bound structured command adjudication. Four non-author audits found
   binding defects in successive revisions; the current repair derives commands
-  from ordered transcripts, reopens the recorded immutable packets, and hashes
-  the actual candidate marker and binary before adjudication. It awaits
+  from complete ordered transcripts, revalidates the Pi lifecycle and receipts,
+  and verifies every immutable packet member before adjudication. It awaits
   exact-head non-author proof. Gate K is not accepted or green
 - **Contract revision:** 7, owner-authorized in decision 0009
 - **Cold-agent protocol revision:** 3, owner-authorized in decision 0010

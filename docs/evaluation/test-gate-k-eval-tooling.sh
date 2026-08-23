@@ -108,6 +108,14 @@ rebind_recorded_commands() {
     ' \
     "$record/task-receipt.json" >"$receipt_update"
   mv -- "$receipt_update" "$record/task-receipt.json"
+  receipt_update=$(mktemp "$tmp_dir/launcher-events-update.XXXXXX")
+  awk -v transcript_digest="$transcript_digest" '
+    $1 == "PI_TASK_EVENTS_SHA256" {
+      print "PI_TASK_EVENTS_SHA256 " transcript_digest; next
+    }
+    {print}
+    ' "$record/launcher.txt" >"$receipt_update"
+  mv -- "$receipt_update" "$record/launcher.txt"
 }
 
 refresh_record_receipt_digests() {
@@ -163,6 +171,21 @@ refresh_record_runtime_evidence() {
     ' "$record/launcher.txt" >"$update"
   mv -- "$update" "$record/launcher.txt"
   refresh_record_receipt_digests "$record"
+}
+
+refresh_record_transcript_evidence() {
+  local record=$1
+  local transcript_digest update
+  transcript_digest=$(sha256sum "$record/transcript.ndjson" | cut -d' ' -f1)
+  refresh_record_receipt_digests "$record"
+  update=$(mktemp "$tmp_dir/launcher-transcript-refresh.XXXXXX")
+  awk -v transcript_digest="$transcript_digest" '
+    $1 == "PI_TASK_EVENTS_SHA256" {
+      print "PI_TASK_EVENTS_SHA256 " transcript_digest; next
+    }
+    {print}
+    ' "$record/launcher.txt" >"$update"
+  mv -- "$update" "$record/launcher.txt"
 }
 
 write_adjudication() {
@@ -472,6 +495,65 @@ jq -e '.verdict == "pass" and .formalAttempt == false and .shape == "author"' \
     $(jq -r '.digests.artifactsTreeSha256' \
       "$tmp_dir/author-run/checker/task-receipt.json") ]]
 
+assert_blocked 'output must be outside both immutable packets' finalizer-packet-output \
+  "$finalizer" "$tmp_dir/author-subject-record" "$tmp_dir/author-checker-record" \
+  "$tmp_dir/author-adjudication.json" "$tmp_dir/author-checker-1/nested-run"
+
+cp -R "$tmp_dir/author-checker-record" "$tmp_dir/retry-checker-record"
+jq -c 'if .type == "agent_end" then .willRetry = true else . end' \
+  "$tmp_dir/retry-checker-record/transcript.ndjson" \
+  >"$tmp_dir/retry-checker-record/transcript.update"
+mv -- "$tmp_dir/retry-checker-record/transcript.update" \
+  "$tmp_dir/retry-checker-record/transcript.ndjson"
+refresh_record_transcript_evidence "$tmp_dir/retry-checker-record"
+write_pass_adjudication "$tmp_dir/author-subject-record" \
+  "$tmp_dir/retry-checker-record" "$tmp_dir/retry-adjudication.json"
+assert_blocked 'transcript lifecycle or terminal identity is incomplete' finalizer-retry \
+  "$finalizer" "$tmp_dir/author-subject-record" "$tmp_dir/retry-checker-record" \
+  "$tmp_dir/retry-adjudication.json" "$tmp_dir/retry-run"
+
+cp -R "$tmp_dir/author-checker-record" "$tmp_dir/accounting-checker-record"
+jq -S -c '.assistantTurns = 999 | .providerReportedTokens = 0' \
+  "$tmp_dir/accounting-checker-record/accounting.json" \
+  >"$tmp_dir/accounting-checker-record/accounting.update"
+mv -- "$tmp_dir/accounting-checker-record/accounting.update" \
+  "$tmp_dir/accounting-checker-record/accounting.json"
+jq -S -c '.accounting.assistantTurns = 999 | .accounting.providerReportedTokens = 0' \
+  "$tmp_dir/accounting-checker-record/task-receipt.json" \
+  >"$tmp_dir/accounting-checker-record/task-receipt.update"
+mv -- "$tmp_dir/accounting-checker-record/task-receipt.update" \
+  "$tmp_dir/accounting-checker-record/task-receipt.json"
+refresh_record_runtime_evidence "$tmp_dir/accounting-checker-record"
+write_pass_adjudication "$tmp_dir/author-subject-record" \
+  "$tmp_dir/accounting-checker-record" "$tmp_dir/accounting-adjudication.json"
+assert_blocked 'accounting does not derive from the transcript' finalizer-accounting \
+  "$finalizer" "$tmp_dir/author-subject-record" "$tmp_dir/accounting-checker-record" \
+  "$tmp_dir/accounting-adjudication.json" "$tmp_dir/accounting-run"
+
+cp -R "$tmp_dir/author-checker-record" "$tmp_dir/truncated-qualification-record"
+sed '/^PI_VERSION /d' "$tmp_dir/truncated-qualification-record/pi-qualification.txt" \
+  >"$tmp_dir/truncated-qualification-record/pi-qualification.update"
+mv -- "$tmp_dir/truncated-qualification-record/pi-qualification.update" \
+  "$tmp_dir/truncated-qualification-record/pi-qualification.txt"
+refresh_record_receipt_digests "$tmp_dir/truncated-qualification-record"
+write_pass_adjudication "$tmp_dir/author-subject-record" \
+  "$tmp_dir/truncated-qualification-record" "$tmp_dir/truncated-qualification.json"
+assert_blocked 'qualification client version differs from task receipt' \
+  finalizer-truncated-qualification \
+  "$finalizer" "$tmp_dir/author-subject-record" "$tmp_dir/truncated-qualification-record" \
+  "$tmp_dir/truncated-qualification.json" "$tmp_dir/truncated-qualification-run"
+
+cp -R "$tmp_dir/author-checker-record" "$tmp_dir/truncated-launcher-record"
+sed '/^PI_TASK_EVENTS_SHA256 /d' "$tmp_dir/truncated-launcher-record/launcher.txt" \
+  >"$tmp_dir/truncated-launcher-record/launcher.update"
+mv -- "$tmp_dir/truncated-launcher-record/launcher.update" \
+  "$tmp_dir/truncated-launcher-record/launcher.txt"
+write_pass_adjudication "$tmp_dir/author-subject-record" \
+  "$tmp_dir/truncated-launcher-record" "$tmp_dir/truncated-launcher.json"
+assert_blocked 'launcher does not bind the transcript' finalizer-truncated-launcher \
+  "$finalizer" "$tmp_dir/author-subject-record" "$tmp_dir/truncated-launcher-record" \
+  "$tmp_dir/truncated-launcher.json" "$tmp_dir/truncated-launcher-run"
+
 jq -c -s '
   to_entries as $events |
   ($events | map(select(.value.type == "tool_execution_start"))[0]) as $start |
@@ -626,7 +708,12 @@ assert_blocked 'plan writable paths differ from task shape' finalizer-writable-p
   "$tmp_dir/writable-path-run"
 
 cp -R "$tmp_dir/author-checker-record" "$tmp_dir/relabeled-checker-record"
-relabeled_commit=$(git -C "$repo_root" rev-parse HEAD^)
+relabeled_commit=$(printf '%s\n' 'fixture alternate candidate' | env \
+  GIT_AUTHOR_NAME='Gate K fixture' GIT_AUTHOR_EMAIL='fixture@invalid' \
+  GIT_AUTHOR_DATE='1970-01-01T00:00:00Z' \
+  GIT_COMMITTER_NAME='Gate K fixture' GIT_COMMITTER_EMAIL='fixture@invalid' \
+  GIT_COMMITTER_DATE='1970-01-01T00:00:00Z' \
+  git -C "$repo_root" commit-tree "$(git -C "$repo_root" rev-parse HEAD^{tree})")
 relabeled_marker_sha=$(printf '%s\n' "$relabeled_commit" | sha256sum | cut -d' ' -f1)
 jq -S -c --arg commit "$relabeled_commit" '.candidateCommit = $commit' \
   "$tmp_dir/relabeled-checker-record/task-receipt.json" \
@@ -736,6 +823,11 @@ jq '.outcome = "inconclusive" | .outcomeReason = "fixture transport failure"' \
   >"$tmp_dir/inconclusive-outside-path-record/task-receipt.update"
 mv -- "$tmp_dir/inconclusive-outside-path-record/task-receipt.update" \
   "$tmp_dir/inconclusive-outside-path-record/task-receipt.json"
+sed 's/^PI_TASK_STATUS 0$/PI_TASK_STATUS 1/' \
+  "$tmp_dir/inconclusive-outside-path-record/launcher.txt" \
+  >"$tmp_dir/inconclusive-outside-path-record/launcher.update"
+mv -- "$tmp_dir/inconclusive-outside-path-record/launcher.update" \
+  "$tmp_dir/inconclusive-outside-path-record/launcher.txt"
 write_outside_path_adjudication "$tmp_dir/author-subject-record" \
   "$tmp_dir/inconclusive-outside-path-record" checker 0 /dev/null \
   "$tmp_dir/inconclusive-outside-path-adjudication.json"
@@ -763,6 +855,18 @@ jq -e '
   .commandAdjudication.verdict == "pass" and
   .commandAdjudication.findings == []
   ' "$tmp_dir/quoted-path-pass-run/result.json" >/dev/null
+
+printf '%s\n' 'tampered immutable brief' >>"$tmp_dir/author-checker-1/brief.txt"
+assert_blocked 'recorded immutable packet member size differs' finalizer-packet-tamper \
+  "$finalizer" "$tmp_dir/author-subject-record" "$tmp_dir/author-checker-record" \
+  "$tmp_dir/author-adjudication.json" "$tmp_dir/packet-tamper-run"
+install -m 644 "$tmp_dir/author-checker-2/brief.txt" "$tmp_dir/author-checker-1/brief.txt"
+printf '\n' >>"$tmp_dir/author-checker-1/.nomos-candidate-commit"
+assert_blocked 'recorded immutable packet member size differs' finalizer-marker-bytes \
+  "$finalizer" "$tmp_dir/author-subject-record" "$tmp_dir/author-checker-record" \
+  "$tmp_dir/author-adjudication.json" "$tmp_dir/marker-bytes-run"
+install -m 644 "$tmp_dir/author-checker-2/.nomos-candidate-commit" \
+  "$tmp_dir/author-checker-1/.nomos-candidate-commit"
 
 launch_task debug-subject "$tmp_dir/debug-1"
 record_task debug-subject "$tmp_dir/debug-1"

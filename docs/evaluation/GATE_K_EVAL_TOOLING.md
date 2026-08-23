@@ -178,11 +178,23 @@ newline; that the sandbox independently matched the supplied candidate binary;
 that the candidate exists in repository history; and that the checker packet
 manifest binds the exact supplied subject receipt, commands, and every artifact.
 The qualification, launcher, stderr boundary, and accounting records must agree
-exactly. Finalization reopens the recorded packet root and hashes the actual
-manifest, candidate marker, and binary instead of trusting copied metadata.
+exactly with the task receipt and complete transcript. Session, agent,
+retry, prompt, terminal assistant, and usage accounting are rederived during
+finalization; truncated launch or qualification receipts fail closed.
+Finalization reopens the recorded packet root and verifies the exact immutable
+member set plus every member's entry type, size, mode, and digest instead of
+trusting selected copied metadata. The writable task subtree is excluded because
+the subject is required to change it and its final bytes are separately bound by
+the task receipt's artifact-tree digest.
 Writable paths are exact by shape (`workspace` only for author subjects;
 `output` for the other three shapes) and must agree across the plan, manifest,
-boundary, and sandbox receipt. Checker command/reason arrays are validated
+boundary, and sandbox receipt. Output may overlap neither a task record nor its
+reopened packet. Formal records are pinned to exact `gate-k-rc1` commit
+`d8a0b85c55aa33c20f46e5dfd9e0d1f317e1f1c9` and release-binary SHA-256
+`4af70accf3d1680f6b0e78f860be5ac62c5ab11b470026a83f01eb5b95051fd1`;
+non-formal rehearsals must target the finalizer checkout and cannot satisfy Gate
+K. A future formal candidate requires an owner-authorized tooling revision.
+Checker command/reason arrays are validated
 element by element. The output must be outside both immutable input records. Missing
 identity, transcript, command, artifact, or result fields fail closed. Operator
 intervention is always present, including the literal disposition `none`.
