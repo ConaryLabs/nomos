@@ -1,0 +1,282 @@
+{
+  "documentType": "gate-k-final-evidence-index-v1",
+  "date": "2026-08-23",
+  "owner": "Peter Permenter",
+  "issue": 73,
+  "verdict": "failed",
+  "ownerDisposition": "Gate K failed; no formal retry authorized",
+  "acceptance": {
+    "contractRevision": 7,
+    "requiredCriteria": 19,
+    "passed": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      19
+    ],
+    "failed": [
+      17,
+      18
+    ],
+    "inconclusive": []
+  },
+  "candidate": {
+    "tag": "gate-k-rc1",
+    "commit": "d8a0b85c55aa33c20f46e5dfd9e0d1f317e1f1c9",
+    "tree": "4013e6629ea274c6f2e2e2570306cb35b6d41505",
+    "kernelPath": "KERNEL.md",
+    "kernelSha256": "9c9bc478bb710666aec6572505d7a504630cfdafc652d1830c7ef6f555110a9e",
+    "fixturePath": "fixtures/gaol.nomos",
+    "fixtureSha256": "a69582e7400921cb0fed84fde16469c21081363af4ebaba93411e59ae3ca4725",
+    "formalLaunchProtocolRevision": 3,
+    "currentEvidenceAuthenticationProtocolRevision": 5
+  },
+  "evidenceBoundary": {
+    "evidenceMainCommit": "6b990f24b47bda6e92c5e9caf6905b4790d5db11",
+    "postCandidateAuthenticationMerge": "f7e541c8eb809bdc6411ef763b0c65377d0ba573",
+    "semanticCandidateChanged": false,
+    "formalPacketsChanged": false,
+    "rawTaskRecordsChanged": false,
+    "formalRetryAuthorized": false,
+    "description": "Post-candidate work authenticates and deterministically assembles the four frozen revision-3 task records. It does not create a new semantic candidate, upgrade either session to protocol revision 5, or alter either failed verdict."
+  },
+  "implementationLedger": [
+    {
+      "issue": 68,
+      "pullRequest": 74,
+      "headCommit": "5adb25b97a3d7d79b73f6a3ad818e90baa81850a",
+      "mergeCommit": "eb86f25f5084a5da83cdd4f26e42e68089367a11",
+      "purpose": "implementation freeze"
+    },
+    {
+      "issue": 69,
+      "pullRequest": 75,
+      "headCommit": "1249c32220acd0530e3490aa9b11570767278f9e",
+      "mergeCommit": "8c32286dc779b76ce8e30f3b1b7817a551f41ba9",
+      "purpose": "determinism, budgets, and schema ownership"
+    },
+    {
+      "issue": 70,
+      "pullRequest": 76,
+      "headCommit": "b37998aa4e5b14ce3e3c186024aebe675f253153",
+      "mergeCommit": "d8a0b85c55aa33c20f46e5dfd9e0d1f317e1f1c9",
+      "purpose": "evaluation tooling, rehearsals, and gate-k-rc1"
+    },
+    {
+      "issue": 79,
+      "pullRequest": 80,
+      "headCommit": "bd75670f6da1409cf4a3f72d3185a37006bfcc07",
+      "mergeCommit": "f7e541c8eb809bdc6411ef763b0c65377d0ba573",
+      "purpose": "fail-closed evidence authentication"
+    },
+    {
+      "issue": 71,
+      "pullRequest": 77,
+      "headCommit": "60f74d50e2dfa96a4f75d47abf88b0f45335b449",
+      "mergeCommit": "898f5a20f4813d2b48ca0ca445f2940bae0bbec4",
+      "purpose": "formal cold-author record"
+    },
+    {
+      "issue": 72,
+      "pullRequest": 78,
+      "headCommit": "2d260bacac8db41b87772772f70f1734e4052831",
+      "mergeCommit": "6b990f24b47bda6e92c5e9caf6905b4790d5db11",
+      "purpose": "formal cold-debug record"
+    }
+  ],
+  "workflows": [
+    {
+      "runId": 32618725700,
+      "scope": "exact candidate verification",
+      "commit": "d8a0b85c55aa33c20f46e5dfd9e0d1f317e1f1c9",
+      "conclusion": "success"
+    },
+    {
+      "runId": 32618725710,
+      "scope": "exact candidate evidence",
+      "commit": "d8a0b85c55aa33c20f46e5dfd9e0d1f317e1f1c9",
+      "conclusion": "success",
+      "jobCount": 6
+    },
+    {
+      "runId": 32647910061,
+      "scope": "post-authentication verification",
+      "commit": "f7e541c8eb809bdc6411ef763b0c65377d0ba573",
+      "conclusion": "success"
+    },
+    {
+      "runId": 32647910069,
+      "scope": "post-authentication evidence",
+      "commit": "f7e541c8eb809bdc6411ef763b0c65377d0ba573",
+      "conclusion": "success"
+    },
+    {
+      "runId": 32649651879,
+      "scope": "evidence-main verification",
+      "commit": "6b990f24b47bda6e92c5e9caf6905b4790d5db11",
+      "conclusion": "success"
+    },
+    {
+      "runId": 32649651810,
+      "scope": "evidence-main evidence",
+      "commit": "6b990f24b47bda6e92c5e9caf6905b4790d5db11",
+      "conclusion": "success"
+    }
+  ],
+  "candidateArtifacts": [
+    {
+      "kind": "linux-x86_64-debug",
+      "artifactId": 9487728929,
+      "archiveSha256": "5f810bcf747fb553e3e48f943a1ebc4b52a09db6fd620ed69ea0003d509fad7b",
+      "receiptSha256": "8878a307a1fe0403c70e4d4c9d84a38e3f24af69fc950bdd109cb894f242acd0"
+    },
+    {
+      "kind": "linux-x86_64-release",
+      "artifactId": 9487733469,
+      "archiveSha256": "a65cf71039658c6994e7562147a5f3d0f7c0f7f2d228f9f2a633f7215ca1b595",
+      "receiptSha256": "684617f15463d9acf53329b2128d56061c12ea855933cb4166a5802205bf203a"
+    },
+    {
+      "kind": "linux-aarch64-release",
+      "artifactId": 9487731461,
+      "archiveSha256": "3f7e9996f04454cc5c8c4ffcee8d9a940ad86efe97e38adb0352ee007b7bc3c1",
+      "receiptSha256": "36fe8a5d72ea8ee8dd34e58be354d699bcc4d2e0e7608e6d4b6e0581e177dbed"
+    },
+    {
+      "kind": "cross-target",
+      "artifactId": 9487736044,
+      "archiveSha256": "1bbbcb14d393acfdeee3db980f408280e60c428f3294e23608b777393199f9a7",
+      "receiptSha256": "55af1a8372043118e11827a8c3b20e2ba84746e8f86e91168b09f348d64e4be3",
+      "semanticDigestTableSha256": "75fa9d29b736fc93d30a49260c9c698376fe3fdfcffc75d7ef0852e6d398bfbe"
+    },
+    {
+      "kind": "measured-budgets",
+      "artifactId": 9487733963,
+      "archiveSha256": "8474a96dd8eda6658bd858bad70b37f8f663eaeac8bfa947cf109fe4f992f153",
+      "receiptSha256": "fc1c06e110be389fb29db072e75af1e28c0c63f074278b156eb91cdab17eaf48",
+      "rawSamplesSha256": "f1aec3642cb95f070254af3657827809fcc2ad74e499d81e0da282c7c33535ee",
+      "summarySha256": "4ca6ba9478a4a653323e56538eb8e508d7c700d0f5da66ae5799cc33900babb7",
+      "throughputSha256": "acb754520e3959f4c8083dbb99a63ee1417896e64145edf650725f2ad2c68190"
+    },
+    {
+      "kind": "schema-ownership",
+      "artifactId": 9487725597,
+      "archiveSha256": "04bb9e9135beb52b044efa40cd8b7c51f949f265e56ea78685adea3c6fe7c6eb",
+      "receiptSha256": "3bc22b07d6abbba56d2bfb1b6b80138e169d2be9d615e3f157925bb93612ebd1"
+    }
+  ],
+  "repositoryEvidence": [
+    {
+      "path": "docs/evaluation/GATE_K_EVIDENCE_PLAN.md",
+      "sha256": "d839dbfef12b4e12d1b5f6f4b0b4ee90cfce8aed530f8661e298dcebfe64faf0",
+      "role": "predeclared mechanical evidence plan"
+    },
+    {
+      "path": "docs/evaluation/final/gate-k-rc1-mechanical-evidence.md",
+      "sha256": "53ea168d398cdbe63ddcfd210ffe3a77e119b7846e2ee3a2acf9416a55820928",
+      "role": "compact exact-candidate mechanical receipt"
+    },
+    {
+      "path": "docs/evaluation/final/gate-k-rc1-budget-raw-samples.tsv",
+      "sha256": "f1aec3642cb95f070254af3657827809fcc2ad74e499d81e0da282c7c33535ee",
+      "role": "exact-candidate raw budget samples"
+    },
+    {
+      "path": "docs/evaluation/SCHEMA_OWNERSHIP.md",
+      "sha256": "8512bb92abc2b34cfcacdcc354d9a6a67071ba776e74d3fb0e860ca4fc24467e",
+      "candidateSha256": "6e9401a0bf360ec857436842fa07aefbccaf665be1f07a230f2941a9e8fbbf71",
+      "role": "final twenty-identity ownership audit; post-candidate edits are disposition status only"
+    },
+    {
+      "path": "docs/evaluation/final/formal-evidence-non-author-audit.json",
+      "sha256": "32f78c9b102b744afbe7743eed25b299db8bf7ffbdbba7c918441044b5c2714b",
+      "role": "paired different-author audit of both formal records"
+    },
+    {
+      "path": "docs/evaluation/final/gate-k-rc1-final-non-author-proof.json",
+      "sha256": "9fce783bfca0894f6feddb95eeaa2acccb6ede0966d242eec2d7415805dbfc8f",
+      "role": "final different-author exact-candidate and evidence proof"
+    },
+    {
+      "path": "docs/decisions/0011-cold-agent-attempt-ledger.md",
+      "sha256": "5e4b3c29a5f6e29a262fe93c59e06fe19d17d38e5f81c160ba07a6a1cff1ddaa",
+      "role": "frozen legacy task admission and attempt accounting"
+    },
+    {
+      "path": "docs/decisions/0012-cold-agent-evidence-authentication.md",
+      "sha256": "1f501fc55a59904bc5631708dacfe7620d3aae1814d8410e5577bac8c809db50",
+      "role": "fail-closed evidence authentication"
+    },
+    {
+      "path": "docs/decisions/0013-gate-k-disposition.md",
+      "sha256": "ee254d177cbd37f4182641b0bb04b88dffead6e196c3a575586f342f93b3c1af",
+      "role": "owner verdict and exact nineteen-criterion matrix"
+    }
+  ],
+  "formalEvidence": {
+    "ledger": {
+      "path": "docs/evaluation/gate-k-formal-attempt-ledger.jsonl",
+      "sha256": "69162588b5a43b0456e739d49a34a2d329f4f53d8d6527a45997ec064ecba794",
+      "entries": 4
+    },
+    "author": {
+      "directory": "docs/evaluation/runs/gate-k/2026-08-23-gemini-3.7-flash-author",
+      "subjectTaskReceiptSha256": "732af45918ebc27c02675f6c75c32e7718407545c9fa3a39de327d3591d382a8",
+      "checkerTaskReceiptSha256": "2e8c97d5a939ddd6fa9b33769f6e24b80fc242b1420c2660eef7f9742d542db3",
+      "subjectCommands": 37,
+      "checkerCommands": 42,
+      "adjudicationSha256": "6826cb5b05798b9c4aa54e7bf67f608faca14db8a035f25ebcad33d58f556c74",
+      "resultSha256": "e6990dacde903f527d1cb46784a54d938a7e130f1193e51bb830a4a2284f07dc",
+      "verdict": "fail",
+      "findingRecord": "checker",
+      "findingCommandOrdinals": [
+        1,
+        16
+      ],
+      "ownerDisposition": "formal attempt fail; no retry authorized"
+    },
+    "debug": {
+      "directory": "docs/evaluation/runs/gate-k/2026-08-23-deepseek-v4-flash-vision-exp-debug",
+      "subjectTaskReceiptSha256": "2820d2f46b2d895abc22b6677f4f3ba908199cdb9d057aee181b477eaeb82390",
+      "checkerTaskReceiptSha256": "0053d3df610e7e31322a2cfd9dfc641e160d3e5c64582df387d34cd4ddd37d37",
+      "subjectCommands": 78,
+      "checkerCommands": 41,
+      "hiddenMutationSha256": "42dcb05bd8d5acee4ba90c79be48a749a365927078e4c56905111290f9a44ed9",
+      "adjudicationSha256": "673ba5546a77a7cea11211b43eac71cafa0f1017d5e0ae8723574b09ea851d55",
+      "resultSha256": "f09c9214329f7f8bd7d4d4b31476a0f24c825add2f5bb434b7bf780f64d8089c",
+      "verdict": "fail",
+      "findingRecord": "subject",
+      "findingCommandOrdinals": [
+        1,
+        48,
+        65
+      ],
+      "ownerDisposition": "formal attempt fail; no retry authorized"
+    }
+  },
+  "exclusions": [
+    "qualification probes",
+    "non-formal Opus rehearsals",
+    "founding and architecture reviews",
+    "ordinary implementation-slice audits",
+    "superseded or rejected audit attempts"
+  ],
+  "notes": [
+    "This file is a documentary evidence index, not a new persisted nomos.* schema.",
+    "Criteria 17 and 18 are immutable expected failures. A successful evidence-integrity audit does not convert them into passes.",
+    "GitHub artifact archives have finite retention; repository receipts preserve their IDs, archive hashes, content hashes, and compact load-bearing data."
+  ]
+}

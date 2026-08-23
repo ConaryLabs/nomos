@@ -26,22 +26,14 @@ any renderer is built.
   runtime and replay evidence, atomic verified run bundles, the immutable
   `migrate` command, and package-bound read-only entity and transition
   explanations
-- **Gate K status:** `gate-k-rc1` freezes exact candidate `d8a0b85`. Both formal
-  cold-agent attempts are complete and owner-disposed `fail` after otherwise
-  correct semantic work because a subject or checker requested a forbidden
-  outside-workspace path. Draft PR #80 repairs fail-closed final assembly with
-  hash-bound structured command adjudication. Thirteen non-author audits found
-  binding defects in successive revisions; the current repair rejects
-  duplicate-key or reordered transcripts, validates the complete qualification
-  envelope, binds final writable packet bytes, and admits only the four frozen
-  formal task receipts. The current repair also requires receipt-backed attempt
-  closure, exact public JSON schemas, pre-sanitization stream validation, and
-  path-and-hash runtime identities, full-record close authentication, exact
-  legacy-receipt admission, committed provider-launch markers, complete packet
-  reopening, strict JSON validation before checker-packet construction, and
-  exact manifest validation before publication. It awaits exact-head non-author
-  proof. Gate K is not
-  accepted or green
+- **Gate K status:** **failed**, owner-disposed in decision 0013. Exact candidate
+  `gate-k-rc1` / `d8a0b85` passed criteria 1–16 and the final different-author
+  proof passed criterion 19. The one formal cold-author attempt failed criterion
+  17 because its checker requested forbidden outside-workspace paths; the one
+  formal cold-debug attempt failed criterion 18 for the same class of subject
+  request. Both did the semantic task correctly, but the frozen rubric does not
+  permit self-waiver. No retry is authorized, no acceptance tag exists, and
+  Gate K is not green
 - **Contract revision:** 7, owner-authorized in decision 0009
 - **Cold-agent protocol revision:** 5, owner-authorized in decision 0012
 - **Scope:** greenfield / vacuum architecture exercise
@@ -54,71 +46,79 @@ claim the thesis is correct. The kernel exists to give it a cheap, falsifiable
 way to fail before graphics, networking, audio, or a general engine grow around
 it.
 
+That falsification has now happened at the cold-agent boundary. Nomos remains a
+useful semantic experiment, but no renderer, Gate 0 implementation, or further
+semantic slice is authorized by the failed Gate K result.
+
 ## Read in this order
 
-1. [THESIS.md](THESIS.md) — the design, boundaries, proof gates, resolved
+1. [docs/decisions/0013-gate-k-disposition.md](docs/decisions/0013-gate-k-disposition.md)
+   — the final owner verdict, exact 1–19 matrix, and project consequence.
+2. [THESIS.md](THESIS.md) — the design, boundaries, proof gates, resolved
    disagreements, and adoption criteria.
-2. [KERNEL.md](KERNEL.md) — the revisioned acceptance contract for Gate K, the
+3. [KERNEL.md](KERNEL.md) — the revisioned acceptance contract for Gate K, the
    renderer-free executable semantic kernel.
-3. [docs/decisions/0012-cold-agent-evidence-authentication.md](docs/decisions/0012-cold-agent-evidence-authentication.md)
+4. [docs/evaluation/GATE_K_FINAL_EVIDENCE_INDEX.json](docs/evaluation/GATE_K_FINAL_EVIDENCE_INDEX.json)
+   — the content-addressed final evidence index.
+5. [docs/decisions/0012-cold-agent-evidence-authentication.md](docs/decisions/0012-cold-agent-evidence-authentication.md)
    and [docs/decisions/0011-cold-agent-attempt-ledger.md](docs/decisions/0011-cold-agent-attempt-ledger.md)
    — the owner-authorized protocol revisions 4 and 5 for prospective attempt
    reservation and complete evaluation-envelope authentication.
-3. [docs/decisions/0009-transition-explanation-input-boundary.md](docs/decisions/0009-transition-explanation-input-boundary.md)
+6. [docs/decisions/0009-transition-explanation-input-boundary.md](docs/decisions/0009-transition-explanation-input-boundary.md)
    — the owner-authorized revision-6 to revision-7 repair requiring a verified
    world for transition explanations and separate tick-7 run evidence.
-4. [docs/decisions/0010-cold-agent-token-budget.md](docs/decisions/0010-cold-agent-token-budget.md)
+7. [docs/decisions/0010-cold-agent-token-budget.md](docs/decisions/0010-cold-agent-token-budget.md)
    — the owner-authorized cold-agent protocol revision 3 removal of resource
    ceilings while preserving complete usage and command accounting.
-5. [docs/decisions/0008-cold-agent-nomos-cli-identity.md](docs/decisions/0008-cold-agent-nomos-cli-identity.md)
+8. [docs/decisions/0008-cold-agent-nomos-cli-identity.md](docs/decisions/0008-cold-agent-nomos-cli-identity.md)
    — the owner-authorized cold-agent protocol revision 2 correction from the
    prototype `estate` CLI name to active `nomos`; no tool scope or rubric changes.
-6. [docs/decisions/0007-adopt-nomos-identity.md](docs/decisions/0007-adopt-nomos-identity.md)
+9. [docs/decisions/0007-adopt-nomos-identity.md](docs/decisions/0007-adopt-nomos-identity.md)
    — the owner-authorized revision-5 to revision-6 identity cutover: Nomos is
    the project/runtime, The Signed World remains the thesis, and active schemas
    begin a fresh pre-Gate epoch.
-7. [docs/decisions/0006-package-evidence-boundary.md](docs/decisions/0006-package-evidence-boundary.md)
+10. [docs/decisions/0006-package-evidence-boundary.md](docs/decisions/0006-package-evidence-boundary.md)
    — the owner-authorized revision-4 to revision-5 repair sealing package
    receipts, publication, exact manifest decoding, and filesystem entry types.
-8. [docs/decisions/0003-contract-profile-closure.md](docs/decisions/0003-contract-profile-closure.md)
+11. [docs/decisions/0003-contract-profile-closure.md](docs/decisions/0003-contract-profile-closure.md)
    — the owner-authorized revision-2 to revision-3 closure of the canonical
    profile and workspace-evidence contract gaps.
-9. [docs/decisions/0004-world-ir-construction-lineage.md](docs/decisions/0004-world-ir-construction-lineage.md)
+12. [docs/decisions/0004-world-ir-construction-lineage.md](docs/decisions/0004-world-ir-construction-lineage.md)
    — the owner-authorized revision-3 to revision-4 repair separating incomplete
    construction snapshots from the stable World IR migration line.
-10. [docs/decisions/0005-gate-k-dependency-policy.md](docs/decisions/0005-gate-k-dependency-policy.md)
+13. [docs/decisions/0005-gate-k-dependency-policy.md](docs/decisions/0005-gate-k-dependency-policy.md)
    — the owner-authorized temporary zero-third-party-dependency policy for Gate
    K; it does not amend contract revision 4 or bind later gates.
-11. [docs/decisions/0001-contract-repair.md](docs/decisions/0001-contract-repair.md)
+14. [docs/decisions/0001-contract-repair.md](docs/decisions/0001-contract-repair.md)
    — the owner-authorized revision-1 to revision-2 contract repair.
-12. [docs/evaluation/COLD_AGENT_PROTOCOL.md](docs/evaluation/COLD_AGENT_PROTOCOL.md)
+15. [docs/evaluation/COLD_AGENT_PROTOCOL.md](docs/evaluation/COLD_AGENT_PROTOCOL.md)
    — the reproducible cold-author, cold-debug, and cold-review procedure.
-13. [docs/evaluation/GATE_K_COLD_AGENT_PLAN.md](docs/evaluation/GATE_K_COLD_AGENT_PLAN.md)
+16. [docs/evaluation/GATE_K_COLD_AGENT_PLAN.md](docs/evaluation/GATE_K_COLD_AGENT_PLAN.md)
    — the owner-authorized whole-kernel subject roster and eligibility checks.
-14. [docs/workspace.md](docs/workspace.md) — the crate map, how to run the
+17. [docs/workspace.md](docs/workspace.md) — the crate map, how to run the
    proof, and the decisions the first implementation slice had to make.
-15. [docs/authoring.md](docs/authoring.md) — source schema version 1 and the
+18. [docs/authoring.md](docs/authoring.md) — source schema version 1 and the
    approved Gate K authoring vocabulary.
-16. [docs/compiler.md](docs/compiler.md) — parser/linker stages, schema
+19. [docs/compiler.md](docs/compiler.md) — parser/linker stages, schema
    ownership, proof coverage, and limits.
-17. [docs/transitions.md](docs/transitions.md) — compiled command/event
+20. [docs/transitions.md](docs/transitions.md) — compiled command/event
    semantics, causal ordering, and immutable runtime preparation.
-18. [docs/movement.md](docs/movement.md) — compiled claim composition,
+21. [docs/movement.md](docs/movement.md) — compiled claim composition,
    shared simulation/navigation movement semantics, and SW-E evidence.
-19. [docs/packages.md](docs/packages.md) — atomic package publication, exact
+22. [docs/packages.md](docs/packages.md) — atomic package publication, exact
    manifest/member verification, and the revision-5 evidence boundary.
-20. [docs/migration.md](docs/migration.md) — stable-v1 to stable-v2 movement
+23. [docs/migration.md](docs/migration.md) — stable-v1 to stable-v2 movement
    migration, normalized runtime proof, and digest mapping.
-21. [docs/provenance.md](docs/provenance.md) — typed fact identities, resolved
+24. [docs/provenance.md](docs/provenance.md) — typed fact identities, resolved
     values, causal inputs, and the boundary between semantics and display text.
-22. [docs/runtime.md](docs/runtime.md) — compiler-owned light union, immutable
+25. [docs/runtime.md](docs/runtime.md) — compiler-owned light union, immutable
     runtime snapshots, state hashes, atomic commit, and typed causal receipts.
-23. [docs/explanations.md](docs/explanations.md) — package-bound entity and
+26. [docs/explanations.md](docs/explanations.md) — package-bound entity and
     transition explanations, stable selection failures, and SW-N evidence.
-24. [docs/review/2026-08-21-founding-review.md](docs/review/2026-08-21-founding-review.md)
+27. [docs/review/2026-08-21-founding-review.md](docs/review/2026-08-21-founding-review.md)
    — the condensed primary record of the founding adversarial review, written
    in the originating session, with its provenance limits stated.
-25. [docs/review/2026-08-21-founding-review-synthesis.md](docs/review/2026-08-21-founding-review-synthesis.md)
+28. [docs/review/2026-08-21-founding-review-synthesis.md](docs/review/2026-08-21-founding-review-synthesis.md)
     — the contract-revision-2 edited synthesis of that review.
 
 ## Layout
