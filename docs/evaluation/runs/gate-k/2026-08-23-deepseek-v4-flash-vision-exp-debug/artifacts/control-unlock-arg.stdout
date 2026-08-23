@@ -1,0 +1,1 @@
+{"diagnostics":[{"code":"EK0814","message":"command line has unsupported arity or argument syntax","repairs":["fix_source_syntax"]}],"status":"rejected"}
