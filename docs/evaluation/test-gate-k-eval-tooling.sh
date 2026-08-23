@@ -880,42 +880,41 @@ rebind_recorded_commands "$tmp_dir/outside-path-checker-record" \
   'cat /workspace/brief.txt 2>/dev/null'
 write_pass_adjudication "$tmp_dir/author-subject-record" \
   "$tmp_dir/outside-path-checker-record" "$tmp_dir/outside-path-pass-adjudication.json"
-jq '
-  .findings = [{
-    record: "checker",
-    commandOrdinal: 0,
-    commandSha256: "b06bf6c464f4bd1ca528655a03218278a7def04a1e77f26161ad5937941e2a43",
-    kind: "outside_workspace_path",
-    pathToken: "/dev/null",
-    reason: "fixture finding"
-  }]
-  ' "$tmp_dir/outside-path-pass-adjudication.json" \
-  >"$tmp_dir/outside-path-invalid-adjudication.json"
-assert_blocked 'adjudication verdict must be fail' finalizer-checker-outside-path-pass \
-  "$finalizer" \
-  "$tmp_dir/author-subject-record" "$tmp_dir/outside-path-checker-record" \
-  "$tmp_dir/outside-path-invalid-adjudication.json" \
-  "$tmp_dir/outside-path-pass-run"
+"$finalizer" "$tmp_dir/author-subject-record" "$tmp_dir/outside-path-checker-record" \
+  "$tmp_dir/outside-path-pass-adjudication.json" "$tmp_dir/outside-path-pass-run" >/dev/null
+jq -e '
+  .schema == "nomos.gate_k.run_result@2" and
+  .protocolRevision == 6 and .verdict == "pass" and
+  .adjudication.findings == [] and
+  .records.checker.dimensions.operational_compliance.verdict == "pass"
+  ' "$tmp_dir/outside-path-pass-run/result.json" >/dev/null
+
 write_outside_path_adjudication "$tmp_dir/author-subject-record" \
   "$tmp_dir/outside-path-checker-record" checker 0 /dev/null \
-  "$tmp_dir/outside-path-fail-adjudication.json"
-"$finalizer" "$tmp_dir/author-subject-record" "$tmp_dir/outside-path-checker-record" \
-  "$tmp_dir/outside-path-fail-adjudication.json" "$tmp_dir/outside-path-fail-run" >/dev/null
+  "$tmp_dir/dev-null-invalid-adjudication.json"
+assert_blocked 'declared /dev/null exception as forbidden' dev-null-finding \
+  python3 "$adjudication_validator" "$tmp_dir/author-subject-record" \
+  "$tmp_dir/outside-path-checker-record" "$tmp_dir/dev-null-invalid-adjudication.json"
+
+cp -R "$tmp_dir/author-checker-record" "$tmp_dir/forbidden-device-checker-record"
+rebind_recorded_commands "$tmp_dir/forbidden-device-checker-record" \
+  'cat /workspace/brief.txt 2>/dev/zero'
+write_outside_path_adjudication "$tmp_dir/author-subject-record" \
+  "$tmp_dir/forbidden-device-checker-record" checker 0 /dev/zero \
+  "$tmp_dir/forbidden-device-adjudication.json"
+"$finalizer" "$tmp_dir/author-subject-record" \
+  "$tmp_dir/forbidden-device-checker-record" \
+  "$tmp_dir/forbidden-device-adjudication.json" \
+  "$tmp_dir/forbidden-device-run" >/dev/null
 jq -e '
   .verdict == "fail" and
-  .reason == "independent review found an outside-workspace path request in recorded commands" and
-  .commandAdjudication.verdict == "fail" and
-  .commandAdjudication.findings == [{
-    commandOrdinal: 0,
-    commandSha256: "b06bf6c464f4bd1ca528655a03218278a7def04a1e77f26161ad5937941e2a43",
-    kind: "outside_workspace_path",
-    pathToken: "/dev/null",
-    reason: "the recorded shell command requested a path outside /workspace",
-    record: "checker"
-  }]
-  ' "$tmp_dir/outside-path-fail-run/result.json" >/dev/null
+  .adjudication.verdict == "fail" and
+  .adjudication.findings[0].pathToken == "/dev/zero" and
+  .records.checker.dimensions.operational_compliance.verdict == "fail" and
+  .records.checker.dimensions.independence_integrity.verdict == "pass"
+  ' "$tmp_dir/forbidden-device-run/result.json" >/dev/null
 
-cp -R "$tmp_dir/outside-path-checker-record" "$tmp_dir/inconclusive-outside-path-record"
+cp -R "$tmp_dir/forbidden-device-checker-record" "$tmp_dir/inconclusive-outside-path-record"
 jq -S -c '.outcome = "inconclusive" | .outcomeReason = "fixture transport failure"' \
   "$tmp_dir/inconclusive-outside-path-record/task-receipt.json" \
   >"$tmp_dir/inconclusive-outside-path-record/task-receipt.update"
@@ -927,18 +926,18 @@ sed 's/^PI_TASK_STATUS 0$/PI_TASK_STATUS 1/' \
 mv -- "$tmp_dir/inconclusive-outside-path-record/launcher.update" \
   "$tmp_dir/inconclusive-outside-path-record/launcher.txt"
 write_outside_path_adjudication "$tmp_dir/author-subject-record" \
-  "$tmp_dir/inconclusive-outside-path-record" checker 0 /dev/null \
+  "$tmp_dir/inconclusive-outside-path-record" checker 0 /dev/zero \
   "$tmp_dir/inconclusive-outside-path-adjudication.json"
 "$finalizer" "$tmp_dir/author-subject-record" \
   "$tmp_dir/inconclusive-outside-path-record" \
   "$tmp_dir/inconclusive-outside-path-adjudication.json" \
   "$tmp_dir/inconclusive-outside-path-run" >/dev/null
-jq -e '.verdict == "fail" and .commandAdjudication.verdict == "fail"' \
+jq -e '.verdict == "fail" and .adjudication.verdict == "fail"' \
   "$tmp_dir/inconclusive-outside-path-run/result.json" >/dev/null
 
 assert_blocked 'output must be outside both immutable task records' finalizer-nested-output \
-  "$finalizer" "$tmp_dir/author-subject-record" "$tmp_dir/outside-path-checker-record" \
-  "$tmp_dir/outside-path-fail-adjudication.json" \
+  "$finalizer" "$tmp_dir/author-subject-record" "$tmp_dir/forbidden-device-checker-record" \
+  "$tmp_dir/forbidden-device-adjudication.json" \
   "$tmp_dir/author-subject-record/final-output"
 
 cp -R "$tmp_dir/author-checker-record" "$tmp_dir/quoted-path-checker-record"
@@ -950,8 +949,8 @@ write_pass_adjudication "$tmp_dir/author-subject-record" \
   "$tmp_dir/quoted-path-adjudication.json" "$tmp_dir/quoted-path-pass-run" >/dev/null
 jq -e '
   .verdict == "pass" and
-  .commandAdjudication.verdict == "pass" and
-  .commandAdjudication.findings == []
+  .adjudication.verdict == "pass" and
+  .adjudication.findings == []
   ' "$tmp_dir/quoted-path-pass-run/result.json" >/dev/null
 
 printf '%s\n' 'tampered immutable brief' >>"$tmp_dir/author-checker-1/brief.txt"
