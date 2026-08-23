@@ -117,8 +117,11 @@ tree_sha() {
 }
 
 for record in "${records[@]}"; do
-  jq -e '
-    .schema == "nomos.gate_k.task_receipt@1" and
+  jq -e --arg plan_schema "$(jq -r '.schema' "$record/plan.json")" '
+    ((.schema == "nomos.gate_k.task_receipt@1" and
+      $plan_schema == "nomos.gate_k.eval_plan@1") or
+     (.schema == "nomos.gate_k.task_receipt@2" and .protocolRevision == 6 and
+      $plan_schema == "nomos.gate_k.eval_plan@2")) and
     .identity.freshEphemeralSession == true and
     .identity.client == "Pi" and
     (.identity.clientVersion | type) == "string" and (.identity.clientVersion | length) > 0 and
@@ -430,6 +433,7 @@ for record in "${records[@]}"; do
   qualified_extension=${qualified_extension_line% *}
   qualified_boundary=$(sed -n 's/^PI_BOUNDARY //p' "$record/pi-qualification.txt")
   qualified_bwrap=$(jq -r '.sandbox.binary' <<<"$qualified_boundary")
+  qualified_final_system_prompt=$(jq -r '.finalSystemPromptSha256' <<<"$qualified_boundary")
   receipt_execution=$(jq -c '.execution // null' "$record/task-receipt.json")
   qualified_execution=$(jq -S -c '.runtimeIdentity // null' <<<"$qualified_boundary")
   receipt_sha=$(sha256sum "$record/task-receipt.json" | cut -d' ' -f1)
@@ -454,6 +458,7 @@ for record in "${records[@]}"; do
     --arg session "$receipt_session" \
     --arg extension "$qualified_extension" \
     --arg bwrap "$qualified_bwrap" \
+    --arg qualified_final_system_prompt "$qualified_final_system_prompt" \
     --arg manifest "$packet_manifest_sha" \
     --arg binary "$plan_binary_sha" \
     --arg prompt "$prompt_sha" \
@@ -475,7 +480,9 @@ for record in "${records[@]}"; do
       "writablePaths", "budgets", "runtimeIdentity", "sandbox"] | sort)) and
     ((.schema == "nomos.pi_cold_agent_boundary@2" and $legacy_runtime and $execution == null and
       (has("runtimeIdentity") | not)) or
-     (.schema == "nomos.pi_cold_agent_boundary@3" and .runtimeIdentity == $execution)) and
+     ((.schema == "nomos.pi_cold_agent_boundary@3" or
+       .schema == "nomos.pi_cold_agent_boundary@4") and
+      .runtimeIdentity == $execution)) and
     .boundaryKind == "packet-run" and
     .mode == "json" and .targetCommit == $commit and .hostWorkspace == $packet and
     .guestWorkspace == "/workspace" and .provider == $provider and .model == $model and
@@ -486,8 +493,14 @@ for record in "${records[@]}"; do
     .configuredTools == [{"name":"bash","source":{"path":$extension,"source":"cli",
       "scope":"temporary","origin":"top-level"}}] and
     .contextFiles == [] and .skills == [] and
-    .systemPromptSha256 == "2cec3aeebce2f8359cde337d3b1b2ec1601913711f282ab0289ab276b02dee79" and
-    .finalSystemPromptSha256 == "a78cae9025d8b63562a13c111e79e9f27c32ab20e726a53d2d9d8c094712e2b7" and
+    .systemPromptSha256 ==
+      (if .schema == "nomos.pi_cold_agent_boundary@4"
+       then "8ec97369e7dc5407a0e3b5aa95b747e556b7ded999941cfee7d35a3ebc7fb5f7"
+       else "2cec3aeebce2f8359cde337d3b1b2ec1601913711f282ab0289ab276b02dee79" end) and
+    .finalSystemPromptSha256 ==
+      (if .schema == "nomos.pi_cold_agent_boundary@4"
+       then $qualified_final_system_prompt
+       else "a78cae9025d8b63562a13c111e79e9f27c32ab20e726a53d2d9d8c094712e2b7" end) and
     .packetManifestSha256 == $manifest and .binarySha256 == $binary and
     .taskPromptSha256 == $prompt and .taskShape == $shape and
     .writablePaths == [$writable] and .budgets == null and
@@ -498,11 +511,20 @@ for record in "${records[@]}"; do
     .sandbox.workspace == "read-only-packet-with-declared-writable-paths" and
     .sandbox.network == "unshared" and .sandbox.environment == "cleared-and-allowlisted" and
     .sandbox.selfTest == "pass" and
-    (.sandbox.checks | keys) == (["targetCommitResolved", "workspaceRead",
-      "packetManifestMatched", "candidateBinaryMatched", "packetRootReadOnly",
-      "temporaryStorageReadOnly", "deviceFilesystemEmpty", "processFilesystemReadOnly",
-      "declaredWritablePaths", "gitMetadataAbsent", "outsideReadDenied",
-      "outsideWriteDenied", "credentialEnvironmentAbsent", "networkDenied"] | sort) and
+    ((.schema == "nomos.pi_cold_agent_boundary@2" or
+      .schema == "nomos.pi_cold_agent_boundary@3") and
+     (.sandbox.checks | keys) == (["targetCommitResolved", "workspaceRead",
+       "packetManifestMatched", "candidateBinaryMatched", "packetRootReadOnly",
+       "temporaryStorageReadOnly", "deviceFilesystemEmpty", "processFilesystemReadOnly",
+       "declaredWritablePaths", "gitMetadataAbsent", "outsideReadDenied",
+       "outsideWriteDenied", "credentialEnvironmentAbsent", "networkDenied"] | sort) or
+     .schema == "nomos.pi_cold_agent_boundary@4" and
+     (.sandbox.checks | keys) == (["targetCommitResolved", "workspaceRead",
+       "packetManifestMatched", "candidateBinaryMatched", "packetRootReadOnly",
+       "temporaryStorageReadOnly", "deviceFilesystemExact", "deviceNullReadable",
+       "deviceNullWritable", "processFilesystemReadOnly", "declaredWritablePaths",
+       "gitMetadataAbsent", "outsideReadDenied", "outsideWriteDenied",
+       "credentialEnvironmentAbsent", "networkDenied"] | sort)) and
     .sandbox.checks.declaredWritablePaths == [$writable] and
     all(.sandbox.checks | to_entries[] | select(.key != "declaredWritablePaths");
       .value == true)
@@ -670,7 +692,9 @@ python3 "$json_validator" "$checker_result" ||
 python3 "$document_validator" checker-result "$checker_result" ||
   fail 'checker result does not satisfy a declared exact schema'
 jq -e '
-  .schema == "nomos.gate_k.checker_result@1" and
+  ((.schema == "nomos.gate_k.checker_result@1" and
+    (has("protocolRevision") | not)) or
+   (.schema == "nomos.gate_k.checker_result@2" and .protocolRevision == 6)) and
   (.verdict == "pass" or .verdict == "reject") and
   (.commands | type) == "array" and (.commands | length) > 0 and
   all(.commands[];
@@ -686,31 +710,40 @@ adjudication_json=$(python3 "$adjudication_validator" "$subject" "$checker" "$ad
 [[ $(jq -r '.candidateCommit' <<<"$adjudication_json") == "$subject_commit" ]] ||
   fail 'command adjudication candidate differs from task records'
 command_adjudication_verdict=$(jq -r '.verdict' <<<"$adjudication_json")
+adjudication_schema=$(jq -r '.schema' <<<"$adjudication_json")
 verdict=$(jq -r '.verdict' <<<"$adjudication_json")
 adjudicator=$(jq -r '.adjudicator' <<<"$adjudication_json")
 owner=$(jq -r '.ownerDisposition' <<<"$adjudication_json")
 
-logical_verdict=pass
-logical_reason='subject completed within protocol and the independent checker passed'
-if [[ $command_adjudication_verdict == fail ]]; then
-  logical_verdict=fail
-  logical_reason='independent review found an outside-workspace path request in recorded commands'
-elif [[ $subject_outcome == inconclusive || $checker_outcome == inconclusive ]]; then
-  logical_verdict=inconclusive
-  logical_reason='a subject or checker transport/harness failure prevented fair completion'
-elif [[ $(jq -r '.operatorIntervention' "$subject/task-receipt.json") != none ||
-        $(jq -r '.operatorIntervention' "$checker/task-receipt.json") != none ]]; then
-  logical_verdict=assisted
-  logical_reason='substantive operator intervention was recorded'
-elif [[ $subject_outcome != eligible-for-checker || $checker_outcome != completed-checker ||
-        $checker_verdict != pass ]]; then
-  logical_verdict=fail
-  logical_reason='the subject, checker transport, protocol, or checker result failed'
-fi
-if [[ $command_adjudication_verdict == pass ]]; then
-  verdict=$logical_verdict
+if [[ $adjudication_schema == nomos.gate_k.command_adjudication@2 ]]; then
+  [[ $(jq -r '.schema' "$subject/task-receipt.json") == nomos.gate_k.task_receipt@2 &&
+    $(jq -r '.schema' "$checker/task-receipt.json") == nomos.gate_k.task_receipt@2 ]] ||
+    fail 'revision-6 adjudication requires revision-6 task receipts'
+  logical_verdict=$verdict
+  logical_reason=$(jq -r '.reason' <<<"$adjudication_json")
 else
-  [[ $logical_verdict == fail ]] || fail 'command finding did not derive fail'
+  logical_verdict=pass
+  logical_reason='subject completed within protocol and the independent checker passed'
+  if [[ $command_adjudication_verdict == fail ]]; then
+    logical_verdict=fail
+    logical_reason='independent review found an outside-workspace path request in recorded commands'
+  elif [[ $subject_outcome == inconclusive || $checker_outcome == inconclusive ]]; then
+    logical_verdict=inconclusive
+    logical_reason='a subject or checker transport/harness failure prevented fair completion'
+  elif [[ $(jq -r '.operatorIntervention' "$subject/task-receipt.json") != none ||
+          $(jq -r '.operatorIntervention' "$checker/task-receipt.json") != none ]]; then
+    logical_verdict=assisted
+    logical_reason='substantive operator intervention was recorded'
+  elif [[ $subject_outcome != eligible-for-checker || $checker_outcome != completed-checker ||
+          $checker_verdict != pass ]]; then
+    logical_verdict=fail
+    logical_reason='the subject, checker transport, protocol, or checker result failed'
+  fi
+  if [[ $command_adjudication_verdict == pass ]]; then
+    verdict=$logical_verdict
+  else
+    [[ $logical_verdict == fail ]] || fail 'command finding did not derive fail'
+  fi
 fi
 
 if [[ $subject_class == rehearsal ]]; then
@@ -784,15 +817,22 @@ done < <(cd "$checker/artifacts" && find . -mindepth 1 -print0 | sort -z)
 
 checker_receipt_sha=$(sha256sum "$checker/task-receipt.json" | cut -d' ' -f1)
 checker_result_sha=$(sha256sum "$checker_result" | cut -d' ' -f1)
+checker_receipt_schema=nomos.gate_k.checker_receipt@1
+run_result_schema=nomos.gate_k.run_result@1
+if [[ $adjudication_schema == nomos.gate_k.command_adjudication@2 ]]; then
+  checker_receipt_schema=nomos.gate_k.checker_receipt@2
+  run_result_schema=nomos.gate_k.run_result@2
+fi
 checker_json=$(jq -S -c -n \
+  --arg schema "$checker_receipt_schema" \
   --arg verdict "$checker_verdict" \
   --arg subject_receipt_sha "$subject_receipt_sha" \
   --arg checker_receipt_sha "$checker_receipt_sha" \
   --arg checker_result_sha "$checker_result_sha" \
   --slurpfile receipt "$checker/task-receipt.json" \
   --slurpfile result "$checker_result" '
-  {
-    schema: "nomos.gate_k.checker_receipt@1",
+  ({
+    schema: $schema,
     verdict: $verdict,
     identity: $receipt[0].identity,
     operatorIntervention: $receipt[0].operatorIntervention,
@@ -801,11 +841,13 @@ checker_json=$(jq -S -c -n \
     checkerTaskReceiptSha256: $checker_receipt_sha,
     checkerResultSha256: $checker_result_sha,
     result: $result[0]
-  }
+  } + if $schema == "nomos.gate_k.checker_receipt@2"
+       then {protocolRevision: 6} else {} end)
 ')
 printf '%s\n' "$checker_json" >"$stage/checker.json"
 
 result=$(jq -S -c -n \
+  --arg schema "$run_result_schema" \
   --arg verdict "$verdict" \
   --arg reason "$logical_reason" \
   --arg adjudicator "$adjudicator" \
@@ -817,8 +859,8 @@ result=$(jq -S -c -n \
   --argjson adjudication "$adjudication_json" \
   --slurpfile subject "$subject/task-receipt.json" \
   --slurpfile checker "$checker/task-receipt.json" '
-  {
-    schema: "nomos.gate_k.run_result@1",
+  ({
+    schema: $schema,
     verdict: $verdict,
     reason: $reason,
     adjudicator: $adjudicator,
@@ -827,10 +869,12 @@ result=$(jq -S -c -n \
     shape: $shape,
     classification: $classification,
     formalAttempt: $formal,
-    commandAdjudication: $adjudication,
     subject: $subject[0],
     checker: $checker[0]
-  }
+  } + if $schema == "nomos.gate_k.run_result@2"
+       then {protocolRevision: 6, adjudication: $adjudication,
+             records: $adjudication.records}
+       else {commandAdjudication: $adjudication} end)
 ')
 printf '%s\n' "$result" >"$stage/result.json"
 

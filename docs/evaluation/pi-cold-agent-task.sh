@@ -267,7 +267,7 @@ printf '%s\n' "$boundary_json" | jq -e \
   --arg provider_extension "$provider_extension" \
   --arg provider_extension_sha "$provider_extension_sha" \
   --arg writable "$writable" '
-  .schema == "nomos.pi_cold_agent_boundary@3" and
+  .schema == "nomos.pi_cold_agent_boundary@4" and
   .boundaryKind == "packet-run" and
   .targetCommit == $commit and
   .hostWorkspace == $packet and
@@ -297,7 +297,9 @@ printf '%s\n' "$boundary_json" | jq -e \
   .sandbox.checks.candidateBinaryMatched == true and
   .sandbox.checks.packetRootReadOnly == true and
   .sandbox.checks.temporaryStorageReadOnly == true and
-  .sandbox.checks.deviceFilesystemEmpty == true and
+  .sandbox.checks.deviceFilesystemExact == true and
+  .sandbox.checks.deviceNullReadable == true and
+  .sandbox.checks.deviceNullWritable == true and
   .sandbox.checks.processFilesystemReadOnly == true and
   .sandbox.checks.declaredWritablePaths == [$writable] and
   .sandbox.checks.gitMetadataAbsent == true and

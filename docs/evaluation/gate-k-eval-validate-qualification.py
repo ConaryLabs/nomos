@@ -44,10 +44,10 @@ PI_TREE = "63a9dd14b0ae82cee2db30c56822682af19145d145febb58b613d5de4dbb27af"
 BWRAP_SHA = "6ad2138a73d592acb43525432965e3c66f6fad8a2f3d610c6ca0b6855e993cbe"
 RUST = "1.98.0-x86_64-unknown-linux-gnu"
 LEGACY_EXTENSION_SHA = "5076b923aad8ebf6d46110ca0bd45e62911ace563bdfe58e6418b6a14b519f46"
-CURRENT_EXTENSION_SHA = "3205bdd3bae1eadba56337379a797a4900fcbe31a200db31f4f6faa2ed775a36"
+CURRENT_EXTENSION_SHA = "c3250d9fc3715185213c4c43de80e1397af0bbafa9140a0fea4251976ad8be41"
 PI_CLIENT_SHA = "840d1e8e689ed9e4937bcb00b9a810e02a8567d9afb10a47097f11ca93ea1521"
 PROVIDER_EXTENSION_SHA = "1c41a45c2820eb52f1b41955ae5fbb833470cba2203226d3b0c626c6f9dbe10b"
-SYSTEM_SHA = "2cec3aeebce2f8359cde337d3b1b2ec1601913711f282ab0289ab276b02dee79"
+SYSTEM_SHA = "8ec97369e7dc5407a0e3b5aa95b747e556b7ded999941cfee7d35a3ebc7fb5f7"
 FINAL_SYSTEM_SHA = "a78cae9025d8b63562a13c111e79e9f27c32ab20e726a53d2d9d8c094712e2b7"
 DEEPSEEK_CATALOG_SHA = "7954fb3ef750bed773619c9fe259a8eb923b6f4f8455442a33cf8e1fe2fa3773"
 ANTIGRAVITY_INTEGRITY = "sha512-Trl0lWZRDM6TUhw8UjZ+si4Tx2IxCtLLdEwQ10gOS3BUJfgv/C32HY3m/v9PcLNZWYzo+LEfmamiB5+f0jciCg=="
@@ -214,7 +214,11 @@ def validate_boundary(values: dict[str, str], args: argparse.Namespace, session:
         "systemPromptSha256", "finalSystemPromptSha256", "packetManifestSha256", "binarySha256",
         "taskPromptSha256", "taskShape", "writablePaths", "budgets", "sandbox",
     }, {"runtimeIdentity"}, "qualification boundary")
-    if boundary["schema"] not in ("nomos.pi_cold_agent_boundary@2", "nomos.pi_cold_agent_boundary@3"):
+    if boundary["schema"] not in (
+        "nomos.pi_cold_agent_boundary@2",
+        "nomos.pi_cold_agent_boundary@3",
+        "nomos.pi_cold_agent_boundary@4",
+    ):
         fail("qualification boundary schema differs")
     expected = {
         "boundaryKind": "source-preflight", "mode": "json",
@@ -231,7 +235,15 @@ def validate_boundary(values: dict[str, str], args: argparse.Namespace, session:
         if boundary[key] != expected_value:
             fail(f"qualification boundary field {key} differs")
     fixture = args.worktree == "fixture-may-be-dirty"
-    if boundary["finalSystemPromptSha256"] != ("fixture" if fixture else FINAL_SYSTEM_SHA):
+    if fixture:
+        if boundary["finalSystemPromptSha256"] != "fixture":
+            fail("qualification fixture final system prompt identity differs")
+    elif boundary["schema"] == "nomos.pi_cold_agent_boundary@4":
+        require_sha256(
+            boundary["finalSystemPromptSha256"],
+            "qualification final system prompt identity",
+        )
+    elif boundary["finalSystemPromptSha256"] != FINAL_SYSTEM_SHA:
         fail("qualification final system prompt identity differs")
     sandbox = require_keys(boundary["sandbox"], {"backend", "binary", "root", "workspace", "network", "environment", "checks", "selfTest"}, set(), "qualification sandbox")
     if sandbox["backend"] != "bubblewrap" or not os.path.isabs(require_string(sandbox["binary"], "qualification bwrap path")) or sandbox["root"] != "read-only" or sandbox["workspace"] != "read-write-only-host-mount" or sandbox["network"] != "unshared" or sandbox["environment"] != "cleared-and-allowlisted" or sandbox["selfTest"] != "pass":
@@ -243,7 +255,10 @@ def validate_boundary(values: dict[str, str], args: argparse.Namespace, session:
     if not fixture and (sandbox["binary"] != "/usr/bin/bwrap" or
                         file_sha256(sandbox["binary"], "Bubblewrap") != values["PI_BWRAP_SHA256"]):
         fail("qualification Bubblewrap path does not name the pinned binary")
-    if boundary["schema"] == "nomos.pi_cold_agent_boundary@3":
+    if boundary["schema"] in (
+        "nomos.pi_cold_agent_boundary@3",
+        "nomos.pi_cold_agent_boundary@4",
+    ):
         if "PI_RAW_EVENTS_SHA256" not in values:
             fail("current qualification omits the raw event-stream digest")
         if extension_sha != CURRENT_EXTENSION_SHA:

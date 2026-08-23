@@ -30,6 +30,7 @@ ROOT_KEYS = {
     "subjectTaskReceiptSha256",
     "verdict",
 }
+ROOT_KEYS_V2 = ROOT_KEYS | {"protocolRevision", "records"}
 FINDING_KEYS = {
     "commandOrdinal",
     "commandSha256",
@@ -48,6 +49,16 @@ COMMAND_KEYS = {
     "toolCallId",
 }
 ACCOUNTING_KEYS = {"assistantTurns", "providerReportedTokens", "toolCalls"}
+DIMENSIONS = (
+    "semantic_merit",
+    "independence_integrity",
+    "operational_compliance",
+)
+DIMENSION_RESULTS = {"pass", "fail", "inconclusive"}
+RECORD_RESULT_KEYS = {"dimensions", "verdict", "reason"}
+DIMENSION_KEYS = {"verdict", "reason", "evidence"}
+EVIDENCE_KEYS = {"path", "sha256"}
+SAFE_EVIDENCE_PATH = re.compile(r"^[A-Za-z0-9.][A-Za-z0-9._/-]*$")
 
 
 def fail(message: str) -> None:
@@ -146,6 +157,139 @@ def command_text(row: dict[str, Any]) -> str:
     return command
 
 
+def derive_record_verdict(dimensions: dict[str, Any]) -> str:
+    values = [dimensions[name]["verdict"] for name in DIMENSIONS]
+    if "fail" in values:
+        return "fail"
+    if "inconclusive" in values:
+        return "inconclusive"
+    return "pass"
+
+
+def validate_evidence(record: Path, value: object, location: str) -> None:
+    if not isinstance(value, list) or not value:
+        fail(f"{location} evidence must be a nonempty array")
+    seen: set[str] = set()
+    record_root = record.resolve(strict=True)
+    for index, item in enumerate(value):
+        if not isinstance(item, dict) or set(item) != EVIDENCE_KEYS:
+            fail(f"{location} evidence {index} fields differ from the schema allowlist")
+        path = nonempty_string(item.get("path"), f"{location} evidence {index} path")
+        if (
+            SAFE_EVIDENCE_PATH.fullmatch(path) is None
+            or path.startswith("/")
+            or ".." in path
+            or "//" in path
+            or path in seen
+        ):
+            fail(f"{location} evidence {index} path is unsafe or duplicated")
+        seen.add(path)
+        supplied_sha = item.get("sha256")
+        if not isinstance(supplied_sha, str) or SHA256.fullmatch(supplied_sha) is None:
+            fail(f"{location} evidence {index} SHA-256 is invalid")
+        evidence_path = record / path
+        try:
+            resolved = evidence_path.resolve(strict=True)
+        except OSError as error:
+            fail(f"{location} evidence {index} is absent: {error}")
+        if record_root not in resolved.parents or not resolved.is_file() or evidence_path.is_symlink():
+            fail(f"{location} evidence {index} escapes or is not a regular file")
+        if digest_file(resolved) != supplied_sha:
+            fail(f"{location} evidence {index} digest differs")
+
+
+def validate_record_dimensions(record: Path, value: object, label: str) -> dict[str, Any]:
+    if not isinstance(value, dict) or set(value) != RECORD_RESULT_KEYS:
+        fail(f"{label} dimension record fields differ from the schema allowlist")
+    dimensions = value.get("dimensions")
+    if not isinstance(dimensions, dict) or set(dimensions) != set(DIMENSIONS):
+        fail(f"{label} dimension names differ from the protocol")
+    for name in DIMENSIONS:
+        row = dimensions[name]
+        if not isinstance(row, dict) or set(row) != DIMENSION_KEYS:
+            fail(f"{label}.{name} fields differ from the schema allowlist")
+        if row.get("verdict") not in DIMENSION_RESULTS:
+            fail(f"{label}.{name} verdict is invalid")
+        nonempty_string(row.get("reason"), f"{label}.{name} reason")
+        validate_evidence(record, row.get("evidence"), f"{label}.{name}")
+    expected = derive_record_verdict(dimensions)
+    if value.get("verdict") != expected:
+        fail(f"{label} verdict must derive as {expected}")
+    nonempty_string(value.get("reason"), f"{label} reason")
+    return value
+
+
+def validate_v2(
+    document: dict[str, Any],
+    subject: Path,
+    checker: Path,
+    commands: dict[str, list[dict[str, Any]]],
+    findings: list[dict[str, Any]],
+) -> None:
+    if document.get("protocolRevision") != 6:
+        fail("revision-6 adjudication protocolRevision differs")
+    records = document.get("records")
+    if not isinstance(records, dict) or set(records) != {"subject", "checker"}:
+        fail("revision-6 adjudication records differ from the protocol")
+    results = {
+        "subject": validate_record_dimensions(subject, records["subject"], "records.subject"),
+        "checker": validate_record_dimensions(checker, records["checker"], "records.checker"),
+    }
+    for index, finding in enumerate(findings):
+        record = finding["record"]
+        path_token = finding["pathToken"]
+        if path_token == "/dev/null":
+            fail(f"finding {index} treats the declared /dev/null exception as forbidden")
+        kind = finding["kind"]
+        if kind not in ("outside_workspace_path", "undeclared_information_ingress"):
+            fail(f"finding {index} kind is unsupported")
+        dimensions = results[record]["dimensions"]
+        if dimensions["operational_compliance"]["verdict"] != "fail":
+            fail(f"finding {index} does not force operational compliance to fail")
+        if (
+            kind == "undeclared_information_ingress"
+            and dimensions["independence_integrity"]["verdict"] != "fail"
+        ):
+            fail(f"finding {index} does not force independence integrity to fail")
+
+    receipts = {
+        "subject": load_json(subject / "task-receipt.json"),
+        "checker": load_json(checker / "task-receipt.json"),
+    }
+    assisted = any(
+        receipt.get("operatorIntervention") != "none" for receipt in receipts.values()
+    )
+    if assisted:
+        expected = "assisted"
+    elif any(result["verdict"] == "fail" for result in results.values()):
+        expected = "fail"
+    elif any(result["verdict"] == "inconclusive" for result in results.values()):
+        expected = "inconclusive"
+    else:
+        expected = "pass"
+    if document.get("verdict") != expected:
+        fail(f"revision-6 overall verdict must derive as {expected}")
+
+    for label, receipt in receipts.items():
+        outcome = receipt.get("outcome")
+        if outcome == "inconclusive" and results[label]["verdict"] == "pass":
+            fail(f"{label} transport is inconclusive but its dimensions derive pass")
+    checker_result = load_json(checker / "artifacts" / "checker.json")
+    if (
+        checker_result.get("verdict") != "pass"
+        and results["subject"]["dimensions"]["semantic_merit"]["verdict"]
+        == "pass"
+    ):
+        fail("checker rejection is inconsistent with passing subject semantic merit")
+    if expected == "pass":
+        if receipts["subject"].get("outcome") != "eligible-for-checker":
+            fail("passing revision-6 result has an ineligible subject transport")
+        if receipts["checker"].get("outcome") != "completed-checker":
+            fail("passing revision-6 result has an incomplete checker transport")
+        if checker_result.get("verdict") != "pass":
+            fail("passing revision-6 result has a rejecting checker")
+
+
 def validate(
     subject: Path, checker: Path, adjudication_path: Path
 ) -> dict[str, Any]:
@@ -162,9 +306,13 @@ def validate(
             load_json(record / name)
         load_accounting(record / "accounting.json")
     load_json(checker / "artifacts" / "checker.json")
-    if set(document) != ROOT_KEYS:
+    revision_6 = document.get("schema") == "nomos.gate_k.command_adjudication@2"
+    if set(document) != (ROOT_KEYS_V2 if revision_6 else ROOT_KEYS):
         fail("adjudication fields differ from the schema allowlist")
-    if document.get("schema") != "nomos.gate_k.command_adjudication@1":
+    if document.get("schema") not in (
+        "nomos.gate_k.command_adjudication@1",
+        "nomos.gate_k.command_adjudication@2",
+    ):
         fail("adjudication schema differs")
     if document.get("reviewedAllCommands") is not True:
         fail("adjudicator did not affirm review of every recorded command")
@@ -236,7 +384,7 @@ def validate(
         actual_command_sha = digest_bytes(command_text(rows[ordinal]).encode("utf-8"))
         if command_sha != actual_command_sha:
             fail(f"finding {index} commandSha256 does not bind its command")
-        if finding.get("kind") != "outside_workspace_path":
+        if not revision_6 and finding.get("kind") != "outside_workspace_path":
             fail(f"finding {index} kind is unsupported")
         path_token = nonempty_string(finding.get("pathToken"), f"finding {index} pathToken")
         nonempty_string(finding.get("reason"), f"finding {index} reason")
@@ -245,9 +393,12 @@ def validate(
             fail(f"finding {index} duplicates an earlier finding")
         seen.add(identity)
 
-    expected_verdict = "fail" if findings else "pass"
-    if document.get("verdict") != expected_verdict:
-        fail(f"adjudication verdict must be {expected_verdict}")
+    if revision_6:
+        validate_v2(document, subject, checker, commands, findings)
+    else:
+        expected_verdict = "fail" if findings else "pass"
+        if document.get("verdict") != expected_verdict:
+            fail(f"adjudication verdict must be {expected_verdict}")
     return document
 
 

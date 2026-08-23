@@ -208,7 +208,8 @@ result=$(jq -S -c -n \
   --argjson execution "$execution" \
   --argjson accounting "$accounting" '
   {
-    schema: "nomos.gate_k.task_receipt@1",
+    schema: "nomos.gate_k.task_receipt@2",
+    protocolRevision: 6,
     shape: $shape,
     classification: $classification,
     formalAttempt: $formal,

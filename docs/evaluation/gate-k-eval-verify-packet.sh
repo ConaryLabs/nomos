@@ -50,7 +50,8 @@ python3 "$document_validator" plan "$packet/plan.json" ||
 
 jq -e \
   --arg commit "$expected_commit" '
-  .schema == "nomos.gate_k.packet_manifest@1" and
+  ((.schema == "nomos.gate_k.packet_manifest@1" and (has("protocolRevision") | not)) or
+   (.schema == "nomos.gate_k.packet_manifest@2" and .protocolRevision == 6)) and
   .candidateCommit == $commit and
   (.shape == "author" or .shape == "debug" or
    .shape == "author-checker" or .shape == "debug-checker") and
@@ -235,7 +236,17 @@ jq -e \
   --arg binary_sha "$manifest_binary_sha" \
   --arg prompt_sha "$prompt_sha" \
   --arg brief_sha "$brief_sha" '
-  .schema == "nomos.gate_k.eval_plan@1" and
+  ((.schema == "nomos.gate_k.eval_plan@1" and (has("protocolRevision") | not)) or
+   (.schema == "nomos.gate_k.eval_plan@2" and .protocolRevision == 6 and
+    (.dimensionCriteria | keys | sort) ==
+      (["semantic_merit", "independence_integrity", "operational_compliance"] | sort) and
+    all(.dimensionCriteria[]; type == "array" and length > 0 and
+      all(.[]; type == "string" and length > 0)) and
+    .rubric == ([.dimensionCriteria.semantic_merit[],
+      .dimensionCriteria.independence_integrity[],
+      .dimensionCriteria.operational_compliance[]]) and
+    (.gateCriteria | type) == "array" and
+    all(.gateCriteria[]; type == "string" and length > 0))) and
   .task.shape == $shape and
   (.task.classification == "rehearsal" or .task.classification == "formal") and
   (.task.formalAttempt | type) == "boolean" and
@@ -279,8 +290,12 @@ verify_bound_subject() {
   python3 "$document_validator" task-receipt "$receipt" ||
     fail 'checker subject task receipt does not satisfy its exact schema'
   jq -e --arg commit "$expected_commit" --arg shape "$expected_shape" \
-    --arg classification "$(jq -r '.task.classification' "$packet/plan.json")" '
-    .schema == "nomos.gate_k.task_receipt@1" and
+    --arg classification "$(jq -r '.task.classification' "$packet/plan.json")" \
+    --arg plan_schema "$(jq -r '.schema' "$packet/plan.json")" '
+    ((.schema == "nomos.gate_k.task_receipt@1" and
+      ($plan_schema == "nomos.gate_k.eval_plan@1")) or
+     (.schema == "nomos.gate_k.task_receipt@2" and .protocolRevision == 6 and
+      ($plan_schema == "nomos.gate_k.eval_plan@2"))) and
     .candidateCommit == $commit and .shape == $shape and
     .classification == $classification and
     .formalAttempt == ($classification == "formal") and

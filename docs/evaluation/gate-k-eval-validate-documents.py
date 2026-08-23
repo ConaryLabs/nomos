@@ -70,10 +70,21 @@ def require_bool(value: object, name: str) -> bool:
 
 
 def validate_plan(value: object) -> None:
-    plan = require_keys(value, {"schema", "task", "candidate", "packet", "budgets", "rubric",
-                                "recording", "operatorIntervention", "verdicts"}, set(), "plan")
-    if plan["schema"] != "nomos.gate_k.eval_plan@1":
+    if type(value) is not dict:
+        fail("plan is not an object")
+    current = value.get("schema") == "nomos.gate_k.eval_plan@2"
+    required = {"schema", "task", "candidate", "packet", "budgets", "rubric",
+                "recording", "operatorIntervention", "verdicts"}
+    if current:
+        required |= {"protocolRevision", "dimensionCriteria", "gateCriteria"}
+    plan = require_keys(value, required, set(), "plan")
+    if plan["schema"] not in (
+        "nomos.gate_k.eval_plan@1",
+        "nomos.gate_k.eval_plan@2",
+    ):
         fail("plan schema differs")
+    if current and plan["protocolRevision"] != 6:
+        fail("plan protocol revision differs")
     task = require_keys(plan["task"], {"shape", "classification", "formalAttempt"}, set(), "plan.task")
     if task["shape"] not in SHAPES or task["classification"] not in CLASSES:
         fail("plan task identity is invalid")
@@ -116,15 +127,51 @@ def validate_plan(value: object) -> None:
         fail("plan recording contract differs")
     if type(plan["rubric"]) is not list or len(plan["rubric"]) < 3 or any(type(x) is not str or not x for x in plan["rubric"]):
         fail("plan rubric is invalid")
+    if current:
+        dimensions = require_keys(
+            plan["dimensionCriteria"],
+            {"semantic_merit", "independence_integrity", "operational_compliance"},
+            set(),
+            "plan.dimensionCriteria",
+        )
+        flattened: list[str] = []
+        for name in (
+            "semantic_merit",
+            "independence_integrity",
+            "operational_compliance",
+        ):
+            criteria = dimensions[name]
+            if type(criteria) is not list or not criteria or any(
+                type(item) is not str or not item for item in criteria
+            ):
+                fail(f"plan.dimensionCriteria.{name} is invalid")
+            flattened.extend(criteria)
+        if len(flattened) != len(set(flattened)) or flattened != plan["rubric"]:
+            fail("plan dimension criteria do not partition the declared run rubric")
+        if type(plan["gateCriteria"]) is not list or any(
+            type(item) is not str or not item for item in plan["gateCriteria"]
+        ):
+            fail("plan gate criteria are invalid")
     if plan["operatorIntervention"] != "none" or plan["verdicts"] != ["pass", "fail", "assisted", "inconclusive"]:
         fail("plan intervention or verdict vocabulary differs")
 
 
 def validate_manifest(value: object) -> None:
-    manifest = require_keys(value, {"schema", "candidateCommit", "shape", "manifestExcludesSelf",
-                                    "writablePaths", "files"}, set(), "packet manifest")
-    if manifest["schema"] != "nomos.gate_k.packet_manifest@1" or type(manifest["candidateCommit"]) is not str or SHA1.fullmatch(manifest["candidateCommit"]) is None:
+    if type(value) is not dict:
+        fail("packet manifest is not an object")
+    current = value.get("schema") == "nomos.gate_k.packet_manifest@2"
+    required = {"schema", "candidateCommit", "shape", "manifestExcludesSelf",
+                "writablePaths", "files"}
+    if current:
+        required.add("protocolRevision")
+    manifest = require_keys(value, required, set(), "packet manifest")
+    if manifest["schema"] not in (
+        "nomos.gate_k.packet_manifest@1",
+        "nomos.gate_k.packet_manifest@2",
+    ) or type(manifest["candidateCommit"]) is not str or SHA1.fullmatch(manifest["candidateCommit"]) is None:
         fail("packet manifest identity is invalid")
+    if current and manifest["protocolRevision"] != 6:
+        fail("packet manifest protocol revision differs")
     if manifest["shape"] not in SHAPES or manifest["manifestExcludesSelf"] is not True:
         fail("packet manifest shape or self policy differs")
     if manifest["writablePaths"] not in (["workspace"], ["output"]):
@@ -150,15 +197,25 @@ def validate_manifest(value: object) -> None:
 
 def validate_task_receipt(value: object, digest: str) -> None:
     legacy = digest in LEGACY_TASK_RECEIPT_SHA256S
+    if type(value) is not dict:
+        fail("task receipt is not an object")
+    current = value.get("schema") == "nomos.gate_k.task_receipt@2"
     required = {"schema", "shape", "classification", "formalAttempt", "candidateCommit", "identity",
                 "environment", "disclosures", "operatorIntervention", "operatorRetries", "accounting",
                 "outcome", "outcomeReason", "digests"}
+    if current:
+        required.add("protocolRevision")
     optional = {"attemptReservation", "execution"} if legacy else set()
     if not legacy:
         required |= {"attemptReservation", "execution"}
     receipt = require_keys(value, required, optional, "task receipt")
-    if receipt["schema"] != "nomos.gate_k.task_receipt@1" or receipt["shape"] not in SHAPES or receipt["classification"] not in CLASSES:
+    if receipt["schema"] not in (
+        "nomos.gate_k.task_receipt@1",
+        "nomos.gate_k.task_receipt@2",
+    ) or receipt["shape"] not in SHAPES or receipt["classification"] not in CLASSES:
         fail("task receipt identity is invalid")
+    if current and receipt["protocolRevision"] != 6:
+        fail("task receipt protocol revision differs")
     require_bool(receipt["formalAttempt"], "task receipt formalAttempt")
     if receipt["formalAttempt"] != (receipt["classification"] == "formal"):
         fail("task receipt formal classification is inconsistent")
@@ -237,12 +294,20 @@ def validate_checker(value: object, digest: str) -> None:
     if type(value) is not dict:
         fail("checker result is not an object")
     keys = set(value)
+    current = value.get("schema") == "nomos.gate_k.checker_result@2"
     base = {"schema", "verdict", "commands", "reasons"}
+    if current:
+        base.add("protocolRevision")
     legacy = digest in LEGACY_CHECKER_SHA256S
     if keys not in (base, base | {"evidence"}) and not legacy:
         fail("checker result top-level fields differ from a declared protocol shape")
-    if value["schema"] != "nomos.gate_k.checker_result@1" or value["verdict"] not in ("pass", "reject"):
+    if value["schema"] not in (
+        "nomos.gate_k.checker_result@1",
+        "nomos.gate_k.checker_result@2",
+    ) or value["verdict"] not in ("pass", "reject"):
         fail("checker result identity or verdict is invalid")
+    if current and value["protocolRevision"] != 6:
+        fail("checker result protocol revision differs")
     if type(value["commands"]) is not list or not value["commands"] or type(value["reasons"]) is not list or not value["reasons"]:
         fail("checker result commands or reasons are empty")
     for index, command in enumerate(value["commands"]):

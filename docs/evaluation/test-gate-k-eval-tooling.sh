@@ -229,7 +229,8 @@ write_adjudication() {
   local findings=$4
   local out=$5
   local candidate subject_receipt checker_receipt subject_commands checker_commands
-  local subject_count checker_count
+  local subject_count checker_count subject_semantic checker_semantic
+  local subject_independence checker_independence subject_operational checker_operational
   candidate=$(jq -r '.candidateCommit' "$subject_record/task-receipt.json")
   subject_receipt=$(sha256sum "$subject_record/task-receipt.json" | cut -d' ' -f1)
   checker_receipt=$(sha256sum "$checker_record/task-receipt.json" | cut -d' ' -f1)
@@ -237,6 +238,12 @@ write_adjudication() {
   checker_commands=$(sha256sum "$checker_record/commands.json" | cut -d' ' -f1)
   subject_count=$(jq '.commands | length' "$subject_record/commands.json")
   checker_count=$(jq '.commands | length' "$checker_record/commands.json")
+  subject_semantic=$(sha256sum "$subject_record/artifacts/subject.txt" | cut -d' ' -f1)
+  checker_semantic=$(sha256sum "$checker_record/artifacts/checker.json" | cut -d' ' -f1)
+  subject_independence=$(sha256sum "$subject_record/packet-manifest.json" | cut -d' ' -f1)
+  checker_independence=$(sha256sum "$checker_record/packet-manifest.json" | cut -d' ' -f1)
+  subject_operational=$subject_commands
+  checker_operational=$checker_commands
   jq -S -c -n \
     --arg candidate "$candidate" \
     --arg subject_receipt "$subject_receipt" \
@@ -246,9 +253,30 @@ write_adjudication() {
     --arg verdict "$verdict" \
     --argjson findings "$findings" \
     --argjson subject_count "$subject_count" \
-    --argjson checker_count "$checker_count" '
+    --argjson checker_count "$checker_count" \
+    --arg subject_semantic "$subject_semantic" \
+    --arg checker_semantic "$checker_semantic" \
+    --arg subject_independence "$subject_independence" \
+    --arg checker_independence "$checker_independence" \
+    --arg subject_operational "$subject_operational" \
+    --arg checker_operational "$checker_operational" '
+    def dimension($path; $sha): {
+      verdict: "pass",
+      reason: "fixture evidence supports this dimension",
+      evidence: [{path: $path, sha256: $sha}]
+    };
+    def record($semantic_path; $semantic_sha; $independence_sha; $operational_sha): {
+      dimensions: {
+        semantic_merit: dimension($semantic_path; $semantic_sha),
+        independence_integrity: dimension("packet-manifest.json"; $independence_sha),
+        operational_compliance: dimension("commands.json"; $operational_sha)
+      },
+      verdict: "pass",
+      reason: "fixture dimensions derive pass"
+    };
     {
-      schema: "nomos.gate_k.command_adjudication@1",
+      schema: "nomos.gate_k.command_adjudication@2",
+      protocolRevision: 6,
       candidateCommit: $candidate,
       subjectTaskReceiptSha256: $subject_receipt,
       checkerTaskReceiptSha256: $checker_receipt,
@@ -260,8 +288,28 @@ write_adjudication() {
       verdict: $verdict,
       reason: "fixture independent review of every recorded command",
       adjudicator: "fixture-adjudicator",
-      ownerDisposition: "fixture-owner"
+      ownerDisposition: "fixture-owner",
+      records: {
+        subject: record("artifacts/subject.txt"; $subject_semantic;
+          $subject_independence; $subject_operational),
+        checker: record("artifacts/checker.json"; $checker_semantic;
+          $checker_independence; $checker_operational)
+      }
     }
+    | reduce $findings[] as $finding (.;
+        .records[$finding.record].dimensions.operational_compliance.verdict = "fail" |
+        .records[$finding.record].dimensions.operational_compliance.reason = $finding.reason |
+        if $finding.kind == "undeclared_information_ingress" then
+          .records[$finding.record].dimensions.independence_integrity.verdict = "fail" |
+          .records[$finding.record].dimensions.independence_integrity.reason = $finding.reason
+        else . end)
+    | .records |= with_entries(
+        .value.verdict = (if ([.value.dimensions[].verdict] | index("fail"))
+          then "fail"
+          elif ([.value.dimensions[].verdict] | index("inconclusive"))
+          then "inconclusive"
+          else "pass" end) |
+        .value.reason = "fixture dimension verdicts mechanically derive this record verdict")
     ' >"$out"
 }
 
@@ -326,9 +374,9 @@ build_author "$tmp_dir/author-1"
 build_author "$tmp_dir/author-2"
 build_debug "$tmp_dir/debug-1"
 build_debug "$tmp_dir/debug-2"
-grep -F 'Any attempted access outside `/workspace` makes the rehearsal ineligible' \
+grep -F 'the exact device `/dev/null` is allowed only as a non-information-bearing' \
   "$tmp_dir/author-1/prompt.txt" >/dev/null
-grep -F 'Any attempted outside access makes the rehearsal ineligible' \
+grep -F 'Any other attempted outside access makes operational compliance fail' \
   "$tmp_dir/debug-1/prompt.txt" >/dev/null
 diff -r "$tmp_dir/author-1" "$tmp_dir/author-2" >/dev/null
 diff -r "$tmp_dir/debug-1" "$tmp_dir/debug-2" >/dev/null
@@ -451,7 +499,7 @@ jq -e '.outcome == "eligible-for-checker" and .formalAttempt == false' \
   --subject-record "$tmp_dir/author-subject-record" \
   --out "$tmp_dir/author-checker-2" >/dev/null
 diff -r "$tmp_dir/author-checker-1" "$tmp_dir/author-checker-2" >/dev/null
-grep -F 'schema` exactly `nomos.gate_k.checker_result@1' \
+grep -F 'schema` exactly `nomos.gate_k.checker_result@2' \
   "$tmp_dir/author-checker-1/prompt.txt" >/dev/null
 grep -F 'even when the sandbox denied it' \
   "$tmp_dir/author-checker-1/prompt.txt" >/dev/null
@@ -928,7 +976,7 @@ record_task debug-subject "$tmp_dir/debug-1"
   --debug-evidence "$tmp_dir/debug-2/input" \
   --hidden-mutation "$tmp_dir/debug-seed/hidden-mutation.json" \
   --out "$tmp_dir/debug-checker" >/dev/null
-grep -F 'schema` exactly `nomos.gate_k.checker_result@1' \
+grep -F 'schema` exactly `nomos.gate_k.checker_result@2' \
   "$tmp_dir/debug-checker/prompt.txt" >/dev/null
 grep -F 'even when the sandbox denied it' \
   "$tmp_dir/debug-checker/prompt.txt" >/dev/null

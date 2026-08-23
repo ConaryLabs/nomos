@@ -92,7 +92,10 @@ function sandboxArguments(
 		boundaryKind === "source-preflight"
 			? ["--ro-bind", toolchainHome as string, "/toolchain", "--tmpfs", "/cargo", "--tmpfs", "/tmp"]
 			: [];
-	const deviceMount = boundaryKind === "source-preflight" ? ["--dev", "/dev"] : [];
+	const deviceMount =
+		boundaryKind === "source-preflight"
+			? ["--dev", "/dev"]
+			: ["--dev-bind", "/dev/null", "/dev/null"];
 	const processMountPolicy =
 		boundaryKind === "packet-run" ? ["--remount-ro", "/proc"] : [];
 	const writableMounts =
@@ -278,7 +281,11 @@ async function proveSandbox(
 		'if touch /workspace/.nomos-undeclared-write 2>"$probe_sink"; then exit 74; fi',
 		'if touch /tmp/.nomos-undeclared-write 2>"$probe_sink"; then exit 75; fi',
 		'if touch /home/subject/.nomos-undeclared-write 2>"$probe_sink"; then exit 76; fi',
-		"test -z \"$(find /dev -mindepth 1 -print -quit)\"",
+		"test -c /dev/null",
+		"test \"$(find /dev -mindepth 1 -maxdepth 1 -printf '%p\\n')\" = /dev/null",
+		"test -z \"$(cat /dev/null)\"",
+		"printf nomos-boundary-probe >/dev/null",
+		"test ! -e /dev/zero",
 		'test ! -w /proc/self/comm',
 		...writablePaths.flatMap((path) => [
 			`test -w '/workspace/${path}'`,
@@ -319,7 +326,9 @@ async function proveSandbox(
 				candidateBinaryMatched: true,
 				packetRootReadOnly: true,
 				temporaryStorageReadOnly: true,
-				deviceFilesystemEmpty: true,
+				deviceFilesystemExact: true,
+				deviceNullReadable: true,
+				deviceNullWritable: true,
 				processFilesystemReadOnly: true,
 				declaredWritablePaths: [...writablePaths],
 				gitMetadataAbsent: true,
@@ -446,7 +455,7 @@ export default function nomosPiColdAgentExtension(pi: ExtensionAPI): void {
 
 			const finalSystemPrompt = event.systemPrompt.replaceAll(workspace, GUEST_WORKSPACE);
 			const boundary = {
-				schema: "nomos.pi_cold_agent_boundary@3",
+				schema: "nomos.pi_cold_agent_boundary@4",
 				boundaryKind,
 				mode: ctx.mode,
 				targetCommit,

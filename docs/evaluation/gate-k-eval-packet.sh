@@ -202,7 +202,7 @@ validate_subject_record() {
     fail 'subject transcript contains invalid or duplicate-key JSON'
   jq -e --arg commit "$commit" --arg shape "$expected_shape" \
     --arg classification "$classification" '
-    .schema == "nomos.gate_k.task_receipt@1" and
+    .schema == "nomos.gate_k.task_receipt@2" and .protocolRevision == 6 and
     .candidateCommit == $commit and .shape == $shape and
     .classification == $classification and
     .formalAttempt == ($classification == "formal") and
@@ -217,12 +217,13 @@ validate_subject_record() {
     fail 'subject task receipt identity is invalid'
   jq -e --arg commit "$commit" --arg shape "$expected_shape" \
     --arg classification "$classification" '
-    .schema == "nomos.gate_k.eval_plan@1" and .candidate.commit == $commit and
+    .schema == "nomos.gate_k.eval_plan@2" and .protocolRevision == 6 and
+    .candidate.commit == $commit and
     .task.shape == $shape and .task.classification == $classification and
     .task.formalAttempt == ($classification == "formal")
     ' "$subject_record/plan.json" >/dev/null || fail 'subject plan identity is invalid'
   jq -e --arg commit "$commit" --arg shape "$expected_shape" '
-    .schema == "nomos.gate_k.packet_manifest@1" and
+    .schema == "nomos.gate_k.packet_manifest@2" and .protocolRevision == 6 and
     .candidateCommit == $commit and .shape == $shape
     ' "$subject_record/packet-manifest.json" >/dev/null ||
     fail 'subject packet manifest identity is invalid'
@@ -430,8 +431,69 @@ plan=$(jq -S -c -n \
   --arg prompt_sha "$prompt_sha" \
   --arg writable_path "$writable_path" \
   --argjson formal "$formal" '
+  (if $shape == "author" then {
+    semantic_merit: [
+      "declared_brief_satisfied_with_approved_primitives",
+      "distinct_typed_symbolic_ids_resolve",
+      "validation_and_compile_succeed",
+      "subject_explains_the_change"
+    ],
+    independence_integrity: [
+      "exact_model_eligibility",
+      "fresh_ephemeral_session",
+      "declared_packet_information_only",
+      "zero_substantive_hints",
+      "zero_operator_retries"
+    ],
+    operational_compliance: [
+      "declared_tool_path_and_execution_boundaries",
+      "kernel_and_unrelated_content_unchanged",
+      "complete_transcript_command_and_resource_accounting",
+      "complete_hash_bound_record"
+    ]
+  } elif $shape == "debug" then {
+    semantic_merit: [
+      "actual_semantic_cause_identified",
+      "forensic_evidence_cited",
+      "plausible_alternatives_excluded",
+      "repair_targets_the_owning_boundary",
+      "content_repair_verified_when_possible"
+    ],
+    independence_integrity: [
+      "exact_model_eligibility",
+      "fresh_ephemeral_session",
+      "declared_packet_information_only",
+      "zero_substantive_hints",
+      "zero_operator_retries"
+    ],
+    operational_compliance: [
+      "declared_tool_path_and_execution_boundaries",
+      "permitted_changes_only",
+      "complete_transcript_command_and_resource_accounting",
+      "complete_hash_bound_record"
+    ]
+  } else {
+    semantic_merit: [
+      "subject_result_reproduced_or_rejected",
+      "checker_reasons_support_the_result"
+    ],
+    independence_integrity: [
+      "exact_model_eligibility",
+      "fresh_ephemeral_session",
+      "declared_packet_information_only",
+      "zero_substantive_hints",
+      "zero_operator_retries"
+    ],
+    operational_compliance: [
+      "declared_tool_path_and_execution_boundaries",
+      "permitted_changes_only",
+      "complete_transcript_command_and_resource_accounting",
+      "complete_hash_bound_record"
+    ]
+  } end) as $dimensions |
   {
-    schema: "nomos.gate_k.eval_plan@1",
+    schema: "nomos.gate_k.eval_plan@2",
+    protocolRevision: 6,
     task: {
       shape: $shape,
       classification: $classification,
@@ -458,30 +520,13 @@ plan=$(jq -S -c -n \
       operatorSubstantiveHintsMaximum: 0,
       operatorRetriesMaximum: 0
     },
-    rubric: (
-      if $shape == "author" then [
-        "model_packet_tool_and_intervention_eligibility",
-        "declared_brief_satisfied_with_approved_primitives",
-        "distinct_typed_symbolic_ids_resolve",
-        "validation_and_compile_succeed",
-        "kernel_and_unrelated_content_unchanged",
-        "subject_explains_the_change",
-        "independent_checker_reproduces"
-      ]
-      elif $shape == "debug" then [
-        "model_packet_tool_and_intervention_eligibility",
-        "actual_semantic_cause_identified",
-        "forensic_evidence_cited",
-        "plausible_alternatives_excluded",
-        "repair_targets_the_owning_boundary",
-        "content_repair_verified_when_possible",
-        "independent_checker_confirms_hidden_mutation"
-      ]
-      else [
-        "fresh_independent_checker_identity",
-        "subject_result_reproduced_or_rejected",
-        "commands_hashes_and_reasons_recorded"
-      ] end
+    dimensionCriteria: $dimensions,
+    rubric: ([$dimensions.semantic_merit[], $dimensions.independence_integrity[],
+      $dimensions.operational_compliance[]]),
+    gateCriteria: (
+      if $shape == "author" then ["independent_checker_reproduces"]
+      elif $shape == "debug" then ["independent_checker_confirms_hidden_mutation"]
+      else [] end
     ),
     recording: {
       eventStream: "complete-ndjson",
@@ -552,7 +597,8 @@ manifest=$(jq -S -c -n \
   --arg writable_path "$writable_path" \
   --slurpfile files "$manifest_rows" '
   {
-    schema: "nomos.gate_k.packet_manifest@1",
+    schema: "nomos.gate_k.packet_manifest@2",
+    protocolRevision: 6,
     candidateCommit: $commit,
     shape: $shape,
     manifestExcludesSelf: true,
