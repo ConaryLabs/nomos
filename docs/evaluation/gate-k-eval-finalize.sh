@@ -16,6 +16,7 @@ out=$4
 script_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 repo_root=$(realpath -e "$script_dir/../..")
 adjudication_validator="$script_dir/gate-k-eval-validate-adjudication.py"
+command_deriver="$script_dir/gate-k-eval-derive-commands.sh"
 for record in "$subject" "$checker"; do
   [[ -d $record && ! -L $record ]] || fail "task record is absent: $record"
   for file in task-receipt.json plan.json packet-manifest.json prompt.txt transcript.ndjson \
@@ -84,6 +85,9 @@ for record in "$subject" "$checker"; do
   [[ $(sha256sum "$record/commands.json" | cut -d' ' -f1) == \
       $(jq -r '.digests.commandsSha256' "$record/task-receipt.json") ]] ||
     fail "commands digest differs from task receipt: $record"
+  derived_commands_sha=$("$command_deriver" "$record/transcript.ndjson" | sha256sum | cut -d' ' -f1)
+  [[ $(sha256sum "$record/commands.json" | cut -d' ' -f1) == "$derived_commands_sha" ]] ||
+    fail "commands do not derive exactly from transcript: $record"
   [[ $(tree_sha "$record/artifacts") == \
       $(jq -r '.digests.artifactsTreeSha256' "$record/task-receipt.json") ]] ||
     fail "artifact-tree digest differs from task receipt: $record"
@@ -112,12 +116,34 @@ for record in "$subject" "$checker"; do
 
   receipt_commit=$(jq -r '.candidateCommit' "$record/task-receipt.json")
   [[ $receipt_commit =~ ^[0-9a-f]{40}$ ]] || fail "task receipt candidate is invalid: $record"
+  jq -e '
+    .schema == "nomos.gate_k.packet_manifest@1" and
+    .manifestExcludesSelf == true and
+    (.shape == "author" or .shape == "debug" or
+     .shape == "author-checker" or .shape == "debug-checker") and
+    (.writablePaths | type) == "array" and (.writablePaths | length) == 1 and
+    (.files | type) == "array" and (.files | length) > 0 and
+    ([.files[].path] | length) == ([.files[].path] | unique | length) and
+    ([.files[].path] == ([.files[].path] | sort)) and
+    all(.files[];
+      (.path | type) == "string" and
+      (.bytes | type) == "number" and .bytes >= 0 and
+      (.mode == "644" or .mode == "755") and
+      (.sha256 | type) == "string" and (.sha256 | test("^[0-9a-f]{64}$")) and
+      (.schemaIdentity == null or (.schemaIdentity | type) == "string"))
+    ' "$record/packet-manifest.json" >/dev/null ||
+    fail "packet manifest structure is invalid: $record"
   [[ $(jq -r '.candidate.commit' "$record/plan.json") == "$receipt_commit" ]] ||
     fail "plan candidate differs from task receipt: $record"
   [[ $(jq -r '.candidateCommit' "$record/packet-manifest.json") == "$receipt_commit" ]] ||
     fail "packet-manifest candidate differs from task receipt: $record"
   [[ $(jq -r '.targetCommit' "$record/boundary.json") == "$receipt_commit" ]] ||
     fail "boundary candidate differs from task receipt: $record"
+  marker_sha=$(printf '%s\n' "$receipt_commit" | sha256sum | cut -d' ' -f1)
+  [[ $(jq -r --arg path .nomos-candidate-commit \
+      '.files[] | select(.path == $path) | [.bytes, .mode, .sha256] | @tsv' \
+      "$record/packet-manifest.json") == $'41\t644\t'"$marker_sha" ]] ||
+    fail "packet candidate marker differs from task receipt: $record"
   receipt_shape=$(jq -r '.shape' "$record/task-receipt.json")
   [[ $(jq -r '.task.shape' "$record/plan.json") == "$receipt_shape" ]] ||
     fail "plan shape differs from task receipt: $record"
@@ -137,6 +163,8 @@ for record in "$subject" "$checker"; do
   plan_binary_sha=$(jq -r '.candidate.binarySha256' "$record/plan.json")
   [[ $plan_binary_sha == $(jq -r '.binarySha256' "$record/boundary.json") ]] ||
     fail "boundary binary differs from plan: $record"
+  [[ $(jq -r '.sandbox.checks.candidateBinaryMatched' "$record/boundary.json") == true ]] ||
+    fail "sandbox did not independently match the candidate binary: $record"
   [[ $plan_binary_sha == $(jq -r --arg path bin/nomos \
       '.files[] | select(.path == $path) | .sha256' "$record/packet-manifest.json") ]] ||
     fail "manifest binary differs from plan: $record"
@@ -194,7 +222,12 @@ jq -e '
   .schema == "nomos.gate_k.checker_result@1" and
   (.verdict == "pass" or .verdict == "reject") and
   (.commands | type) == "array" and (.commands | length) > 0 and
-  (.reasons | type) == "array" and (.reasons | length) > 0
+  all(.commands[];
+    (type == "string" and length > 0) or
+    (type == "object" and
+      (.command | type) == "string" and (.command | length) > 0)) and
+  (.reasons | type) == "array" and (.reasons | length) > 0 and
+  all(.reasons[]; type == "string" and length > 0)
   ' "$checker_result" >/dev/null || fail 'checker result is incomplete'
 checker_verdict=$(jq -r '.verdict' "$checker_result")
 adjudication_json=$(python3 "$adjudication_validator" "$subject" "$checker" "$adjudication") ||

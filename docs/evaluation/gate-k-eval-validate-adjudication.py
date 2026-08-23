@@ -36,6 +36,15 @@ FINDING_KEYS = {
     "reason",
     "record",
 }
+COMMAND_KEYS = {
+    "arguments",
+    "completed",
+    "isError",
+    "ordinal",
+    "result",
+    "tool",
+    "toolCallId",
+}
 
 
 def fail(message: str) -> None:
@@ -82,16 +91,36 @@ def nonempty_string(value: object, field: str) -> str:
 
 def load_commands(path: Path) -> list[dict[str, Any]]:
     document = load_json(path)
+    if set(document) != {"schema", "commands"}:
+        fail(f"commands document fields differ from the schema allowlist: {path}")
     if document.get("schema") != "nomos.gate_k.commands@1":
         fail(f"commands schema differs: {path}")
     commands = document.get("commands")
     if not isinstance(commands, list) or not commands:
         fail(f"commands array is empty: {path}")
+    tool_call_ids: set[str] = set()
     for ordinal, row in enumerate(commands):
-        if not isinstance(row, dict) or row.get("ordinal") != ordinal:
+        if not isinstance(row, dict) or set(row) != COMMAND_KEYS:
+            fail(f"command {ordinal} fields differ from the schema allowlist: {path}")
+        row_ordinal = row.get("ordinal")
+        if isinstance(row_ordinal, bool) or row_ordinal != ordinal:
             fail(f"commands are not contiguous at ordinal {ordinal}: {path}")
+        tool_call_id = row.get("toolCallId")
+        if not isinstance(tool_call_id, str) or not tool_call_id.strip():
+            fail(f"command {ordinal} has an invalid toolCallId: {path}")
+        if tool_call_id in tool_call_ids:
+            fail(f"command {ordinal} duplicates a toolCallId: {path}")
+        tool_call_ids.add(tool_call_id)
+        if row.get("tool") != "bash":
+            fail(f"command {ordinal} is not a bash command: {path}")
+        if row.get("completed") is not True:
+            fail(f"command {ordinal} is not complete: {path}")
+        if not isinstance(row.get("isError"), bool):
+            fail(f"command {ordinal} has an invalid isError flag: {path}")
         arguments = row.get("arguments")
-        command = arguments.get("command") if isinstance(arguments, dict) else None
+        if not isinstance(arguments, dict) or set(arguments) != {"command"}:
+            fail(f"command {ordinal} arguments differ from the bash allowlist: {path}")
+        command = arguments.get("command")
         if not isinstance(command, str) or not command:
             fail(f"command {ordinal} has no shell command string: {path}")
     return commands
@@ -121,6 +150,13 @@ def validate(
     candidate = document.get("candidateCommit")
     if not isinstance(candidate, str) or not re.fullmatch(r"[0-9a-f]{40}", candidate):
         fail("candidateCommit is not a full lowercase Git commit")
+
+    subject_receipt = load_json(subject / "task-receipt.json")
+    checker_receipt = load_json(checker / "task-receipt.json")
+    if subject_receipt.get("candidateCommit") != candidate:
+        fail("candidateCommit differs from the subject task receipt")
+    if checker_receipt.get("candidateCommit") != candidate:
+        fail("candidateCommit differs from the checker task receipt")
 
     subject_commands_path = subject / "commands.json"
     checker_commands_path = checker / "commands.json"

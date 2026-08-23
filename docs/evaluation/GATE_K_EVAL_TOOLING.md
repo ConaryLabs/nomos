@@ -154,15 +154,27 @@ review. The finalizer still derives the overall `pass`, `fail`, `assisted`, or
 `inconclusive` run verdict from the complete protocol record, with a command
 finding taking highest precedence.
 
+`commands.json` is not trusted as a self-reported inventory. Recording and
+finalization both derive its exact canonical bytes from paired
+`tool_execution_start` and `tool_execution_end` events in `transcript.ndjson`.
+The derivation rejects missing, duplicate, or unpaired tool-call IDs. The
+adjudication validator then requires exact command-document and row fields,
+contiguous integer ordinals, unique nonempty call IDs, completed Bash calls,
+boolean error flags, and one nonempty shell-command argument. It also checks the
+adjudication candidate directly against both bound task receipts.
+
 A completed record contains `RUN.md`, `plan.json`, `packet-manifest.json`,
 `prompt.txt`, the complete sanitized NDJSON event stream, `commands.json`,
 the complete subject and checker artifact trees, `checker.json` after
 independent checking, and `adjudication.json`. Finalization recomputes both
 artifact-tree digests after copying them into the durable run. It also proves
 that each task receipt agrees with its plan, packet manifest, and sandbox
-boundary; that the candidate exists in repository history; and that the checker
-packet manifest binds the exact supplied subject receipt, commands, and every
-artifact. The output must be outside both immutable input records. Missing
+boundary; that the packet's candidate marker is the exact candidate plus one
+newline; that the sandbox independently matched the supplied candidate binary;
+that the candidate exists in repository history; and that the checker packet
+manifest binds the exact supplied subject receipt, commands, and every artifact.
+Checker command/reason arrays are validated element by element. The output must
+be outside both immutable input records. Missing
 identity, transcript, command, artifact, or result fields fail closed. Operator
 intervention is always present, including the literal disposition `none`.
 Checker prompts declare the finalizer-owned `nomos.gate_k.checker_result@1`
@@ -293,9 +305,11 @@ self-verdict of `pass`, and a valid bound finding mechanically produces overall
 `fail`. A companion fixture records no finding for forbidden-path strings used
 only as quoted grep, sed, or Python scan data. Further regressions reject stale
 subject/checker pairing, phantom candidate bindings, and output nested beneath
-immutable input evidence. The DeepSeek debug subject's ordinals 1, 48, and 65
-are recorded through the same structured path; its Gemini checker correctly
-returned `reject` independently.
+immutable input evidence. They also reject commands absent from the transcript,
+malformed command or checker-result rows, and a self-consistent receipt chain
+whose packet marker names different candidate bytes. The DeepSeek debug
+subject's ordinals 1, 48, and 65 are recorded through the same structured path;
+its Gemini checker correctly returned `reject` independently.
 
 Peter Permenter dispositioned both formal attempts `fail` on 2026-08-23. Their
 subject and checker records are immutable, and no retry is authorized or

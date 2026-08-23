@@ -9,6 +9,7 @@ seed_builder="$repo_root/docs/evaluation/gate-k-eval-seed-rehearsal.sh"
 task_launcher="$repo_root/docs/evaluation/pi-cold-agent-task.sh"
 task_recorder="$repo_root/docs/evaluation/gate-k-eval-record-task.sh"
 finalizer="$repo_root/docs/evaluation/gate-k-eval-finalize.sh"
+adjudication_validator="$repo_root/docs/evaluation/gate-k-eval-validate-adjudication.py"
 fake_pi="$repo_root/docs/evaluation/fixtures/fake-pi-cold-agent"
 fake_bwrap="$repo_root/docs/evaluation/fixtures/fake-bwrap-pi-cold-agent"
 rehearsals="$repo_root/docs/evaluation/rehearsals"
@@ -82,18 +83,57 @@ tree_sha() {
 rebind_recorded_commands() {
   local record=$1
   local command=$2
-  local commands_update receipt_update digest
+  local commands_update transcript_update receipt_update command_digest transcript_digest tool_call_id
+  tool_call_id=$(jq -r '.commands[0].toolCallId' "$record/commands.json")
   commands_update=$(mktemp "$tmp_dir/commands-update.XXXXXX")
   jq -S -c --arg command "$command" \
     '.commands[0].arguments.command = $command' \
     "$record/commands.json" >"$commands_update"
   mv -- "$commands_update" "$record/commands.json"
-  digest=$(sha256sum "$record/commands.json" | cut -d' ' -f1)
+  transcript_update=$(mktemp "$tmp_dir/transcript-update.XXXXXX")
+  jq -c --arg tool_call_id "$tool_call_id" --arg command "$command" '
+    if .type == "tool_execution_start" and .toolCallId == $tool_call_id
+    then .args.command = $command
+    else .
+    end
+    ' "$record/transcript.ndjson" >"$transcript_update"
+  mv -- "$transcript_update" "$record/transcript.ndjson"
+  command_digest=$(sha256sum "$record/commands.json" | cut -d' ' -f1)
+  transcript_digest=$(sha256sum "$record/transcript.ndjson" | cut -d' ' -f1)
   receipt_update=$(mktemp "$tmp_dir/receipt-update.XXXXXX")
-  jq -S -c --arg digest "$digest" \
-    '.digests.commandsSha256 = $digest' \
+  jq -S -c --arg command_digest "$command_digest" --arg transcript_digest "$transcript_digest" '
+    .digests.commandsSha256 = $command_digest |
+    .digests.transcriptSha256 = $transcript_digest
+    ' \
     "$record/task-receipt.json" >"$receipt_update"
   mv -- "$receipt_update" "$record/task-receipt.json"
+}
+
+refresh_record_receipt_digests() {
+  local record=$1
+  local update packet_manifest transcript commands artifacts boundary qualification
+  packet_manifest=$(sha256sum "$record/packet-manifest.json" | cut -d' ' -f1)
+  transcript=$(sha256sum "$record/transcript.ndjson" | cut -d' ' -f1)
+  commands=$(sha256sum "$record/commands.json" | cut -d' ' -f1)
+  artifacts=$(tree_sha "$record/artifacts")
+  boundary=$(sha256sum "$record/boundary.json" | cut -d' ' -f1)
+  qualification=$(sha256sum "$record/pi-qualification.txt" | cut -d' ' -f1)
+  update=$(mktemp "$tmp_dir/receipt-digests.XXXXXX")
+  jq -S -c \
+    --arg packet_manifest "$packet_manifest" \
+    --arg transcript "$transcript" \
+    --arg commands "$commands" \
+    --arg artifacts "$artifacts" \
+    --arg boundary "$boundary" \
+    --arg qualification "$qualification" '
+    .digests.packetManifestSha256 = $packet_manifest |
+    .digests.transcriptSha256 = $transcript |
+    .digests.commandsSha256 = $commands |
+    .digests.artifactsTreeSha256 = $artifacts |
+    .digests.boundarySha256 = $boundary |
+    .digests.qualificationSha256 = $qualification
+    ' "$record/task-receipt.json" >"$update"
+  mv -- "$update" "$record/task-receipt.json"
 }
 
 write_adjudication() {
@@ -403,6 +443,84 @@ jq -e '.verdict == "pass" and .formalAttempt == false and .shape == "author"' \
     $(jq -r '.digests.artifactsTreeSha256' \
       "$tmp_dir/author-run/checker/task-receipt.json") ]]
 
+jq -S -c '.candidateCommit = "0000000000000000000000000000000000000000"' \
+  "$tmp_dir/author-adjudication.json" >"$tmp_dir/wrong-candidate-adjudication.json"
+assert_blocked 'candidateCommit differs from the subject task receipt' \
+  wrong-candidate-adjudication \
+  python3 "$adjudication_validator" "$tmp_dir/author-subject-record" \
+  "$tmp_dir/author-checker-record" "$tmp_dir/wrong-candidate-adjudication.json"
+
+cp -R "$tmp_dir/author-checker-record" "$tmp_dir/unrecorded-command-checker-record"
+jq -S -c '
+  .commands += [(.commands[0] |
+    .ordinal = 1 |
+    .toolCallId = (.toolCallId + "_not_in_transcript"))]
+  ' "$tmp_dir/unrecorded-command-checker-record/commands.json" \
+  >"$tmp_dir/unrecorded-command-checker-record/commands.update"
+mv -- "$tmp_dir/unrecorded-command-checker-record/commands.update" \
+  "$tmp_dir/unrecorded-command-checker-record/commands.json"
+refresh_record_receipt_digests "$tmp_dir/unrecorded-command-checker-record"
+write_pass_adjudication "$tmp_dir/author-subject-record" \
+  "$tmp_dir/unrecorded-command-checker-record" "$tmp_dir/unrecorded-command-adjudication.json"
+assert_blocked 'commands do not derive exactly from transcript' \
+  finalizer-unrecorded-transcript-command \
+  "$finalizer" "$tmp_dir/author-subject-record" \
+  "$tmp_dir/unrecorded-command-checker-record" "$tmp_dir/unrecorded-command-adjudication.json" \
+  "$tmp_dir/unrecorded-command-run"
+
+cp -R "$tmp_dir/author-checker-record" "$tmp_dir/malformed-command-checker-record"
+jq -S -c '.commands[0].ordinal = true' \
+  "$tmp_dir/malformed-command-checker-record/commands.json" \
+  >"$tmp_dir/malformed-command-checker-record/commands.update"
+mv -- "$tmp_dir/malformed-command-checker-record/commands.update" \
+  "$tmp_dir/malformed-command-checker-record/commands.json"
+refresh_record_receipt_digests "$tmp_dir/malformed-command-checker-record"
+write_pass_adjudication "$tmp_dir/author-subject-record" \
+  "$tmp_dir/malformed-command-checker-record" "$tmp_dir/malformed-command-adjudication.json"
+assert_blocked 'commands are not contiguous at ordinal 0' malformed-command-adjudication \
+  python3 "$adjudication_validator" "$tmp_dir/author-subject-record" \
+  "$tmp_dir/malformed-command-checker-record" "$tmp_dir/malformed-command-adjudication.json"
+
+cp -R "$tmp_dir/author-checker-record" "$tmp_dir/malformed-result-checker-record"
+jq -S -c '.commands = [null]' \
+  "$tmp_dir/malformed-result-checker-record/artifacts/checker.json" \
+  >"$tmp_dir/malformed-result-checker-record/artifacts/checker.update"
+mv -- "$tmp_dir/malformed-result-checker-record/artifacts/checker.update" \
+  "$tmp_dir/malformed-result-checker-record/artifacts/checker.json"
+refresh_record_receipt_digests "$tmp_dir/malformed-result-checker-record"
+write_pass_adjudication "$tmp_dir/author-subject-record" \
+  "$tmp_dir/malformed-result-checker-record" "$tmp_dir/malformed-result-adjudication.json"
+assert_blocked 'checker result is incomplete' finalizer-malformed-checker-result \
+  "$finalizer" "$tmp_dir/author-subject-record" \
+  "$tmp_dir/malformed-result-checker-record" "$tmp_dir/malformed-result-adjudication.json" \
+  "$tmp_dir/malformed-result-run"
+
+cp -R "$tmp_dir/author-checker-record" "$tmp_dir/changed-marker-checker-record"
+jq -S -c '
+  .files |= map(
+    if .path == ".nomos-candidate-commit"
+    then .sha256 = "0000000000000000000000000000000000000000000000000000000000000000"
+    else .
+    end)
+  ' "$tmp_dir/changed-marker-checker-record/packet-manifest.json" \
+  >"$tmp_dir/changed-marker-checker-record/packet-manifest.update"
+mv -- "$tmp_dir/changed-marker-checker-record/packet-manifest.update" \
+  "$tmp_dir/changed-marker-checker-record/packet-manifest.json"
+changed_manifest_sha=$(sha256sum \
+  "$tmp_dir/changed-marker-checker-record/packet-manifest.json" | cut -d' ' -f1)
+jq -S -c --arg digest "$changed_manifest_sha" '.packetManifestSha256 = $digest' \
+  "$tmp_dir/changed-marker-checker-record/boundary.json" \
+  >"$tmp_dir/changed-marker-checker-record/boundary.update"
+mv -- "$tmp_dir/changed-marker-checker-record/boundary.update" \
+  "$tmp_dir/changed-marker-checker-record/boundary.json"
+refresh_record_receipt_digests "$tmp_dir/changed-marker-checker-record"
+write_pass_adjudication "$tmp_dir/author-subject-record" \
+  "$tmp_dir/changed-marker-checker-record" "$tmp_dir/changed-marker-adjudication.json"
+assert_blocked 'packet candidate marker differs from task receipt' finalizer-changed-marker \
+  "$finalizer" "$tmp_dir/author-subject-record" \
+  "$tmp_dir/changed-marker-checker-record" "$tmp_dir/changed-marker-adjudication.json" \
+  "$tmp_dir/changed-marker-run"
+
 cp -R "$tmp_dir/author-subject-record" "$tmp_dir/substitute-final-subject-record"
 rebind_recorded_commands "$tmp_dir/substitute-final-subject-record" \
   'cat /workspace/prompt.txt'
@@ -567,7 +685,7 @@ FAKE_PI_TASK_MODE=absent-command PI_BIN="$fake_pi" BWRAP_BIN="$fake_bwrap" \
   "$task_launcher" claude "$candidate" "$commit" "$tmp_dir/absent-command-packet" \
   "$tmp_dir/absent-command-events" "$tmp_dir/absent-command-stderr" \
   "$tmp_dir/absent-command-qualification" >"$tmp_dir/absent-command-launcher"
-assert_blocked 'completed task has no command record' absent-command-record \
+assert_blocked 'transcript has no tool starts' absent-command-record \
   "$task_recorder" "$tmp_dir/absent-command-packet" "$tmp_dir/absent-command-events" \
   "$tmp_dir/absent-command-stderr" "$tmp_dir/absent-command-qualification" \
   "$tmp_dir/absent-command-launcher" "$commit" "$tmp_dir/absent-command-record"

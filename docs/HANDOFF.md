@@ -7,9 +7,12 @@ and the owner dispositioned both formal attempts `fail`; Gate K is explicitly
 unaccepted. Issue #79 repairs the finalizer without rewriting or retrying those
 attempts. Its first implementation at `99c4436` passed CI but failed non-author
 review; the replacement uses hash-bound structured command adjudication and
-tightens candidate, subject/checker, and immutable-output bindings. The full
-author proof passes, and the repaired finalizer assembles the preserved #71 and
-#72 records as `fail`; the replacement exact-head non-author rerun remains.
+tightens candidate, subject/checker, and immutable-output bindings. A second
+non-author audit rejected `a7d0d5a` because command records and the candidate
+marker remained self-bound. The current repair derives every command from the
+complete transcript, validates the marker and binary boundary claims, and
+strictly validates command and checker-result rows. Its exact-head non-author
+rerun remains.
 This file orients a fresh session; it is rewritten at each slice boundary and
 never accumulates history (git has that).
 
@@ -415,7 +418,8 @@ never accumulates history (git has that).
 
 ## What is next
 
-Complete the replacement non-author rerun and CI for #79. The externally
+Complete the replacement exact-head non-author rerun and CI for #79. The
+externally
 assembled immutable #71 and #72 structured results have SHA-256
 `e6990dacde903f527d1cb46784a54d938a7e130f1193e51bb830a4a2284f07dc` and
 `f09c9214329f7f8bd7d4d4b31476a0f24c825add2f5bb434b7bf780f64d8089c`.

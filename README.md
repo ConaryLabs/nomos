@@ -30,9 +30,10 @@ any renderer is built.
   cold-agent attempts are complete and owner-disposed `fail` after otherwise
   correct semantic work because a subject or checker requested a forbidden
   outside-workspace path. Draft PR #80 repairs fail-closed final assembly with
-  hash-bound structured command adjudication; its first non-author audit found
-  defects, and the replacement repair has passed author proof and awaits a
-  fresh non-author rerun. Gate K is not accepted or green
+  hash-bound structured command adjudication. Two non-author audits found
+  binding defects in successive revisions; the current repair derives commands
+  from transcripts and binds the candidate marker before adjudication. It
+  awaits exact-head non-author proof. Gate K is not accepted or green
 - **Contract revision:** 7, owner-authorized in decision 0009
 - **Cold-agent protocol revision:** 3, owner-authorized in decision 0010
 - **Scope:** greenfield / vacuum architecture exercise

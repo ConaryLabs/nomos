@@ -16,6 +16,8 @@ qualification=$4
 launcher=$5
 commit=$6
 out=$7
+script_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+command_deriver="$script_dir/gate-k-eval-derive-commands.sh"
 
 [[ $commit =~ ^[0-9a-f]{40}$ ]] || fail 'commit is not a full lowercase SHA-1'
 for path in "$packet/plan.json" "$packet/packet-manifest.json" "$packet/prompt.txt" \
@@ -80,27 +82,7 @@ cleanup() {
 }
 trap cleanup EXIT
 
-jq -S -c -s '
-  [.[] | select(.type == "tool_execution_start")] as $starts |
-  [.[] | select(.type == "tool_execution_end")] as $ends |
-  $starts
-  | to_entries
-  | map(
-      .key as $ordinal |
-      .value as $start |
-      ([$ends[] | select(.toolCallId == $start.toolCallId)] | first) as $end |
-      {
-        ordinal: $ordinal,
-        toolCallId: $start.toolCallId,
-        tool: $start.toolName,
-        arguments: $start.args,
-        result: ($end.result // null),
-        isError: (if $end == null then null else $end.isError end),
-        completed: ($end != null)
-      }
-    )
-  | {schema: "nomos.gate_k.commands@1", commands: .}
-  ' "$events" >"$tmp_dir/commands.json"
+"$command_deriver" "$events" >"$tmp_dir/commands.json"
 command_count=$(jq '.commands | length' "$tmp_dir/commands.json")
 [[ $command_count -ge 1 ]] || fail 'completed task has no command record'
 jq -e '
