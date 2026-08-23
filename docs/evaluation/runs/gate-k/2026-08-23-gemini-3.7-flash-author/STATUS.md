@@ -25,4 +25,6 @@ No formal checker retry is permitted or planned. Acceptance 17 is not passing.
 The current finalizer would mechanically trust the checker self-verdict and
 refuse an evidence-backed `fail`, so the run is not falsely assembled as a pass.
 Issue #79 records that fail-open adjudication conflict and the required explicit
-owner disposition or repair. All subject and checker evidence remains immutable.
+repair. On 2026-08-23 Peter Permenter, owner and adjudicator, dispositioned the
+formal attempt as `fail`. Durable final assembly remains blocked on #79; all
+subject and checker evidence remains immutable.
