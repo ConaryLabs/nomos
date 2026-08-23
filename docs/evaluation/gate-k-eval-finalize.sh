@@ -122,7 +122,7 @@ for record in "${records[@]}"; do
       $plan_schema == "nomos.gate_k.eval_plan@1") or
      (.schema == "nomos.gate_k.task_receipt@2" and .protocolRevision == 6 and
       $plan_schema == "nomos.gate_k.eval_plan@2")) and
-    (.identity.freshEphemeralSession | type) == "boolean" and
+    .identity.freshEphemeralSession == true and
     .identity.client == "Pi" and
     (.identity.clientVersion | type) == "string" and (.identity.clientVersion | length) > 0 and
     (.identity.provider | type) == "string" and (.identity.provider | length) > 0 and
@@ -374,11 +374,14 @@ for record in "${records[@]}"; do
   [[ $stderr_accounting_json == "$(jq -S -c . "$record/accounting.json")" ]] ||
     fail "Pi stderr accounting differs from task record: $record"
 
-  jq -e '
+  plan_schema=$(jq -r '.schema' "$record/plan.json")
+  jq -e --arg plan_schema "$plan_schema" '
     ((.schema == "nomos.gate_k.packet_manifest@1" and
-      (has("protocolRevision") | not)) or
+      (has("protocolRevision") | not) and
+      $plan_schema == "nomos.gate_k.eval_plan@1") or
      (.schema == "nomos.gate_k.packet_manifest@2" and
-      .protocolRevision == 6)) and
+      .protocolRevision == 6 and
+      $plan_schema == "nomos.gate_k.eval_plan@2")) and
     .manifestExcludesSelf == true and
     (.shape == "author" or .shape == "debug" or
      .shape == "author-checker" or .shape == "debug-checker") and
@@ -397,7 +400,7 @@ for record in "${records[@]}"; do
       (.sha256 | type) == "string" and (.sha256 | test("^[0-9a-f]{64}$")) and
       (.schemaIdentity == null or (.schemaIdentity | type) == "string"))
     ' "$record/packet-manifest.json" >/dev/null ||
-    fail "packet manifest structure is invalid: $record"
+    fail "packet manifest generation or structure is invalid: $record"
   [[ $(jq -r '.candidate.commit' "$record/plan.json") == "$receipt_commit" ]] ||
     fail "plan candidate differs from task receipt: $record"
   [[ $(jq -r '.candidateCommit' "$record/packet-manifest.json") == "$receipt_commit" ]] ||
@@ -698,10 +701,13 @@ python3 "$json_validator" "$checker_result" ||
   fail 'checker result contains invalid or duplicate-key JSON'
 python3 "$document_validator" checker-result "$checker_result" ||
   fail 'checker result does not satisfy a declared exact schema'
-jq -e '
+checker_receipt_schema=$(jq -r '.schema' "$checker/task-receipt.json")
+jq -e --arg receipt_schema "$checker_receipt_schema" '
   ((.schema == "nomos.gate_k.checker_result@1" and
-    (has("protocolRevision") | not)) or
-   (.schema == "nomos.gate_k.checker_result@2" and .protocolRevision == 6)) and
+    (has("protocolRevision") | not) and
+    $receipt_schema == "nomos.gate_k.task_receipt@1") or
+   (.schema == "nomos.gate_k.checker_result@2" and .protocolRevision == 6 and
+    $receipt_schema == "nomos.gate_k.task_receipt@2")) and
   (.verdict == "pass" or .verdict == "reject") and
   (.commands | type) == "array" and (.commands | length) > 0 and
   all(.commands[];
@@ -710,7 +716,7 @@ jq -e '
       (.command | type) == "string" and (.command | length) > 0)) and
   (.reasons | type) == "array" and (.reasons | length) > 0 and
   all(.reasons[]; type == "string" and length > 0)
-  ' "$checker_result" >/dev/null || fail 'checker result is incomplete'
+  ' "$checker_result" >/dev/null || fail 'checker result generation or content is invalid'
 checker_verdict=$(jq -r '.verdict' "$checker_result")
 adjudication_json=$(python3 "$adjudication_validator" "$subject" "$checker" "$adjudication") ||
   fail 'command adjudication validation failed'
@@ -904,6 +910,13 @@ printf '%s\n' "$result" >"$stage/result.json"
 
 subject_intervention=$(jq -r '.operatorIntervention' "$subject/task-receipt.json")
 checker_intervention=$(jq -r '.operatorIntervention' "$checker/task-receipt.json")
+subject_retries=$(jq -r '.operatorRetries' "$subject/task-receipt.json")
+checker_retries=$(jq -r '.operatorRetries' "$checker/task-receipt.json")
+if [[ $subject_retries -eq 0 && $checker_retries -eq 0 ]]; then
+  retry_summary='- Operator retries: `0` for subject and checker'
+else
+  retry_summary="- Operator retries: \`$subject_retries\` subject, \`$checker_retries\` checker"
+fi
 printf '%s\n' \
   "# Gate K $subject_shape $subject_class run" \
   '' \
@@ -915,7 +928,7 @@ printf '%s\n' \
   "- Checker: \`$(jq -r '.identity.provider + "/" + .identity.model' "$checker/task-receipt.json")\`, session \`$checker_session\`" \
   "- Subject operator intervention: \`$subject_intervention\`" \
   "- Checker operator intervention: \`$checker_intervention\`" \
-  '- Operator retries: `0` for subject and checker' \
+  "$retry_summary" \
   "- Adjudicator: $adjudicator" \
   "- Owner disposition: $owner" \
   "- Command adjudication: \`$command_adjudication_verdict\`" \

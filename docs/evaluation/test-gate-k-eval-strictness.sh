@@ -75,6 +75,10 @@ jq -S -c '
   .digests.rawTranscriptSha256 = ("3"*64)
 ' "$base/subject/task-receipt.json" >"$tmp_dir/current-receipt.json"
 python3 "$documents" task-receipt "$tmp_dir/current-receipt.json"
+jq -S -c '.identity.freshEphemeralSession = false' \
+  "$tmp_dir/current-receipt.json" >"$tmp_dir/nonfresh-receipt.json"
+assert_blocked 'task receipt identity is not a fresh ephemeral session' \
+  python3 "$documents" task-receipt "$tmp_dir/nonfresh-receipt.json"
 jq -S -c 'del(.execution, .digests.rawTranscriptSha256)' \
   "$tmp_dir/current-receipt.json" >"$tmp_dir/relabeled-legacy-receipt.json"
 assert_blocked 'fields differ from the protocol' \

@@ -231,6 +231,8 @@ def validate_task_receipt(value: object, digest: str) -> None:
         identity["freshEphemeralSession"],
         "task receipt identity freshEphemeralSession",
     )
+    if identity["freshEphemeralSession"] is not True:
+        fail("task receipt identity is not a fresh ephemeral session")
     if identity["client"] != "Pi" or identity["mode"] != "json":
         fail("task receipt client lifecycle differs")
     environment = require_keys(receipt["environment"], {"hostOs"}, set(), "task receipt environment")

@@ -87,6 +87,19 @@ write_pass_adjudication "$tmp_dir/author-subject-record" \
 assert_blocked 'retry breach does not fail independence' revision6-retry-mapping \
   python3 "$adjudication_validator" "$tmp_dir/author-subject-record" \
   "$tmp_dir/revision6-retry-checker-record" "$tmp_dir/revision6-retry-pass.json"
+jq '
+  .records.checker.dimensions.independence_integrity.verdict = "fail" |
+  .records.checker.dimensions.independence_integrity.reason = "operator retry was recorded" |
+  .records.checker.verdict = "fail" |
+  .records.checker.reason = "independence failure derives fail" |
+  .verdict = "fail" |
+  .reason = "operator retry forces a failed result"
+  ' "$tmp_dir/revision6-retry-pass.json" >"$tmp_dir/revision6-retry-fail.json"
+"$finalizer" "$tmp_dir/author-subject-record" \
+  "$tmp_dir/revision6-retry-checker-record" "$tmp_dir/revision6-retry-fail.json" \
+  "$tmp_dir/revision6-retry-run" >/dev/null
+grep -F -- '- Operator retries: `0` subject, `1` checker' \
+  "$tmp_dir/revision6-retry-run/RUN.md" >/dev/null
 
 cp -R "$tmp_dir/author-checker-record" "$tmp_dir/revision6-assisted-checker-record"
 jq -S -c '.operatorIntervention = "substantive-help"' \
@@ -119,6 +132,51 @@ jq '
 assert_blocked 'legacy adjudication requires legacy task receipts' revision6-stale-generation \
   "$finalizer" "$tmp_dir/author-subject-record" "$tmp_dir/author-checker-record" \
   "$tmp_dir/revision6-stale-adjudication.json" "$tmp_dir/revision6-stale-run"
+
+checker_record="$tmp_dir/author-checker-record"
+checker_packet="$tmp_dir/author-checker-1"
+checker_record_tree_before=$(tree_sha "$checker_record")
+checker_packet_tree_before=$(tree_sha "$checker_packet")
+cp -R "$checker_record" "$tmp_dir/revision6-checker-record-backup"
+cp -R "$checker_packet" "$tmp_dir/revision6-checker-packet-backup"
+jq -S -c 'del(.protocolRevision) | .schema = "nomos.gate_k.checker_result@1"' \
+  "$tmp_dir/revision6-checker-record-backup/artifacts/checker.json" \
+  >"$checker_record/artifacts/checker.json"
+install -m 644 "$checker_record/artifacts/checker.json" \
+  "$checker_packet/output/checker.json"
+refresh_record_receipt_digests "$checker_record"
+write_pass_adjudication "$tmp_dir/author-subject-record" "$checker_record" \
+  "$tmp_dir/revision6-stale-checker-result.json"
+assert_blocked 'checker result generation or content is invalid' \
+  revision6-stale-checker-result "$finalizer" \
+  "$tmp_dir/author-subject-record" "$checker_record" \
+  "$tmp_dir/revision6-stale-checker-result.json" \
+  "$tmp_dir/revision6-stale-checker-result-run"
+cp -R "$tmp_dir/revision6-checker-record-backup/." "$checker_record/"
+cp -R "$tmp_dir/revision6-checker-packet-backup/." "$checker_packet/"
+
+jq -S -c 'del(.protocolRevision) | .schema = "nomos.gate_k.packet_manifest@1"' \
+  "$tmp_dir/revision6-checker-record-backup/packet-manifest.json" \
+  >"$checker_record/packet-manifest.json"
+install -m 644 "$checker_record/packet-manifest.json" \
+  "$checker_packet/packet-manifest.json"
+stale_manifest_sha=$(sha256sum "$checker_record/packet-manifest.json" | cut -d' ' -f1)
+jq -S -c --arg manifest "$stale_manifest_sha" \
+  '.packetManifestSha256 = $manifest' "$checker_record/boundary.json" \
+  >"$checker_record/boundary.update"
+mv -- "$checker_record/boundary.update" "$checker_record/boundary.json"
+refresh_record_runtime_evidence "$checker_record"
+write_pass_adjudication "$tmp_dir/author-subject-record" "$checker_record" \
+  "$tmp_dir/revision6-stale-packet-manifest.json"
+assert_blocked 'packet manifest generation or structure is invalid' \
+  revision6-stale-packet-manifest "$finalizer" \
+  "$tmp_dir/author-subject-record" "$checker_record" \
+  "$tmp_dir/revision6-stale-packet-manifest.json" \
+  "$tmp_dir/revision6-stale-packet-manifest-run"
+cp -R "$tmp_dir/revision6-checker-record-backup/." "$checker_record/"
+cp -R "$tmp_dir/revision6-checker-packet-backup/." "$checker_packet/"
+[[ $(tree_sha "$checker_record") == "$checker_record_tree_before" ]]
+[[ $(tree_sha "$checker_packet") == "$checker_packet_tree_before" ]]
 
 jq '
   .findings[0].kind = "undeclared_information_ingress" |
