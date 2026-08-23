@@ -1,7 +1,7 @@
 # Handoff — state of the repository
 
-Updated 2026-08-23 for issue #70 after both non-formal cold-agent rehearsals
-passed. Semantic implementation is complete through SW-N on `main`; issue #68
+Updated 2026-08-23 for issue #70 after the clean r5 non-formal cold-agent
+rehearsals passed. Semantic implementation is complete through SW-N on `main`; issue #68
 merged as PR #74, issue #69 is implemented in draft PR #75, and issue #70 is
 active in draft PR #76 on branch `gate-k-eval-tooling-70`. Gate K evidence
 closure remains in progress.
@@ -156,9 +156,17 @@ never accumulates history (git has that).
   The first repaired author pair at `0b807bf` proved the new boundary and
   receipt binding, but the subject still typed one reflexive `2>/dev/null`.
   The sandbox denied it, the subject disclosed it, and the checker correctly
-  returned `reject`. That r4 failure is preserved. Prompts now name the legal
-  workspace-local output sink explicitly; clean r5 author and debug pairs are
-  required.
+  returned `reject`. That r4 failure is preserved under
+  `docs/evaluation/runs/rehearsal/2026-08-23-claude-opus-5-author-r4-rejected/`.
+  Prompts now name the legal workspace-local output sink explicitly. Clean r5
+  author and debug pairs passed against exact candidate `c1b9f35`. The author
+  pair recorded 16/19 turns, 23/28 tool calls, and 265,474/564,830
+  provider-reported tokens; the debug pair recorded 16/18 turns, 26/23 tool
+  calls, and 529,484/523,550 tokens. All four sessions are distinct, record no
+  intervention or retry, and state `formalAttempt: false`. Their durable
+  records are under
+  `docs/evaluation/runs/rehearsal/2026-08-23-claude-opus-5-author-r5/` and
+  `docs/evaluation/runs/rehearsal/2026-08-23-claude-opus-5-debug-r5/`.
 - **CI uses `actions/checkout@v7` (#11):** PR and post-merge verification passed
   without the Node 20 compatibility annotation.
 - **The GPT Pro architecture checkpoint is owner-disposed (#25):** review of
@@ -366,10 +374,9 @@ never accumulates history (git has that).
 
 ## What is next
 
-Finish issue #70 by committing the prompt repair, rerunning both non-formal
-rehearsal pairs as r5, running exact-head repository proof, and obtaining a
+Finish issue #70 by running exact-head repository proof and obtaining a
 replacement non-author audit of the packet allowlists, isolation composition,
-receipt binding, accounting, and r4 evidence. Issue #69 is separately
+receipt binding, accounting, and r4/r5 evidence. Issue #69 is separately
 implemented and green in draft PR #75; issue #70 remains active in draft PR
 #76.
 No new semantic feature slice is authorized before final Gate K disposition.

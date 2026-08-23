@@ -1,0 +1,647 @@
+======================================================================
+ORD 0 CMD: ls -la /workspace && echo "---" && ls -la /workspace/workspace && echo "---" && ls -la /workspace/bin
+total 20
+drwx------ 6 1002 1002  220 Aug 23 03:27 .
+drwxr-xr-x 8 1002 1002  220 Aug 23 03:27 ..
+-rw-r--r-- 1 1002 1002   41 Aug 23 03:27 .nomos-candidate-commit
+drwxr-xr-x 2 1002 1002   60 Aug 23 03:27 bin
+-rw-r--r-- 1 1002 1002  418 Aug 23 03:27 brief.txt
+drwxr-xr-x 2 1002 1002   60 Aug 23 03:27 input
+-rw-r--r-- 1 1002 1002 2083 Aug 23 03:27 packet-manifest.json
+-rw-r--r-- 1 1002 1002 1315 Aug 23 03:27 plan.json
+-rw-r--r-- 1 1002 1002  868 Aug 23 03:27 prompt.txt
+drwxr-xr-x 2 1002 1002  140 Aug 23 03:27 reference
+drwxr-xr-x 2 1002 1002   60 Aug 23 03:27 workspace
+---
+total 4
+drwxr-xr-x 2 1002 1002  60 Aug 23 03:27 .
+drwx------ 6 1002 1002 220 Aug 23 03:27 ..
+-rw-r--r-- 1 1002 1002 324 Aug 23 03:27 gaol.nomos
+---
+total 3884
+drwxr-xr-x 2 1002 1002      60 Aug 23 03:27 .
+drwx------ 6 1002 1002     220 Aug 23 03:27 ..
+-rwxr-xr-x 1 1002 1002 3974008 Aug 23 03:27 nomos
+
+======================================================================
+ORD 1 CMD: cat /workspace/brief.txt 2>/dev/null || find /workspace -name brief.txt
+/bin/bash: line 1: /dev/null: Read-only file system
+/workspace/brief.txt
+
+======================================================================
+ORD 2 CMD: cd /workspace && cat brief.txt && echo "===PROMPT===" && cat prompt.txt && echo "===PLAN===" && cat plan.json
+Non-formal Gate K author rehearsal. Add one approved `primitive/extinguishable_light` instance to the supplied source fixture. Use the distinct entity ID `watch_lamp` and the legal cell anchor `4 0 1`. Preserve the existing entities, three approved primitive kinds, and catalog declaration. Reach clean validation and compile using only the supplied Nomos CLI. Do not add a door; that is reserved for the formal task.
+===PROMPT===
+You are the subject in a non-formal cold-author rehearsal. Read the permitted packet files and `brief.txt`. Work only in `/workspace/workspace`. Modify `/workspace/workspace/gaol.nomos` to satisfy the brief, then use `/workspace/bin/nomos` to validate and compile it. Keep all scratch files and outputs inside `/workspace/workspace`; do not use, redirect output to, or probe `/tmp`, `/dev`, `/home`, `/etc`, `/workspace/..`, the network, or any other path outside `/workspace`, and do not modify the packet references or binary. Any attempted access outside `/workspace` makes the rehearsal ineligible even when the sandbox denies it. Write `/workspace/workspace/SUBJECT.md` with a concise explanation of what you changed, why the compiler accepted it, and the exact reproduction commands. Stop when the task is complete. This rehearsal is not a formal Gate K attempt.===PLAN===
+{"budgets":{"freshSessions":1,"operatorRetriesMaximum":0,"operatorSubstantiveHintsMaximum":0},"candidate":{"binaryPath":"bin/nomos","binarySha256":"4af70accf3d1680f6b0e78f860be5ac62c5ab11b470026a83f01eb5b95051fd1","commit":"0b807bf9c9fcf9007f0e2d660241f229a0be69e1"},"operatorIntervention":"none","packet":{"activeTools":["bash"],"briefPath":"brief.txt","briefSha256":"8a967afa3e65422f970095a7ead163eafdd9d708831a8bc916af55066cd0f17b","gitMetadataPresent":false,"networkPermitted":false,"promptPath":"prompt.txt","promptSha256":"23228a52c34e42702fa8e4f5636cbbe53dc83835ca8fa44fa1b9c17d4114c712","repositoryMounted":false,"writablePaths":["workspace"]},"recording":{"commandOrderPreserved":true,"eventStream":"complete-ndjson","removedProviderFields":["textSignature","thinkingSignature"],"transcriptLossLimit":"only-the-two-declared-provider-signature-fields"},"rubric":["model_packet_tool_and_intervention_eligibility","declared_brief_satisfied_with_approved_primitives","distinct_typed_symbolic_ids_resolve","validation_and_compile_succeed","kernel_and_unrelated_content_unchanged","subject_explains_the_change","independent_checker_reproduces"],"schema":"nomos.gate_k.eval_plan@1","task":{"classification":"rehearsal","formalAttempt":false,"shape":"author"},"verdicts":["pass","fail","assisted","inconclusive"]}
+
+======================================================================
+ORD 3 CMD: cd /workspace && cat packet-manifest.json && echo "===REF===" && ls -la reference input && echo "===COMMIT===" && cat .nomos-candidate-commit
+{"candidateCommit":"0b807bf9c9fcf9007f0e2d660241f229a0be69e1","files":[{"bytes":41,"mode":"644","path":".nomos-candidate-commit","schemaIdentity":null,"sha256":"a8edf49fe71f5c7c2bcba553a8a8a7507981557ce6dde9475f20b57dcae07cab"},{"bytes":3974008,"mode":"755","path":"bin/nomos","schemaIdentity":null,"sha256":"4af70accf3d1680f6b0e78f860be5ac62c5ab11b470026a83f01eb5b95051fd1"},{"bytes":418,"mode":"644","path":"brief.txt","schemaIdentity":null,"sha256":"8a967afa3e65422f970095a7ead163eafdd9d708831a8bc916af55066cd0f17b"},{"bytes":324,"mode":"644","path":"input/gaol.nomos","schemaIdentity":"nomos.source@1","sha256":"a69582e7400921cb0fed84fde16469c21081363af4ebaba93411e59ae3ca4725"},{"bytes":1315,"mode":"644","path":"plan.json","schemaIdentity":"nomos.gate_k.eval_plan@1","sha256":"8e856c18a0aab09e4646dbab9171a45996b8b3d34b3389126ee92ce5651ccab2"},{"bytes":868,"mode":"644","path":"prompt.txt","schemaIdentity":null,"sha256":"23228a52c34e42702fa8e4f5636cbbe53dc83835ca8fa44fa1b9c17d4114c712"},{"bytes":2742,"mode":"644","path":"reference/KERNEL-authoring-excerpt.md","schemaIdentity":null,"sha256":"24e7cc8b581c998559aa5763dd2643d281b14c3a14b1a973a3495f15e5d414cb"},{"bytes":7986,"mode":"644","path":"reference/README.md","schemaIdentity":null,"sha256":"08f78c4d580fec1dd2761ab52081490d8d71946fffe7bf4bcf622c76c3bf1849"},{"bytes":2420,"mode":"644","path":"reference/authoring.md","schemaIdentity":null,"sha256":"545f404164ea0a6680fa71afc877f2fac06fa01fce33cf67cf3bf78947a4b012"},{"bytes":8968,"mode":"644","path":"reference/compiler.md","schemaIdentity":null,"sha256":"af31379afe940ace543561d9b78ecc0ae1f45f90c19a6769e544bf350380664f"},{"bytes":523,"mode":"644","path":"reference/nomos-help.txt","schemaIdentity":null,"sha256":"f76737f19e098d78152ec7811b77a8eee1744ec8144e07b9b1a3f629273666a9"},{"bytes":324,"mode":"644","path":"workspace/gaol.nomos","schemaIdentity":"nomos.source@1","sha256":"a69582e7400921cb0fed84fde16469c21081363af4ebaba93411e59ae3ca4725"}],"manifestExcludesSelf":true,"schema":"nomos.gate_k.packet_manifest@1","shape":"author","writablePaths":["workspace"]}
+===REF===
+input:
+total 4
+drwxr-xr-x 2 1002 1002  60 Aug 23 03:27 .
+drwx------ 6 1002 1002 220 Aug 23 03:27 ..
+-rw-r--r-- 1 1002 1002 324 Aug 23 03:27 gaol.nomos
+
+reference:
+total 32
+drwxr-xr-x 2 1002 1002  140 Aug 23 03:27 .
+drwx------ 6 1002 1002  220 Aug 23 03:27 ..
+-rw-r--r-- 1 1002 1002 2742 Aug 23 03:27 KERNEL-authoring-excerpt.md
+-rw-r--r-- 1 1002 1002 7986 Aug 23 03:27 README.md
+-rw-r--r-- 1 1002 1002 2420 Aug 23 03:27 authoring.md
+-rw-r--r-- 1 1002 1002 8968 Aug 23 03:27 compiler.md
+-rw-r--r-- 1 1002 1002  523 Aug 23 03:27 nomos-help.txt
+===COMMIT===
+0b807bf9c9fcf9007f0e2d660241f229a0be69e1
+
+======================================================================
+ORD 4 CMD: cd /workspace && echo "===GAOL===" && cat -A workspace/gaol.nomos | head -50 && echo "===PLAIN===" && cat workspace/gaol.nomos
+===GAOL===
+schema nomos.source@1$
+catalog credential/gaoler_key$
+$
+entity north_gate primitive/iron_barred_door$
+  anchor face 5 0 0 north$
+  credential credential/gaoler_key$
+end$
+$
+entity flooded_section primitive/shallow_water_region$
+  anchor region 2 2 0 4 3 0$
+end$
+$
+entity brazier_02 primitive/extinguishable_light$
+  anchor cell 3 1 0$
+end$
+===PLAIN===
+schema nomos.source@1
+catalog credential/gaoler_key
+
+entity north_gate primitive/iron_barred_door
+  anchor face 5 0 0 north
+  credential credential/gaoler_key
+end
+
+entity flooded_section primitive/shallow_water_region
+  anchor region 2 2 0 4 3 0
+end
+
+entity brazier_02 primitive/extinguishable_light
+  anchor cell 3 1 0
+end
+
+======================================================================
+ORD 5 CMD: cd /workspace/reference && cat nomos-help.txt && echo "===AUTHORING===" && cat authoring.md
+Nomos Gate K semantic runtime
+
+Usage:
+  nomos validate <source.nomos>
+  nomos compile <source.nomos> --out <new.world/>
+  nomos inspect <world/>
+  nomos migrate <v1-world/> --to 2 --out <new-v2-world/>
+  nomos run <world/> --commands <commands> --out <new-run/>
+  nomos command <world/> --state <state.json> "<command>" --out <new-run/>
+  nomos replay <world/> --log <replay> --out <new-run/>
+  nomos explain-entity <world/> <entity>
+  nomos explain-transition <run/> <entity> --tick <tick> --world <world/>
+  nomos --help
+===AUTHORING===
+# Gate K `.nomos` authoring reference
+
+Gate K source schema version 1 is a small line-oriented language. It contains
+primitive instances and source-owned facts only. Machines, capability claims,
+fact ownership, and projections come from the approved primitive catalog and
+compiler.
+
+## Grammar
+
+```text
+schema nomos.source@1
+catalog <catalog>/<value>
+
+entity <entity_id> <primitive>/<kind>
+  anchor cell <x> <y> <z>
+  anchor face <x> <y> <z> <north|east|south|west|up|down>
+  anchor region <min_x> <min_y> <min_z> <max_x> <max_y> <max_z>
+  credential <catalog>/<value>
+end
+
+relation <subject_entity> <relation_kind> <object_entity>
+```
+
+Blank lines and lines whose first non-whitespace character is `#` are ignored.
+Indentation is optional. An entity body ends only at `end`. Integers are signed
+32-bit decimal values with no leading `+`.
+
+Identifier segments match `[a-z][a-z0-9_]*`. Entity IDs contain one segment,
+primitive kinds are `primitive/<name>`, catalog values are `<catalog>/<value>`,
+and relation kinds contain one segment. These are different types and do not
+substitute for one another.
+
+Gate K currently approves one relation kind, `owns`. The `credential` field
+accepts only values in the `credential` catalog namespace; declaring an equal
+name in another catalog does not satisfy it.
+
+## Approved Gate K primitives
+
+| Primitive | Required source fields | Compiler-owned expansion |
+| --- | --- | --- |
+| `primitive/iron_barred_door` | face anchor, credential | `access`, `integrity`, `ward`, `combustion`; portal and blocking claims |
+| `primitive/shallow_water_region` | region anchor | traversal cost `3` |
+| `primitive/extinguishable_light` | cell anchor | `emission`; light-emission claim |
+
+Each entity accepts exactly the fields listed. Duplicate fields and extra
+fields fail. The credential must be declared by a `catalog` declaration.
+
+## Facts content cannot author
+
+The compiler recognizes and rejects these mutation forms with dedicated
+diagnostics:
+
+```text
+  lattice_relation <relation_kind> <entity_id>
+  transform <anything...>
+  derived <fact_name> <anything...>
+fact_owner <fact_class> <owner>
+```
+
+They exist in the parser only so a forbidden fact receives the right stable
+diagnostic and source span. They are never accepted into Canonical World IR.
+Relations use the top-level `relation` form. Spatial truth uses `anchor`.
+Derived facts and canonical owners belong to the compiler.
+
+======================================================================
+ORD 6 CMD: cd /workspace/reference && cat KERNEL-authoring-excerpt.md
+## 1. Exact base fixture
+
+One source file describes exactly three world primitive instances in the base
+fixture:
+
+```text
+Room contents:
+  north_gate       primitive/iron_barred_door
+  flooded_section  primitive/shallow_water_region
+  brazier_02       primitive/extinguishable_light
+
+Catalog values:
+  credential/gaoler_key
+```
+
+These are three primitive **kinds** and three instances in the base fixture.
+The formal cold-author evaluation operates on an isolated copy and may add one
+second `primitive/iron_barred_door` instance. That produces four instances while
+preserving the same three approved primitive kinds; it does not expand the
+catalog or Gate K's semantic scope.
+
+`credential/gaoler_key` is a catalog credential value, not a world entity and
+not a fourth primitive. References to catalog values are resolved by their own
+symbol table and cannot satisfy entity references.
+
+### `north_gate`
+
+The door is lockable, breakable, warded, and burnable. Its namespace-local
+machines are independent:
+
+```text
+access:       locked | closed | open
+integrity:    intact | damaged | destroyed
+ward:         sealed | unsealed
+combustion:   cold | burning | spent
+```
+
+Initial state:
+
+```text
+access       = locked
+integrity    = intact
+ward         = sealed
+combustion   = cold
+credential   = credential/gaoler_key
+```
+
+The ward supplies the second independent blocking claim used by the composition
+test; no magical-seal primitive exists.
+
+Required derived behavior:
+
+```text
+portal_open = access == open OR integrity == destroyed
+
+movement_blockers =
+  access_or_integrity_blocker when NOT portal_open
+  ward_blocker                when ward == sealed
+```
+
+Opening the door while the ward remains sealed changes `access` but does not
+change the effective ground movement disposition: the passage remains blocked
+and the explanation names the ward as the surviving reason.
+
+Required causal interaction:
+
+```text
+combustion.on_enter(burning)
+  -> integrity.apply_damage(channel = fire, amount = 2)
+```
+
+For Gate K this interaction fires exactly once on entry into `burning`. Recurring
+pulse or scheduler semantics are outside Gate K.
+
+### `flooded_section`
+
+The water region is static in Gate K. It has a lattice region binding and
+contributes a ground traversal cost of `3` to otherwise traversable cells. It
+must appear in simulation, navigation, persistence metadata where applicable,
+and diagnostics. It may not be parsed and then ignored.
+
+### `brazier_02`
+
+The light has one namespace-local machine:
+
+```text
+emission: lit | extinguished
+```
+
+Initial state is `lit`. `extinguish` transitions to `extinguished`, removes the
+effective light-emission fact, updates persistence and diagnostics projections,
+and produces a causal receipt.
+
+
+======================================================================
+ORD 7 CMD: cd /workspace/reference && cat compiler.md
+---
+title: Gate K compiler
+status: Compiler implementation reference; current through SW-N
+date: 2026-08-22
+applies_to: KERNEL.md sections 1, 2, 4, 9; acceptance 1-3 and 11
+---
+
+# Gate K source compiler
+
+SW-C turns one `nomos.source@1` file into a typed Canonical World IR
+construction snapshot. SW-D validates executable machine semantics, SW-E adds
+ground movement, SW-F adds compiler-owned light union plus all four projections,
+and SW-G promotes the complete schema into stable World IR before projection.
+The public library paths are:
+
+```rust
+nomos_compiler::compile_source(source, repository_relative_path)
+nomos_compiler::promote_world_ir(&construction_ir)
+nomos_compiler::compile_world(source, repository_relative_path)
+nomos_compiler::compile_simulation_plan(&stable_world_ir)
+nomos_compiler::compile_navigation_plan(&stable_world_ir)
+nomos_compiler::compile_persistence_plan(&stable_world_ir)
+nomos_compiler::compile_diagnostics_plan(&stable_world_ir)
+nomos_compiler::compile_world_package(source, repository_relative_path)
+nomos_compiler::migrate_world_ir_v1_to_v2(&legacy_stable_world_ir)
+nomos_compiler::migrate_world_package_v1(legacy_package_root)
+nomos_cli::compile_and_write_world(source, repository_relative_path, destination)
+nomos_cli::migrate_and_write_world(legacy_package_root, destination)
+```
+
+The source language and primitive catalog are documented in
+[`docs/authoring.md`](authoring.md); [decision 0002](decisions/0002-source-language.md)
+records why that language was chosen.
+
+## Compile stages implemented
+
+1. Parse the schema declaration, catalog declarations, primitive instances,
+   typed lattice bindings, catalog references, and graph relations.
+2. Build distinct catalog-value and entity symbol tables; duplicates fail.
+3. Resolve relation endpoints and primitive catalog references.
+4. Reject facts content cannot own: lattice relations, raw transforms, derived
+   facts, and canonical-owner declarations.
+5. Enforce primitive-specific field and binding shapes.
+6. Expand the sealed three-kind catalog into capability bundles, typed machine
+   templates, typed transitions, causal interactions, and claim activation
+   expressions.
+7. Validate transition states, interaction namespaces and handlers, and reject
+   every causal cycle before projection.
+8. Derive typed ground connectivity and an explicit resolver plan: any active
+   blocker wins; otherwise the maximum active traversal cost wins; otherwise
+   the positive base cost is `1`.
+9. Emit typed fact-ownership receipts and canonical construction-snapshot
+   bytes under `nomos.world_ir.construction@3`. Version 2 introduced typed
+   provenance; version 3 adds the incompatible light-resolver shape.
+10. Resolve entity credentials into command requirements and emit
+    `nomos.projection.simulation@3` plus `nomos.projection.navigation@1` with
+    byte-identical movement resolver plans. Simulation advances independently
+    because its required shape changes; navigation is emitted for the first time.
+11. Validate `EmitsLight = union`, positive claim values, activation
+    dependencies, subjects, and consumers; project one typed light plan to
+    simulation, `nomos.projection.persistence@1`, and
+    `nomos.projection.diagnostics@1`.
+12. Validate the complete construction snapshot, derive one tagged initial
+    `movement_disposition_ground` row per subject, and promote a distinct
+    `nomos.world_ir@2` carrying explicit source, construction, compiler,
+    primitive-catalog, ownership, and provenance versions.
+13. Compile every projection only from the stable type, emit the exact schema
+    ownership registry and typed compiler receipts, and validate the complete
+    seven-member semantic package set before filesystem publication.
+14. On the isolated migration path, strictly validate a complete stable-v1
+    package, regenerate and compare every legacy projection and receipt, convert
+    only its movement rows to v2, then regenerate and validate all active
+    package members.
+
+Parser failures use `EK05xx`; linker and ownership failures use `EK06xx`;
+transition/projection validation uses `EK07xx`; movement resolver validation
+uses `EK09xx`; typed provenance validation uses `EK10xx`.
+Every source rejection carries a repository-relative span and a legal repair
+class. The mutation suite plants each ownership/cross-reference violation in
+`KERNEL.md` section 9 that belongs to this slice.
+
+## Schema ownership
+
+`nomos-schema` exclusively defines:
+
+- source AST types;
+- typed cell, face, and region bindings;
+- Canonical World IR entities and relations;
+- machine and claim templates;
+- typed command/event transitions and phased causal interactions;
+- typed movement composition, coherence, connectivity, and resolver subjects;
+- typed light-union composition, consumers, and resolver subjects;
+- typed fact-ownership receipts: fact IDs, resolved values, projection
+  consumers, derivation producers/passes, and causal inputs.
+- stable `nomos.world_ir@2`, the migration-only strict v1 type, their movement
+  rows, and the package schema registry with typed authoritative owners.
+
+`nomos-compiler` exclusively defines parsing, the sealed primitive catalog,
+name resolution, validation, expansion, linking, cycle rejection, and
+projection. `nomos-projection` owns runtime-facing simulation, navigation,
+persistence, and diagnostics plan types and cannot name `nomos-schema`.
+Runtime crates cannot name source or IR types because the
+workspace graph denies them a `nomos-schema` edge.
+
+`NamespaceId` means an entity-local semantic namespace. State machines occupy
+such namespaces, but static claims do too (`flooded_section.region`). Treating
+every namespace as a machine would require fake state machines in the IR, so
+SW-C corrected the narrower SW-B naming before it became serialized behavior.
+
+## What SW-C proves
+
+- the exact three-instance fixture is readable on one screen;
+- the credential remains a typed catalog value, never a fourth entity;
+- primitive references resolve
+======================================================================
+ORD 8 CMD: cd /workspace/reference && cat README.md
+# Nomos
+
+**Nomos — a semantic game runtime designed for AI authors.**
+
+This repository contains the executable semantic kernel and **The Signed
+World**, the exploratory architectural thesis Nomos is intended to test before
+any renderer is built.
+
+> The agent proposes the world. Nomos supplies the law.
+
+> The agent names the thing. Namespaces own state. Capabilities define
+> obligations. The resolver composes effective facts. Projection compilers own
+> the consequences. The runtime executes a sealed world. The renderer owns every
+> pixel. A cold stranger can rebuild and explain all of it.
+
+## Status
+
+- **Architecture status:** exploratory and non-authoritative
+- **Implementation status:** semantic implementation is complete through SW-N
+  on `main`. The implemented surface includes foundations, source and preserved
+  construction IR, stable
+  `nomos.world_ir@2` plus strict v1 migration, compiled transitions,
+  shared movement and light resolution, all four projections, immutable runtime
+  commits, complete hash-verified world packages, the filesystem `validate`,
+  `compile`, `inspect`, `run`, `command`, and `replay` commands, strict persisted
+  runtime and replay evidence, atomic verified run bundles, the immutable
+  `migrate` command, and package-bound read-only entity and transition
+  explanations
+- **Gate K status:** evidence closure is in progress. The implementation-complete
+  tree is not yet a frozen `gate-k-rcN`, and Gate K is not accepted or green
+- **Contract revision:** 7, owner-authorized in decision 0009
+- **Cold-agent protocol revision:** 3, owner-authorized in decision 0010
+- **Scope:** greenfield / vacuum architecture exercise
+- **Effect on other projects:** none unless separately adopted by an explicit
+  decision in that project's own authority records
+- **License:** MIT
+
+This repository deliberately records a thesis before implementation. It does not
+claim the thesis is correct. The kernel exists to give it a cheap, falsifiable
+way to fail before graphics, networking, audio, or a general engine grow around
+it.
+
+## Read in this order
+
+1. [THESIS.md](THESIS.md) — the design, boundaries, proof gates, resolved
+   disagreements, and adoption criteria.
+2. [KERNEL.md](KERNEL.md) — the revisioned acceptance contract for Gate K, the
+   renderer-free executable semantic kernel.
+3. [docs/decisions/0009-transition-explanation-input-boundary.md](docs/decisions/0009-transition-explanation-input-boundary.md)
+   — the owner-authorized revision-6 to revision-7 repair requiring a verified
+   world for transition explanations and separate tick-7 run evidence.
+4. [docs/decisions/0010-cold-agent-token-budget.md](docs/decisions/0010-cold-agent-token-budget.md)
+   — the owner-authorized cold-agent protocol revision 3 removal of resource
+   ceilings while preserving complete usage and command accounting.
+5. [docs/decisions/0008-cold-agent-nomos-cli-identity.md](docs/decisions/0008-cold-agent-nomos-cli-identity.md)
+   — the owner-authorized cold-agent protocol revision 2 correction from the
+   prototype `estate` CLI name to active `nomos`; no tool scope or rubric changes.
+6. [docs/decisions/0007-adopt-nomos-identity.md](docs/decisions/0007-adopt-nomos-identity.md)
+   — the owner-authorized revision-5 to revision-6 identity cutover: Nomos is
+   the project/runtime, The Signed World remains the thesis, and active schemas
+   begin a fresh pre-Gate epoch.
+7. [docs/decisions/0006-package-evidence-boundary.md](docs/decisions/0006-package-evidence-boundary.md)
+   — the owner-authorized revision-4 to revision-5 repair sealing package
+   receipts, publication, exact manifest decoding, and filesystem entry types.
+8. [docs/decisions/0003-contract-profile-closure.md](docs/decisions/0003-contract-profile-closure.md)
+   — the owner-authorized revision-2 to revision-3 closure of the canonical
+   profile and workspace-evidence contract gaps.
+9. [docs/decisions/0004-world-ir-construction-lineage.md](docs/decisions/0004-world-ir-construction-lineage.md)
+   — the owner-authorized revision-3 to revision-4 repair separating incomplete
+   construction snapshots from the stable World IR migration line.
+10. [docs/decisions/0005-gate-k-dependency-policy.md](docs/decisions/0005-gate-k-dependency-policy.md)
+   — the owner-authorized temporary zero-third-party-dependency policy for Gate
+   K; it does not amend contract revision 4 or bind later gates.
+11. [docs/decisions/0001-contract-repair.md](docs/decisions/0001-contract-repair.md)
+   — the owner-authorized revision-1 to revision-2 contract repair.
+12. [docs/evaluation/COLD_AGENT_PROTOCOL.md](docs/evaluation/COLD_AGENT_PROTOCOL.md)
+   — the reproducible cold-author, cold-debug, and cold-review procedure.
+13. [docs/evaluation/GATE_K_COLD_AGENT_PLAN.md](docs/evaluation/GATE_K_COLD_AGENT_PLAN.md)
+   — the owner-authorized whole-kernel subject roster and eligibility checks.
+14. [docs/workspace.md](docs/workspace.md) — the crate map, how to run the
+   proof, and the decisions the first implementation slice had to make.
+15. [docs/authoring.md](docs/authoring.md) — source schema version 1 and the
+   approved Gate K authoring vocabulary.
+16. [docs/compiler.md](docs/compiler.md) — parser/linker stages, schema
+   ownership, proof coverage, and limits.
+17. [docs/transitions.md](docs/transitions.md) — compiled command/event
+   semantics, causal ordering, and immutable runtime preparation.
+18. [docs/movement.md](docs/movement.md) — compiled claim composition,
+   shared simulation/navigation movement semantics, and SW-E evidence.
+19. [docs/packages.md](docs/packages.md) — atomic package publication, exact
+   manifest/member verification, and the revision-5 evidence boundary.
+20. [docs/migration.md](docs/migration.md) — stable-v1 to stable-v2 movement
+   migration, normalized runtime proof, and digest mapping.
+21. [docs/provenance.md](docs/provenance.md) — typed fact identities, resolved
+    values, causal inputs, and the boundary between semantics and display text.
+22. [docs/runtime.md
+======================================================================
+ORD 9 CMD: cd /workspace/workspace && /workspace/bin/nomos validate gaol.nomos; echo "exit=$?"
+{"artifacts":["compiler-receipts.json","diagnostics.json","navigation.json","persistence.json","schemas.json","simulation.json","world-ir.json"],"command":"validate","source":"gaol.nomos","status":"completed","world_ir_schema":{"name":"nomos.world_ir","version":2}}
+exit=0
+
+======================================================================
+ORD 10 CMD: cd /workspace/workspace && /workspace/bin/nomos --help; echo "exit=$?"
+Nomos Gate K semantic runtime
+
+Usage:
+  nomos validate <source.nomos>
+  nomos compile <source.nomos> --out <new.world/>
+  nomos inspect <world/>
+  nomos migrate <v1-world/> --to 2 --out <new-v2-world/>
+  nomos run <world/> --commands <commands> --out <new-run/>
+  nomos command <world/> --state <state.json> "<command>" --out <new-run/>
+  nomos replay <world/> --log <replay> --out <new-run/>
+  nomos explain-entity <world/> <entity>
+  nomos explain-transition <run/> <entity> --tick <tick> --world <world/>
+  nomos --help
+exit=0
+
+======================================================================
+ORD 11 CMD: cd /workspace/workspace && cp gaol.nomos gaol.nomos.orig.bak && printf '\nentity watch_lamp primitive/extinguishable_light\n  anchor cell 4 0 1\nend\n' >> gaol.
+schema nomos.source@1
+catalog credential/gaoler_key
+
+entity north_gate primitive/iron_barred_door
+  anchor face 5 0 0 north
+  credential credential/gaoler_key
+end
+
+entity flooded_section primitive/shallow_water_region
+  anchor region 2 2 0 4 3 0
+end
+
+entity brazier_02 primitive/extinguishable_light
+  anchor cell 3 1 0
+end
+
+entity watch_lamp primitive/extinguishable_light
+  anchor cell 4 0 1
+end
+
+======================================================================
+ORD 12 CMD: cd /workspace/workspace && diff gaol.nomos.orig.bak gaol.nomos; echo "--- diff-exit=$?"; echo "=== VALIDATE ==="; /workspace/bin/nomos validate gaol.nomos; echo
+15a16,19
+> 
+> entity watch_lamp primitive/extinguishable_light
+>   anchor cell 4 0 1
+> end
+--- diff-exit=1
+=== VALIDATE ===
+{"artifacts":["compiler-receipts.json","diagnostics.json","navigation.json","persistence.json","schemas.json","simulation.json","world-ir.json"],"command":"validate","source":"gaol.nomos","status":"completed","world_ir_schema":{"name":"nomos.world_ir","version":2}}
+validate-exit=0
+
+======================================================================
+ORD 13 CMD: cd /workspace/workspace && /workspace/bin/nomos compile gaol.nomos --out gaol.world; echo "compile-exit=$?"; echo "=== TREE ==="; ls -la gaol.world
+{"artifacts":["gaol.world/manifest.json","gaol.world/compiler-receipts.json","gaol.world/diagnostics.json","gaol.world/navigation.json","gaol.world/persistence.json","gaol.world/schemas.json","gaol.world/simulation.json","gaol.world/world-ir.json"],"command":"compile","manifest_digest":"0ca6bd71e61c158786feb711dca102eb24c005f45a80cb2579f71709d6f2d8a6","output":"gaol.world","source":"gaol.nomos","status":"completed"}
+compile-exit=0
+=== TREE ===
+total 44
+drwxr-xr-x 2 1002 1002   200 Aug 23 03:28 .
+drwxr-xr-x 3 1002 1002   100 Aug 23 03:28 ..
+-rw-r--r-- 1 1002 1002  1700 Aug 23 03:28 compiler-receipts.json
+-rw-r--r-- 1 1002 1002  1278 Aug 23 03:28 diagnostics.json
+-rw-r--r-- 1 1002 1002   961 Aug 23 03:28 manifest.json
+-rw-r--r-- 1 1002 1002  1340 Aug 23 03:28 navigation.json
+-rw-r--r-- 1 1002 1002  1278 Aug 23 03:28 persistence.json
+-rw-r--r-- 1 1002 1002   971 Aug 23 03:28 schemas.json
+-rw-r--r-- 1 1002 1002  4266 Aug 23 03:28 simulation.json
+-rw-r--r-- 1 1002 1002 12089 Aug 23 03:28 world-ir.json
+
+======================================================================
+ORD 14 CMD: cd /workspace/workspace && echo "=== INSPECT ===" && /workspace/bin/nomos inspect gaol.world; echo "inspect-exit=$?"
+=== INSPECT ===
+{"command":"inspect","compiler_version":2,"construction_schema":{"name":"nomos.world_ir.construction","version":3},"entities":[{"capabilities":["machine","interactable","emits_light","authority","persisted"],"claims":[{"activation":{"kind":"state_equals","namespace":"brazier_02.emission","state":"lit"},"capability":"emits_light","id":"brazier_02.emission#emits_light","value":true}],"id":"brazier_02","machines":[{"initial":"lit","namespace":"brazier_02.emission","states":["lit","extinguished"],"transitions":[{"effect":{"kind":"set_state","state":"extinguished"},"source":"lit","trigger":{"input":{"kind":"none"},"kind":"command","name":"extinguish"}}]}],"primitive":"primitive/extinguishable_light","source":{"byte_end":323,"byte_start":251,"column":1,"line":13,"path":"gaol.nomos"}},{"capabilities":["traversal_cost_ground","region","authority","persisted"],"claims":[{"activation":{"kind":"always"},"capability":"traversal_cost_ground","id":"flooded_section.region#traversal_cost_ground","value":3}],"id":"flooded_section","machines":[],"primitive":"primitive/shallow_water_region","source":{"byte_end":249,"byte_start":164,"column":1,"line":9,"path":"gaol.nomos"}},{"capabilities":["boundary","portal","blocks_ground","machine","interactable","authority","persisted"],"claims":[{"activation":{"child":{"children":[{"kind":"state_equals","namespace":"north_gate.access","state":"open"},{"kind":"state_equals","namespace":"north_gate.integrity","state":"destroyed"}],"kind":"any"},"kind":"not"},"capability":"blocks_ground","id":"north_gate.portal#blocks_ground","value":true},{"activation":{"kind":"state_equals","namespace":"north_gate.ward","state":"sealed"},"capability":"blocks_ground","id":"north_gate.ward#blocks_ground","value":true}],"id":"north_gate","machines":[{"initial":"locked","namespace":"north_gate.access","states":["locked","closed","open"],"transitions":[{"effect":{"kind":"set_state","state":"closed"},"source":"open","trigger":{"input":{"kind":"none"},"kind":"command","name":"close"}},{"effect":{"kind":"set_state","state":"open"},"source":"closed","trigger":{"input":{"kind":"none"},"kind":"command","name":"open"}},{"effect":{"kind":"set_state","state":"closed"},"source":"locked","trigger":{"input":{"kind":"resolved_entity_credential"},"kind":"command","name":"unlock"}}]},{"initial":"cold","namespace":"north_gate.combustion","states":["cold","burning","spent"],"transitions":[{"effect":{"kind":"set_state","state":"burning"},"source":"cold","trigger":{"input":{"kind":"none"},"kind":"command","name":"ignite"}}]},{"initial":"intact","namespace":"north_gate.integrity","states":["intact","damaged","destroyed"],"transitions":[{"effect":{"kind":"set_state","state":"destroyed"},"source":"intact","trigger":{"input":{"amount":2,"channel":"fire","kind":"damage"},"kind":"event","name":"apply_damage"}}]},{"initial":"sealed","namespace":"north_gate.ward","states":["sealed","unsealed"],"transitions":[{"effect":{"kind":"set_state","state":"unsealed"},"source":"sealed","trigger":{"input":{"kind":"none"},"kind":"command","name":"unseal"}}]}],"primitive":"primitive/iron_barred_door","source":{"byte_end":162,"byte_start":53,"column":1,"line":4,"path":"gaol.nomos"}},{"capabilities":["machine","interactable","emits_light","authority","persisted"],"claims":[{"activation":{"kind":"state_equals","namespace":"watch_lamp.emission","state":"lit"},"capability":"emits_light","id":"watch_lamp.emission#emits_light","value":true}],"id":"watch_lamp","machines":[{"initial":"lit","namespace":"watch_lamp.emission","states":["lit","extinguished"],"transitions":[{"effect":{"kind":"set_state","state":"extinguished"},"source":"lit","trigger":{"input":{"kind":"none"},"kind":"command","name":"extinguish"}}]}],"primitive":"primitive/extinguishable_light","source":{"byte_end":397,"byte_start":325,"column":1,"line":17,"path":"gaol.nomos"}}],"manifest_digest":"0ca6bd71e61c158786feb711dca102eb24c005f45a80cb2579f71709d6f2d8a6","package_schema":{"name":"nomos.package.manifest","version":1},"primitive_catalog_version":1,"status":"completed","world_ir_schema":{"name":"nomos.world_ir","version":2}}
+inspect-exit=0
+
+======================================================================
+ORD 15 CMD: cd /workspace/workspace && echo "=== EXPLAIN watch_lamp ===" && /workspace/bin/nomos explain-entity gaol.world watch_lamp; echo "exit=$?"
+=== EXPLAIN watch_lamp ===
+{"active_initial_claims":["watch_lamp.emission#emits_light"],"command":"explain-entity","effective_initial_facts":{"ground_movement":null,"light_emission":{"emitting":true,"reasons":["watch_lamp.emission#emits_light"]}},"entity":{"binding":{"cell":{"x":4,"y":0,"z":1},"kind":"cell"},"credential":null,"expansion":{"capabilities":["machine","interactable","emits_light","authority","persisted"],"claims":[{"activation":{"kind":"state_equals","namespace":"watch_lamp.emission","state":"lit"},"capability":"emits_light","id":"watch_lamp.emission#emits_light","value":true}],"interactions":[],"machines":[{"initial":"lit","namespace":"watch_lamp.emission","states":["lit","extinguished"],"transitions":[{"effect":{"kind":"set_state","state":"extinguished"},"source":"lit","trigger":{"input":{"kind":"none"},"kind":"command","name":"extinguish"}}]}]},"id":"watch_lamp","primitive":"primitive/extinguishable_light","source":{"byte_end":397,"byte_start":325,"column":1,"line":17,"path":"gaol.nomos"}},"ownership_receipts":[{"consumers":["diagnostics","persistence","simulation"],"declared_at":{"byte_end":342,"byte_start":332,"column":8,"line":17,"path":"gaol.nomos"},"derivation":[{"inputs":[],"pass":"declare_entity","producer":"source"}],"fact":{"entity":"watch_lamp","kind":"entity_identity"},"owner":"graph","resolved_to":{"entity":"watch_lamp","kind":"entity"}},{"consumers":["diagnostics","navigation","simulation"],"declared_at":{"byte_end":393,"byte_start":376,"column":3,"line":18,"path":"gaol.nomos"},"derivation":[{"inputs":[{"fact":{"entity":"watch_lamp","kind":"entity_identity"},"kind":"fact"}],"pass":"declare_spatial_anchor","producer":"source"}],"fact":{"entity":"watch_lamp","kind":"entity_spatial_anchor"},"owner":"lattice","resolved_to":{"binding":{"cell":{"x":4,"y":0,"z":1},"kind":"cell"},"kind":"binding"}},{"consumers":["diagnostics","navigation","persistence","simulation"],"declared_at":{"byte_end":393,"byte_start":376,"column":3,"line":18,"path":"gaol.nomos"},"derivation":[{"inputs":[{"fact":{"entity":"watch_lamp","kind":"entity_spatial_anchor"},"kind":"fact"},{"kind":"primitive","primitive":"primitive/extinguishable_light"}],"pass":"resolve_spatial_binding","producer":"world_linker"}],"fact":{"entity":"watch_lamp","kind":"entity_spatial_binding"},"owner":"world_linker","resolved_to":{"binding":{"cell":{"x":4,"y":0,"z":1},"kind":"cell"},"kind":"binding"}}],"package_digest":"0ca6bd71e61c158786feb711dca102eb24c005f45a80cb2579f71709d6f2d8a6","schemas":{"construction_world_ir":{"name":"nomos.world_ir.construction","version":3},"package_members":[{"artifact":"compiler-receipts.json","owner":"nomos-compiler","schema":{"name":"nomos.compiler_receipts","version":1}},{"artifact":"diagnostics.json","owner":"nomos-projection","schema":{"name":"nomos.projection.diagnostics","version":1}},{"artifact":"manifest.json","owner":"nomos-core","schema":{"name":"nomos.package.manifest","version":1}},{"artifact":"navigation.json","owner":"nomos-projection","schema":{"name":"nomos.projection.navigation","version":1}},{"artifact":"persistence.json","owner":"nomos-projection","schema":{"name":"nomos.projection.persistence","version":1}},{"artifact":"schemas.json","owner":"nomos-schema","schema":{"name":"nomos.package.schemas","version":1}},{"artifact":"simulation.json","owner":"nomos-projection","schema":{"name":"nomos.projection.simulation","version":3}},{"artifact":"world-ir.json","owner":"nomos-schema","schema":{"name":"nomos.world_ir","version":2}}],"runtime_state":{"name":"nomos.runtime_state","version":2},"source":{"name":"nomos.source","version":1},"world_ir":{"name":"nomos.world_ir","version":2}},"status":"completed"}
+exit=0
+
+======================================================================
+ORD 16 CMD: cd /workspace/workspace && /workspace/bin/nomos compile gaol.nomos --out gaol.world.recheck > recompile.json 2>&1; echo "exit=$?"; grep -o '"manifest_digest":"[
+exit=0
+"manifest_digest":"0ca6bd71e61c158786feb711dca102eb24c005f45a80cb2579f71709d6f2d8a6"
+--- byte-identical members? ---
+IDENTICAL
+
+======================================================================
+ORD 17 CMD: cd /workspace && sha256sum bin/nomos brief.txt prompt.txt plan.json input/gaol.nomos reference/*.md reference/*.txt | sed 's|^|OBSERVED |'
+OBSERVED 4af70accf3d1680f6b0e78f860be5ac62c5ab11b470026a83f01eb5b95051fd1  bin/nomos
+OBSERVED 8a967afa3e65422f970095a7ead163eafdd9d708831a8bc916af55066cd0f17b  brief.txt
+OBSERVED 23228a52c34e42702fa8e4f5636cbbe53dc83835ca8fa44fa1b9c17d4114c712  prompt.txt
+OBSERVED 8e856c18a0aab09e4646dbab9171a45996b8b3d34b3389126ee92ce5651ccab2  plan.json
+OBSERVED a69582e7400921cb0fed84fde16469c21081363af4ebaba93411e59ae3ca4725  input/gaol.nomos
+OBSERVED 24e7cc8b581c998559aa5763dd2643d281b14c3a14b1a973a3495f15e5d414cb  reference/KERNEL-authoring-excerpt.md
+OBSERVED 08f78c4d580fec1dd2761ab52081490d8d71946fffe7bf4bcf622c76c3bf1849  reference/README.md
+OBSERVED 545f404164ea0a6680fa71afc877f2fac06fa01fce33cf67cf3bf78947a4b012  reference/authoring.md
+OBSERVED af31379afe940ace543561d9b78ecc0ae1f45f90c19a6769e544bf350380664f  reference/compiler.md
+OBSERVED f76737f19e098d78152ec7811b77a8eee1744ec8144e07b9b1a3f629273666a9  reference/nomos-help.txt
+
+======================================================================
+ORD 18 CMD: cd /workspace/workspace && echo "--- entity count ---"; grep -c '^entity ' gaol.nomos; echo "--- distinct kinds ---"; grep -o 'primitive/[a-z_]*' gaol.nomos | s
+--- entity count ---
+4
+--- distinct kinds ---
+primitive/extinguishable_light
+primitive/iron_barred_door
+primitive/shallow_water_region
+--- door count (must stay 1) ---
+1
+--- catalog ---
+catalog credential/gaoler_key
+--- ids ---
+      1 brazier_02
+      1 flooded_section
+      1 north_gate
+      1 watch_lamp
+
+======================================================================
+ORD 19 CMD: cd /workspace/workspace && rm -rf gaol.world.recheck recompile.json && ls -la
+total 8
+drwxr-xr-x 3 1002 1002 100 Aug 23 03:28 .
+drwx------ 6 1002 1002 220 Aug 23 03:27 ..
+-rw-r--r-- 1 1002 1002 398 Aug 23 03:28 gaol.nomos
+-rw-r--r-- 1 1002 1002 324 Aug 23 03:28 gaol.nomos.orig.bak
+drwxr-xr-x 2 1002 1002 200 Aug 23 03:28 gaol.world
+
+======================================================================
+ORD 20 CMD: cd /workspace/workspace && cat > SUBJECT.md <<'EOF'
+--- written ---
+124 SUBJECT.md
+total 16
+drwxr-xr-x 3 1002 1002  120 Aug 23 03:29 .
+drwx------ 6 1002 1002  220 Aug 23 03:27 ..
+-rw-r--r-- 1 1002 1002 5986 Aug 23 03:29 SUBJECT.md
+-rw-r--r-- 1 1002 1002  398 Aug 23 03:28 gaol.nomos
+-rw-r--r-- 1 1002 1002  324 Aug 23 03:28 gaol.nomos.orig.bak
+drwxr-xr-x 2 1002 1002  200 Aug 23 03:28 gaol.world
+
+======================================================================
+ORD 21 CMD: cd /workspace/workspace && diff gaol.nomos.orig.bak gaol.nomos; echo "== validate =="; /workspace/bin/nomos validate gaol.nomos; echo "exit=$?"; echo "== compil
+15a16,19
+> 
+> entity watch_lamp primitive/extinguishable_light
+>   anchor cell 4 0 1
+> end
+== validate ==
+{"artifacts":["compiler-receipts.json","diagnostics.json","navigation.json","persistence.json","schemas.json","simulation.json","world-ir.json"],"command":"validate","source":"gaol.nomos","status":"completed","world_ir_schema":{"name":"nomos.world_ir","version":2}}
+exit=0
+== compile ==
+{"artifacts":["gaol.world/manifest.json","gaol.world/compiler-receipts.json","gaol.world/diagnostics.json","gaol.world/navigation.json","gaol.world/persistence.json","gaol.world/schemas.json","gaol.world/simulation.json","gaol.world/world-ir.json"],"command":"compile","manifest_digest":"0ca6bd71e61c158786feb711dca102eb24c005f45a80cb2579f71709d6f2d8a6","output":"gaol.world","source":"gaol.nomos","status":"completed"}
+exit=0
+== entity ids in IR ==
+"id":"brazier_02"
+"id":"flooded_section"
+"id":"north_gate"
+"id":"watch_lamp"
+

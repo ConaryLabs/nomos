@@ -178,9 +178,24 @@ The first post-repair author pair at `0b807bf9c9fcf9007f0e2d660241f229a0be69e1`
 proved the new structural boundary and receipt binding, but the subject still
 typed one reflexive `2>/dev/null` fallback. The empty `/dev` denied it, the
 subject disclosed it, and the checker correctly returned `reject`. That failed
-pair is preserved as r4 evidence. The shared and task prompts now state the
-legal alternative explicitly: capture output in the declared writable subtree
-and remove the file afterward. Both shapes require clean replacement r5 pairs.
+pair is preserved at
+`docs/evaluation/runs/rehearsal/2026-08-23-claude-opus-5-author-r4-rejected/`.
+The shared and task prompts now state the legal alternative explicitly: capture
+output in the declared writable subtree and remove the file afterward.
+
+The clean r5 author and debug pairs target exact candidate
+`c1b9f355fa32f8ba749b62aa8d15bd05e9c62808`. Both independent checkers passed.
+The author pair recorded 16/19 assistant turns, 23/28 tool calls, and
+265,474/564,830 provider-reported tokens. The debug pair recorded 16/18 turns,
+26/23 tool calls, and 529,484/523,550 provider-reported tokens. All four task
+sessions are distinct, record no operator intervention or retry, and state
+`formalAttempt: false`. Every actual command path stayed inside `/workspace`;
+the checkers independently reproduced the authored package and the failing and
+repaired debug runs. Durable records live at
+`docs/evaluation/runs/rehearsal/2026-08-23-claude-opus-5-author-r5/` and
+`docs/evaluation/runs/rehearsal/2026-08-23-claude-opus-5-debug-r5/`. These are
+issue #70 rehearsal evidence only and do not spend or satisfy either formal
+Gate K attempt.
 
 ## Invalidation
 
