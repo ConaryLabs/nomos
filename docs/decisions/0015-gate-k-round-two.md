@@ -55,12 +55,14 @@ future attempt.
 Protocol revision 6 records three independently adjudicated dimensions for
 every formal subject and checker:
 
-1. **semantic merit** — whether the declared authoring, debugging, or checking
-   work and explanation are correct;
-2. **independence integrity** — whether only declared information entered the
-   task and no substantive outside help occurred;
-3. **operational compliance** — whether every declared tool, path, and
-   execution restriction was obeyed.
+1. **semantic merit** — whether every task-specific authoring, debugging, or
+   checking result and explanation criterion is correct;
+2. **independence integrity** — whether model eligibility and fresh-session
+   requirements hold, only declared information entered the task, and no
+   substantive outside help occurred;
+3. **operational compliance** — whether every declared tool, path, execution,
+   permitted-change, evidence-accounting, and record-completeness requirement
+   was obeyed.
 
 Each dimension is `pass`, `fail`, or `inconclusive`, with evidence. The run's
 single overall verdict remains `pass`, `fail`, `assisted`, or `inconclusive`
@@ -69,7 +71,8 @@ and is derived in this order:
 1. substantive help produces `assisted`;
 2. otherwise, any failed dimension produces `fail`;
 3. otherwise, any inconclusive dimension produces `inconclusive`;
-4. only three passing dimensions produce `pass`.
+4. only three passing dimensions, which collectively cover every declared run
+   criterion, produce `pass`.
 
 Only overall `pass`, followed by the required independent checker and all
 applicable `KERNEL.md` criteria, can satisfy a cold gate. Separate dimensions

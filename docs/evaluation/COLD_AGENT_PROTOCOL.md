@@ -260,19 +260,21 @@ The owner dispositions each finding separately.
 Every formal subject and checker receives three separately evidenced dimension
 results:
 
-- `semantic_merit` — whether the declared authoring, debugging, or checking
-  task and explanation are correct;
-- `independence_integrity` — whether only declared information entered the task
-  and no substantive outside help occurred;
-- `operational_compliance` — whether every declared tool, path, and execution
-  restriction was obeyed.
+- `semantic_merit` — whether every task-specific authoring, debugging, or
+  checking result and explanation criterion is correct;
+- `independence_integrity` — whether model eligibility and fresh-session
+  requirements hold, only declared information entered the task, and no
+  substantive outside help occurred;
+- `operational_compliance` — whether every declared tool, path, execution,
+  permitted-change, evidence-accounting, and record-completeness requirement
+  was obeyed.
 
 Each dimension is exactly `pass`, `fail`, or `inconclusive`. One passing
 dimension never compensates for another failed or inconclusive dimension.
 
 Each run also receives exactly one overall verdict:
 
-- `pass` — all declared criteria met;
+- `pass` — all three dimension criteria met;
 - `fail` — a declared task criterion was violated;
 - `assisted` — substantive human or external help occurred;
 - `inconclusive` — environment or harness failure prevented a fair result.
@@ -280,7 +282,8 @@ Each run also receives exactly one overall verdict:
 The overall verdict is derived in this order: substantive human or external
 help produces `assisted`; otherwise any failed dimension produces `fail`;
 otherwise any inconclusive dimension produces `inconclusive`; only three
-passing dimensions produce `pass`.
+passing dimensions produce `pass`. Those dimensions collectively cover every
+declared run criterion.
 
 Only overall `pass` satisfies a cold gate. It does not replace the applicable
 task criteria or independent-checker requirement. Repeated failures may inform
