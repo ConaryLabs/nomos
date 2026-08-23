@@ -256,6 +256,14 @@ def validate_v2(
         "subject": load_json(subject / "task-receipt.json"),
         "checker": load_json(checker / "task-receipt.json"),
     }
+    for label, receipt in receipts.items():
+        independence = results[label]["dimensions"]["independence_integrity"]
+        if (
+            receipt.get("identity", {}).get("freshEphemeralSession") is not True
+            or receipt.get("operatorRetries") != 0
+            or receipt.get("operatorIntervention") != "none"
+        ) and independence["verdict"] != "fail":
+            fail(f"{label} eligibility, hint, or retry breach does not fail independence")
     assisted = any(
         receipt.get("operatorIntervention") != "none" for receipt in receipts.values()
     )

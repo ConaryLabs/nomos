@@ -227,7 +227,11 @@ def validate_task_receipt(value: object, digest: str) -> None:
         require_string(identity[field], f"task receipt identity {field}")
     require_uuid(identity["sessionId"], "task receipt session")
     require_rfc3339_utc(identity["sessionStartedAt"], "task receipt session start")
-    if identity["client"] != "Pi" or identity["mode"] != "json" or identity["freshEphemeralSession"] is not True:
+    require_bool(
+        identity["freshEphemeralSession"],
+        "task receipt identity freshEphemeralSession",
+    )
+    if identity["client"] != "Pi" or identity["mode"] != "json":
         fail("task receipt client lifecycle differs")
     environment = require_keys(receipt["environment"], {"hostOs"}, set(), "task receipt environment")
     require_string(environment["hostOs"], "task receipt host OS")
@@ -243,7 +247,10 @@ def validate_task_receipt(value: object, digest: str) -> None:
     if disclosures != expected_disclosures:
         fail("task receipt disclosures differ")
     require_int(receipt["operatorRetries"], "task receipt operator retries")
-    if receipt["operatorIntervention"] != "none" or receipt["operatorRetries"] != 0:
+    if current:
+        if receipt["operatorIntervention"] not in ("none", "substantive-help"):
+            fail("task receipt operator intervention differs")
+    elif receipt["operatorIntervention"] != "none" or receipt["operatorRetries"] != 0:
         fail("task receipt operator accounting differs")
     accounting = require_keys(receipt["accounting"], {"assistantTurns", "providerReportedTokens", "toolCalls"}, set(), "task receipt accounting")
     for field in accounting:

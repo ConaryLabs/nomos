@@ -122,7 +122,7 @@ for record in "${records[@]}"; do
       $plan_schema == "nomos.gate_k.eval_plan@1") or
      (.schema == "nomos.gate_k.task_receipt@2" and .protocolRevision == 6 and
       $plan_schema == "nomos.gate_k.eval_plan@2")) and
-    .identity.freshEphemeralSession == true and
+    (.identity.freshEphemeralSession | type) == "boolean" and
     .identity.client == "Pi" and
     (.identity.clientVersion | type) == "string" and (.identity.clientVersion | length) > 0 and
     (.identity.provider | type) == "string" and (.identity.provider | length) > 0 and
@@ -133,7 +133,8 @@ for record in "${records[@]}"; do
     (.identity.sessionStartedAt | type) == "string" and
       (.identity.sessionStartedAt | test("^[0-9]{4}-[0-9]{2}-[0-9]{2}T")) and
     .identity.mode == "json" and
-    .operatorRetries == 0 and
+    (.operatorRetries | type) == "number" and .operatorRetries >= 0 and
+    .operatorRetries == (.operatorRetries | floor) and
     .disclosures.persistedSession == false and
     .disclosures.projectMemory == false and
     .disclosures.personalContext == false and
@@ -606,9 +607,12 @@ for record in "${records[@]}"; do
       ;;
     *) fail "classification and formal-attempt status are inconsistent: $record" ;;
   esac
-  [[ $(jq -r '.operatorIntervention' "$record/plan.json") == \
-      $(jq -r '.operatorIntervention' "$record/task-receipt.json") ]] ||
-    fail "plan intervention differs from task receipt: $record"
+  if [[ $(jq -r '.schema' "$record/task-receipt.json") == \
+        nomos.gate_k.task_receipt@1 ]]; then
+    [[ $(jq -r '.operatorIntervention' "$record/plan.json") == \
+        $(jq -r '.operatorIntervention' "$record/task-receipt.json") ]] ||
+      fail "plan intervention differs from task receipt: $record"
+  fi
   [[ $plan_binary_sha == $(jq -r '.binarySha256' "$record/boundary.json") ]] ||
     fail "boundary binary differs from plan: $record"
   [[ $(jq -r '.sandbox.checks.candidateBinaryMatched' "$record/boundary.json") == true ]] ||
@@ -725,6 +729,9 @@ if [[ $adjudication_schema == nomos.gate_k.command_adjudication@2 ]]; then
   logical_verdict=$verdict
   logical_reason=$(jq -r '.reason' <<<"$adjudication_json")
 else
+  [[ $(jq -r '.schema' "$subject/task-receipt.json") == nomos.gate_k.task_receipt@1 &&
+    $(jq -r '.schema' "$checker/task-receipt.json") == nomos.gate_k.task_receipt@1 ]] ||
+    fail 'legacy adjudication requires legacy task receipts'
   logical_verdict=pass
   logical_reason='subject completed within protocol and the independent checker passed'
   if [[ $command_adjudication_verdict == fail ]]; then
