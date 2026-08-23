@@ -77,10 +77,13 @@ operator retries               0
 The boundary counts tool calls and CLI cycles before execution, blocks the call
 that would exceed a cycle budget, and terminates the run. It stops after the
 provider response that first reports a token or turn overrun. The recorder does
-not retry. It classifies a protocol violation as `fail`, a recorded substantive
-intervention as `assisted`, and a transport/harness failure that prevents fair
-evaluation as `inconclusive`. Only a complete within-budget run is eligible for
-`pass`, and final task merit still belongs to the independent checker and owner.
+not retry. A provider cancellation event caused by that deliberate stop remains
+a complete recorded transport when its model identity, accounting, and terminal
+error are present. The recorder classifies a protocol violation as `fail`, a
+recorded substantive intervention as `assisted`, and a transport/harness failure
+that prevents fair evaluation as `inconclusive`. Only a complete within-budget
+run is eligible for `pass`, and final task merit still belongs to the independent
+checker and owner.
 
 A completed record contains `RUN.md`, `plan.json`, `packet-manifest.json`,
 `prompt.txt`, the complete sanitized NDJSON event stream, `commands.json`,

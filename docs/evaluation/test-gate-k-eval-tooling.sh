@@ -197,6 +197,17 @@ FAKE_PI_TASK_MODE=budget-exhausted PI_BIN="$fake_pi" BWRAP_BIN="$fake_bwrap" \
 jq -e '.outcome == "fail" and .accounting.budgetExceeded == "validation_compile_cycles"' \
   "$tmp_dir/budget-record/task-receipt.json" >/dev/null
 
+cp -R "$tmp_dir/author-2" "$tmp_dir/budget-aborted-packet"
+FAKE_PI_TASK_MODE=budget-aborted PI_BIN="$fake_pi" BWRAP_BIN="$fake_bwrap" \
+  "$task_launcher" claude "$candidate" "$commit" "$tmp_dir/budget-aborted-packet" \
+  "$tmp_dir/budget-aborted-events" "$tmp_dir/budget-aborted-stderr" \
+  "$tmp_dir/budget-aborted-qualification" >"$tmp_dir/budget-aborted-launcher"
+"$task_recorder" "$tmp_dir/budget-aborted-packet" "$tmp_dir/budget-aborted-events" \
+  "$tmp_dir/budget-aborted-stderr" "$tmp_dir/budget-aborted-qualification" \
+  "$tmp_dir/budget-aborted-launcher" "$commit" "$tmp_dir/budget-aborted-record" >/dev/null
+jq -e '.outcome == "fail" and .accounting.budgetExceeded == "provider_reported_tokens"' \
+  "$tmp_dir/budget-aborted-record/task-receipt.json" >/dev/null
+
 cp -R "$tmp_dir/author-2" "$tmp_dir/absent-command-packet"
 FAKE_PI_TASK_MODE=absent-command PI_BIN="$fake_pi" BWRAP_BIN="$fake_bwrap" \
   "$task_launcher" claude "$candidate" "$commit" "$tmp_dir/absent-command-packet" \

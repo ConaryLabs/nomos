@@ -273,16 +273,24 @@ assistant_count=$(jq -s --arg provider "$provider" --arg model "$model" '
     .message.provider == $provider and .message.model == $model)] | length
   ' "$events_out")
 [[ $assistant_count -ge 1 ]] || fail 'event stream has no matching terminal assistant identity'
-terminal_assistant=$(jq -s --arg provider "$provider" --arg model "$model" '
+accounting_count=$(grep -Fc 'NOMOS_PI_ACCOUNTING ' "$stderr_out" || true)
+[[ $accounting_count -eq 1 ]] || fail "expected one accounting record, found $accounting_count"
+accounting_json=$(sed -n 's/^NOMOS_PI_ACCOUNTING //p' "$stderr_out")
+budget_exceeded=$(printf '%s\n' "$accounting_json" | jq -r '.budgetExceeded // empty')
+terminal_assistant=$(jq -s --arg provider "$provider" --arg model "$model" \
+  --arg budget_exceeded "$budget_exceeded" '
   ([.[] | select(.type == "message_end" and .message.role == "assistant")] | last) as $last |
   $last.message.provider == $provider and
   $last.message.model == $model and
-  $last.message.stopReason == "stop" and
-  ([$last.message.content[] | select(.type == "text") | .text] | join("") | length) > 0
+  (
+    ($last.message.stopReason == "stop" and
+      ([$last.message.content[] | select(.type == "text") | .text] | join("") | length) > 0) or
+    ($budget_exceeded != "" and $last.message.stopReason == "error" and
+      ($last.message.errorMessage | type) == "string" and
+      ($last.message.errorMessage | length) > 0)
+  )
   ' "$events_out")
 [[ $terminal_assistant == true ]] || fail 'terminal assistant result identity or completion is missing'
-accounting_count=$(grep -Fc 'NOMOS_PI_ACCOUNTING ' "$stderr_out" || true)
-[[ $accounting_count -eq 1 ]] || fail "expected one accounting record, found $accounting_count"
 
 # The writable subtree is expected to change. Everything else remains exactly
 # bound to the prelaunch manifest, and no new undeclared path may appear.

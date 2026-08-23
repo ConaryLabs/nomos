@@ -163,7 +163,7 @@ sandbox_cargo_available=true
 
 case $mode_name in
   pass | missing-boundary | missing-session | unexpected-tool | leak-secret | \
-    missing-accounting | budget-exhausted | missing-identity | absent-command | \
+    missing-accounting | budget-exhausted | budget-aborted | missing-identity | absent-command | \
     packet-hash-mismatch | harness-mutation) ;;
   wrong-provider) boundary_provider=wrong-provider ;;
   wrong-model) boundary_model=wrong-model ;;
@@ -233,18 +233,31 @@ if [[ $boundary_kind == packet-run ]]; then
     printf '{"type":"tool_execution_start","toolCallId":"tool-1","toolName":"bash","args":{"command":"ls"}}\n'
     printf '{"type":"tool_execution_end","toolCallId":"tool-1","toolName":"bash","result":"brief.txt","isError":false}\n'
   fi
-  printf '{"type":"message_end","message":{"role":"assistant","content":[{"type":"text","text":"fake task complete"}],"provider":"%s","model":"%s","stopReason":"stop","usage":{"input":10,"output":5,"cacheRead":0,"cacheWrite":0,"totalTokens":15}}}\n' "$assistant_provider" "$assistant_model"
-  printf '{"type":"turn_end","turnIndex":0,"message":{"role":"assistant","content":[{"type":"text","text":"fake task complete"}],"provider":"%s","model":"%s","stopReason":"stop"},"toolResults":[]}\n' "$assistant_provider" "$assistant_model"
+  if [[ $mode_name == budget-aborted ]]; then
+    printf '{"type":"message_end","message":{"role":"assistant","content":[],"provider":"%s","model":"%s","stopReason":"error","errorMessage":"This operation was aborted","usage":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"totalTokens":0}}}\n' "$assistant_provider" "$assistant_model"
+    printf '{"type":"turn_end","turnIndex":0,"message":{"role":"assistant","content":[],"provider":"%s","model":"%s","stopReason":"error","errorMessage":"This operation was aborted"},"toolResults":[]}\n' "$assistant_provider" "$assistant_model"
+  else
+    printf '{"type":"message_end","message":{"role":"assistant","content":[{"type":"text","text":"fake task complete"}],"provider":"%s","model":"%s","stopReason":"stop","usage":{"input":10,"output":5,"cacheRead":0,"cacheWrite":0,"totalTokens":15}}}\n' "$assistant_provider" "$assistant_model"
+    printf '{"type":"turn_end","turnIndex":0,"message":{"role":"assistant","content":[{"type":"text","text":"fake task complete"}],"provider":"%s","model":"%s","stopReason":"stop"},"toolResults":[]}\n' "$assistant_provider" "$assistant_model"
+  fi
   printf '{"type":"agent_end","messages":[],"willRetry":false}\n'
   printf '{"type":"agent_settled"}\n'
   if [[ $mode_name != missing-accounting ]]; then
-    if [[ $mode_name == budget-exhausted ]]; then
-      budget='"validation_compile_cycles"'
-      printf 'NOMOS_PI_BUDGET_EXCEEDED {"category":"validation_compile_cycles","observed":13,"maximum":12}\n' >&2
+    if [[ $mode_name == budget-exhausted || $mode_name == budget-aborted ]]; then
+      if [[ $mode_name == budget-aborted ]]; then
+        budget='"provider_reported_tokens"'
+        reported_tokens=0
+        printf 'NOMOS_PI_BUDGET_EXCEEDED {"category":"provider_reported_tokens","observed":64001,"maximum":64000}\n' >&2
+      else
+        budget='"validation_compile_cycles"'
+        reported_tokens=15
+        printf 'NOMOS_PI_BUDGET_EXCEEDED {"category":"validation_compile_cycles","observed":13,"maximum":12}\n' >&2
+      fi
     else
       budget=null
+      reported_tokens=15
     fi
-    printf 'NOMOS_PI_ACCOUNTING {"assistantTurns":1,"toolCalls":1,"validationCompileCycles":0,"debugDiagnosticCycles":0,"providerReportedTokens":15,"budgetExceeded":%s}\n' "$budget" >&2
+    printf 'NOMOS_PI_ACCOUNTING {"assistantTurns":1,"toolCalls":1,"validationCompileCycles":0,"debugDiagnosticCycles":0,"providerReportedTokens":%s,"budgetExceeded":%s}\n' "$reported_tokens" "$budget" >&2
   fi
   if [[ $mode_name == harness-mutation ]]; then
     printf 'mutated\n' >"$workspace/brief.txt"
