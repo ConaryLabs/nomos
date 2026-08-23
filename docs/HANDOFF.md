@@ -112,12 +112,12 @@ never accumulates history (git has that).
   exact-head Luna rerun and CI passed, and no formal cold-agent attempt was
   launched by it.
 - **Cold-agent protocol revision 3 is owner-authorized (#70):** decision 0010
-  raises only the cumulative provider-reported token ceiling from 64,000 to
-  1,000,000 after Opus rehearsal transports demonstrated that cached context
-  usage exhausted 64,000 in nine turns and reached 237,082 on the small author
-  task. Turn, CLI-cycle, hint, retry, packet, eligibility, and rubric rules
-  remain unchanged. No formal attempt has begun, and the superseded rehearsal
-  transports are not reclassified.
+  removes token, turn, validation/compile-cycle, and diagnostic-cycle ceilings
+  after Opus rehearsals showed they added termination and shell-parsing failure
+  modes. Tokens, turns, tool calls, and exact commands remain recorded. Fresh
+  sessions, no coaching, no retry after model failure, packet isolation,
+  eligibility, and rubrics remain unchanged. No formal attempt has begun, and
+  the superseded rehearsal transports are not reclassified.
 - **CI uses `actions/checkout@v7` (#11):** PR and post-merge verification passed
   without the Node 20 compatibility annotation.
 - **The GPT Pro architecture checkpoint is owner-disposed (#25):** review of

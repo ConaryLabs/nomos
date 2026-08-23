@@ -5,7 +5,6 @@ import { join } from "node:path";
 
 import {
 	createBashTool,
-	isToolCallEventType,
 	type BashOperations,
 	type ExtensionAPI,
 } from "@earendil-works/pi-coding-agent";
@@ -34,12 +33,6 @@ function requiredSha256(name: string): string {
 	const value = requiredEnvironment(name);
 	if (!/^[0-9a-f]{64}$/.test(value)) throw new Error(`invalid SHA-256 in ${name}`);
 	return value;
-}
-
-function requiredPositiveInteger(name: string): number {
-	const value = requiredEnvironment(name);
-	if (!/^[1-9][0-9]*$/.test(value)) throw new Error(`invalid positive integer in ${name}`);
-	return Number(value);
 }
 
 function parseBoundaryKind(): BoundaryKind {
@@ -71,15 +64,6 @@ function sameStrings(left: readonly string[], right: readonly string[]): boolean
 function blockBoundary(message: string): never {
 	process.stderr.write(`NOMOS_PI_BOUNDARY_BLOCKED ${JSON.stringify({ error: message })}\n`);
 	process.exit(78);
-}
-
-function countNomosCommands(command: string, subcommands: readonly string[]): number {
-	const alternatives = subcommands.join("|");
-	const pattern = new RegExp(
-		`(?:^|[\\s;&|()])(?:(?:/workspace/|\\./)?bin/)?nomos\\s+(?:${alternatives})(?:\\s|$)`,
-		"g",
-	);
-	return [...command.matchAll(pattern)].length;
 }
 
 function reportedTokens(message: unknown): number | undefined {
@@ -352,14 +336,6 @@ export default function nomosPiColdAgentExtension(pi: ExtensionAPI): void {
 	const taskPromptSha =
 		boundaryKind === "packet-run" ? requiredSha256("NOMOS_PI_TASK_PROMPT_SHA256") : undefined;
 	const taskShape = boundaryKind === "packet-run" ? requiredEnvironment("NOMOS_PI_TASK_SHAPE") : undefined;
-	const maximumTurns =
-		boundaryKind === "packet-run" ? requiredPositiveInteger("NOMOS_PI_MAX_ASSISTANT_TURNS") : undefined;
-	const maximumTokens =
-		boundaryKind === "packet-run" ? requiredPositiveInteger("NOMOS_PI_MAX_PROVIDER_TOKENS") : undefined;
-	const maximumValidationCycles =
-		boundaryKind === "packet-run" ? requiredPositiveInteger("NOMOS_PI_MAX_VALIDATION_CYCLES") : undefined;
-	const maximumDiagnosticCycles =
-		boundaryKind === "packet-run" ? requiredPositiveInteger("NOMOS_PI_MAX_DIAGNOSTIC_CYCLES") : undefined;
 	const operations = createIsolatedBashOperations(
 		bwrap,
 		workspace,
@@ -374,19 +350,8 @@ export default function nomosPiColdAgentExtension(pi: ExtensionAPI): void {
 	let boundaryReady = false;
 	let assistantTurns = 0;
 	let toolCalls = 0;
-	let validationCycles = 0;
-	let diagnosticCycles = 0;
 	let providerTokens = 0;
 	let providerTokensAvailable = true;
-	let budgetExceeded: string | null = null;
-
-	const exceedBudget = (category: string, observed: number, maximum: number) => {
-		if (budgetExceeded) return;
-		budgetExceeded = category;
-		process.stderr.write(
-			`NOMOS_PI_BUDGET_EXCEEDED ${JSON.stringify({ category, observed, maximum })}\n`,
-		);
-	};
 
 	pi.registerTool({
 		...bashTool,
@@ -482,15 +447,7 @@ export default function nomosPiColdAgentExtension(pi: ExtensionAPI): void {
 				taskPromptSha256: taskPromptSha ?? null,
 				taskShape: taskShape ?? null,
 				writablePaths,
-				budgets:
-					boundaryKind === "packet-run"
-						? {
-								assistantTurnsMaximum: maximumTurns,
-								providerReportedTokensMaximum: maximumTokens,
-								validationCompileCyclesMaximum: maximumValidationCycles,
-								debugDiagnosticCyclesMaximum: maximumDiagnosticCycles,
-							}
-						: null,
+				budgets: null,
 				sandbox: {
 					backend: "bubblewrap",
 					binary: bwrap,
@@ -517,55 +474,17 @@ export default function nomosPiColdAgentExtension(pi: ExtensionAPI): void {
 		}
 	});
 
-	pi.on("tool_call", (event) => {
+	pi.on("tool_call", () => {
 		if (boundaryKind !== "packet-run") return;
 		toolCalls += 1;
-		if (!isToolCallEventType("bash", event)) return;
-		const command = event.input.command;
-		const validationAdded = countNomosCommands(command, ["validate", "compile"]);
-		const diagnosticAdded =
-			taskShape === "debug" || taskShape === "debug-checker"
-				? countNomosCommands(command, [
-						"validate",
-						"compile",
-						"inspect",
-						"run",
-						"replay",
-						"command",
-						"explain-entity",
-						"explain-transition",
-					])
-				: 0;
-		if (validationCycles + validationAdded > (maximumValidationCycles ?? 0)) {
-			exceedBudget(
-				"validation_compile_cycles",
-				validationCycles + validationAdded,
-				maximumValidationCycles ?? 0,
-			);
-			return { block: true, reason: "validation/compile cycle budget exhausted", terminate: true };
-		}
-		if (diagnosticCycles + diagnosticAdded > (maximumDiagnosticCycles ?? 0)) {
-			exceedBudget(
-				"debug_diagnostic_cycles",
-				diagnosticCycles + diagnosticAdded,
-				maximumDiagnosticCycles ?? 0,
-			);
-			return { block: true, reason: "debug diagnostic cycle budget exhausted", terminate: true };
-		}
-		validationCycles += validationAdded;
-		diagnosticCycles += diagnosticAdded;
 	});
 
-	pi.on("turn_start", (_event, ctx) => {
+	pi.on("turn_start", () => {
 		if (boundaryKind !== "packet-run") return;
 		assistantTurns += 1;
-		if (assistantTurns > (maximumTurns ?? 0)) {
-			exceedBudget("assistant_turns", assistantTurns, maximumTurns ?? 0);
-			ctx.abort();
-		}
 	});
 
-	pi.on("message_end", (event, ctx) => {
+	pi.on("message_end", (event) => {
 		if (boundaryKind !== "packet-run" || event.message.role !== "assistant") return;
 		const tokens = reportedTokens(event.message);
 		if (tokens === undefined) {
@@ -573,10 +492,6 @@ export default function nomosPiColdAgentExtension(pi: ExtensionAPI): void {
 			return;
 		}
 		providerTokens += tokens;
-		if (providerTokens > (maximumTokens ?? 0)) {
-			exceedBudget("provider_reported_tokens", providerTokens, maximumTokens ?? 0);
-			ctx.abort();
-		}
 	});
 
 	pi.on("agent_end", () => {
@@ -585,10 +500,7 @@ export default function nomosPiColdAgentExtension(pi: ExtensionAPI): void {
 			`NOMOS_PI_ACCOUNTING ${JSON.stringify({
 				assistantTurns,
 				toolCalls,
-				validationCompileCycles: validationCycles,
-				debugDiagnosticCycles: diagnosticCycles,
 				providerReportedTokens: providerTokensAvailable ? providerTokens : null,
-				budgetExceeded,
 			})}\n`,
 		);
 	});

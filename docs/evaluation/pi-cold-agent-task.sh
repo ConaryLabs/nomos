@@ -55,10 +55,6 @@ manifest_sha=$(sha256sum "$packet/packet-manifest.json")
 manifest_sha=${manifest_sha%% *}
 binary_sha=$(jq -r '.candidate.binarySha256' "$packet/plan.json")
 prompt_sha=$(jq -r '.packet.promptSha256' "$packet/plan.json")
-max_turns=$(jq -r '.budgets.assistantTurnsMaximum' "$packet/plan.json")
-max_tokens=$(jq -r '.budgets.providerReportedTokensMaximum' "$packet/plan.json")
-max_validation=$(jq -r '.budgets.validationCompileCyclesMaximum' "$packet/plan.json")
-max_diagnostics=$(jq -r '.budgets.debugDiagnosticCyclesMaximum' "$packet/plan.json")
 prompt=$(<"$packet/prompt.txt")
 [[ $(printf '%s' "$prompt" | sha256sum | cut -d' ' -f1) == "$prompt_sha" ]] ||
   fail 'prompt bytes changed while preparing launch'
@@ -148,10 +144,6 @@ set +e
   NOMOS_PI_TASK_PROMPT_SHA256="$prompt_sha" \
   NOMOS_PI_TASK_SHAPE="$shape" \
   NOMOS_PI_WRITABLE_PATHS="$writable" \
-  NOMOS_PI_MAX_ASSISTANT_TURNS="$max_turns" \
-  NOMOS_PI_MAX_PROVIDER_TOKENS="$max_tokens" \
-  NOMOS_PI_MAX_VALIDATION_CYCLES="$max_validation" \
-  NOMOS_PI_MAX_DIAGNOSTIC_CYCLES="$max_diagnostics" \
     timeout "$task_timeout" "$pi_bin" \
     --provider "$provider" \
     --model "$model" \
@@ -275,19 +267,14 @@ assistant_count=$(jq -s --arg provider "$provider" --arg model "$model" '
 [[ $assistant_count -ge 1 ]] || fail 'event stream has no matching terminal assistant identity'
 accounting_count=$(grep -Fc 'NOMOS_PI_ACCOUNTING ' "$stderr_out" || true)
 [[ $accounting_count -eq 1 ]] || fail "expected one accounting record, found $accounting_count"
-accounting_json=$(sed -n 's/^NOMOS_PI_ACCOUNTING //p' "$stderr_out")
-budget_exceeded=$(printf '%s\n' "$accounting_json" | jq -r '.budgetExceeded // empty')
 terminal_assistant=$(jq -s --arg provider "$provider" --arg model "$model" \
-  --arg budget_exceeded "$budget_exceeded" '
+  '
   ([.[] | select(.type == "message_end" and .message.role == "assistant")] | last) as $last |
   $last.message.provider == $provider and
   $last.message.model == $model and
   (
-    ($last.message.stopReason == "stop" and
-      ([$last.message.content[] | select(.type == "text") | .text] | join("") | length) > 0) or
-    ($budget_exceeded != "" and $last.message.stopReason == "error" and
-      ($last.message.errorMessage | type) == "string" and
-      ($last.message.errorMessage | length) > 0)
+    $last.message.stopReason == "stop" and
+    ([$last.message.content[] | select(.type == "text") | .text] | join("") | length) > 0
   )
   ' "$events_out")
 [[ $terminal_assistant == true ]] || fail 'terminal assistant result identity or completion is missing'

@@ -9,9 +9,9 @@ roster: docs/evaluation/GATE_K_COLD_AGENT_PLAN.md
 # Gate K cold-agent packet and run tooling
 
 This document fixes the issue #70 harness method before either formal Gate K
-attempt. Decision 0010 separately amends only the default cumulative token
-budget. This tooling does not choose a release candidate, disclose a formal
-debug mutation, or spend a Gemini or DeepSeek attempt.
+attempt. Decision 0010 separately removes resource ceilings while preserving
+complete accounting. This tooling does not choose a release candidate, disclose
+a formal debug mutation, or spend a Gemini or DeepSeek attempt.
 
 ## Boundary composition
 
@@ -61,30 +61,25 @@ the launcher rejects any path not enumerated by the manifest plus the manifest
 itself. A rebuild comparison is over the complete directory, including the
 manifest.
 
-## Budgets and records
+## Constraints, accounting, and records
 
-The default protocol budgets remain unchanged:
+The protocol separates independence constraints from resource accounting:
 
 ```text
 fresh sessions                 1
-provider-reported tokens       1,000,000 maximum
-assistant turns                40 maximum
-validation/compile cycles      12 maximum
-debug diagnostic CLI cycles    12 maximum
 operator substantive hints     0
 operator retries               0
+provider-reported tokens       recorded, no ceiling
+assistant turns                recorded, no ceiling
+tool calls and commands         recorded, no ceiling
 ```
 
-The boundary counts tool calls and CLI cycles before execution, blocks the call
-that would exceed a cycle budget, and terminates the run. It stops after the
-provider response that first reports a token or turn overrun. The recorder does
-not retry. A provider cancellation event caused by that deliberate stop remains
-a complete recorded transport when its model identity, accounting, and terminal
-error are present. The recorder classifies a protocol violation as `fail`, a
-recorded substantive intervention as `assisted`, and a transport/harness failure
-that prevents fair evaluation as `inconclusive`. Only a complete within-budget
-run is eligible for `pass`, and final task merit still belongs to the independent
-checker and owner.
+The boundary does not parse shell text or terminate a valid run because of
+resource use. The complete event stream and ordered command record preserve the
+measured usage for owner review. The recorder does not retry. It classifies a
+recorded substantive intervention as `assisted` and a transport/harness failure
+that prevents fair evaluation as `inconclusive`. Final task merit belongs to the
+independent checker and owner.
 
 A completed record contains `RUN.md`, `plan.json`, `packet-manifest.json`,
 `prompt.txt`, the complete sanitized NDJSON event stream, `commands.json`,
@@ -115,7 +110,7 @@ formal DeepSeek mutation. Rehearsal records live under
 
 ## Invalidation
 
-Any packet allowlist, public packet document, prompt, budget, runner, recorder,
+Any packet allowlist, public packet document, prompt, constraint, runner, recorder,
 checker construction, or boundary-extension change after a candidate is tagged
 invalidates later exact-head evidence for that candidate. Repairing a rehearsal
 harness defect requires a fresh rehearsal; selecting a more favorable prior run

@@ -140,19 +140,22 @@ Default forbidden tools:
 A gate may explicitly permit another tool, but the exception must be declared in
 the run plan before launch and included in the final record.
 
-## 5. Budgets
+## 5. Run constraints and resource accounting
 
-Unless an owner-authorized run plan declares stricter limits:
+The formal independence constraints are:
 
 ```text
 fresh model sessions                 1
-provider-reported total token budget 1,000,000
-assistant/model turns                40 maximum
-validation/compile cycles            12 maximum
-cold-debug diagnostic CLI cycles     12 maximum
 operator substantive hints           0
 operator retries after model failure 0
 ```
+
+Tokens, assistant turns, tool calls, and exact ordered commands are recorded
+when the client exposes them. They have no protocol ceiling and do not terminate
+an otherwise valid run. Resource use is evidence for owner review, not a proxy
+for task merit. An owner may change a later run's predeclared model or effort
+level if observed use is unreasonable; a run already in progress is not
+retrofitted with a new resource limit.
 
 A transport or client crash may be restarted once only if:
 
@@ -161,9 +164,7 @@ A transport or client crash may be restarted once only if:
 - no new hint is added;
 - the result is marked `restarted`.
 
-If the provider does not expose token usage, the turn and CLI-cycle limits remain
-binding and token usage is recorded as unavailable. Exceeding a limit produces a
-failed or owner-declared inconclusive run, never a silent extension.
+If the provider does not expose token usage, record it as unavailable.
 
 ## 6. Operator conduct
 
@@ -172,7 +173,7 @@ The operator may:
 - relay exact tool output;
 - correct a broken path or unavailable command caused by the harness;
 - state that an attempted action violates a predeclared tool boundary;
-- stop the run when a budget is exhausted.
+- stop a run whose transport or isolation boundary fails.
 
 The operator may not:
 
@@ -201,7 +202,7 @@ A pass requires all of the following:
 - no kernel source or unrelated package changes;
 - validation and compile both exit successfully;
 - generated package and diagnostics contain the new door;
-- the run stays within token/turn/cycle budgets;
+- token, turn, tool-call, and ordered-command accounting is preserved;
 - the subject supplies a short explanation of what it changed and why the
   compiler accepted it;
 - an independent checker reproduces the clean compile from the subject's output.
@@ -210,7 +211,7 @@ A pass requires all of the following:
 
 A pass requires all of the following:
 
-- model eligibility, packet, tools, intervention, and budgets are satisfied;
+- model eligibility, packet, tools, and intervention constraints are satisfied;
 - the subject identifies the seeded semantic cause, not merely the symptom;
 - cited artifacts support that diagnosis;
 - at least two plausible alternatives are excluded by evidence or the causal
@@ -242,7 +243,7 @@ The owner dispositions each finding separately.
 Each run receives exactly one verdict:
 
 - `pass` — all declared criteria met;
-- `fail` — a criterion or budget was violated;
+- `fail` — a declared task criterion was violated;
 - `assisted` — substantive human or external help occurred;
 - `inconclusive` — environment or harness failure prevented a fair result.
 
@@ -262,7 +263,7 @@ Each record contains:
 
 ```text
 RUN.md                 human-readable summary and verdict
-plan.json              predeclared packet, tools, budgets, rubric
+plan.json              predeclared packet, tools, independence constraints, rubric
 packet-manifest.json   file paths, schema versions, and hashes
 prompt.txt             exact initial task prompt
 transcript.*           complete model/operator exchange when exportable
@@ -278,7 +279,7 @@ checker.json           independent reproduction/check result
 - exact model identifier and family;
 - provider, client, mode, and date;
 - memory/context/tool disclosures;
-- token, turn, and cycle counts;
+- token, turn, tool-call, and ordered-command accounting;
 - operator interventions, including none;
 - restarts or environment failures;
 - result against every rubric item;

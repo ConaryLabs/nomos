@@ -125,13 +125,9 @@ observed_tokens=$(printf '%s\n' "$assistant_messages" | jq '
 recorded_tokens=$(printf '%s\n' "$accounting" | jq '.providerReportedTokens')
 [[ $recorded_tokens == "$observed_tokens" ]] || fail 'provider-token accounting differs from events'
 
-budget_exceeded=$(printf '%s\n' "$accounting" | jq -r '.budgetExceeded // empty')
 if [[ $launcher_status -ne 0 ]]; then
   outcome=inconclusive
   outcome_reason="Pi transport exited $launcher_status"
-elif [[ -n $budget_exceeded ]]; then
-  outcome=fail
-  outcome_reason="protocol budget exceeded: $budget_exceeded"
 elif [[ $shape == *-checker ]]; then
   outcome=completed-checker
   outcome_reason='checker transport and protocol accounting complete; checker artifact requires final assembly'

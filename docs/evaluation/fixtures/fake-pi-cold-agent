@@ -163,7 +163,7 @@ sandbox_cargo_available=true
 
 case $mode_name in
   pass | missing-boundary | missing-session | unexpected-tool | leak-secret | \
-    missing-accounting | budget-exhausted | budget-aborted | missing-identity | absent-command | \
+    missing-accounting | missing-identity | absent-command | \
     packet-hash-mismatch | harness-mutation) ;;
   wrong-provider) boundary_provider=wrong-provider ;;
   wrong-model) boundary_model=wrong-model ;;
@@ -195,15 +195,13 @@ if [[ $boundary_kind == packet-run ]]; then
     packet_manifest_sha=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
   fi
   if [[ $mode_name != missing-boundary ]]; then
-    printf 'NOMOS_PI_BOUNDARY {"schema":"nomos.pi_cold_agent_boundary@2","boundaryKind":"packet-run","mode":"json","targetCommit":"%s","hostWorkspace":"%s","guestWorkspace":"/workspace","provider":"%s","model":"%s","thinking":"%s","sessionId":"%s","sessionFile":%s,"projectTrusted":false,"entryTypesBeforeRun":%s,"activeTools":%s,"configuredTools":[{"name":"bash","source":{"path":"%s","source":"cli","scope":"temporary","origin":"top-level"}}],"contextFiles":%s,"skills":%s,"systemPromptSha256":"%s","finalSystemPromptSha256":"fixture","packetManifestSha256":"%s","binarySha256":"%s","taskPromptSha256":"%s","taskShape":"%s","writablePaths":["%s"],"budgets":{"assistantTurnsMaximum":%s,"providerReportedTokensMaximum":%s,"validationCompileCyclesMaximum":%s,"debugDiagnosticCyclesMaximum":%s},"sandbox":{"backend":"bubblewrap","binary":"%s","root":"read-only","workspace":"read-only-packet-with-declared-writable-paths","network":"%s","environment":"cleared-and-allowlisted","checks":{"targetCommitResolved":%s,"workspaceRead":%s,"packetManifestMatched":true,"candidateBinaryMatched":true,"packetRootReadOnly":true,"declaredWritablePaths":["%s"],"gitMetadataAbsent":true,"outsideReadDenied":%s,"outsideWriteDenied":%s,"credentialEnvironmentAbsent":%s,"networkDenied":%s},"selfTest":"%s"}}\n' \
+    printf 'NOMOS_PI_BOUNDARY {"schema":"nomos.pi_cold_agent_boundary@2","boundaryKind":"packet-run","mode":"json","targetCommit":"%s","hostWorkspace":"%s","guestWorkspace":"/workspace","provider":"%s","model":"%s","thinking":"%s","sessionId":"%s","sessionFile":%s,"projectTrusted":false,"entryTypesBeforeRun":%s,"activeTools":%s,"configuredTools":[{"name":"bash","source":{"path":"%s","source":"cli","scope":"temporary","origin":"top-level"}}],"contextFiles":%s,"skills":%s,"systemPromptSha256":"%s","finalSystemPromptSha256":"fixture","packetManifestSha256":"%s","binarySha256":"%s","taskPromptSha256":"%s","taskShape":"%s","writablePaths":["%s"],"budgets":null,"sandbox":{"backend":"bubblewrap","binary":"%s","root":"read-only","workspace":"read-only-packet-with-declared-writable-paths","network":"%s","environment":"cleared-and-allowlisted","checks":{"targetCommitResolved":%s,"workspaceRead":%s,"packetManifestMatched":true,"candidateBinaryMatched":true,"packetRootReadOnly":true,"declaredWritablePaths":["%s"],"gitMetadataAbsent":true,"outsideReadDenied":%s,"outsideWriteDenied":%s,"credentialEnvironmentAbsent":%s,"networkDenied":%s},"selfTest":"%s"}}\n' \
       "${NOMOS_PI_TARGET_COMMIT:?}" \
       "$boundary_workspace" "$boundary_provider" "$boundary_model" "$boundary_thinking" \
       "$session_id" "$session_file" "$entry_types" "$active_tools" "$extension" \
       "$context_files" "$skills" "$system_prompt_sha" "$packet_manifest_sha" \
       "${NOMOS_PI_BINARY_SHA256:?}" "${NOMOS_PI_TASK_PROMPT_SHA256:?}" \
       "${NOMOS_PI_TASK_SHAPE:?}" "${NOMOS_PI_WRITABLE_PATHS:?}" \
-      "${NOMOS_PI_MAX_ASSISTANT_TURNS:?}" "${NOMOS_PI_MAX_PROVIDER_TOKENS:?}" \
-      "${NOMOS_PI_MAX_VALIDATION_CYCLES:?}" "${NOMOS_PI_MAX_DIAGNOSTIC_CYCLES:?}" \
       "${NOMOS_PI_BWRAP:?}" "$sandbox_network" "$sandbox_target_commit" \
       "$sandbox_workspace_read" "${NOMOS_PI_WRITABLE_PATHS:?}" \
       "$sandbox_outside_read_denied" "$sandbox_outside_write_denied" \
@@ -233,31 +231,12 @@ if [[ $boundary_kind == packet-run ]]; then
     printf '{"type":"tool_execution_start","toolCallId":"tool-1","toolName":"bash","args":{"command":"ls"}}\n'
     printf '{"type":"tool_execution_end","toolCallId":"tool-1","toolName":"bash","result":"brief.txt","isError":false}\n'
   fi
-  if [[ $mode_name == budget-aborted ]]; then
-    printf '{"type":"message_end","message":{"role":"assistant","content":[],"provider":"%s","model":"%s","stopReason":"error","errorMessage":"This operation was aborted","usage":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"totalTokens":0}}}\n' "$assistant_provider" "$assistant_model"
-    printf '{"type":"turn_end","turnIndex":0,"message":{"role":"assistant","content":[],"provider":"%s","model":"%s","stopReason":"error","errorMessage":"This operation was aborted"},"toolResults":[]}\n' "$assistant_provider" "$assistant_model"
-  else
-    printf '{"type":"message_end","message":{"role":"assistant","content":[{"type":"text","text":"fake task complete"}],"provider":"%s","model":"%s","stopReason":"stop","usage":{"input":10,"output":5,"cacheRead":0,"cacheWrite":0,"totalTokens":15}}}\n' "$assistant_provider" "$assistant_model"
-    printf '{"type":"turn_end","turnIndex":0,"message":{"role":"assistant","content":[{"type":"text","text":"fake task complete"}],"provider":"%s","model":"%s","stopReason":"stop"},"toolResults":[]}\n' "$assistant_provider" "$assistant_model"
-  fi
+  printf '{"type":"message_end","message":{"role":"assistant","content":[{"type":"text","text":"fake task complete"}],"provider":"%s","model":"%s","stopReason":"stop","usage":{"input":10,"output":5,"cacheRead":0,"cacheWrite":0,"totalTokens":15}}}\n' "$assistant_provider" "$assistant_model"
+  printf '{"type":"turn_end","turnIndex":0,"message":{"role":"assistant","content":[{"type":"text","text":"fake task complete"}],"provider":"%s","model":"%s","stopReason":"stop"},"toolResults":[]}\n' "$assistant_provider" "$assistant_model"
   printf '{"type":"agent_end","messages":[],"willRetry":false}\n'
   printf '{"type":"agent_settled"}\n'
   if [[ $mode_name != missing-accounting ]]; then
-    if [[ $mode_name == budget-exhausted || $mode_name == budget-aborted ]]; then
-      if [[ $mode_name == budget-aborted ]]; then
-        budget='"provider_reported_tokens"'
-        reported_tokens=0
-        printf 'NOMOS_PI_BUDGET_EXCEEDED {"category":"provider_reported_tokens","observed":1000001,"maximum":1000000}\n' >&2
-      else
-        budget='"validation_compile_cycles"'
-        reported_tokens=15
-        printf 'NOMOS_PI_BUDGET_EXCEEDED {"category":"validation_compile_cycles","observed":13,"maximum":12}\n' >&2
-      fi
-    else
-      budget=null
-      reported_tokens=15
-    fi
-    printf 'NOMOS_PI_ACCOUNTING {"assistantTurns":1,"toolCalls":1,"validationCompileCycles":0,"debugDiagnosticCycles":0,"providerReportedTokens":%s,"budgetExceeded":%s}\n' "$reported_tokens" "$budget" >&2
+    printf 'NOMOS_PI_ACCOUNTING {"assistantTurns":1,"toolCalls":1,"providerReportedTokens":15}\n' >&2
   fi
   if [[ $mode_name == harness-mutation ]]; then
     printf 'mutated\n' >"$workspace/brief.txt"

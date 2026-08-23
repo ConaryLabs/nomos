@@ -1,5 +1,5 @@
 ---
-title: Cold-agent protocol revision 3 — raise the cumulative token budget
+title: Cold-agent protocol revision 3 — account for resources without ceilings
 status: Owner-authorized; effective when merged
 number: 0010
 date: 2026-08-23
@@ -10,32 +10,39 @@ implementing_reviewer: GPT-5.6
 issue: 70
 ---
 
-# Cold-agent protocol revision 3 — raise the cumulative token budget
+# Cold-agent protocol revision 3 — account for resources without ceilings
 
 ## Decision authority
 
 The owner directed that the cold-agent token budget need not remain as low as
 64,000 while reviewing the first non-formal Opus author rehearsal on 2026-08-23.
-After a 256,000-token trial completed at 237,082 tokens, the owner directed that
-the ceiling provide substantially more room in line with the selected models'
-large context windows. This record supplies the separate owner-authorized
-amendment required by issue #70. Protocol revision 3 becomes effective when
-this record and its tooling merge; revision 2 remains effective until then.
+After higher-token trials and a false diagnostic-cycle rejection, the owner
+directed that independent runs have no token, turn, or tool-use ceilings.
+Resource use remains measured and may inform the predeclared model or effort
+level of a later run. This record supplies the separate owner-authorized
+amendment required by issue #70. Protocol revision 3 becomes effective when this
+record and its tooling merge; revision 2 remains effective until then.
 
 ## Prior wording
 
-`docs/evaluation/COLD_AGENT_PROTOCOL.md` revision 2 set the default
-provider-reported total token budget to 64,000.
+`docs/evaluation/COLD_AGENT_PROTOCOL.md` revision 2 set these default ceilings:
 
-The issue #70 packet plan and verifier encoded the same 64,000-token maximum.
+```text
+provider-reported total tokens      64,000
+assistant turns                     40
+validation/compile cycles           12
+cold-debug diagnostic CLI cycles    12
+```
+
+The issue #70 packet plan, verifier, and runner encoded and enforced those
+ceilings.
 
 ## Replacement wording
 
-The default provider-reported total token budget is 1,000,000. Gate-specific run
-plans may still declare stricter limits before launch. The existing limits of
-one fresh session, forty assistant turns, twelve validation/compile cycles,
-twelve cold-debug diagnostic CLI cycles, zero substantive hints, and zero
-operator retries remain unchanged.
+Tokens, assistant turns, tool calls, and exact ordered commands are recorded
+without a resource ceiling. Resource use does not terminate or fail an otherwise
+valid run. One fresh session, zero substantive hints, and zero operator retries
+remain binding because they define independence rather than cost.
 
 ## Reason
 
@@ -46,10 +53,18 @@ had made the requested content edit and reached successful validation and
 compilation. The cap measured repeated conversation context more aggressively
 than task complexity or operator cost control.
 
-The 1,000,000 ceiling remains finite and enforced. Turn and CLI-cycle limits
-continue to bound meandering behavior independently, while the larger token
-budget accommodates providers that report the full cached context on every
-turn and leaves room for the more evidence-intensive debug task.
+A later 1,000,000-token trial confirmed that even the small author checker could
+legitimately report 800,996 cumulative tokens while independently reproducing
+the package. The debug rehearsal then exposed the deeper flaw in tool-cycle
+enforcement: it had executed eleven diagnostic calls, but reproduction commands
+quoted inside an evidence here-document made the pre-execution text scanner
+predict twenty-one. The harness rejected evidence-writing syntax rather than
+observed tool use.
+
+Complete transcripts and ordered commands already make resource use auditable.
+Hard ceilings added parser and termination failure modes without strengthening
+the causal claim. If observed use becomes unreasonable, the owner can change a
+later run's predeclared model or effort level.
 
 ## Effect on existing evidence
 
@@ -59,18 +74,22 @@ is reclassified and the formal attempt counts remain zero.
 The two non-formal Opus author transports bound to commits `ac8da47` and
 `1676712` remain rehearsal findings only. The completed 256,000-token author
 transport bound to `1557943` and its operator-stopped checker are also
-superseded by this pre-merge amendment. None is retroactively passed or used as
-Gate K evidence. Issue #70 must rebuild the packets and rerun both rehearsals at
-a clean commit containing the final amendment.
+superseded by this pre-merge amendment. The author pairs bound to `f762531` and
+`51907e3`, plus the tool-cycle-rejected debug transport at `51907e3`, remain
+rehearsal findings that motivated the final design. None is retroactively passed
+or used as Gate K evidence. Issue #70 must rebuild the packets and rerun both
+rehearsals at a clean commit containing the final amendment.
 
-Existing provider qualification, isolation, packet, command-cycle, turn,
-intervention, retry, and checker requirements are unchanged.
+Existing provider qualification, isolation, packet, intervention, retry, and
+checker requirements are unchanged. Turn, token, tool-call, and ordered-command
+accounting remain required.
 
 ## Owner disposition
 
-Approved: replace the default cumulative provider-reported token maximum of
-64,000 with 1,000,000 before the formal attempts. Do not weaken any other budget,
-eligibility rule, packet boundary, rubric, or attempt-accounting rule.
+Approved: remove token, turn, validation/compile-cycle, and diagnostic-cycle
+ceilings before the formal attempts. Preserve complete resource accounting. Do
+not weaken eligibility, fresh-session, no-coaching, no-retry, packet, isolation,
+rubric, or attempt-accounting rules.
 
 ## New protocol revision
 

@@ -124,7 +124,7 @@ elif [[ $(jq -r '.operatorIntervention' "$subject/task-receipt.json") != none ||
 elif [[ $subject_outcome != eligible-for-checker || $checker_outcome != completed-checker ||
         $checker_verdict != pass ]]; then
   logical_verdict=fail
-  logical_reason='the subject, checker transport, protocol budget, or checker result failed'
+  logical_reason='the subject, checker transport, protocol, or checker result failed'
 fi
 [[ $verdict == "$logical_verdict" ]] ||
   fail "requested verdict $verdict contradicts mechanically derived verdict $logical_verdict"

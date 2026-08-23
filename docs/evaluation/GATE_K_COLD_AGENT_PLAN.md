@@ -206,9 +206,9 @@ catalog, and the isolated command boundary. If either lane cannot prove that
 state at run time, that subject is ineligible until the owner approves a new
 plan.
 
-The protocol's default budgets and zero-substantive-hint rule apply. No model
-fallback or cross-model rescue is allowed inside a formal attempt. A transport
-restart follows the protocol exactly and remains disclosed.
+The protocol's fresh-session, zero-substantive-hint, and resource-accounting
+rules apply. No model fallback or cross-model rescue is allowed inside a formal
+attempt. A transport restart follows the protocol exactly and remains disclosed.
 
 ## Eligibility invalidation
 
@@ -218,7 +218,7 @@ This roster must be reconsidered before launch if any of these occurs:
 - the selected exact model is unavailable or silently resolves to another
   family or tier;
 - the client cannot disable or disclose persisted context and forbidden tools;
-- the formal task, packet, budget, or pass rubric changes;
+- the formal task, packet, model/effort plan, or pass rubric changes;
 - principal authorship of the evaluated kernel changes materially.
 
 An invalidated plan blocks the formal run. It does not permit substituting a
