@@ -30,7 +30,7 @@ any renderer is built.
   cold-agent attempts are complete and owner-disposed `fail` after otherwise
   correct semantic work because a subject or checker requested a forbidden
   outside-workspace path. Draft PR #80 repairs fail-closed final assembly with
-  hash-bound structured command adjudication. Twelve non-author audits found
+  hash-bound structured command adjudication. Thirteen non-author audits found
   binding defects in successive revisions; the current repair rejects
   duplicate-key or reordered transcripts, validates the complete qualification
   envelope, binds final writable packet bytes, and admits only the four frozen
@@ -38,8 +38,9 @@ any renderer is built.
   closure, exact public JSON schemas, pre-sanitization stream validation, and
   path-and-hash runtime identities, full-record close authentication, exact
   legacy-receipt admission, committed provider-launch markers, complete packet
-  reopening, and strict JSON validation before checker-packet construction. It
-  awaits exact-head non-author proof. Gate K is not
+  reopening, strict JSON validation before checker-packet construction, and
+  exact manifest validation before publication. It awaits exact-head non-author
+  proof. Gate K is not
   accepted or green
 - **Contract revision:** 7, owner-authorized in decision 0009
 - **Cold-agent protocol revision:** 5, owner-authorized in decision 0012

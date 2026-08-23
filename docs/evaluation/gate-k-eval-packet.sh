@@ -503,12 +503,15 @@ schema_identity() {
       python3 "$json_validator" "$path" >/dev/null ||
         fail "packet JSON contains invalid or duplicate-key input: $path"
       jq -r '
-        if (.schema | type) == "string" then .schema
+        if has("schema") | not then empty
+        elif (.schema | type) == "string" then .schema
         elif (.schema | type) == "object" and (.schema.name | type) == "string" and
-             (.schema.version | type) == "number"
+             (.schema.version | type) == "number" and .schema.version > 0 and
+             (.schema.version | floor) == .schema.version
         then "\(.schema.name)@\(.schema.version)"
-        else empty end
-      ' "$path" 2>/dev/null || true
+        else error("invalid schema identity") end
+      ' "$path" 2>/dev/null ||
+        fail "packet JSON declares an invalid schema identity: $path"
       ;;
     *.nomos | *.commands)
       IFS= read -r first_line <"$path" || true
@@ -558,6 +561,8 @@ manifest=$(jq -S -c -n \
   }
 ')
 printf '%s\n' "$manifest" >"$stage/packet-manifest.json"
+python3 "$document_validator" manifest "$stage/packet-manifest.json" ||
+  fail 'generated packet manifest does not satisfy its exact schema'
 
 expected_count=$(jq '.files | length' "$stage/packet-manifest.json")
 actual_count=$(find "$stage" -type f ! -name packet-manifest.json | wc -l)

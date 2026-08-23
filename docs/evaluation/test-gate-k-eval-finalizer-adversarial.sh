@@ -32,6 +32,17 @@ assert_blocked 'subject record is not a real directory' trailing-slash-subject-r
   --subject-record "$tmp_dir/subject-record-alias/" \
   --out "$tmp_dir/trailing-slash-subject-record-packet"
 
+cp -R "$base_subject" "$tmp_dir/fractional-schema-record"
+printf '%s\n' '{"schema":{"name":"demo.schema","version":1.5}}' \
+  >"$tmp_dir/fractional-schema-record/artifacts/fractional-schema.json"
+refresh_record_receipt_digests "$tmp_dir/fractional-schema-record"
+assert_blocked 'packet JSON declares an invalid schema identity' fractional-schema-packet \
+  "$packet_builder" author-checker --candidate "$candidate" --commit "$commit" \
+  --brief "$rehearsals/author-checker-brief.txt" \
+  --prompt "$rehearsals/author-checker-prompt.txt" \
+  --subject-record "$tmp_dir/fractional-schema-record" \
+  --out "$tmp_dir/fractional-schema-packet"
+
 printf '%s\n' '{"overflow":1e309}' >"$tmp_dir/overflow.json"
 assert_blocked 'non-finite JSON number' overflow-json \
   python3 "$repo_root/docs/evaluation/gate-k-eval-validate-json.py" "$tmp_dir/overflow.json"
