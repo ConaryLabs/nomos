@@ -29,7 +29,7 @@ any renderer is built.
 - **Gate K status:** evidence closure is in progress. The implementation-complete
   tree is not yet a frozen `gate-k-rcN`, and Gate K is not accepted or green
 - **Contract revision:** 7, owner-authorized in decision 0009
-- **Cold-agent protocol revision:** 2, owner-authorized in decision 0008
+- **Cold-agent protocol revision:** 3, owner-authorized in decision 0010
 - **Scope:** greenfield / vacuum architecture exercise
 - **Effect on other projects:** none unless separately adopted by an explicit
   decision in that project's own authority records
