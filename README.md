@@ -141,7 +141,7 @@ README.md          status and reading order
 THESIS.md          the design thesis
 KERNEL.md          the Gate K acceptance contract
 docs/              decisions, evaluation protocols, reviews, workspace notes
-experiments/       quarantined non-authoritative studies; currently issue #83
+experiments/       quarantined non-authoritative studies; issue #83 target pack
 fixtures/          exact Gate K authoring source, command, and replay fixtures
 crates/            the six Gate K kernel crates named in KERNEL.md section 10
 xtask/             workspace tooling; `cargo xtask boundary`

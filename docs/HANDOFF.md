@@ -111,8 +111,8 @@ record hashes.
 
 ## What is next
 
-Issue #83 remains the only authorized active slice. Its nine coherent static
-bitmaps, `TARGET.md`, and hash-checked `manifest.json` are assembled under
+Issue #83 completes the only slice authorized by decision 0014. Its nine
+coherent static bitmaps, `TARGET.md`, and hash-checked `manifest.json` are under
 `experiments/gate-0-gaol-target-pack/`. The ordinary gameplay-camera frame is
 the primary surface; the other images test environment, silhouette overlap,
 combat, spell, low-light, UI, palette/material, and motion-timing failure modes.
@@ -125,6 +125,11 @@ as the primary surface, and recorded `visual thesis compelling` in `TARGET.md`.
 The pack is the preserved desired target. A fresh, prospectively governed Gate K
 attempt remains required before renderer architecture or adoption; neither is
 authorized by the visual verdict.
+
+After #83 merges there is no active implementation slice. Any Gate K round two
+requires a new owner decision that prospectively revises the protocol, names a
+fresh candidate, preserves the failed revision-3 attempts, and authorizes new
+formal work. Renderer architecture and project adoption remain out of scope.
 
 Decision 0005's temporary zero-third-party-dependency policy ended with the
 Gate K disposition. That does not admit any dependency automatically; a future
