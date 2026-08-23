@@ -1,0 +1,124 @@
+{
+  "schema": "nomos.gate_k.debug_result@1",
+  "result": "diagnosed",
+  "actualCause": "The command script requests `open north_gate` while `north_gate.access` is still in its initial `locked` state. The compiled `open` transition is defined only from source state `closed` (north_gate.access.open: closed -> open), while every other access action is backwards/forward-state-specific: `close` requires `open`, `open` requires `closed`, and the only exit from `locked` is `unlock` (locked -> closed), which requires the world catalog credential `credential/gaoler_key` (input kind `resolved_entity_credential`, owned by the north_gate entity). The first script line, `ignite north_gate`, commits (combustion cold -> burning, and the on_enter(burning) causal interaction fires apply_damage(fire, amount=2) on north_gate.integrity, intact -> destroyed), but it changes nothing in `north_gate.access`, so at the second request the machine is still `locked` and the open transition's source-state precondition is unmet. The runtime therefore rejects the request with EK0804 (`north_gate.access.open` is illegal while the machine is `locked`), stops, and publishes only the committed prefix (1 command). The author omitted the mandatory `unlock` precondition step (and the credential argument it entails) and instead issued a transition whose source state was never entered; the semantic cause is a command-sequencing error against the access machine's state DAG, not a world, binary, parse, or damage-side-effect fault.",
+  "causalChain": [
+    "nomos opens the verified world package (package digest fd2dca0e..., runtime semantics digest 0cdb454b...) and derives the initial runtime state: north_gate.access=locked, north_gate.combustion=cold, north_gate.integrity=intact, north_gate.ward=sealed, brazier_02.emission=lit; initial state hash fa7247d1...",
+    "Request 1 `ignite north_gate` resolves to the unique machine command north_gate.combustion ignite (argument none) and commits: combustion cold->burning; the on_enter(burning) causal edge applies damage fire 2 to integrity intact->destroyed; tick becomes 1; state hash becomes b40b53f9...; the projection delta removes north_gate.portal#blocks_ground (integrity destroyed), but north_gate.ward#blocks_ground remains active so the gate stays blocked by the ward.",
+    "Request 2 `open north_gate` resolves to north_gate.access.open; the compiled transition's source state is `closed`, but north_gate.access is still `locked` because the ignite commit mutated only combustion and integrity; the transition legality check fails with EK0804.",
+    "execute_requests stops at the first rejection and the publisher emits only the committed-prefix evidence: 1 command-log row, 1 causal receipt (tick 1), initial+final states, a 2-row state-hash sequence, and result.json with status=rejected and rejection_diagnostic.code=EK0804; the rejected request itself is not persisted (per the run-result design).",
+    "The same world accepts the remaining legal steps in another order (unseal alone commits; extinguish alone commits), and a script without the illegal `open` completes, so the rejection is isolated to the open-while-locked request rather than to the world, the parser, or the ignite side effects."
+  ],
+  "evidence": [
+    {
+      "path": "input/failing.run/result.json",
+      "finding": "status=rejected, committed_command_count=1, rejection_diagnostic.code=EK0804, final_state_hash=b40b53f9a5a9638e4270ce6de45cb4b651b3a379faaad964e540d68f82554751, first_state_hash=fa7247d115305ccbc6f570167919142e94e9ba423b43762be1774e057e50fe42 \u2014 exactly one prefix command was committed before rejection."
+    },
+    {
+      "path": "input/failing.run/final-state.json",
+      "finding": "after the committed prefix (tick 1) north_gate.access is still `locked` and north_gate.ward is still `sealed`; only north_gate.combustion=burning and north_gate.integrity=destroyed changed \u2014 the access machine state that governs `open` was never advanced."
+    },
+    {
+      "path": "input/failing.run/causal-receipts.json",
+      "finding": "the single committed receipt resolves to namespace north_gate.combustion ignite and contains only transitions cold->burning (command) and intact->destroyed (handler apply_damage, fire 2); there is no north_gate.access transition, so ignition cannot have made `open` legal or illegal differently than at the start."
+    },
+    {
+      "path": "input/world/simulation.json",
+      "finding": "north_gate.access machine: open is compiled with source `closed` and target `open` (requirement none); unlock is compiled with source `locked` and target `closed` (requirement kind credential, credential credential/gaoler_key); close is open->closed; access has no handlers \u2014 `locked` has exactly one exit, `unlock`."
+    },
+    {
+      "path": "input/world/world-ir.json",
+      "finding": "north_gate entity carries credential credential/gaoler_key and the unlock transition input kind is `resolved_entity_credential`, so unlock requires the gate's own catalog credential, which the command language must supply as an argument."
+    },
+    {
+      "path": "input/forensics/failure.stdout.json",
+      "finding": "terminal diagnostic is exactly EK0804 with message \"`north_gate.access.open` is illegal while the machine is `locked`\" \u2014 a machine-state legality rejection, not a parse, arity, argument, or damage error."
+    },
+    {
+      "path": "input/forensics/north-gate-tick-1.json",
+      "finding": "at tick 1 only `north_gate.portal#blocks_ground` is removed (because integrity=destroyed) while `north_gate.ward#blocks_ground` remains; ground movement for north_gate stays blocked and no access-state change is reported."
+    },
+    {
+      "path": "output/repro-failing/result.json",
+      "finding": "fresh execution of input/failing.commands against input/world reproduces the packet byte-for-byte: result digest 30a0860a70e6f78e6d4843da4e05882883a20793c5d7e5f597b2a91143ad8d78, committed_command_count=1, EK0804, identical state hashes \u2014 the packet evidence is authentic and deterministic."
+    },
+    {
+      "path": "output/control-open-run/result.json",
+      "finding": "`open north_gate` as the ONLY command from the pristine package initial state also fails with EK0804 and 0 commits \u2014 the illegality is intrinsic to the locked access machine and independent of the ignite causal damage."
+    },
+    {
+      "path": "output/control-unlock-run/result.json",
+      "finding": "`unlock north_gate` (the semantic locked->closed precondition) fails with EK0805 (argument does not match compiled input requirement) because it needs the catalog credential credential/gaoler_key, and output/control-unlock-arg.stdout shows `unlock north_gate credential/gaoler_key` is rejected with EK0814 (unsupported arity or argument syntax) \u2014 the credential-bearing unlock cannot be expressed by this command-script grammar."
+    },
+    {
+      "path": "output/control-unlock-arg.stdout",
+      "finding": "the credential-bearing unlock request `unlock north_gate credential/gaoler_key` is rejected with EK0814 (command line has unsupported arity or argument syntax; repairs [fix_source_syntax]) and no run bundle is written \u2014 the command-script grammar accepts only two identifier tokens per line, so the unlock precondition (locked -> closed with credential credential/gaoler_key) cannot be issued from the CLI/script language at all."
+    },
+    {
+      "path": "output/control-unseal-run/result.json",
+      "finding": "`unseal north_gate` alone commits (completed, 1 command) \u2014 the ward machine precondition is satisfied from the initial sealed state, so the rest of the script is legal once the dead `open` is removed."
+    },
+    {
+      "path": "output/repaired.commands",
+      "finding": "content repair: schema nomos.command_script@1 / ignite north_gate / unseal north_gate / extinguish brazier_02 \u2014 the illegal `open north_gate` step is removed."
+    },
+    {
+      "path": "output/repaired-run/result.json",
+      "finding": "repaired script verifies: status=completed, committed_command_count=3, exit code 0, final state hash 73bad12b441db2f69eeb56805c008ee24a30a940b3e05dc935b1f441349b6203."
+    },
+    {
+      "path": "output/repaired-explain-tick2.json",
+      "finding": "at tick 2 (unseal) north_gate ground movement becomes traversable with cost 1 and no blocker reasons (ward claim removed after the portal claim was already removed at tick 1 by the burn) \u2014 the gate is passable without `open`, so the script's intent is preserved by the minimal repair."
+    }
+  ],
+  "excludedAlternatives": [
+    {
+      "alternative": "The compiled world or the Nomos binary is corrupted or semantically mutated, and the rejection is a package/integrity failure.",
+      "evidence": "The package manifest digest fd2dca0e9cf8b352a474c414291d9a96c19758f518c1cf70fd4fa46293710440 matches the forensics compile stdout, compiler receipts list all seven members with canonical_members/projection_agreement/stable_v2_movement invariants, and a fresh `nomos run` of the same script reproduces every packet digest byte-for-byte (result 30a0860a..., command-log 09861293..., final-state eca5da40...). Unrelated legal commands (ignite, unseal, extinguish) all commit, so the world and runtime are healthy."
+    },
+    {
+      "alternative": "The ignite command's causal fire damage (integrity intact->destroyed) is what makes `open` illegal, so the repair should change the ignition/damage semantics or the order of ignite and open.",
+      "evidence": "The control run `open north_gate` from the pristine initial state (no ignite, 0 commits) yields the identical EK0804, and the packet's receipt proves ignite only touches combustion and integrity. In this world `open` legality depends solely on north_gate.access, which ignite never changes; burning actually only deactivates the portal blocker claim (north-gate-tick-1.json shows north_gate.portal#blocks_ground removed)."
+    },
+    {
+      "alternative": "The failure is an argument/arity/resolution error (e.g., wrong command name, missing argument, ambiguous namespace) rather than a state-precondition error.",
+      "evidence": "The diagnostic code is EK0804 (illegal transition source state) with the resolved namespace explicitly named as `north_gate.access.open`; the command log row for the committed prefix shows resolution produced exactly one typed namespace command. EK0805 (argument mismatch) appears only for `unlock north_gate`, and EK0814 only for any attempt to carry an argument, neither of which is the packet's terminal diagnostic."
+    },
+    {
+      "alternative": "The script was rejected for formatting: wrong schema header, non-LF line endings, trailing whitespace, or missing final newline.",
+      "evidence": "The script parsed completely \u2014 command 1 resolved and committed with a well-formed command-log row and causal receipt, and the terminal diagnostic is EK0804 (runtime legality), not a command-script parse/format diagnostic (EK0814-family). The same format (schema line + LF + one-line-per-command) succeeds for control-unseal-run and repaired-run."
+    },
+    {
+      "alternative": "Reordering the existing lines (e.g., moving `open` before `ignite`, or `open` last) would fix the run.",
+      "evidence": "open is illegal from the initial locked state regardless of position (control-open-run from pristine state: EK0804, 0 commits), and after ignite the access machine is still locked (failing.run/final-state.json). The only legal locked exit is unlock with credential credential/gaoler_key, which this command-script grammar cannot express (control-unlock-run: EK0805; control-unlock-arg.stdout: EK0814), so no ordering/insertion of the existing lines can satisfy the open precondition."
+    }
+  ],
+  "repair": {
+    "class": "fix_command_sequence (command-content / runtime state-precondition); EK0804 is a runtime legality rejection with an empty repairs list, so no compiler repair class is declared \u2014 the owning boundary is the command script's transition ordering against machine source states",
+    "description": "Minimal verified content repair: delete the illegal and redundant `open north_gate` request. In this world the portal's blocking claim is already deactivated by the ignite->integrity-destroyed causal path (north_gate.portal#blocks_ground removed at tick 1), so once `unseal north_gate` removes the sealing claim the gate is traversable; the remaining lines (ignite, unseal, extinguish) all satisfy their machine preconditions and the run completes. Semantically, the omitted precondition was `unlock north_gate credential/gaoler_key` before `open`, but the shipped command-script grammar cannot express a credential argument (bare unlock -> EK0805; all argument forms -> EK0814), so removing the dead open request is the minimal expressible, verifiable repair; extending the grammar to support catalog-value arguments would make the unlock+open sequence the richer alternative.",
+    "artifact": "repaired.commands"
+  },
+  "verification": {
+    "outcome": "completed",
+    "commands": [
+      "./bin/nomos run ./input/world --commands ./input/failing.commands --out ./output/repro-failing",
+      "./bin/nomos run ./input/world --commands ./output/control-open.commands --out ./output/control-open-run",
+      "./bin/nomos run ./input/world --commands ./output/control-unlock.commands --out ./output/control-unlock-run",
+      "./bin/nomos run ./input/world --commands ./output/control-unseal.commands --out ./output/control-unseal-run",
+      "./bin/nomos run ./input/world --commands ./output/repaired.commands --out ./output/repaired-run",
+      "./bin/nomos explain-transition ./output/repaired-run north_gate --tick 2 --world ./input/world",
+      "sha256sum ./input/failing.run/result.json ./output/repro-failing/result.json ./input/failing.run/command-log.json ./output/repro-failing/command-log.json ./input/failing.run/final-state.json ./output/repro-failing/final-state.json",
+      "./bin/nomos run ./input/world --commands ./output/control-unlock-arg.commands --out ./output/control-unlock-arg-run > ./output/control-unlock-arg.stdout"
+    ],
+    "artifacts": [
+      "output/repro-failing",
+      "output/control-open-run",
+      "output/control-unlock-run",
+      "output/control-unseal-run",
+      "output/repaired.commands",
+      "output/repaired-run",
+      "output/repaired-explain-tick2.json",
+      "output/control-unlock-arg.stdout"
+    ]
+  }
+}

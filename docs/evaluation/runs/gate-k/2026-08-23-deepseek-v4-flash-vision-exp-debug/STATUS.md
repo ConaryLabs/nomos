@@ -43,5 +43,10 @@ scripts were quoted input data, not path accesses.
 Accordingly, the formal cold-debug task does not satisfy acceptance criterion
 18. The checker verdict is complete and no subject retry is permitted or
 planned. On 2026-08-23 Peter Permenter, owner and adjudicator, dispositioned the
-formal attempt as `fail`. Durable final assembly is deferred to issue #79 so
-both formal failures use one evidence-backed, fail-closed finalization path.
+formal attempt as `fail`. Issue #79 repaired the fail-open finalization path
+with hash-bound structured command adjudication. The repaired finalizer
+assembled this immutable subject/checker pair as `fail`; `result.json` has
+SHA-256
+`f09c9214329f7f8bd7d4d4b31476a0f24c825add2f5bb434b7bf780f64d8089c`.
+The raw subject and checker evidence remains immutable, and no retry is
+authorized or planned.
