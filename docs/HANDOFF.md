@@ -15,7 +15,8 @@ Gate K is closed as **failed**. Peter Permenter's owner disposition is
 - acceptance: criteria 1–16 and 19 pass; criteria 17 and 18 fail;
 - formal retries: none authorized;
 - renderer, executable Gate 0 work, and semantic development: not authorized;
-- one static, quarantined gaol target-pack study: authorized by decision 0014.
+- one static, quarantined gaol target-pack study: authorized by decision 0014,
+  assembled under issue #83, and awaiting Peter's explicit disposition.
 
 The exact 1–19 matrix, owner consequence, protocol boundary, and limitations
 are in decision 0013. The machine-readable content-addressed inventory is
@@ -75,6 +76,7 @@ Issues #68–#72 and #79 are closed. Their PRs are merged:
 | #72 | #78 | formal DeepSeek debugger plus Gemini checker; failed |
 | #79 | #80 | fail-closed evidence authentication and deterministic assembly |
 | #73 | #81 | final owner verdict |
+| #82 | #84 | authorize the quarantined gaol visual-target experiment |
 
 Issue #79 changed evidence tooling and protocol documentation after the
 candidate was frozen. It changed no kernel crate, fixture, Cargo input, CLI,
@@ -108,14 +110,16 @@ record hashes.
 
 ## What is next
 
-Issue #83 is the only authorized active slice after decision 0014 merges. It may
-create one static Gate 0-format study under
-`experiments/gate-0-gaol-target-pack/` using the existing gaol fixture as its
-brief. It may not add executable code, a renderer, rendering projection, asset
+Issue #83 remains the only authorized active slice. Its nine coherent static
+bitmaps, `TARGET.md`, and hash-checked `manifest.json` are assembled under
+`experiments/gate-0-gaol-target-pack/`. The ordinary gameplay-camera frame is
+the primary surface; the other images test environment, silhouette overlap,
+combat, spell, low-light, UI, palette/material, and motion-timing failure modes.
+The pack adds no executable code, renderer, rendering projection, asset
 pipeline, visual primitive catalog, dependency, semantic feature, formal retry,
 or claim of Gate K/Gate 0 acceptance.
 
-The study ends after one coherent target pack and Peter's explicit disposition:
+The remaining acceptance step is Peter's explicit disposition in `TARGET.md`:
 `visual thesis rejected`, `visual thesis promising`, or
 `visual thesis compelling`. Even a compelling result requires a fresh,
 prospectively governed Gate K attempt before renderer architecture or adoption.
