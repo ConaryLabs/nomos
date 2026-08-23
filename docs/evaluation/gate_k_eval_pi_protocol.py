@@ -11,7 +11,9 @@ from typing import Any
 
 UUID = re.compile(r"[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}")
 SHA256 = re.compile(r"[0-9a-f]{64}")
-RFC3339_UTC = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?Z")
+RFC3339_UTC = re.compile(
+    r"\d{4}-\d{2}-\d{2}T(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d{1,9})?Z"
+)
 
 
 def fail(message: str) -> None:
@@ -92,7 +94,9 @@ def validate_usage(value: object, name: str) -> dict[str, object]:
         name,
     )
     components = ["input", "output", "cacheRead", "cacheWrite"]
-    for field in components + ["totalTokens"]:
+    for field in components + ["totalTokens", "reasoning", "cacheWrite1h"]:
+        if field not in usage:
+            continue
         if type(usage[field]) is not int or usage[field] < 0:
             fail(f"{name}.{field} is not a non-negative integer")
     if usage["totalTokens"] != sum(usage[field] for field in components):

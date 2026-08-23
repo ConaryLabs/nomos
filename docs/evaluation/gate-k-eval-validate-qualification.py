@@ -2,6 +2,7 @@
 """Authenticate the complete, ordered Pi neutral-qualification receipt."""
 
 import argparse
+import hashlib
 import importlib.util
 import os
 import re
@@ -41,7 +42,12 @@ PI_INTEGRITY = "sha512-l4E+B7hgXKWddRo8bC/eSue2aWZjEgJ9xIpf5p0Og+lq8a2TArCwJ0HCo
 PI_TREE = "63a9dd14b0ae82cee2db30c56822682af19145d145febb58b613d5de4dbb27af"
 BWRAP_SHA = "6ad2138a73d592acb43525432965e3c66f6fad8a2f3d610c6ca0b6855e993cbe"
 RUST = "1.98.0-x86_64-unknown-linux-gnu"
-EXTENSION_SHA = "5076b923aad8ebf6d46110ca0bd45e62911ace563bdfe58e6418b6a14b519f46"
+EXTENSION_SHAS = {
+    "5076b923aad8ebf6d46110ca0bd45e62911ace563bdfe58e6418b6a14b519f46",  # frozen @2
+    "3205bdd3bae1eadba56337379a797a4900fcbe31a200db31f4f6faa2ed775a36",  # current @3
+}
+PI_CLIENT_SHA = "840d1e8e689ed9e4937bcb00b9a810e02a8567d9afb10a47097f11ca93ea1521"
+PROVIDER_EXTENSION_SHA = "1c41a45c2820eb52f1b41955ae5fbb833470cba2203226d3b0c626c6f9dbe10b"
 SYSTEM_SHA = "2cec3aeebce2f8359cde337d3b1b2ec1601913711f282ab0289ab276b02dee79"
 FINAL_SYSTEM_SHA = "a78cae9025d8b63562a13c111e79e9f27c32ab20e726a53d2d9d8c094712e2b7"
 DEEPSEEK_CATALOG_SHA = "7954fb3ef750bed773619c9fe259a8eb923b6f4f8455442a33cf8e1fe2fa3773"
@@ -65,6 +71,13 @@ def parse_path_digest(value: str, name: str) -> tuple[str, str]:
     return path, digest
 
 
+def file_sha256(path: str, name: str) -> str:
+    try:
+        return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+    except OSError as error:
+        fail(f"{name} cannot be authenticated: {error}")
+
+
 def parse_receipt(path: Path) -> tuple[dict[str, str], list[dict[str, object]]]:
     lines = path.read_text().splitlines()
     if len(lines) < len(HEADERS) + 11:
@@ -75,15 +88,21 @@ def parse_receipt(path: Path) -> tuple[dict[str, str], list[dict[str, object]]]:
         if not lines[index].startswith(prefix) or not lines[index][len(prefix):]:
             fail(f"qualification header {index + 1} must be {name}")
         values[name] = lines[index][len(prefix):]
-    if lines[len(HEADERS)] != "PI_EVENTS_BEGIN":
+    cursor = len(HEADERS)
+    if lines[cursor].startswith("PI_RAW_EVENTS_SHA256 "):
+        values["PI_RAW_EVENTS_SHA256"] = require_sha256(
+            lines[cursor].split(" ", 1)[1], "qualification raw event digest"
+        )
+        cursor += 1
+    if lines[cursor] != "PI_EVENTS_BEGIN":
         fail("qualification event envelope is absent")
     try:
-        end = lines.index("PI_EVENTS_END", len(HEADERS) + 1)
+        end = lines.index("PI_EVENTS_END", cursor + 1)
     except ValueError:
         fail("qualification event envelope is truncated")
     if lines[end + 1:] != ["PI_COLD_AGENT_BOUNDARY PASS"]:
         fail("qualification disposition is incomplete or has trailing records")
-    events = [loads(line, "qualification event") for line in lines[len(HEADERS) + 1:end]]
+    events = [loads(line, "qualification event") for line in lines[cursor + 1:end]]
     if not events or any(type(event) is not dict for event in events):
         fail("qualification event stream is empty or malformed")
     return values, events
@@ -120,7 +139,7 @@ def validate_headers(values: dict[str, str], args: argparse.Namespace) -> tuple[
     if (provider, model, thinking) != (args.provider, args.model, args.thinking) or values["PI_AUTH_TYPE"] != auth:
         fail("qualification authenticated model identity differs from task receipt")
     extension, extension_sha = parse_path_digest(values["PI_EXTENSION"], "Pi extension")
-    if not extension.endswith("/docs/evaluation/pi-cold-agent-extension.ts") or extension_sha != EXTENSION_SHA:
+    if not extension.endswith("/docs/evaluation/pi-cold-agent-extension.ts") or extension_sha not in EXTENSION_SHAS:
         fail("qualification boundary extension differs from the pinned source")
     system_prompt, system_sha = parse_path_digest(values["PI_SYSTEM_PROMPT"], "Pi system prompt")
     if not system_prompt.endswith("/docs/evaluation/pi-cold-agent-system-prompt.txt") or system_sha != SYSTEM_SHA:
@@ -147,6 +166,14 @@ def validate_headers(values: dict[str, str], args: argparse.Namespace) -> tuple[
             fail("qualification Gemini provider package differs")
         if not os.path.isabs(values["PI_PROVIDER_EXTENSION"]):
             fail("qualification Gemini provider extension is not absolute")
+        if not fixture and (
+            not values["PI_PROVIDER_EXTENSION"].endswith(
+                "/lib/node_modules/pi-antigravity/src/index.ts"
+            )
+            or file_sha256(values["PI_PROVIDER_EXTENSION"], "Gemini provider extension")
+            != PROVIDER_EXTENSION_SHA
+        ):
+            fail("qualification Gemini provider extension differs from the pinned package entry point")
     elif any(values[field] != "none" for field in ("PI_PROVIDER_EXTENSION", "PI_PROVIDER_PACKAGE", "PI_PROVIDER_INSTALL")):
         fail("qualification lane unexpectedly loads a provider extension")
     if args.lane == "deepseek":
@@ -176,9 +203,11 @@ def validate_boundary(values: dict[str, str], args: argparse.Namespace, session:
         "entryTypesBeforeRun", "activeTools", "configuredTools", "contextFiles", "skills",
         "systemPromptSha256", "finalSystemPromptSha256", "packetManifestSha256", "binarySha256",
         "taskPromptSha256", "taskShape", "writablePaths", "budgets", "sandbox",
-    }, set(), "qualification boundary")
+    }, {"runtimeIdentity"}, "qualification boundary")
+    if boundary["schema"] not in ("nomos.pi_cold_agent_boundary@2", "nomos.pi_cold_agent_boundary@3"):
+        fail("qualification boundary schema differs")
     expected = {
-        "schema": "nomos.pi_cold_agent_boundary@2", "boundaryKind": "source-preflight", "mode": "json",
+        "boundaryKind": "source-preflight", "mode": "json",
         "targetCommit": args.commit, "hostWorkspace": values["PI_WORKSPACE"], "guestWorkspace": "/workspace",
         "provider": args.provider, "model": args.model, "thinking": args.thinking, "sessionId": session,
         "sessionFile": None, "projectTrusted": False,
@@ -201,6 +230,48 @@ def validate_boundary(values: dict[str, str], args: argparse.Namespace, session:
     actual_checks = require_keys(sandbox["checks"], checks, set(), "qualification sandbox checks")
     if any(actual_checks[key] is not True for key in checks):
         fail("qualification sandbox checks are incomplete")
+    if not fixture and (sandbox["binary"] != "/usr/bin/bwrap" or
+                        file_sha256(sandbox["binary"], "Bubblewrap") != values["PI_BWRAP_SHA256"]):
+        fail("qualification Bubblewrap path does not name the pinned binary")
+    if boundary["schema"] == "nomos.pi_cold_agent_boundary@3":
+        if "PI_RAW_EVENTS_SHA256" not in values:
+            fail("current qualification omits the raw event-stream digest")
+        if not fixture and file_sha256(extension, "Pi boundary extension") not in EXTENSION_SHAS:
+            fail("qualification boundary extension bytes differ")
+        runtime = require_keys(
+            boundary.get("runtimeIdentity"),
+            {"pi", "providerExtension", "bubblewrap"},
+            set(),
+            "qualification runtime identity",
+        )
+        if not fixture:
+            pi = require_keys(runtime["pi"], {"path", "sha256"}, set(), "qualification Pi executable")
+            if (
+                not require_string(pi["path"], "qualification Pi path").endswith(
+                    "/lib/node_modules/@earendil-works/pi-coding-agent/dist/cli.js"
+                )
+                or pi["sha256"] != PI_CLIENT_SHA
+                or file_sha256(pi["path"], "Pi executable") != PI_CLIENT_SHA
+            ):
+                fail("qualification Pi executable differs from the pinned package entry point")
+            bubblewrap = require_keys(
+                runtime["bubblewrap"], {"path", "sha256"}, set(),
+                "qualification Bubblewrap identity",
+            )
+            if bubblewrap != {"path": "/usr/bin/bwrap", "sha256": BWRAP_SHA}:
+                fail("qualification runtime Bubblewrap identity differs")
+            if args.lane == "gemini":
+                provider = require_keys(
+                    runtime["providerExtension"], {"path", "sha256"}, set(),
+                    "qualification provider extension identity",
+                )
+                if (provider["path"] != values["PI_PROVIDER_EXTENSION"] or
+                        provider["sha256"] != PROVIDER_EXTENSION_SHA):
+                    fail("qualification runtime provider extension identity differs")
+            elif runtime["providerExtension"] is not None:
+                fail("qualification runtime unexpectedly loads a provider extension")
+    elif "runtimeIdentity" in boundary:
+        fail("legacy qualification boundary unexpectedly declares runtime identity")
 
 
 def validate(args: argparse.Namespace) -> None:

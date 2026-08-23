@@ -13,6 +13,7 @@ expected_commit=$2
 [[ $expected_commit =~ ^[0-9a-f]{40}$ ]] || fail 'expected commit is not a full lowercase SHA-1'
 [[ -d $packet && ! -L $packet ]] || fail "packet is not a real directory: $packet"
 packet=$(realpath -e "$packet")
+document_validator="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)/gate-k-eval-validate-documents.py"
 
 for name in jq sha256sum stat find sort cmp; do
   command -v "$name" >/dev/null 2>&1 || fail "required executable not found: $name"
@@ -24,6 +25,10 @@ done
 [[ -f $packet/packet-manifest.json ]] || fail 'packet-manifest.json is absent'
 [[ -f $packet/plan.json ]] || fail 'plan.json is absent'
 [[ -f $packet/prompt.txt ]] || fail 'prompt.txt is absent'
+python3 "$document_validator" manifest "$packet/packet-manifest.json" ||
+  fail 'packet manifest does not satisfy its exact schema'
+python3 "$document_validator" plan "$packet/plan.json" ||
+  fail 'plan does not satisfy its exact schema'
 
 jq -e \
   --arg commit "$expected_commit" '
@@ -43,7 +48,7 @@ jq -e \
     (.path | startswith("/") | not) and
     (.path | contains("..") | not) and
     (.path | contains("//") | not) and
-    (.bytes | type) == "number" and .bytes >= 0 and
+    (.bytes | type) == "number" and .bytes >= 0 and .bytes == (.bytes | floor) and
     (.mode == "644" or .mode == "755") and
     (.sha256 | test("^[0-9a-f]{64}$")) and
     (.schemaIdentity == null or (.schemaIdentity | test("^[a-z][a-z0-9_.]*@[1-9][0-9]*$"))))
@@ -233,6 +238,8 @@ verify_bound_subject() {
   local expected_shape=$1
   local receipt="$packet/subject/task-receipt.json"
   [[ -f $receipt && ! -L $receipt ]] || fail 'checker subject task receipt is absent'
+  python3 "$document_validator" task-receipt "$receipt" ||
+    fail 'checker subject task receipt does not satisfy its exact schema'
   jq -e --arg commit "$expected_commit" --arg shape "$expected_shape" \
     --arg classification "$(jq -r '.task.classification' "$packet/plan.json")" '
     .schema == "nomos.gate_k.task_receipt@1" and

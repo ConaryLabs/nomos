@@ -23,6 +23,7 @@ command_deriver="$script_dir/gate-k-eval-derive-commands.sh"
 transcript_validator="$script_dir/gate-k-eval-validate-transcript.py"
 qualification_validator="$script_dir/gate-k-eval-validate-qualification.py"
 json_validator="$script_dir/gate-k-eval-validate-json.py"
+document_validator="$script_dir/gate-k-eval-validate-documents.py"
 attempt_validator="$script_dir/gate-k-eval-attempt-ledger.py"
 attempt_ledger="$script_dir/gate-k-formal-attempt-ledger.jsonl"
 python3 "$attempt_validator" validate "$attempt_ledger" ||
@@ -50,6 +51,12 @@ for record in "$subject" "$checker"; do
     python3 "$json_validator" "$record/$json_file" ||
       fail "task record contains invalid or duplicate-key JSON: $record/$json_file"
   done
+  python3 "$document_validator" task-receipt "$record/task-receipt.json" ||
+    fail "task receipt does not satisfy its exact schema: $record"
+  python3 "$document_validator" plan "$record/plan.json" ||
+    fail "plan does not satisfy its exact schema: $record"
+  python3 "$document_validator" manifest "$record/packet-manifest.json" ||
+    fail "packet manifest does not satisfy its exact schema: $record"
 done
 subject=$(realpath -e "$subject")
 checker=$(realpath -e "$checker")
@@ -254,6 +261,14 @@ for record in "$subject" "$checker"; do
   [[ ${#launcher_events[@]} -eq 1 &&
       ${launcher_events[0]} == "$(sha256sum "$record/transcript.ndjson" | cut -d' ' -f1)" ]] ||
     fail "launcher does not bind the transcript: $record"
+  if jq -e '.digests | has("rawTranscriptSha256")' "$record/task-receipt.json" >/dev/null; then
+    mapfile -t launcher_raw_events < <(
+      awk '$1 == "PI_TASK_RAW_EVENTS_SHA256" && NF == 2 {print $2}' "$record/launcher.txt"
+    )
+    [[ ${#launcher_raw_events[@]} -eq 1 &&
+        ${launcher_raw_events[0]} == "$(jq -r .digests.rawTranscriptSha256 "$record/task-receipt.json")" ]] ||
+      fail "launcher does not bind the raw provider stream digest: $record"
+  fi
   mapfile -t launcher_qualification < <(
     awk '$1 == "PI_TASK_QUALIFICATION_SHA256" && NF == 2 {print $2}' "$record/launcher.txt"
   )
@@ -370,6 +385,11 @@ for record in "$subject" "$checker"; do
   qualified_extension=${qualified_extension_line% *}
   qualified_boundary=$(sed -n 's/^PI_BOUNDARY //p' "$record/pi-qualification.txt")
   qualified_bwrap=$(jq -r '.sandbox.binary' <<<"$qualified_boundary")
+  receipt_execution=$(jq -c '.execution // null' "$record/task-receipt.json")
+  qualified_execution=$(jq -S -c '.runtimeIdentity // null' <<<"$qualified_boundary")
+  if [[ $receipt_execution != null && $receipt_execution != "$qualified_execution" ]]; then
+    fail "task runtime executables differ from the authenticated qualification: $record"
+  fi
   jq -e \
     --arg commit "$receipt_commit" \
     --arg packet "$packet_root_claim" \
@@ -383,14 +403,24 @@ for record in "$subject" "$checker"; do
     --arg binary "$plan_binary_sha" \
     --arg prompt "$prompt_sha" \
     --arg shape "$receipt_shape" \
-    --arg writable "$expected_writable" '
-    keys == (["schema", "boundaryKind", "mode", "targetCommit", "hostWorkspace",
+    --arg writable "$expected_writable" \
+    --argjson execution "$receipt_execution" '
+    (keys == (["schema", "boundaryKind", "mode", "targetCommit", "hostWorkspace",
       "guestWorkspace", "provider", "model", "thinking", "sessionId", "sessionFile",
       "projectTrusted", "entryTypesBeforeRun", "activeTools", "configuredTools",
       "contextFiles", "skills", "systemPromptSha256", "finalSystemPromptSha256",
       "packetManifestSha256", "binarySha256", "taskPromptSha256", "taskShape",
-      "writablePaths", "budgets", "sandbox"] | sort) and
-    .schema == "nomos.pi_cold_agent_boundary@2" and .boundaryKind == "packet-run" and
+      "writablePaths", "budgets", "sandbox"] | sort) or
+     keys == (["schema", "boundaryKind", "mode", "targetCommit", "hostWorkspace",
+      "guestWorkspace", "provider", "model", "thinking", "sessionId", "sessionFile",
+      "projectTrusted", "entryTypesBeforeRun", "activeTools", "configuredTools",
+      "contextFiles", "skills", "systemPromptSha256", "finalSystemPromptSha256",
+      "packetManifestSha256", "binarySha256", "taskPromptSha256", "taskShape",
+      "writablePaths", "budgets", "runtimeIdentity", "sandbox"] | sort)) and
+    ((.schema == "nomos.pi_cold_agent_boundary@2" and $execution == null and
+      (has("runtimeIdentity") | not)) or
+     (.schema == "nomos.pi_cold_agent_boundary@3" and .runtimeIdentity == $execution)) and
+    .boundaryKind == "packet-run" and
     .mode == "json" and .targetCommit == $commit and .hostWorkspace == $packet and
     .guestWorkspace == "/workspace" and .provider == $provider and .model == $model and
     .thinking == $thinking and .sessionId == $session and .sessionFile == null and
@@ -553,6 +583,10 @@ subject_outcome=$(jq -r '.outcome' "$subject/task-receipt.json")
 checker_outcome=$(jq -r '.outcome' "$checker/task-receipt.json")
 checker_result="$checker/artifacts/checker.json"
 [[ -f $checker_result && ! -L $checker_result ]] || fail 'checker did not publish artifacts/checker.json'
+python3 "$json_validator" "$checker_result" ||
+  fail 'checker result contains invalid or duplicate-key JSON'
+python3 "$document_validator" checker-result "$checker_result" ||
+  fail 'checker result does not satisfy a declared exact schema'
 jq -e '
   .schema == "nomos.gate_k.checker_result@1" and
   (.verdict == "pass" or .verdict == "reject") and

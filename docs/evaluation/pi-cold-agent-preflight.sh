@@ -11,8 +11,8 @@ expected_pi_tree_sha=63a9dd14b0ae82cee2db30c56822682af19145d145febb58b613d5de4db
 expected_antigravity_version=0.4.0
 expected_antigravity_integrity='sha512-Trl0lWZRDM6TUhw8UjZ+si4Tx2IxCtLLdEwQ10gOS3BUJfgv/C32HY3m/v9PcLNZWYzo+LEfmamiB5+f0jciCg=='
 expected_antigravity_tree_sha=7980e6825a23f18a9d298953c0efc9f13c1231ce4c814394803b9da9bfb565ce
-expected_extension_sha=5076b923aad8ebf6d46110ca0bd45e62911ace563bdfe58e6418b6a14b519f46
-expected_fake_sha=6042d3b88ad3a89dff16f014603a24633eca9eaefea8ae61ecdf127de906983c
+expected_extension_sha=3205bdd3bae1eadba56337379a797a4900fcbe31a200db31f4f6faa2ed775a36
+expected_fake_sha=1325f5ee7081408f4e238c9e7774d6e41f48423bf82d3d031bc72266263598a7
 expected_fake_antigravity_sha=944ab25260d0efee3c682f0d79f84beae674e7fe8a36a585f7615944bcec4417
 expected_deepseek_catalog_sha=7954fb3ef750bed773619c9fe259a8eb923b6f4f8455442a33cf8e1fe2fa3773
 
@@ -53,6 +53,7 @@ script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)
 repo_root=$(cd "$script_dir/../.." && pwd -P)
 transcript_validator="$script_dir/gate-k-eval-validate-transcript.py"
 json_validator="$script_dir/gate-k-eval-validate-json.py"
+transcript_sanitizer="$script_dir/gate-k-eval-sanitize-transcript.py"
 workspace_arg=${2:-$repo_root}
 [[ -d $workspace_arg ]] || fail "workspace does not exist: $workspace_arg"
 workspace=$(cd "$workspace_arg" && pwd -P)
@@ -135,6 +136,7 @@ jq -e '
 
 pi_path=$(command -v "$pi_bin")
 pi_path=$(readlink -f "$pi_path")
+pi_sha=$(sha256sum "$pi_path" | cut -d' ' -f1)
 fake_path=$(readlink -f "$fake_pi")
 pi_version=$($pi_bin --version) || fail 'pi --version failed'
 [[ $pi_version == "$expected_pi_version" ]] ||
@@ -162,6 +164,7 @@ else
 fi
 
 provider_extension=none
+provider_extension_sha=none
 provider_extension_args=()
 provider_package=none
 provider_install=none
@@ -190,6 +193,8 @@ if [[ $lane == gemini ]]; then
     provider_package="pi-antigravity@$expected_antigravity_version $expected_antigravity_integrity $antigravity_tree_sha"
     provider_install="npm install -g --ignore-scripts --legacy-peer-deps pi-antigravity@$expected_antigravity_version"
   fi
+  provider_extension=$(readlink -f "$provider_extension")
+  provider_extension_sha=$(sha256sum "$provider_extension" | cut -d' ' -f1)
   provider_extension_args=(-e "$provider_extension")
 fi
 
@@ -261,6 +266,11 @@ NOMOS_PI_HOST_WORKSPACE="$workspace" \
 NOMOS_PI_RUSTUP_HOME="$rustup_home" \
 NOMOS_PI_RUST_TOOLCHAIN="$rust_toolchain" \
 NOMOS_PI_BWRAP="$bwrap_path" \
+NOMOS_PI_BWRAP_SHA256="$bwrap_sha" \
+NOMOS_PI_CLIENT_PATH="$pi_path" \
+NOMOS_PI_CLIENT_SHA256="$pi_sha" \
+NOMOS_PI_PROVIDER_EXTENSION_PATH="$provider_extension" \
+NOMOS_PI_PROVIDER_EXTENSION_SHA256="$provider_extension_sha" \
 NOMOS_PI_BOUNDARY_KIND=source-preflight \
 NOMOS_PI_EXPECTED_PROVIDER="$provider" \
 NOMOS_PI_EXPECTED_MODEL="$model" \
@@ -329,8 +339,13 @@ printf '%s\n' "$boundary_json" | jq -e \
   --arg thinking "$thinking" \
   --arg extension "$extension" \
   --arg bwrap "$bwrap_path" \
+  --arg bwrap_sha "$bwrap_sha" \
+  --arg pi_path "$pi_path" \
+  --arg pi_sha "$pi_sha" \
+  --arg provider_extension "$provider_extension" \
+  --arg provider_extension_sha "$provider_extension_sha" \
   --arg system_prompt_sha "$system_prompt_sha" '
-    .schema == "nomos.pi_cold_agent_boundary@2" and
+    .schema == "nomos.pi_cold_agent_boundary@3" and
     .boundaryKind == "source-preflight" and
     .mode == "json" and
     .targetCommit == $target_commit and
@@ -356,6 +371,11 @@ printf '%s\n' "$boundary_json" | jq -e \
     .taskShape == null and
     .writablePaths == [] and
     .budgets == null and
+    .runtimeIdentity.pi == {"path":$pi_path,"sha256":$pi_sha} and
+    .runtimeIdentity.bubblewrap == {"path":$bwrap,"sha256":$bwrap_sha} and
+    .runtimeIdentity.providerExtension ==
+      (if $provider_extension == "none" then null else
+        {"path":$provider_extension,"sha256":$provider_extension_sha} end) and
     .sandbox.backend == "bubblewrap" and
     .sandbox.binary == $bwrap and
     .sandbox.root == "read-only" and
@@ -378,10 +398,10 @@ printf '%s\n' "$boundary_json" | jq -e \
 while IFS= read -r line; do
   printf '%s\n' "$line" | jq -e . >/dev/null || fail 'Pi JSON stream contains a non-JSON line'
 done <"$tmp_dir/events.ndjson"
-python3 "$transcript_validator" "$tmp_dir/events.ndjson" --syntax-only ||
-  fail 'raw qualification event stream contains invalid or duplicate-key JSON'
-jq -c 'walk(if type == "object" then del(.textSignature, .thinkingSignature) else . end)' \
-  "$tmp_dir/events.ndjson" >"$tmp_dir/sanitized.ndjson"
+python3 "$transcript_sanitizer" "$tmp_dir/events.ndjson" >"$tmp_dir/sanitized.ndjson" ||
+  fail 'raw qualification stream has invalid JSON or misplaced provider signatures'
+python3 "$transcript_validator" "$tmp_dir/sanitized.ndjson" --syntax-only ||
+  fail 'sanitized qualification event stream contains invalid JSON'
 
 session_count=$(jq -s '[.[] | select(.type == "session")] | length' "$tmp_dir/events.ndjson")
 [[ $session_count -eq 1 ]] || fail "expected one session header, found $session_count"
@@ -449,6 +469,7 @@ fi
 printf 'PI_INVOCATION pi --provider %s --model %s --thinking %s --mode json --no-session --no-approve --offline --no-extensions%s -e %s --no-skills --no-prompt-templates --no-themes --no-context-files --no-builtin-tools --tools bash --system-prompt <sha256:%s> <neutral-prompt>\n' \
   "$provider" "$model" "$thinking" "$provider_invocation" "$extension" "$system_prompt_sha"
 printf 'PI_BOUNDARY %s\n' "$boundary_json"
+printf 'PI_RAW_EVENTS_SHA256 %s\n' "$(sha256sum "$tmp_dir/events.ndjson" | cut -d' ' -f1)"
 printf 'PI_EVENTS_BEGIN\n'
 cat "$tmp_dir/sanitized.ndjson"
 printf 'PI_EVENTS_END\n'

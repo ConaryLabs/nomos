@@ -4,6 +4,7 @@ set -euo pipefail
 
 repo_root=$(git rev-parse --show-toplevel)
 "$repo_root/docs/evaluation/test-gate-k-attempt-ledger.sh"
+"$repo_root/docs/evaluation/test-gate-k-eval-strictness.sh"
 packet_builder="$repo_root/docs/evaluation/gate-k-eval-packet.sh"
 packet_verifier="$repo_root/docs/evaluation/gate-k-eval-verify-packet.sh"
 seed_builder="$repo_root/docs/evaluation/gate-k-eval-seed-rehearsal.sh"
@@ -669,7 +670,7 @@ install -m 644 "$tmp_dir/malformed-result-checker-record/artifacts/checker.json"
 refresh_record_receipt_digests "$tmp_dir/malformed-result-checker-record"
 write_pass_adjudication "$tmp_dir/author-subject-record" \
   "$tmp_dir/malformed-result-checker-record" "$tmp_dir/malformed-result-adjudication.json"
-assert_blocked 'checker result is incomplete' finalizer-malformed-checker-result \
+assert_blocked 'checker command 0 is not an object' finalizer-malformed-checker-result \
   "$finalizer" "$tmp_dir/author-subject-record" \
   "$tmp_dir/malformed-result-checker-record" "$tmp_dir/malformed-result-adjudication.json" \
   "$tmp_dir/malformed-result-run"
@@ -745,7 +746,7 @@ mv -- "$tmp_dir/writable-path-checker-record/boundary.update" \
 refresh_record_runtime_evidence "$tmp_dir/writable-path-checker-record"
 write_pass_adjudication "$tmp_dir/author-subject-record" \
   "$tmp_dir/writable-path-checker-record" "$tmp_dir/writable-path-adjudication.json"
-assert_blocked 'plan writable paths differ from task shape' finalizer-writable-path \
+assert_blocked 'plan writable path differs' finalizer-writable-path \
   "$finalizer" "$tmp_dir/author-subject-record" \
   "$tmp_dir/writable-path-checker-record" "$tmp_dir/writable-path-adjudication.json" \
   "$tmp_dir/writable-path-run"
@@ -810,7 +811,7 @@ assert_blocked 'checker packet does not bind the supplied subject task receipt' 
   "$tmp_dir/substitute-final-subject-run"
 
 cp -R "$tmp_dir/author-checker-record" "$tmp_dir/phantom-candidate-checker-record"
-jq '.candidateCommit = "ffffffffffffffffffffffffffffffffffffffff"' \
+jq -S -c '.candidateCommit = "ffffffffffffffffffffffffffffffffffffffff"' \
   "$tmp_dir/phantom-candidate-checker-record/task-receipt.json" \
   >"$tmp_dir/phantom-candidate-checker-record/task-receipt.update"
 mv -- "$tmp_dir/phantom-candidate-checker-record/task-receipt.update" \
@@ -861,7 +862,7 @@ jq -e '
   ' "$tmp_dir/outside-path-fail-run/result.json" >/dev/null
 
 cp -R "$tmp_dir/outside-path-checker-record" "$tmp_dir/inconclusive-outside-path-record"
-jq '.outcome = "inconclusive" | .outcomeReason = "fixture transport failure"' \
+jq -S -c '.outcome = "inconclusive" | .outcomeReason = "fixture transport failure"' \
   "$tmp_dir/inconclusive-outside-path-record/task-receipt.json" \
   >"$tmp_dir/inconclusive-outside-path-record/task-receipt.update"
 mv -- "$tmp_dir/inconclusive-outside-path-record/task-receipt.update" \
@@ -963,7 +964,7 @@ negative_task forbidden-tool 'task boundary record does not prove the declared p
 negative_task outside-read-succeeded 'task boundary record does not prove the declared packet isolation'
 negative_task outside-write-succeeded 'task boundary record does not prove the declared packet isolation'
 negative_task temporary-write-succeeded 'task boundary record does not prove the declared packet isolation'
-negative_task missing-session 'raw task event stream contains invalid or duplicate-key JSON'
+negative_task missing-session 'raw task stream has invalid JSON or misplaced provider signatures'
 
 cp -R "$tmp_dir/author-2" "$tmp_dir/negative-leak-packet"
 mkdir -m 755 "$tmp_dir/negative-leak-raw"

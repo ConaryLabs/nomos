@@ -20,12 +20,17 @@ script_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 command_deriver="$script_dir/gate-k-eval-derive-commands.sh"
 transcript_validator="$script_dir/gate-k-eval-validate-transcript.py"
 json_validator="$script_dir/gate-k-eval-validate-json.py"
+document_validator="$script_dir/gate-k-eval-validate-documents.py"
+attempt_validator="$script_dir/gate-k-eval-attempt-ledger.py"
 
 [[ $commit =~ ^[0-9a-f]{40}$ ]] || fail 'commit is not a full lowercase SHA-1'
 for path in "$packet/plan.json" "$packet/packet-manifest.json" "$packet/prompt.txt" \
   "$events" "$stderr_record" "$qualification" "$launcher"; do
   [[ -f $path && ! -L $path ]] || fail "required regular input is absent: $path"
 done
+python3 "$document_validator" plan "$packet/plan.json" || fail 'plan schema is invalid'
+python3 "$document_validator" manifest "$packet/packet-manifest.json" ||
+  fail 'packet manifest schema is invalid'
 [[ ! -e $out ]] || fail "output already exists: $out"
 out_parent=$(realpath -e "$(dirname "$out")")
 out="$out_parent/$(basename "$out")"
@@ -149,6 +154,9 @@ done < <(cd "$packet/$writable" && find . -mindepth 1 -print0 | sort -z)
 
 manifest_sha=$(sha256sum "$stage/packet-manifest.json" | cut -d' ' -f1)
 transcript_sha=$(sha256sum "$stage/transcript.ndjson" | cut -d' ' -f1)
+raw_transcript_sha=$(sed -n 's/^PI_TASK_RAW_EVENTS_SHA256 //p' "$launcher")
+[[ $raw_transcript_sha =~ ^[0-9a-f]{64}$ ]] ||
+  fail 'launcher does not bind the raw provider event stream'
 commands_sha=$(sha256sum "$stage/commands.json" | cut -d' ' -f1)
 artifacts_sha=$(find "$stage/artifacts" -type f -printf '%P\0' | sort -z |
   while IFS= read -r -d '' relative; do
@@ -156,6 +164,8 @@ artifacts_sha=$(find "$stage/artifacts" -type f -printf '%P\0' | sort -z |
   done | sha256sum | cut -d' ' -f1)
 boundary_sha=$(sha256sum "$stage/boundary.json" | cut -d' ' -f1)
 qualification_sha=$(sha256sum "$stage/pi-qualification.txt" | cut -d' ' -f1)
+execution=$(jq -c '.runtimeIdentity // null' "$stage/boundary.json")
+[[ $execution != null ]] || fail 'task boundary lacks the authenticated runtime identity'
 
 attempt_reservation=null
 if [[ $formal == true ]]; then
@@ -189,11 +199,13 @@ result=$(jq -S -c -n \
   --arg reason "$outcome_reason" \
   --arg manifest_sha "$manifest_sha" \
   --arg transcript_sha "$transcript_sha" \
+  --arg raw_transcript_sha "$raw_transcript_sha" \
   --arg commands_sha "$commands_sha" \
   --arg artifacts_sha "$artifacts_sha" \
   --arg boundary_sha "$boundary_sha" \
   --arg qualification_sha "$qualification_sha" \
   --argjson attempt_reservation "$attempt_reservation" \
+  --argjson execution "$execution" \
   --argjson accounting "$accounting" '
   {
     schema: "nomos.gate_k.task_receipt@1",
@@ -227,11 +239,13 @@ result=$(jq -S -c -n \
     operatorIntervention: "none",
     operatorRetries: 0,
     attemptReservation: $attempt_reservation,
+    execution: $execution,
     accounting: $accounting,
     outcome: $outcome,
     outcomeReason: $reason,
     digests: {
       packetManifestSha256: $manifest_sha,
+      rawTranscriptSha256: $raw_transcript_sha,
       transcriptSha256: $transcript_sha,
       commandsSha256: $commands_sha,
       artifactsTreeSha256: $artifacts_sha,
@@ -241,6 +255,8 @@ result=$(jq -S -c -n \
   }
 ')
 printf '%s\n' "$result" >"$stage/task-receipt.json"
+python3 "$document_validator" task-receipt "$stage/task-receipt.json" ||
+  fail 'constructed task receipt schema is invalid'
 
 printf '%s\n' \
   "# Gate K $shape task receipt" \
@@ -263,4 +279,11 @@ printf '%s\n' \
 mv -- "$stage" "$out"
 trap - EXIT
 rm -r -- "$tmp_dir"
+if [[ $formal == true ]]; then
+  close_event=$(python3 "$attempt_validator" next-close \
+    "$script_dir/gate-k-formal-attempt-ledger.jsonl" "$attempt_id" \
+    "$out/task-receipt.json" "$out/launcher.txt" "$outcome") ||
+    fail 'formal task record cannot produce an authenticated close event'
+  printf 'PI_TASK_ATTEMPT_CLOSE %s\n' "$close_event"
+fi
 printf 'GATE_K_TASK_RECORDED outcome=%s output=%s\n' "$outcome" "$out"

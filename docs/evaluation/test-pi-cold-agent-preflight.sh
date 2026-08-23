@@ -27,7 +27,7 @@ assert_blocked() {
 }
 
 assert_blocked missing-boundary 'expected one runtime boundary record, found 0'
-assert_blocked missing-session 'raw qualification event stream contains invalid or duplicate-key JSON'
+assert_blocked missing-session 'raw qualification stream has invalid JSON or misplaced provider signatures'
 assert_blocked wrong-provider 'runtime boundary record does not prove the required state'
 assert_blocked wrong-model 'runtime boundary record does not prove the required state'
 assert_blocked wrong-worktree 'runtime boundary record does not prove the required state'

@@ -29,8 +29,15 @@ authenticated. The current repair validates the complete Pi event semantics and
 pinned qualification environment, reopens every packet-boundary claim, rejects
 invalid numeric/date values, and adds protocol revision 4's committed,
 hash-chained formal-attempt ledger. The four frozen task receipts are imported
-without pretending retroactive prelaunch proof exists. Its exact-head non-author
-rerun remains.
+without pretending retroactive prelaunch proof exists. A seventh audit rejected
+`7aef90d` because ledger closes did not authenticate the receipt/launcher,
+runtime executable paths were insufficiently pinned, raw signature removal was
+overbroad, optional usage and RFC 3339 ranges were loose, checker JSON admitted
+non-finite values, and public packet schemas were not exact. The current repair
+implements protocol revision 5 with receipt-backed closes, exact canonical
+schemas, raw-stream digesting and signature-location checks, strict scalar
+validation, and boundary schema `@3` runtime path-and-hash identities. Its fresh
+exact-head non-author rerun remains.
 This file orients a fresh session; it is rewritten at each slice boundary and
 never accumulates history (git has that).
 

@@ -351,13 +351,24 @@ their candidate binding. It does invalidate `gate-k-rc1` for any later
 exact-head evidence: a future launch would require a newly frozen
 `gate-k-rcN`, combined-head proof, and explicit owner authorization.
 
-Protocol revision 4 also closes the prospective attempt-accounting gap found
+Protocol revision 5 closes the remaining evidence-authentication gaps found
 during issue #79. The four frozen task receipts are imported, explicitly without
 retroactive prelaunch proof, into the hash-chained formal-attempt ledger. A
 future formal launcher requires an exact open reservation already committed in
 that ledger and records the ledger commit and digest in its task receipt. The
-completion event closes the reservation with the exact receipt hash and outcome;
+completion event is derived from the exact canonical task receipt and completed
+launcher, then closes the reservation with the receipt hash and outcome;
 another reservation cannot hide or overtake an unfinished task.
+A prelaunch cancellation instead appends `discarded-before-launch` plus its
+reason; it cannot impersonate a completed provider task or erase the reservation.
+
+Public plans, packet manifests, and task receipts now have exact allowlisted
+schemas and canonical bytes. Raw Pi streams are validated before only the two
+documented provider signature fields are removed, and their raw digest is
+retained. Boundary schema `nomos.pi_cold_agent_boundary@3` binds the resolved
+Pi, provider-extension, and Bubblewrap paths and hashes into both the runtime
+boundary and task receipt. Legacy `@2` boundaries remain admissible only through
+the four exact frozen formal task receipts.
 
 Any packet allowlist, public packet document, prompt, constraint, runner, recorder,
 checker construction, or boundary-extension change after a candidate is tagged

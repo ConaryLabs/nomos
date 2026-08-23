@@ -99,7 +99,7 @@ jq -S -c '.classification = "formal" | .formalAttempt = true' \
 mv -- "$tmp_dir/new-formal-record/task-receipt.update" "$tmp_dir/new-formal-record/task-receipt.json"
 write_pass_adjudication "$base_subject" "$tmp_dir/new-formal-record" \
   "$tmp_dir/new-formal-adjudication.json"
-assert_blocked 'not one of the four frozen gate-k-rc1 records' finalizer-new-formal \
+assert_blocked 'task receipt attempt reservation is not an object' finalizer-new-formal \
   "$finalizer" "$base_subject" "$tmp_dir/new-formal-record" \
   "$tmp_dir/new-formal-adjudication.json" "$tmp_dir/new-formal-run"
 
@@ -159,7 +159,7 @@ mv -- "$tmp_dir/invalid-timestamp-record/task-receipt.update" \
 refresh_record_transcript_evidence "$tmp_dir/invalid-timestamp-record"
 write_pass_adjudication "$base_subject" "$tmp_dir/invalid-timestamp-record" \
   "$tmp_dir/invalid-timestamp-adjudication.json"
-assert_blocked 'not a valid calendar timestamp' finalizer-invalid-timestamp "$finalizer" \
+assert_blocked 'not an RFC 3339 UTC timestamp' finalizer-invalid-timestamp "$finalizer" \
   "$base_subject" "$tmp_dir/invalid-timestamp-record" \
   "$tmp_dir/invalid-timestamp-adjudication.json" "$tmp_dir/invalid-timestamp-run"
 

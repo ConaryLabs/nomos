@@ -1,10 +1,10 @@
 ---
 title: Cold-agent evaluation protocol
 status: Contractual for formal cold-agent claims
-revision: 4
-supersedes_protocol_revision: 3
+revision: 5
+supersedes_protocol_revision: 4
 date: 2026-08-23
-decision_record: docs/decisions/0011-cold-agent-attempt-ledger.md
+decision_record: docs/decisions/0012-cold-agent-evidence-authentication.md
 applies_to: Gate K, Gate 3, Gate 4, cold design review
 ---
 
@@ -261,11 +261,18 @@ Before a formal provider task launches, the operator appends a content-addressed
 reservation to `docs/evaluation/gate-k-formal-attempt-ledger.jsonl` and commits
 it. Reservations are globally ordered and hash-chained. A launch must bind the
 exact open reservation, candidate, packet manifest, prompt, shape, provider,
-model, and thinking level. The finished task receipt is then appended as a
-closing event even when the outcome is fail or inconclusive. A new reservation
+model, and thinking level. The finished task receipt and completed launcher are
+validated together, and their derived receipt hash and outcome are then appended
+as a closing event even when the outcome is fail or inconclusive. A bare hash
+cannot close an attempt. A new reservation
 is forbidden while an earlier one is open. This prelaunch record, rather than a
 finished receipt's self-reported retry count, makes abandoned or discarded
 formal transports visible.
+
+If the operator cancels before provider launch, the reservation is closed only
+by an explicit `discarded-before-launch` event with a non-empty reason. It has no
+task receipt and cannot be represented as a completed or inconclusive provider
+run. A completed launcher cannot use this path.
 
 ## 9. Required evidence record
 
@@ -287,6 +294,19 @@ commands.json          ordered CLI/tool invocations
 artifacts/             subject outputs or content-addressed references
 checker.json           independent reproduction/check result
 ```
+
+The three public packet documents use exact allowlisted schemas:
+`plan.json`, `packet-manifest.json`, and `task-receipt.json` are canonical
+sorted compact JSON with strict scalar types. Checker JSON rejects duplicate
+keys and non-finite numbers before its declared result shape is inspected.
+
+Pi event streams are parsed before provider signatures are removed. Only
+`textSignature` on a text content block and `thinkingSignature` on a thinking
+content block may be removed, and the raw-stream digest is retained. Boundary
+schema `nomos.pi_cold_agent_boundary@3` records the resolved path and SHA-256 of
+Pi, Bubblewrap, and any provider extension; the task receipt repeats the exact
+runtime identity. The four frozen `gate-k-rc1` task records retain their legacy
+`@2` boundaries and are not retroactively upgraded.
 
 `RUN.md` records:
 
