@@ -90,7 +90,7 @@ function sandboxArguments(
 		boundaryKind === "source-preflight" ? ["--dir", "/cargo", "--dir", "/toolchain"] : [];
 	const sourceMounts =
 		boundaryKind === "source-preflight"
-			? ["--ro-bind", toolchainHome as string, "/toolchain", "--tmpfs", "/cargo"]
+			? ["--ro-bind", toolchainHome as string, "/toolchain", "--tmpfs", "/cargo", "--tmpfs", "/tmp"]
 			: [];
 	const writableMounts =
 		boundaryKind === "packet-run"
@@ -153,8 +153,6 @@ function sandboxArguments(
 		GUEST_WORKSPACE,
 		...sourceMounts,
 		...writableMounts,
-		"--tmpfs",
-		"/tmp",
 		"--proc",
 		"/proc",
 		"--dev",
@@ -269,6 +267,8 @@ async function proveSandbox(
 		"test -x bin/nomos",
 		"test ! -e .git",
 		"if touch /workspace/.nomos-undeclared-write 2>/dev/null; then exit 74; fi",
+		"if touch /tmp/.nomos-undeclared-write 2>/dev/null; then exit 75; fi",
+		"if touch /home/subject/.nomos-undeclared-write 2>/dev/null; then exit 76; fi",
 		...writablePaths.flatMap((path) => [
 			`test -w '/workspace/${path}'`,
 			`touch '/workspace/${path}/.nomos-boundary-write-probe'`,
@@ -306,6 +306,7 @@ async function proveSandbox(
 				packetManifestMatched: true,
 				candidateBinaryMatched: true,
 				packetRootReadOnly: true,
+				temporaryStorageReadOnly: true,
 				declaredWritablePaths: [...writablePaths],
 				gitMetadataAbsent: true,
 			};

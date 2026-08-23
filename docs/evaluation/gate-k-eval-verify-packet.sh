@@ -82,6 +82,91 @@ writable=$(jq -r '.writablePaths[0]' "$packet/packet-manifest.json")
 marker=$(<"$packet/.nomos-candidate-commit")
 [[ $marker == "$expected_commit" ]] || fail 'candidate marker differs from expected commit'
 
+exact_packet_tree() {
+  local prefix=$1
+  local label=$2
+  shift 2
+  local actual expected
+  [[ -d $packet/$prefix && ! -L $packet/$prefix ]] || fail "$label tree is absent"
+  actual=$(find "$packet/$prefix" -type f -printf '%P\n' | sort)
+  expected=$(printf '%s\n' "$@" | sort)
+  [[ $actual == "$expected" ]] || fail "$label file allowlist mismatch"
+}
+
+while IFS= read -r relative; do
+  lower=${relative,,}
+  base=${lower##*/}
+  case "/$lower/" in
+    */.git/* | */.github/* | */docs/review/* | */reviews/*)
+      fail "packet contains excluded repository metadata or review material: $relative"
+      ;;
+  esac
+  case $base in
+    agents.md | thesis.md | cargo.toml | cargo.lock | *.rs | *.ts | *transcript* | \
+      credentials | credentials.* | auth.json | .env | .env.* | secret | secrets | \
+      secret.* | secrets.*)
+      fail "packet contains an excluded source, transcript, or credential-like file: $relative"
+      ;;
+  esac
+
+  allowed=false
+  case $relative in
+    .nomos-candidate-commit | bin/nomos | brief.txt | plan.json | prompt.txt | \
+      packet-manifest.json | reference/README.md | reference/nomos-help.txt)
+      allowed=true
+      ;;
+  esac
+  case "$shape:$relative" in
+    author:reference/KERNEL-authoring-excerpt.md | author:reference/authoring.md | \
+      author:reference/compiler.md | author:input/gaol.nomos | author:workspace/gaol.nomos)
+      allowed=true
+      ;;
+    debug:reference/compiler.md | debug:reference/runtime.md | \
+      debug:reference/explanations.md | debug:input/failing.commands | debug:input/world/* | \
+      debug:input/failing.run/* | debug:input/forensics/*)
+      allowed=true
+      ;;
+    author-checker:reference/authoring.md | author-checker:reference/compiler.md | \
+      author-checker:subject/commands.json | author-checker:subject/artifacts/*)
+      allowed=true
+      ;;
+    debug-checker:reference/compiler.md | debug-checker:reference/runtime.md | \
+      debug-checker:reference/explanations.md | debug-checker:subject/commands.json | \
+      debug-checker:subject/artifacts/* | debug-checker:input/hidden-mutation.json | \
+      debug-checker:input/debug-evidence/*)
+      allowed=true
+      ;;
+  esac
+  [[ $allowed == true ]] || fail "packet path is outside the shape allowlist: $relative"
+done <"$tmp_dir/actual-paths"
+
+case $shape in
+  debug)
+    exact_packet_tree input/world 'debug world' \
+      compiler-receipts.json diagnostics.json manifest.json navigation.json \
+      persistence.json schemas.json simulation.json world-ir.json
+    exact_packet_tree input/failing.run 'debug run artifacts' \
+      causal-receipts.json command-log.json final-state.json initial-state.json \
+      result.json state-hashes.json
+    exact_packet_tree input/forensics 'debug forensics' \
+      compile.stdout.json failure.exit.txt failure.stderr.txt failure.stdout.json \
+      north-gate-tick-1.json
+    ;;
+  debug-checker)
+    exact_packet_tree input/debug-evidence 'debug checker evidence' \
+      failing.commands \
+      failing.run/causal-receipts.json failing.run/command-log.json \
+      failing.run/final-state.json failing.run/initial-state.json \
+      failing.run/result.json failing.run/state-hashes.json \
+      forensics/compile.stdout.json forensics/failure.exit.txt \
+      forensics/failure.stderr.txt forensics/failure.stdout.json \
+      forensics/north-gate-tick-1.json \
+      world/compiler-receipts.json world/diagnostics.json world/manifest.json \
+      world/navigation.json world/persistence.json world/schemas.json \
+      world/simulation.json world/world-ir.json
+    ;;
+esac
+
 manifest_binary_sha=$(jq -r '.files[] | select(.path == "bin/nomos") | .sha256' \
   "$packet/packet-manifest.json")
 plan_binary_sha=$(jq -r '.candidate.binarySha256 // empty' "$packet/plan.json")

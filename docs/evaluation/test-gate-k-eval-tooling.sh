@@ -36,6 +36,35 @@ assert_blocked() {
   grep -F "$expected" "$tmp_dir/$name.err" >/dev/null
 }
 
+declare_packet_file() {
+  local packet=$1
+  local relative=$2
+  local path="$packet/$relative"
+  local size digest update
+  size=$(stat -c %s "$path")
+  digest=$(sha256sum "$path" | cut -d' ' -f1)
+  update=$(mktemp "$tmp_dir/manifest-update.XXXXXX")
+  jq -S -c --arg path "$relative" --argjson size "$size" --arg digest "$digest" '
+    .files += [{
+      path: $path,
+      bytes: $size,
+      mode: "644",
+      sha256: $digest,
+      schemaIdentity: null
+    }]
+    | .files |= sort_by(.path)
+    ' "$packet/packet-manifest.json" >"$update"
+  mv -- "$update" "$packet/packet-manifest.json"
+}
+
+tree_sha() {
+  local root=$1
+  find "$root" -type f -printf '%P\0' | sort -z |
+    while IFS= read -r -d '' relative; do
+      sha256sum "$root/$relative" | sed "s#  $root/#  #"
+    done | sha256sum | cut -d' ' -f1
+}
+
 "$seed_builder" "$candidate" "$commit" "$tmp_dir/debug-seed" >/dev/null
 
 build_author() {
@@ -69,6 +98,42 @@ diff -r "$tmp_dir/author-1" "$tmp_dir/author-2" >/dev/null
 diff -r "$tmp_dir/debug-1" "$tmp_dir/debug-2" >/dev/null
 "$packet_verifier" "$tmp_dir/author-1" "$commit" >/dev/null
 "$packet_verifier" "$tmp_dir/debug-1" "$commit" >/dev/null
+
+cp -R "$tmp_dir/debug-seed/forensics" "$tmp_dir/forensics-with-history"
+mkdir -m 755 "$tmp_dir/forensics-with-history/.git"
+printf '%s\n' '[core]' >"$tmp_dir/forensics-with-history/.git/config"
+assert_blocked 'excluded repository metadata' debug-history-input \
+  "$packet_builder" debug --candidate "$candidate" --commit "$commit" \
+  --brief "$rehearsals/debug-brief.txt" --prompt "$rehearsals/debug-prompt.txt" \
+  --world "$tmp_dir/debug-seed/gaol.world" \
+  --failure-input "$tmp_dir/debug-seed/failing.commands" \
+  --run-artifacts "$tmp_dir/debug-seed/failing.run" \
+  --forensics "$tmp_dir/forensics-with-history" \
+  --out "$tmp_dir/debug-history-packet"
+
+cp -R "$tmp_dir/debug-seed/forensics" "$tmp_dir/forensics-with-credentials"
+printf '%s\n' 'not-a-real-secret' >"$tmp_dir/forensics-with-credentials/credentials.txt"
+assert_blocked 'credential-like file' debug-credential-input \
+  "$packet_builder" debug --candidate "$candidate" --commit "$commit" \
+  --brief "$rehearsals/debug-brief.txt" --prompt "$rehearsals/debug-prompt.txt" \
+  --world "$tmp_dir/debug-seed/gaol.world" \
+  --failure-input "$tmp_dir/debug-seed/failing.commands" \
+  --run-artifacts "$tmp_dir/debug-seed/failing.run" \
+  --forensics "$tmp_dir/forensics-with-credentials" \
+  --out "$tmp_dir/debug-credential-packet"
+
+cp -R "$tmp_dir/debug-2" "$tmp_dir/declared-history-packet"
+mkdir -m 755 "$tmp_dir/declared-history-packet/input/forensics/.git"
+printf '%s\n' '[core]' >"$tmp_dir/declared-history-packet/input/forensics/.git/config"
+declare_packet_file "$tmp_dir/declared-history-packet" input/forensics/.git/config
+assert_blocked 'excluded repository metadata' declared-history-packet \
+  "$packet_verifier" "$tmp_dir/declared-history-packet" "$commit"
+
+cp -R "$tmp_dir/debug-2" "$tmp_dir/declared-unrelated-packet"
+printf '%s\n' 'unrelated' >"$tmp_dir/declared-unrelated-packet/unrelated.md"
+declare_packet_file "$tmp_dir/declared-unrelated-packet" unrelated.md
+assert_blocked 'outside the shape allowlist' declared-unrelated-packet \
+  "$packet_verifier" "$tmp_dir/declared-unrelated-packet" "$commit"
 
 cp -R "$tmp_dir/author-2" "$tmp_dir/tampered-packet"
 printf 'tampered\n' >>"$tmp_dir/tampered-packet/prompt.txt"
@@ -134,6 +199,10 @@ record_task author-checker "$tmp_dir/author-checker-1"
   pass fixture-adjudicator fixture-owner "$tmp_dir/author-run" >/dev/null
 jq -e '.verdict == "pass" and .formalAttempt == false and .shape == "author"' \
   "$tmp_dir/author-run/result.json" >/dev/null
+[[ -f $tmp_dir/author-run/checker/artifacts/reproduction.txt ]]
+[[ $(tree_sha "$tmp_dir/author-run/checker/artifacts") == \
+    $(jq -r '.digests.artifactsTreeSha256' \
+      "$tmp_dir/author-run/checker/task-receipt.json") ]]
 
 launch_task debug-subject "$tmp_dir/debug-1"
 record_task debug-subject "$tmp_dir/debug-1"
@@ -154,6 +223,10 @@ record_task debug-checker "$tmp_dir/debug-checker"
   pass fixture-adjudicator fixture-owner "$tmp_dir/debug-run" >/dev/null
 jq -e '.verdict == "pass" and .formalAttempt == false and .shape == "debug"' \
   "$tmp_dir/debug-run/result.json" >/dev/null
+[[ -f $tmp_dir/debug-run/checker/artifacts/reproduction.txt ]]
+[[ $(tree_sha "$tmp_dir/debug-run/checker/artifacts") == \
+    $(jq -r '.digests.artifactsTreeSha256' \
+      "$tmp_dir/debug-run/checker/task-receipt.json") ]]
 
 negative_task() {
   local mode=$1
@@ -179,6 +252,7 @@ negative_task reused-session 'task boundary record does not prove the declared p
 negative_task forbidden-tool 'task boundary record does not prove the declared packet isolation'
 negative_task outside-read-succeeded 'task boundary record does not prove the declared packet isolation'
 negative_task outside-write-succeeded 'task boundary record does not prove the declared packet isolation'
+negative_task temporary-write-succeeded 'task boundary record does not prove the declared packet isolation'
 negative_task missing-session 'expected one task session header, found 0'
 
 cp -R "$tmp_dir/author-2" "$tmp_dir/negative-leak-packet"

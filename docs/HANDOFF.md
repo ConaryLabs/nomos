@@ -118,8 +118,8 @@ never accumulates history (git has that).
   after Opus rehearsals showed they added termination and shell-parsing failure
   modes. Tokens, turns, tool calls, and exact commands remain recorded. Fresh
   sessions, no coaching, no retry after model failure, packet isolation,
-  eligibility, and rubrics remain unchanged. The final non-formal Opus author
-  subject/checker pair and debug subject/checker pair passed against exact clean
+  eligibility, and rubrics remain unchanged. A non-formal Opus author
+  subject/checker pair and debug subject/checker pair completed against exact clean
   candidate `71093eb46805c6811100e4b552595048a11b5346`; complete receipts live
   under `docs/evaluation/runs/rehearsal/2026-08-23-claude-opus-5-author/`
   and `docs/evaluation/runs/rehearsal/2026-08-23-claude-opus-5-debug/`.
@@ -127,8 +127,13 @@ never accumulates history (git has that).
   278,826/637,121 provider-reported tokens. The debug pair recorded 20/17
   assistant turns, 32/26 tool calls, and 750,160/719,023 provider-reported
   tokens. All four sessions were distinct, neither rehearsal was formal, and
-  the Gemini and DeepSeek formal attempt counts remain zero. Superseded
-  rehearsal transports are not reclassified.
+  the Gemini and DeepSeek formal attempt counts remain zero. A GPT-5.6
+  non-author audit of exact PR head `97a9c7c` then found three blocking harness
+  defects: copied input trees were insufficiently allowlisted, packet-run
+  `/tmp` remained writable, and durable finalization omitted checker
+  reproduction artifacts. The branch repairs all three and extends the
+  falsification suite; both rehearsal pairs must be rerun before issue #70 can
+  be green. No superseded rehearsal transport is reclassified.
 - **CI uses `actions/checkout@v7` (#11):** PR and post-merge verification passed
   without the Node 20 compatibility annotation.
 - **The GPT Pro architecture checkpoint is owner-disposed (#25):** review of
@@ -336,10 +341,11 @@ never accumulates history (git has that).
 
 ## What is next
 
-Finish issue #70 by running the exact-head repository proof and obtaining the
-required non-author audit of packet allowlists, isolation composition,
+Finish issue #70 by rerunning both non-formal rehearsal pairs against the
+audit-repaired harness, then rerun exact-head repository proof and obtain a
+replacement non-author audit of packet allowlists, isolation composition,
 accounting, and rehearsal evidence. Issue #69 is separately implemented and
-green in draft PR #75; issue #70 is implemented and rehearsed in draft PR #76.
+green in draft PR #75; issue #70 remains active in draft PR #76.
 No new semantic feature slice is authorized before final Gate K disposition.
 An evidence-driven defect may still be repaired through the repository's
 issue-first flow; any acceptance-contract correction still requires an

@@ -127,6 +127,11 @@ Default formal-run tools:
 - inspect structured JSON and generated artifacts;
 - use ordinary file operations such as `ls`, `cat`, and `diff`.
 
+The packet root and all sandbox paths outside the single declared task output
+subtree are read-only. In particular, packet runs expose no writable `/tmp` or
+home directory. A denied boundary probe is recorded; any successful undeclared
+read or write is a harness failure, not subject evidence.
+
 Default forbidden tools:
 
 - web search;

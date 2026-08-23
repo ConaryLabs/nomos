@@ -107,6 +107,35 @@ regular_tree() {
   [[ -z $(find "$1" -type l -print -quit) ]] || fail "tree contains a symlink: $1"
   [[ -z $(find "$1" ! -type f ! -type d -print -quit) ]] ||
     fail "tree contains a special entry: $1"
+  while IFS= read -r -d '' entry; do
+    relative=${entry#"$1"/}
+    [[ $relative =~ ^[A-Za-z0-9.][A-Za-z0-9._/-]*$ && $relative != *..* &&
+      $relative != *//* ]] || fail "tree contains an unsafe path: $relative"
+    lower=${relative,,}
+    base=${lower##*/}
+    case "/$lower/" in
+      */.git/* | */.github/* | */docs/review/* | */reviews/*)
+        fail "tree contains excluded repository metadata or review material: $relative"
+        ;;
+    esac
+    case $base in
+      agents.md | thesis.md | cargo.toml | cargo.lock | *.rs | *.ts | *transcript* | \
+        credentials | credentials.* | auth.json | .env | .env.* | secret | secrets | \
+        secret.* | secrets.*)
+        fail "tree contains an excluded source, transcript, or credential-like file: $relative"
+        ;;
+    esac
+  done < <(find "$1" -mindepth 1 -print0 | sort -z)
+}
+
+exact_tree_files() {
+  local source=$1
+  local label=$2
+  shift 2
+  local actual expected
+  actual=$(find "$source" -type f -printf '%P\n' | sort)
+  expected=$(printf '%s\n' "$@" | sort)
+  [[ $actual == "$expected" ]] || fail "$label file allowlist mismatch"
 }
 
 regular_file "$brief"
@@ -124,6 +153,15 @@ case $shape in
     regular_file "$failure_input"
     regular_tree "$run_artifacts"
     regular_tree "$forensics"
+    exact_tree_files "$world" 'debug world' \
+      compiler-receipts.json diagnostics.json manifest.json navigation.json \
+      persistence.json schemas.json simulation.json world-ir.json
+    exact_tree_files "$run_artifacts" 'debug run artifacts' \
+      causal-receipts.json command-log.json final-state.json initial-state.json \
+      result.json state-hashes.json
+    exact_tree_files "$forensics" 'debug forensics' \
+      compile.stdout.json failure.exit.txt failure.stderr.txt failure.stdout.json \
+      north-gate-tick-1.json
     writable_path=output
     ;;
   author-checker)
@@ -138,6 +176,17 @@ case $shape in
     regular_file "$commands"
     regular_tree "$debug_evidence"
     regular_file "$hidden_mutation"
+    exact_tree_files "$debug_evidence" 'debug checker evidence' \
+      failing.commands \
+      failing.run/causal-receipts.json failing.run/command-log.json \
+      failing.run/final-state.json failing.run/initial-state.json \
+      failing.run/result.json failing.run/state-hashes.json \
+      forensics/compile.stdout.json forensics/failure.exit.txt \
+      forensics/failure.stderr.txt forensics/failure.stdout.json \
+      forensics/north-gate-tick-1.json \
+      world/compiler-receipts.json world/diagnostics.json world/manifest.json \
+      world/navigation.json world/persistence.json world/schemas.json \
+      world/simulation.json world/world-ir.json
     writable_path=output
     ;;
 esac

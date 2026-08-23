@@ -183,10 +183,19 @@ for file in TASK.md task-receipt.json accounting.json boundary.json pi-qualifica
 done
 for file in TASK.md task-receipt.json plan.json packet-manifest.json prompt.txt \
   transcript.ndjson commands.json accounting.json boundary.json pi-qualification.txt \
-  launcher.txt pi-stderr.txt artifacts/checker.json; do
+  launcher.txt pi-stderr.txt; do
   install -d -m 755 "$(dirname "$stage/checker/$file")"
   install -m 644 "$checker/$file" "$stage/checker/$file"
 done
+while IFS= read -r -d '' relative; do
+  relative=${relative#./}
+  if [[ -d $checker/artifacts/$relative ]]; then
+    install -d -m 755 "$stage/checker/artifacts/$relative"
+  else
+    install -d -m 755 "$(dirname "$stage/checker/artifacts/$relative")"
+    install -m 644 "$checker/artifacts/$relative" "$stage/checker/artifacts/$relative"
+  fi
+done < <(cd "$checker/artifacts" && find . -mindepth 1 -print0 | sort -z)
 
 subject_receipt_sha=$(sha256sum "$subject/task-receipt.json" | cut -d' ' -f1)
 checker_receipt_sha=$(sha256sum "$checker/task-receipt.json" | cut -d' ' -f1)
@@ -238,6 +247,13 @@ result=$(jq -S -c -n \
   }
 ')
 printf '%s\n' "$result" >"$stage/result.json"
+
+[[ $(tree_sha "$stage/artifacts") == \
+    $(jq -r '.digests.artifactsTreeSha256' "$stage/subject/task-receipt.json") ]] ||
+  fail 'final subject artifact tree differs from its task receipt'
+[[ $(tree_sha "$stage/checker/artifacts") == \
+    $(jq -r '.digests.artifactsTreeSha256' "$stage/checker/task-receipt.json") ]] ||
+  fail 'final checker artifact tree differs from its task receipt'
 
 printf '%s\n' \
   "# Gate K $subject_shape $subject_class run" \

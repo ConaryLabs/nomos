@@ -28,6 +28,13 @@ The task mount has two layers:
 2. exactly one declared packet directory is remounted read-write:
    `workspace/` for a cold author or `output/` for a cold debugger/checker.
 
+For packet runs, the otherwise empty `/tmp` and `/home/subject` directories are
+also read-only. The boundary self-test proves writes fail at the packet root,
+`/tmp`, `/home/subject`, and the sandbox root before it proves that the one
+declared task directory accepts a write. Source-only neutral qualification keeps
+its disposable `/tmp` because Cargo needs temporary storage; that worktree is a
+separate preflight boundary and is never the callable task packet.
+
 The extension verifies the candidate binding, packet-manifest digest, binary,
 read-only packet root, declared writable path, absent credentials, absent
 outside-host paths, and unshared network before the first provider request.
@@ -59,7 +66,10 @@ identity recorded by the launcher.
 The manifest deliberately cannot hash itself. It declares that exclusion, and
 the launcher rejects any path not enumerated by the manifest plus the manifest
 itself. A rebuild comparison is over the complete directory, including the
-manifest.
+manifest. Debug worlds, run bundles, forensics, and checker debug evidence use
+exact relative-file allowlists. All copied trees reject nested Git metadata,
+repository source, prior transcripts, reviews, and credential-like files; the
+verifier independently repeats the shape allowlist after construction.
 
 ## Constraints, accounting, and records
 
@@ -83,7 +93,9 @@ independent checker and owner.
 
 A completed record contains `RUN.md`, `plan.json`, `packet-manifest.json`,
 `prompt.txt`, the complete sanitized NDJSON event stream, `commands.json`,
-subject artifacts, and `checker.json` after independent checking. Missing
+the complete subject and checker artifact trees, and `checker.json` after
+independent checking. Finalization recomputes both artifact-tree digests after
+copying them into the durable run. Missing
 identity, transcript, command, artifact, or result fields fail closed. Operator
 intervention is always present, including the literal disposition `none`.
 Checker prompts declare the finalizer-owned `nomos.gate_k.checker_result@1`
@@ -108,14 +120,19 @@ The debug mutation record is supplied only to its checker packet. It is not the
 formal DeepSeek mutation. Rehearsal records live under
 `docs/evaluation/runs/rehearsal/` and state `formalAttempt: false`.
 
-The final issue #70 rehearsals target exact clean candidate
+The first completed issue #70 rehearsal set targeted exact clean candidate
 `71093eb46805c6811100e4b552595048a11b5346`. Both the author subject/checker
-pair and debug subject/checker pair passed without operator intervention or
+pair and debug subject/checker pair completed without operator intervention or
 retry. Their complete records are stored at
 `docs/evaluation/runs/rehearsal/2026-08-23-claude-opus-5-author/` and
 `docs/evaluation/runs/rehearsal/2026-08-23-claude-opus-5-debug/`. Every task
 receipt states `formalAttempt: false`; these records spend no Gemini or
-DeepSeek formal attempt and cannot satisfy acceptance 17 or 18.
+DeepSeek formal attempt and cannot satisfy acceptance 17 or 18. The non-author
+audit of `97a9c7c` invalidated their pass disposition: it found fail-open copied
+tree allowlists, a writable packet-run `/tmp`, and omitted checker reproduction
+artifacts in the durable final record. They remain immutable rehearsal findings,
+not passing issue #70 evidence. The repaired harness requires fresh author and
+debug rehearsal pairs.
 
 ## Invalidation
 
