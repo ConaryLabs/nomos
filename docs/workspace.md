@@ -51,11 +51,20 @@ cargo fmt --all -- --check
 cargo clippy --workspace --all-targets --locked -- -D warnings
 cargo test --workspace --locked
 cargo xtask boundary
+docs/evaluation/test-agy-print-preflight.sh
+docs/evaluation/test-agy-formal-boundary-preflight.sh
+docs/evaluation/test-pi-cold-agent-preflight.sh
+docs/evaluation/test-gate-k-eval-tooling.sh
 ```
 
 `.github/workflows/verify.yml` runs exactly these, plus the frozen canonical
-hash-domain regression and coarse disk diagnostics. Those checks are not the
-complete section 7 matrix or acceptance-16 receipt. The dedicated
+hash-domain regression and coarse disk diagnostics. The evaluation harness test
+is entirely offline: it builds all four packet shapes twice, proves byte
+identity and allowlist enforcement, exercises the task boundary through the
+fake Pi/Bubblewrap fixtures, and rejects identity, transcript, command,
+credential, packet, empty-directory, budget, and harness failures. It spends no
+provider attempt. These checks are not the complete section 7 matrix or
+acceptance-16 receipt. The dedicated
 `.github/workflows/gate-k-evidence.yml` workflow and
 [`GATE_K_EVIDENCE_PLAN.md`](evaluation/GATE_K_EVIDENCE_PLAN.md) own that
 evidence. To run the canonicalization regression locally:

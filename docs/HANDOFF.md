@@ -1,8 +1,10 @@
 # Handoff — state of the repository
 
-Updated 2026-08-23 for issue #69. Semantic implementation is complete through
-SW-N and frozen on `main`; mechanical Gate K evidence closure is active on
-branch `gate-k-evidence-69`. Gate K remains explicitly unaccepted.
+Updated 2026-08-23 for the combined issue #69/#70 evidence closure. Semantic
+implementation is complete through SW-N and frozen on `main`; issue #68 merged
+as PR #74, issue #69 merged as PR #75, and issue #70 is owner-approved in PR
+#76. Gate K remains explicitly unaccepted pending combined-head proof and the
+formal gates.
 This file orients a fresh session; it is rewritten at each slice boundary and
 never accumulates history (git has that).
 
@@ -111,6 +113,75 @@ never accumulates history (git has that).
   receipts do not change. PR #51 merged as `795791e`, issue #47 closed, its
   exact-head Luna rerun and CI passed, and no formal cold-agent attempt was
   launched by it.
+- **Cold-agent protocol revision 3 is owner-authorized (#70):** decision 0010
+  removes token, turn, validation/compile-cycle, and diagnostic-cycle ceilings
+  after Opus rehearsals showed they added termination and shell-parsing failure
+  modes. Tokens, turns, tool calls, and exact commands remain recorded. Fresh
+  sessions, no coaching, no retry after model failure, packet isolation,
+  eligibility, and rubrics remain unchanged. A non-formal Opus author
+  subject/checker pair and debug subject/checker pair completed against exact clean
+  candidate `71093eb46805c6811100e4b552595048a11b5346`; complete receipts live
+  under `docs/evaluation/runs/rehearsal/2026-08-23-claude-opus-5-author/`
+  and `docs/evaluation/runs/rehearsal/2026-08-23-claude-opus-5-debug/`.
+  The author pair recorded 17/15 assistant turns, 25/23 tool calls, and
+  278,826/637,121 provider-reported tokens. The debug pair recorded 20/17
+  assistant turns, 32/26 tool calls, and 750,160/719,023 provider-reported
+  tokens. All four sessions were distinct, neither rehearsal was formal, and
+  the Gemini and DeepSeek formal attempt counts remain zero. A GPT-5.6
+  non-author audit of exact PR head `97a9c7c` then found three blocking harness
+  defects: copied input trees were insufficiently allowlisted, packet-run
+  `/tmp` remained writable, and durable finalization omitted checker
+  reproduction artifacts. The branch repairs all three and extends the
+  falsification suite. The first repaired-boundary author rerun then attempted
+  two forbidden `/tmp` paths; Bubblewrap denied them, but its checker wrongly
+  treated the attempts as minor and passed. The prompts and rubric now state
+  explicitly that a denied model-requested outside access is still a rejection.
+  Replacement r3 author and debug pairs passed against exact clean candidate
+  `0072f9970cbc88c8936f3741b8cf9f48495a8c13`. The author pair recorded 15/17
+  turns, 21/25 tool calls, and 241,568/519,793 provider-reported tokens; the
+  debug pair recorded 23/19 turns, 37/25 tool calls, and 675,963/651,191
+  provider-reported tokens. All four task sessions are distinct, record no
+  intervention or retry, state `formalAttempt: false`, and have recomputable
+  complete subject/checker artifact trees. The durable r3 receipts are under
+  `docs/evaluation/runs/rehearsal/2026-08-23-claude-opus-5-author-r3/` and
+  `docs/evaluation/runs/rehearsal/2026-08-23-claude-opus-5-debug-r3/`. No
+  superseded rehearsal transport is reclassified.
+  A replacement non-author audit at evidence commit `18525aa` then found that
+  packet-run `--dev /dev` exposed writable `/dev/null` and `/dev/shm`, the r3
+  author/checker used `/dev/null` contrary to the exact rubric, and checker
+  packet inputs were not bound to the subject receipt. The repair removes the
+  packet-run device mount, remounts `/proc` read-only, proves both properties,
+  and changes checker construction to accept and verify one complete subject
+  record. R3 remains preserved but invalidated; both pairs require r4 reruns.
+  The first repaired author pair at `0b807bf` proved the new boundary and
+  receipt binding, but the subject still typed one reflexive `2>/dev/null`.
+  The sandbox denied it, the subject disclosed it, and the checker correctly
+  returned `reject`. That r4 failure is preserved under
+  `docs/evaluation/runs/rehearsal/2026-08-23-claude-opus-5-author-r4-rejected/`.
+  Prompts now name the legal workspace-local output sink explicitly. Clean r5
+  author and debug pairs passed against exact candidate `c1b9f35`. The author
+  pair recorded 16/19 turns, 23/28 tool calls, and 265,474/564,830
+  provider-reported tokens; the debug pair recorded 16/18 turns, 26/23 tool
+  calls, and 529,484/523,550 tokens. All four sessions are distinct, record no
+  intervention or retry, and state `formalAttempt: false`. Their durable
+  records are under
+  `docs/evaluation/runs/rehearsal/2026-08-23-claude-opus-5-author-r5/` and
+  `docs/evaluation/runs/rehearsal/2026-08-23-claude-opus-5-debug-r5/`.
+  A non-author audit of evidence head `d317122` found the r5 sessions and
+  receipt chains internally clean but invalidated the harness: copied trees,
+  packet manifests, artifact digests, and finalization bound only regular files
+  while preserving empty directories. A directory name could therefore carry
+  an expected answer without changing a digest. Construction, verification,
+  recording, and finalization now reject empty descendant directories, with
+  adversarial coverage at every boundary. Clean r6 author and debug pairs then
+  passed against exact repaired candidate `c800c98`. The author pair recorded
+  14/20 turns, 21/32 tool calls, and 208,252/770,315 provider-reported tokens;
+  the debug pair recorded 19/15 turns, 30/19 tool calls, and
+  611,607/393,092 tokens. All four sessions are distinct, record no
+  intervention or retry, state `formalAttempt: false`, and contain no empty
+  artifact directory. Their durable records are under
+  `docs/evaluation/runs/rehearsal/2026-08-23-claude-opus-5-author-r6/` and
+  `docs/evaluation/runs/rehearsal/2026-08-23-claude-opus-5-debug-r6/`.
 - **CI uses `actions/checkout@v7` (#11):** PR and post-merge verification passed
   without the Node 20 compatibility annotation.
 - **The GPT Pro architecture checkpoint is owner-disposed (#25):** review of
@@ -322,7 +393,7 @@ never accumulates history (git has that).
   closure order are explicit. PR #74 and post-merge CI run `32602527283`
   passed, issue #68 closed, and its feature branch was removed. This is an
   implementation-complete boundary, not an RC tag or Gate K pass.
-- **Mechanical evidence closure is active (#69/#75):** the predeclared method
+- **Mechanical evidence closure is merged (#69/#75):** the predeclared method
   lives in `docs/evaluation/GATE_K_EVIDENCE_PLAN.md`; the dedicated workflow
   runs ten public compile/run/replay processes on native Linux x86_64 debug,
   x86_64 release, and aarch64 release lanes, then fails on any within-lane or
@@ -332,32 +403,28 @@ never accumulates history (git has that).
   summaries. `docs/evaluation/SCHEMA_OWNERSHIP.md` records the finding-free
   source review of the exact twenty canonical identities and explicitly
   dispositions the shared compiler receipt profiles. The final exact-head
-  workflow and non-author disposition are recorded externally on draft PR #75
-  because committing their receipt would create a different head. No formal
-  cold-agent attempt is part of this slice.
+  workflow and non-author disposition are recorded externally on PR #75
+  because committing their receipt would create a different head. PR #75
+  merged as `8c32286dc779b76ce8e30f3b1b7817a551f41ba9`; no formal cold-agent
+  attempt is part of this slice.
 
 ## What is next
 
-Review and merge issue #69 / draft PR #75. Its final exact-head dedicated
-workflow, ordered author proof, and independent non-author audit are recorded
-externally on that PR. No new semantic feature slice is authorized before final
-Gate K disposition. An evidence-driven defect may still be repaired through
-the repository's issue-first flow; any acceptance-contract correction still
-requires an owner-authorized decision record.
+Complete PR #76 integration, then rerun the issue #69 mechanical matrix and the
+issue #70 evaluation-tooling proof on the same clean combined head. Only after
+those candidate-bound proofs pass may the owner tag `gate-k-rc1`. No new
+semantic feature slice is authorized before final Gate K disposition. An
+evidence-driven defect may still be repaired through the issue-first flow; any
+acceptance-contract correction still requires an owner-authorized decision
+record.
 
-The planned work after #69 is:
+The remaining formal order is:
 
-1. #70 — formal packet/checker tooling and non-formal Opus rehearsals;
-2. #71 — the formal Gemini cold-author subject and later DeepSeek checker;
-3. #72 — the formal DeepSeek cold-debug subject and later Gemini checker;
-4. #73 — the complete nineteen-criterion owner disposition.
-
-Issue #70 is independent of #69 and may proceed in parallel. After both are
-merged, their candidate-bound proofs must be rerun on the same clean combined
-head.
-Only then may the owner tag `gate-k-rc1`. The formal order is Gemini author
-subject, DeepSeek debugger subject, DeepSeek author checker, Gemini debugger
-checker, then final disposition.
+1. #71 — Gemini formal cold-author subject;
+2. #72 — DeepSeek formal cold-debug subject;
+3. #71 — DeepSeek independent author checker;
+4. #72 — Gemini independent debugger checker;
+5. #73 — complete nineteen-criterion owner disposition.
 
 After a `gate-k-rcN` candidate is frozen, any later code, schema, CLI, public
 packet documentation, or evaluation-harness change requires a new candidate
@@ -394,6 +461,7 @@ cargo run --locked --bin nomos -- replay target/tmp/gate-k-proof/gaol.world --lo
 docs/evaluation/test-agy-print-preflight.sh
 docs/evaluation/test-agy-formal-boundary-preflight.sh
 docs/evaluation/test-pi-cold-agent-preflight.sh
+docs/evaluation/test-gate-k-eval-tooling.sh
 ```
 
 The authenticated formal-boundary command is an expected negative proof on
@@ -416,7 +484,8 @@ of #69's result.
 
 ## Remaining evidence points
 
-Issue #69's dedicated workflow supplies the mechanical evidence artifacts; the
-exact-head non-author disposition lives externally on PR #75 and must pass
-before the slice is called green. The whole-kernel roster and invalidation
-rules are resolved; the formal runs remain unperformed.
+Issue #69's dedicated workflow supplies the merged mechanical evidence
+artifacts, and issue #70 supplies the evaluation harness and non-formal
+rehearsals. Their proofs must still pass together on the combined clean head
+before `gate-k-rc1` is tagged. The whole-kernel roster and invalidation rules
+are resolved; the formal runs remain unperformed.

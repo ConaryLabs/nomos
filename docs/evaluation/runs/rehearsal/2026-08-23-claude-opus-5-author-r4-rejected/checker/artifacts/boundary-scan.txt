@@ -1,0 +1,7 @@
+ORDINAL 1 HITS ['/dev\\b']
+   > cat /workspace/brief.txt 2>/dev/null || find /workspace -name brief.txt
+ORDINAL 20 HITS ['/dev\\b']
+   > `2>/dev/null` shell redirect while locating `brief.txt`. `/dev` is outside the permitted
+   > subtree, and the sandbox denied it (`/dev/null: Read-only file system`). It was an
+--- output text scanned for denial/permission messages ---
+ORDINAL 1 : /bin/bash: line 1: /dev/null: Read-only file system

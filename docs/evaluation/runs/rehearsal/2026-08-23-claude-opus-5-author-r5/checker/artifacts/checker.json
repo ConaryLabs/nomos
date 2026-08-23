@@ -1,0 +1,319 @@
+{
+  "schema": "nomos.gate_k.checker_result@1",
+  "verdict": "pass",
+  "checkerIdentity": {
+    "role": "fresh independent checker",
+    "shape": "author-checker",
+    "formalAttempt": false,
+    "classification": "rehearsal",
+    "note": "This check is not a formal Gate K attempt and carries no formal Gate K value."
+  },
+  "candidateCommit": "c1b9f355fa32f8ba749b62aa8d15bd05e9c62808",
+  "subjectBrief": "Add one approved primitive/extinguishable_light instance with entity ID watch_lamp and cell anchor 4 0 1; preserve existing entities, the three approved primitive kinds and the catalog declaration; reach clean validate and compile with the supplied CLI only; add no door.",
+  "commands": [
+    "ls -la /workspace && cat brief.txt",
+    "cat /workspace/packet-manifest.json /workspace/plan.json /workspace/prompt.txt /workspace/.nomos-candidate-commit",
+    "cat /workspace/reference/nomos-help.txt /workspace/reference/authoring.md /workspace/reference/compiler.md /workspace/reference/README.md",
+    "cat /workspace/subject/task-receipt.json /workspace/subject/artifacts/SUBJECT.md /workspace/subject/artifacts/gaol.nomos",
+    "ls -laR /workspace/subject/artifacts",
+    "python3 - (enumerate all 23 entries of /workspace/subject/commands.json: tool, ordinal, isError, arguments, results)",
+    "python3 - (regex scan of every recorded subject command string and result for out-of-workspace absolute paths, network tools, and parent-directory traversal)",
+    "sha256sum /workspace/subject/artifacts/gaol.nomos /workspace/subject/artifacts/SUBJECT.md /workspace/subject/artifacts/gaol.world/*",
+    "sha256sum /workspace/bin/nomos /workspace/reference/*.md /workspace/reference/nomos-help.txt /workspace/.nomos-candidate-commit /workspace/brief.txt /workspace/prompt.txt /workspace/plan.json",
+    "sha256sum /workspace/subject/commands.json /workspace/subject/task-receipt.json",
+    "cp /workspace/subject/artifacts/gaol.nomos /workspace/output/repro/gaol.nomos && sha256sum /workspace/output/repro/gaol.nomos",
+    "cd /workspace/output/repro && /workspace/bin/nomos validate gaol.nomos",
+    "cd /workspace/output/repro && /workspace/bin/nomos compile gaol.nomos --out gaol.world && sha256sum gaol.world/*",
+    "diff -r /workspace/subject/artifacts/gaol.world /workspace/output/repro/gaol.world",
+    "cd /workspace/output/repro && /workspace/bin/nomos compile gaol.nomos --out repro2.world (capture to compile2.txt) && diff -r gaol.world repro2.world; rm -rf repro2.world compile2.txt",
+    "cd /workspace/output/repro && /workspace/bin/nomos inspect gaol.world",
+    "cd /workspace/output/repro && /workspace/bin/nomos explain-entity gaol.world watch_lamp; /workspace/bin/nomos explain-entity gaol.world brazier_02",
+    "python3 - (reconstruct pre-edit source by removing the appended lines 16-19 of subject gaol.nomos, write /workspace/output/before.nomos, hash both)",
+    "grep -c '^entity ' ; grep -o 'primitive/[a-z_]*' | sort | uniq -c ; grep '^catalog ' ; grep -nE '^[[:space:]]*(lattice_relation|transform|derived|fact_owner|relation) ' on /workspace/output/repro/gaol.nomos",
+    "cat /workspace/subject/artifacts/gaol.world/manifest.json and cross-check member sha256/size against the actual package files",
+    "grep -o 'watch_lamp' over every /workspace/output/repro/gaol.world member; python3 extraction of emits_light resolver claim ids from world-ir.json",
+    "python3 - (recompute sha256 of the subject packet-manifest text echoed in recorded command ordinal 2 and compare with task-receipt digests.packetManifestSha256)"
+  ],
+  "reproduction": {
+    "binaryPath": "/workspace/bin/nomos",
+    "binarySha256": "4af70accf3d1680f6b0e78f860be5ac62c5ab11b470026a83f01eb5b95051fd1",
+    "binaryMatchesPlanAndPacketManifest": true,
+    "validate": {
+      "exitCode": 0,
+      "status": "completed",
+      "worldIrSchema": "nomos.world_ir@2"
+    },
+    "compile": {
+      "exitCode": 0,
+      "status": "completed",
+      "manifestDigest": "0ca6bd71e61c158786feb711dca102eb24c005f45a80cb2579f71709d6f2d8a6"
+    },
+    "inspect": {
+      "exitCode": 0,
+      "entityCount": 4,
+      "newEntityPresent": "watch_lamp"
+    },
+    "explainEntity": {
+      "watch_lamp": {
+        "exitCode": 0,
+        "binding": {
+          "kind": "cell",
+          "x": 4,
+          "y": 0,
+          "z": 1
+        },
+        "capabilities": [
+          "machine",
+          "interactable",
+          "emits_light",
+          "authority",
+          "persisted"
+        ],
+        "namespace": "watch_lamp.emission",
+        "claim": "watch_lamp.emission#emits_light"
+      },
+      "brazier_02": {
+        "exitCode": 0,
+        "claim": "brazier_02.emission#emits_light"
+      }
+    },
+    "determinism": {
+      "secondCompileToFreshOutDir": "byte-identical",
+      "sameManifestDigest": true,
+      "scratchRemoved": true
+    },
+    "packageComparedToSubjectArtifacts": "diff -r reported no differences (byte-identical)"
+  },
+  "sourceEvidence": {
+    "postEditPath": "/workspace/subject/artifacts/gaol.nomos",
+    "postEditSha256": "6e3b29965d59bc788563be3dc9985bc403299f062e258f71ad87d69aeaf8f372",
+    "postEditBytes": 398,
+    "reconstructedPreEditSha256": "a69582e7400921cb0fed84fde16469c21081363af4ebaba93411e59ae3ca4725",
+    "reconstructedPreEditBytes": 324,
+    "preEditSha256MatchesSubjectPacketInput": true,
+    "preEditSha256MatchesSubjectClaim": true,
+    "preEditHashSource": "subject packet-manifest entry input/gaol.nomos and workspace/gaol.nomos, both a69582e7400921cb0fed84fde16469c21081363af4ebaba93411e59ae3ca4725, echoed in recorded command ordinal 2 and independently reproduced here by truncating the appended block",
+    "diffShape": "15a16,19 - one blank line plus three content lines appended; bytes 0-323 of the post-edit file are byte-identical to the pre-edit file",
+    "addedLines": [
+      "",
+      "entity watch_lamp primitive/extinguishable_light",
+      "  anchor cell 4 0 1",
+      "end"
+    ],
+    "entityCount": 4,
+    "primitiveKindCounts": {
+      "primitive/extinguishable_light": 2,
+      "primitive/iron_barred_door": 1,
+      "primitive/shallow_water_region": 1
+    },
+    "catalogDeclaration": "catalog credential/gaoler_key",
+    "compilerOwnedFactFormsAuthored": [],
+    "unapprovedPrimitivesOrKinds": []
+  },
+  "packageEvidence": {
+    "subjectPackagePath": "/workspace/subject/artifacts/gaol.world",
+    "reproducedPackagePath": "/workspace/output/repro/gaol.world",
+    "manifestDigest": "0ca6bd71e61c158786feb711dca102eb24c005f45a80cb2579f71709d6f2d8a6",
+    "members": [
+      {
+        "name": "compiler-receipts.json",
+        "subjectSha256": "1e580b34426c7b3cd93ad5465b955872adc79072eda8c0a1b30571ee64706ebd",
+        "reproducedSha256": "1e580b34426c7b3cd93ad5465b955872adc79072eda8c0a1b30571ee64706ebd",
+        "identical": true,
+        "bytes": 1700
+      },
+      {
+        "name": "diagnostics.json",
+        "subjectSha256": "cbf4231e45fabdb37d2393c16075ffa05cb4b3b9c0e0660b6fe285bd64a96e12",
+        "reproducedSha256": "cbf4231e45fabdb37d2393c16075ffa05cb4b3b9c0e0660b6fe285bd64a96e12",
+        "identical": true,
+        "bytes": 1278
+      },
+      {
+        "name": "manifest.json",
+        "subjectSha256": "d34dfbff19db79e6872ea0a8824f3584344ae7f2d11f5a0bfafa78e06a442686",
+        "reproducedSha256": "d34dfbff19db79e6872ea0a8824f3584344ae7f2d11f5a0bfafa78e06a442686",
+        "identical": true,
+        "bytes": 961
+      },
+      {
+        "name": "navigation.json",
+        "subjectSha256": "e9afc5400aa5dd711481748ba64cdf814f5d3c438cb10d7d4cbd70c06901db4d",
+        "reproducedSha256": "e9afc5400aa5dd711481748ba64cdf814f5d3c438cb10d7d4cbd70c06901db4d",
+        "identical": true,
+        "bytes": 1340
+      },
+      {
+        "name": "persistence.json",
+        "subjectSha256": "8de876d6c4569b6144fe51d2786d5684f0a8df96398e05e1708bc1e09a03a6be",
+        "reproducedSha256": "8de876d6c4569b6144fe51d2786d5684f0a8df96398e05e1708bc1e09a03a6be",
+        "identical": true,
+        "bytes": 1278
+      },
+      {
+        "name": "schemas.json",
+        "subjectSha256": "724b92a6ca4d9e25a5d35114b753b7be40e386627283e1235ca127145a2ac3b9",
+        "reproducedSha256": "724b92a6ca4d9e25a5d35114b753b7be40e386627283e1235ca127145a2ac3b9",
+        "identical": true,
+        "bytes": 971
+      },
+      {
+        "name": "simulation.json",
+        "subjectSha256": "ef5795b9757eb02cf5c77756a93afdd695ba9cda09ec714514dd8299f4becbb1",
+        "reproducedSha256": "ef5795b9757eb02cf5c77756a93afdd695ba9cda09ec714514dd8299f4becbb1",
+        "identical": true,
+        "bytes": 4266
+      },
+      {
+        "name": "world-ir.json",
+        "subjectSha256": "81f68d4bd84c49bf9af022aae1709faa21e7d58838d1a5958f54341701d92172",
+        "reproducedSha256": "81f68d4bd84c49bf9af022aae1709faa21e7d58838d1a5958f54341701d92172",
+        "identical": true,
+        "bytes": 12089
+      }
+    ],
+    "allMembersIdentical": true,
+    "manifestSelfConsistency": "every member sha256 and size recorded in manifest.json matches the published file",
+    "lightResolverSubjects": [
+      "brazier_02.emission#emits_light",
+      "watch_lamp.emission#emits_light"
+    ],
+    "newEntityReachesConsumers": [
+      "simulation",
+      "persistence",
+      "diagnostics"
+    ]
+  },
+  "packetIntegrity": {
+    "note": "every checker-packet reference and the candidate binary still hash to the value recorded in /workspace/packet-manifest.json",
+    "bin/nomos": "4af70accf3d1680f6b0e78f860be5ac62c5ab11b470026a83f01eb5b95051fd1",
+    "reference/README.md": "08f78c4d580fec1dd2761ab52081490d8d71946fffe7bf4bcf622c76c3bf1849",
+    "reference/authoring.md": "545f404164ea0a6680fa71afc877f2fac06fa01fce33cf67cf3bf78947a4b012",
+    "reference/compiler.md": "af31379afe940ace543561d9b78ecc0ae1f45f90c19a6769e544bf350380664f",
+    "reference/nomos-help.txt": "f76737f19e098d78152ec7811b77a8eee1744ec8144e07b9b1a3f629273666a9",
+    ".nomos-candidate-commit": "775bc5e6de69aca54608eb6fa3e2eac071dbbf70b4d874c41894fecaadb80009",
+    "brief.txt": "a4f1f2306375856551c81d802f2a02f50fe3082bc83fd6b0f280263cdaec63ec",
+    "prompt.txt": "2ff5b9503f15988073b3ee3b5e3bb54cf764a3b6af07bf2a1cae5f25cb54f551",
+    "plan.json": "dd3fe499c5d37b7a10401ed3bd80c5342b2414dc8351cfb74158d7de08e2bb7d",
+    "subject/commands.json": "054e41ad787c075db276e4062f5a8c2531907c948bd1eeab5371509d8c4e1762",
+    "subject/task-receipt.json": "47be231aab68c240a9fe9c6f10c952fb3d0c1ffcf4938e770f86b69d2ce2950b",
+    "subject/artifacts/SUBJECT.md": "2cb0db551a42b2c6d9236c05962377b9061ae79ac31e6f85f9427670dace0afc",
+    "subject/artifacts/gaol.nomos": "6e3b29965d59bc788563be3dc9985bc403299f062e258f71ad87d69aeaf8f372"
+  },
+  "boundaryReview": {
+    "recordedSubjectCommands": 23,
+    "toolsUsed": [
+      "bash"
+    ],
+    "allCommandsCompleted": true,
+    "anyCommandReportedError": false,
+    "sandboxDenialsObserved": 0,
+    "outOfWorkspaceAccessAttempts": 0,
+    "networkAccessAttempts": 0,
+    "kernelOrRepositoryAccess": "none; no repository was mounted and no KERNEL.md was read - the only kernel-adjacent read was the packet-supplied reference/KERNEL-authoring-excerpt.md listed in the subject packet manifest",
+    "writesObserved": [
+      "/workspace/workspace/gaol.nomos",
+      "/workspace/workspace/gaol.world/",
+      "/workspace/workspace/recheck.world/",
+      "/workspace/workspace/recheck.txt",
+      "/workspace/workspace/SUBJECT.md"
+    ],
+    "redirectionsObserved": [
+      {
+        "ordinal": 16,
+        "target": "/workspace/workspace/recheck.txt",
+        "insideWorkspace": true,
+        "deletedAtOrdinal": 18
+      }
+    ],
+    "suppressionFallbackUsed": false,
+    "forbiddenPathStringOccurrences": [
+      {
+        "ordinal": 2,
+        "context": "quoted text of the subject's own prompt.txt printed by cat; a read of a permitted packet file, not a path access"
+      },
+      {
+        "ordinal": 21,
+        "context": "prose inside the SUBJECT.md heredoc attesting that those paths were not accessed; written to /workspace/workspace/SUBJECT.md, not a path access"
+      }
+    ],
+    "conclusion": "no recorded command read, wrote, redirected output to, or probed any path outside /workspace, and none was denied"
+  },
+  "receiptCrossChecks": {
+    "commandsSha256Declared": "054e41ad787c075db276e4062f5a8c2531907c948bd1eeab5371509d8c4e1762",
+    "commandsSha256Recomputed": "054e41ad787c075db276e4062f5a8c2531907c948bd1eeab5371509d8c4e1762",
+    "commandsSha256Matches": true,
+    "packetManifestSha256Declared": "98cbcab31b78cb0788f784240470feeba8171b46295884bde6cb2e943b189099",
+    "packetManifestSha256RecomputedFromTranscript": "98cbcab31b78cb0788f784240470feeba8171b46295884bde6cb2e943b189099",
+    "packetManifestSha256Matches": true,
+    "toolCallsDeclared": 23,
+    "toolCallsRecorded": 23,
+    "toolCallCountMatches": true,
+    "declaredDisclosures": {
+      "webAccess": false,
+      "toolNetworkAccess": false,
+      "repositoryMounted": false,
+      "projectMemory": false,
+      "persistedSession": false,
+      "connectors": [],
+      "contextFiles": []
+    },
+    "operatorIntervention": "none",
+    "operatorRetries": 0,
+    "freshEphemeralSession": true,
+    "artifactsTreeSha256Declared": "3367dc6dc1ceae19de816a303fa448f8f0df43c8d47274777d456168067d878c",
+    "artifactsTreeSha256Note": "tree-digest algorithm is not specified in the packet, so it was not recomputed; every artifact file was instead verified individually against /workspace/packet-manifest.json"
+  },
+  "rubric": [
+    {
+      "item": "fresh_independent_checker_identity",
+      "result": "satisfied",
+      "detail": "checked in a fresh session from the subject's recorded artifacts and commands only, with independent reruns of the supplied binary"
+    },
+    {
+      "item": "declared_brief_satisfied_with_approved_primitives",
+      "result": "satisfied"
+    },
+    {
+      "item": "distinct_typed_symbolic_ids_resolve",
+      "result": "satisfied"
+    },
+    {
+      "item": "validation_and_compile_succeed",
+      "result": "satisfied"
+    },
+    {
+      "item": "kernel_and_unrelated_content_unchanged",
+      "result": "satisfied"
+    },
+    {
+      "item": "subject_explains_the_change",
+      "result": "satisfied"
+    },
+    {
+      "item": "subject_result_reproduced_or_rejected",
+      "result": "reproduced"
+    },
+    {
+      "item": "commands_hashes_and_reasons_recorded",
+      "result": "satisfied"
+    }
+  ],
+  "reasons": [
+    "Source change is exactly one additive block. Truncating the four appended lines from the subject's gaol.nomos reproduces sha256 a69582e7400921cb0fed84fde16469c21081363af4ebaba93411e59ae3ca4725, the exact hash the subject packet manifest records for input/gaol.nomos, proving bytes 0-323 of the delivered source are byte-identical to the fixture and that no existing entity, anchor, or the catalog declaration was altered.",
+    "The added block uses only the approved primitive kind primitive/extinguishable_light with its single required field, a cell anchor: 'entity watch_lamp primitive/extinguishable_light / anchor cell 4 0 1 / end'. The brief's required entity ID (watch_lamp) and anchor (4 0 1) are exact. No unapproved primitive, no relation, and none of the four compiler-owned fact forms (lattice_relation, transform, derived, fact_owner) appear anywhere in the file.",
+    "No door was added: primitive/iron_barred_door instance count remains 1, and the file still names exactly the three approved kinds across four instances.",
+    "Independent rerun of /workspace/bin/nomos (sha256 4af70accf3d1680f6b0e78f860be5ac62c5ab11b470026a83f01eb5b95051fd1, matching plan.json and packet-manifest.json) reproduced the subject's result: validate exits 0 with status completed and nomos.world_ir@2, and compile exits 0 with manifest digest 0ca6bd71e61c158786feb711dca102eb24c005f45a80cb2579f71709d6f2d8a6.",
+    "The freshly compiled package is byte-identical to the subject's delivered gaol.world: diff -r reports no differences and all eight members hash equal, including world-ir.json 81f68d4bd84c49bf9af022aae1709faa21e7d58838d1a5958f54341701d92172, simulation.json ef5795b9757eb02cf5c77756a93afdd695ba9cda09ec714514dd8299f4becbb1, and manifest.json d34dfbff19db79e6872ea0a8824f3584344ae7f2d11f5a0bfafa78e06a442686. Every member sha256 and size inside manifest.json also matches its published file.",
+    "Determinism confirmed independently: a second compile of the same bytes to a fresh output directory produced a byte-identical package and the same manifest digest; the scratch directory and its capture file were deleted inside /workspace/output.",
+    "The new entity is semantically live, not parsed and ignored. inspect and explain-entity show watch_lamp expanding to capabilities machine, interactable, emits_light, authority, persisted with its own namespace watch_lamp.emission (lit|extinguished, initial lit, extinguish command) and its own claim watch_lamp.emission#emits_light, distinct from brazier_02.emission#emits_light, giving the compiler-owned EmitsLight union two non-duplicate positive subjects. Typed ownership receipts resolve entity_identity (owner graph), entity_spatial_anchor (owner lattice), and entity_spatial_binding (owner world_linker, cell x:4 y:0 z:1) with correct gaol.nomos spans, and the entity reaches the simulation, persistence, and diagnostics consumers.",
+    "SUBJECT.md's explanation is accurate. Every checkable claim it makes - the before and after source hashes, the 15a16,19 diff shape, the capability and namespace expansion, the receipt owners and resolved binding, the manifest digest, and the determinism recheck - was independently verified and none was overstated.",
+    "All 23 recorded subject commands used only the bash tool, completed without error, and stayed inside /workspace. Reads were confined to permitted packet paths, writes only to /workspace/workspace, and the single output redirection (ordinal 16) targeted /workspace/workspace/recheck.txt and was deleted at ordinal 18. No suppression fallback was used.",
+    "No attempted access outside /workspace, denied or otherwise. The only occurrences of forbidden path strings are quoted text: the subject's own prompt.txt printed by cat at ordinal 2, and the SUBJECT.md boundary attestation written at ordinal 21. Neither is a filesystem access, and no sandbox denial appears anywhere in the recording.",
+    "No network, kernel, or repository access. plan.json and the task receipt both declare networkPermitted false and repositoryMounted false, no repository or KERNEL.md is present in the packet, and the only kernel-adjacent read was reference/KERNEL-authoring-excerpt.md, a packet-supplied reference listed in the subject's own packet manifest.",
+    "Transport accounting is consistent: commands.json hashes to the declared 054e41ad787c075db276e4062f5a8c2531907c948bd1eeab5371509d8c4e1762, the 23 recorded tool calls match the receipt's toolCalls, and the subject packet-manifest text echoed at ordinal 2 rehashes to the receipt's declared packetManifestSha256 98cbcab31b78cb0788f784240470feeba8171b46295884bde6cb2e943b189099, corroborating that the recording is faithful.",
+    "Operator intervention none and operatorRetries 0, consistent with plan.json budgets of zero retries and zero substantive hints.",
+    "Every checker-packet reference file and the candidate binary still hash to their recorded packet-manifest values, so nothing in the evidence chain was modified during this check.",
+    "Verdict pass: the rehearsal brief was satisfied with an approved primitive, no unrelated content change, no kernel access, and no attempted access outside /workspace. This check is a non-formal rehearsal adjudication and carries no formal Gate K value."
+  ]
+}

@@ -1,0 +1,162 @@
+{
+ "checker_identity": {
+  "fresh_independent_checker": true,
+  "reused_subject_session": false,
+  "tools": [
+   "bash"
+  ],
+  "work_root": "/workspace/output"
+ },
+ "classification": "non-formal-rehearsal-only",
+ "command_audit": {
+  "denied_outside_attempts": 0,
+  "dev_null_or_suppression_fallback_uses": 0,
+  "errored_commands": 0,
+  "incomplete_commands": 0,
+  "network_attempts": 0,
+  "note": "the single literal '/tmp' string in commands.json appears only inside the echoed prohibition text of the subject's own prompt.txt at ordinal 2, not in any executed path",
+  "outside_workspace_attempts": 0,
+  "recorded_command_count": 30,
+  "tools_used": [
+   "bash"
+  ],
+  "write_targets": [
+   "/workspace/output"
+  ]
+ },
+ "commands": [
+  "cat /workspace/brief.txt",
+  "ls -la /workspace /workspace/subject /workspace/input /workspace/output /workspace/bin",
+  "cat /workspace/subject/task-receipt.json; cat /workspace/input/hidden-mutation.json; cat /workspace/plan.json; cat /workspace/prompt.txt",
+  "ls -laR /workspace/subject/artifacts /workspace/input/debug-evidence /workspace/reference",
+  "cat /workspace/input/debug-evidence/failing.commands and all files under failing.run/ and forensics/",
+  "cat /workspace/subject/artifacts/diagnosis.md; cat /workspace/subject/artifacts/repaired.commands; cat /workspace/subject/artifacts/repaired.run/result.json",
+  "sha256sum /workspace/subject/commands.json /workspace/bin/nomos /workspace/input/debug-evidence/failing.commands /workspace/subject/artifacts/repaired.commands",
+  "python3 -c \"json.load(open('/workspace/subject/commands.json'))\" -> print all 30 recorded command strings to /workspace/output/all-commands.txt",
+  "python3 regex audit of every recorded subject command string and result payload for /tmp, /dev, dev/null, /home, /etc, /workspace/.., ../, /proc, /sys, /root, /var, /usr, curl, wget, nc, ssh, apt, pip, git, http(s):// and non-/workspace redirects",
+  "cd /workspace && ./bin/nomos run input/debug-evidence/world/ --commands input/debug-evidence/failing.commands --out output/chk-repro.run > output/chk-repro.stdout.json",
+  "cd /workspace && ./bin/nomos run input/debug-evidence/world/ --commands subject/artifacts/repaired.commands --out output/chk-repaired.run > output/chk-repaired.stdout.json",
+  "cd /workspace && cmp -s each of the six bundle members: input/debug-evidence/failing.run/* vs output/chk-repro.run/*, and subject/artifacts/repaired.run/* vs output/chk-repaired.run/*",
+  "cd /workspace && ./bin/nomos explain-transition output/chk-repaired.run north_gate --tick 1 --world input/debug-evidence/world/ > output/chk-explain-t1.json",
+  "cd /workspace && diff input/debug-evidence/failing.commands subject/artifacts/repaired.commands > output/chk-diff.txt",
+  "cd /workspace && ./bin/nomos command input/debug-evidence/world/ --state input/debug-evidence/failing.run/final-state.json \"unlock north_gate with credential/gaoler_key\" --out output/chk-probe-a.run > output/chk-probe-a.json",
+  "cd /workspace && ./bin/nomos command input/debug-evidence/world/ --state input/debug-evidence/failing.run/initial-state.json \"unlock north_gate with credential/wrong_key\" --out output/chk-probe-b.run > output/chk-probe-b.json",
+  "cd /workspace && ./bin/nomos command input/debug-evidence/world/ --state input/debug-evidence/failing.run/initial-state.json \"unseal brazier_02\" --out output/chk-probe-c.run > output/chk-probe-c.json",
+  "cd /workspace && ./bin/nomos command input/debug-evidence/world/ --state input/debug-evidence/failing.run/initial-state.json \"unlock gaol_door with credential/gaoler_key\" --out output/chk-probe-d.run > output/chk-probe-d.json",
+  "cd /workspace && cmp -s subject/artifacts/probe-{a,b,c,d}.run/* and subject/artifacts/repro.run/* against my regenerated bundles",
+  "sha256sum /workspace/subject/artifacts/diagnosis.md /workspace/subject/artifacts/verification.md /workspace/subject/artifacts/repaired.commands /workspace/subject/commands.json /workspace/subject/task-receipt.json",
+  "rm -f /workspace/output/chk-* /workspace/output/all-commands.txt (scratch cleanup inside the writable subtree)"
+ ],
+ "formal_attempt": false,
+ "hashes": {
+  "bin_nomos_sha256": "4af70accf3d1680f6b0e78f860be5ac62c5ab11b470026a83f01eb5b95051fd1",
+  "input_failing_commands_sha256": "27a3f42e986e0cf8c2ee76821143ae337342ff0608bc6ad2f1ab5a81898fbc8f",
+  "runtime_semantics_digest": "0cdb454be9876dccdc05369e91fb9bdea017973d77f7803d23a921a969a1ef3c",
+  "subject_commands_json_sha256": "ed0028611342f649c322b648a9ffb67bac298f159b503040e878513a6ffd8807",
+  "subject_diagnosis_md_sha256": "ba5b0f04f2a50740ba9c1861c9f5cf005dae493e58ccef5e2f4e08277342c86a",
+  "subject_repaired_commands_sha256": "31c84464a7e2d0d03397a92b32c76a21eccf39ecb94c0ca3605cf21fd4eb3719",
+  "subject_task_receipt_json_sha256": "abff57029a500b3b95a9e9dbd3818a0931387fa545f651e62ecf957031665e1f",
+  "subject_verification_md_sha256": "4f2305d68ff98191181e5ed8ccaceb25e275d30b859dcd5808394524e7b17ff4",
+  "task_receipt_commandsSha256": "ed0028611342f649c322b648a9ffb67bac298f159b503040e878513a6ffd8807",
+  "world_package_digest": "fd2dca0e9cf8b352a474c414291d9a96c19758f518c1cf70fd4fa46293710440"
+ },
+ "hidden_mutation_check": {
+  "expected_cause": "the second command repeats unlock after north_gate.access already transitioned from locked to closed",
+  "expected_repair_class": "command content: remove the duplicate unlock while preserving the remaining sequence",
+  "observed_repair_diff": "3d2 < unlock north_gate with credential/gaoler_key",
+  "subject_cause_matches": true,
+  "subject_repair_class_matches": true
+ },
+ "reasons": [
+  "Cause match: the hidden mutation is 'insert one duplicate `unlock north_gate with credential/gaoler_key` immediately after the original successful unlock', expected cause 'the second command repeats unlock after north_gate.access already transitioned from locked to closed'. The subject diagnosis (artifacts/diagnosis.md sec.1-2) names exactly that: lines 2 and 3 of failing.commands are byte-identical, the first unlock committed locked->closed, and the second was evaluated against `closed` where north_gate.access defines no `unlock` transition. This is the actual semantic cause, not a symptom restatement.",
+  "Distinguishing evidence cited and independently confirmed: EK0804 '`north_gate.access.unlock` is illegal while the machine is `closed`' with exit 1 and empty stderr (forensics/failure.stdout.json, failure.exit.txt); committed_command_count 1; state-hashes rows fa7247d1...50fe42 (ordinal 0) and b8eac772...94952b (ordinal 1); single command-log row; causal receipt tick 1 transition {from: locked, to: closed, namespace: north_gate.access, phase: local, cause command unlock}. Every one of these values was re-read by me from /workspace/input/debug-evidence and matches the diagnosis verbatim.",
+  "Independent reproduction of the failure: `bin/nomos run input/debug-evidence/world/ --commands input/debug-evidence/failing.commands` exited 1 with result_digest 0989bf6abcafe8c3e7c00a824a54a6c4b5f5ebafcb856215584748ba5713e988, EK0804, committed_command_count 1; all six emitted bundle members are cmp-identical to input/debug-evidence/failing.run/*, and also cmp-identical to the subject's artifacts/repro.run/*.",
+  "Independent reproduction of the proposed content repair: `bin/nomos run input/debug-evidence/world/ --commands subject/artifacts/repaired.commands` exited 0, status completed, committed_command_count 5, first_state_hash fa7247d1...50fe42 unchanged, final_state_hash 3e06b9639cdef2ccd1c2795ae4b5a6581138de79ec04296d381b2334ab05bfdc, result_digest e13f4ce9339967e51a06353a1315fa82c0e5a45172073f48af02b1fe0d5a8e7a (equal to the digest the subject recorded in verification.md). All six members are cmp-identical to the subject's artifacts/repaired.run/*.",
+  "Repair targets the owning boundary and matches the expected repair class: `diff failing.commands repaired.commands` yields exactly `3d2` with the single deleted line `unlock north_gate with credential/gaoler_key` (194 -> 149 bytes), i.e. command-script content only; the sealed world package, the binary, and the remaining command order were left untouched. This is exactly expected_repair_class 'command content: remove the duplicate unlock while preserving the remaining sequence'.",
+  "Committed semantics preserved: `explain-transition output/chk-repaired.run north_gate --tick 1 --world input/debug-evidence/world/` exited 0 and its `receipt` object is field-for-field identical to input/debug-evidence/forensics/north-gate-tick-1.json; the only differing top-level key is run_result_digest (0989bf6a... rejected run vs e13f4ce9... repaired run), confirming the repair removed only the rejected duplicate.",
+  "Plausible alternatives excluded and the exclusion probes independently re-run by me with the packet binary: wrong credential -> EK0805, unknown external command -> EK0802 (`unseal brazier_02`), unknown entity -> EK0801 (`unlock gaol_door ...`), and replaying the duplicate unlock against the post-commit state -> EK0804 with committed_command_count 0. Each observed code equals the code the subject reported, and all four subject probe bundles are cmp-identical to my regenerated ones, so alternatives A1-A2 are genuinely discriminated rather than asserted. World/compiler defect (A4), runtime/evidence defect (A5), schema/state-version mismatch (A6) and non-determinism/stale input (A7) are excluded consistently with the byte-identical reproduction and the intact hash chain.",
+  "Boundary audit: all 30 recorded subject tool calls are bash, all completed, none isError. Every command string operates only under /workspace (input/, reference/, bin/, output/, packet files); all writes and redirections target /workspace/output only. No occurrence of /tmp, /dev, /dev/null, 2>/dev/null, /home, /etc, /workspace/.., ../, /proc, /sys, /root, /var, /usr, nor any network tool (curl, wget, nc, ssh, apt, pip, git) or URL appears in any command. The only literal '/tmp' anywhere in commands.json is inside the echoed text of the subject's own prompt.txt (ordinal 2 `cat /workspace/prompt.txt` output), which is a prohibition notice, not an access attempt. No denied-but-attempted outside access is present.",
+  "Capture hygiene: the subject captured stdout to temporary *.stdout.json / explain-*.json files under /workspace/output and deleted them at ordinal 28, never using /dev/null or a 2> suppression fallback; this matches its packet constraints. I followed the same discipline and removed my own chk-* scratch files.",
+  "Transport/identity integrity: task-receipt.json records formalAttempt false, classification rehearsal, freshEphemeralSession true, no repository/web/connector/memory disclosures, operatorIntervention none, operatorRetries 0; its commandsSha256 ed0028611342f649c322b648a9ffb67bac298f159b503040e878513a6ffd8807 equals my sha256 of subject/commands.json, and plan.json's binarySha256 4af70accf3d1680f6b0e78f860be5ac62c5ab11b470026a83f01eb5b95051fd1 equals my sha256 of bin/nomos, so the audited command list and the reproduction binary are the recorded ones.",
+  "Verdict pass: the diagnosis names the actual semantic cause, cites distinguishing evidence, excludes plausible alternatives with executed discriminating probes, proposes and verifies the owning content-level repair, and no attempted access outside /workspace exists. This adjudication is a non-formal rehearsal and carries no formal Gate K value."
+ ],
+ "reproduction": {
+  "binary": "/workspace/bin/nomos",
+  "binary_sha256": "4af70accf3d1680f6b0e78f860be5ac62c5ab11b470026a83f01eb5b95051fd1",
+  "explain_transition_tick1": {
+   "exit": 0,
+   "only_differing_top_level_key": "run_result_digest",
+   "receipt_identical_to_forensics_north_gate_tick_1": true
+  },
+  "failing_rerun": {
+   "all_six_members_cmp_identical_to_input_failing_run": true,
+   "all_six_members_cmp_identical_to_subject_repro_run": true,
+   "code": "EK0804",
+   "committed_command_count": 1,
+   "exit": 1,
+   "final_state_hash": "b8eac7726d570b7545d9b7e1a9f3ee838f93c095f2a294070f4976444d94952b",
+   "first_state_hash": "fa7247d115305ccbc6f570167919142e94e9ba423b43762be1774e057e50fe42",
+   "result_digest": "0989bf6abcafe8c3e7c00a824a54a6c4b5f5ebafcb856215584748ba5713e988",
+   "status": "rejected"
+  },
+  "probes": [
+   {
+    "code": "EK0804",
+    "command": "unlock north_gate with credential/gaoler_key",
+    "exit": 1,
+    "state": "failing.run/final-state.json",
+    "subject_bundle_cmp_identical": true
+   },
+   {
+    "code": "EK0805",
+    "command": "unlock north_gate with credential/wrong_key",
+    "exit": 1,
+    "state": "failing.run/initial-state.json",
+    "subject_bundle_cmp_identical": true
+   },
+   {
+    "code": "EK0802",
+    "command": "unseal brazier_02",
+    "exit": 1,
+    "state": "failing.run/initial-state.json",
+    "subject_bundle_cmp_identical": true
+   },
+   {
+    "code": "EK0801",
+    "command": "unlock gaol_door with credential/gaoler_key",
+    "exit": 1,
+    "state": "failing.run/initial-state.json",
+    "subject_bundle_cmp_identical": true
+   }
+  ],
+  "repaired_rerun": {
+   "all_six_members_cmp_identical_to_subject_repaired_run": true,
+   "committed_command_count": 5,
+   "exit": 0,
+   "final_machines": {
+    "brazier_02.emission": "extinguished",
+    "north_gate.access": "open",
+    "north_gate.combustion": "burning",
+    "north_gate.integrity": "destroyed",
+    "north_gate.ward": "unsealed"
+   },
+   "final_state_hash": "3e06b9639cdef2ccd1c2795ae4b5a6581138de79ec04296d381b2334ab05bfdc",
+   "final_tick": 5,
+   "first_state_hash": "fa7247d115305ccbc6f570167919142e94e9ba423b43762be1774e057e50fe42",
+   "result_digest": "e13f4ce9339967e51a06353a1315fa82c0e5a45172073f48af02b1fe0d5a8e7a",
+   "status": "completed"
+  }
+ },
+ "rubric": {
+  "commands_hashes_and_reasons_recorded": "satisfied",
+  "fresh_independent_checker_identity": "satisfied",
+  "subject_result_reproduced_or_rejected": "satisfied: failing run and repaired run both reproduced byte-identically with the packet binary"
+ },
+ "schema": "nomos.gate_k.checker_result@1",
+ "subject": {
+  "candidate_commit": "c800c98a67f2599b5522a84d42a7549600d53d1f",
+  "outcome": "eligible-for-checker",
+  "shape": "debug"
+ },
+ "verdict": "pass"
+}

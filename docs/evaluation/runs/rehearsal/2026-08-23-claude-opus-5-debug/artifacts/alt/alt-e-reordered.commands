@@ -1,0 +1,6 @@
+schema nomos.command_script@1
+unlock north_gate with credential/gaoler_key
+unseal north_gate
+open north_gate
+ignite north_gate
+extinguish brazier_02
