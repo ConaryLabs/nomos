@@ -57,9 +57,10 @@ every formal subject and checker:
 
 1. **semantic merit** — whether every task-specific authoring, debugging, or
    checking result and explanation criterion is correct;
-2. **independence integrity** — whether model eligibility and fresh-session
-   requirements hold, only declared information entered the task, and no
-   substantive outside help occurred;
+2. **independence integrity** — whether every model-eligibility and formal-
+   independence constraint holds, including fresh-session and zero-retry-after-
+   model-failure requirements, only declared information entered the task, and
+   no substantive outside help occurred;
 3. **operational compliance** — whether every declared tool, path, execution,
    permitted-change, evidence-accounting, and record-completeness requirement
    was obeyed.

@@ -262,9 +262,10 @@ results:
 
 - `semantic_merit` — whether every task-specific authoring, debugging, or
   checking result and explanation criterion is correct;
-- `independence_integrity` — whether model eligibility and fresh-session
-  requirements hold, only declared information entered the task, and no
-  substantive outside help occurred;
+- `independence_integrity` — whether every model-eligibility and section-5
+  formal-independence constraint holds, including fresh-session and zero-retry-
+  after-model-failure requirements, only declared information entered the task,
+  and no substantive outside help occurred;
 - `operational_compliance` — whether every declared tool, path, execution,
   permitted-change, evidence-accounting, and record-completeness requirement
   was obeyed.
