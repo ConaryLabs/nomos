@@ -153,6 +153,12 @@ never accumulates history (git has that).
   packet-run device mount, remounts `/proc` read-only, proves both properties,
   and changes checker construction to accept and verify one complete subject
   record. R3 remains preserved but invalidated; both pairs require r4 reruns.
+  The first repaired author pair at `0b807bf` proved the new boundary and
+  receipt binding, but the subject still typed one reflexive `2>/dev/null`.
+  The sandbox denied it, the subject disclosed it, and the checker correctly
+  returned `reject`. That r4 failure is preserved. Prompts now name the legal
+  workspace-local output sink explicitly; clean r5 author and debug pairs are
+  required.
 - **CI uses `actions/checkout@v7` (#11):** PR and post-merge verification passed
   without the Node 20 compatibility annotation.
 - **The GPT Pro architecture checkpoint is owner-disposed (#25):** review of
@@ -360,8 +366,8 @@ never accumulates history (git has that).
 
 ## What is next
 
-Finish issue #70 by committing the second audit repair, rerunning both non-formal
-rehearsal pairs as r4, running exact-head repository proof, and obtaining a
+Finish issue #70 by committing the prompt repair, rerunning both non-formal
+rehearsal pairs as r5, running exact-head repository proof, and obtaining a
 replacement non-author audit of the packet allowlists, isolation composition,
 receipt binding, accounting, and r4 evidence. Issue #69 is separately
 implemented and green in draft PR #75; issue #70 remains active in draft PR

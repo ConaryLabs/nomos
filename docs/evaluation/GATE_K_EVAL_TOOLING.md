@@ -174,6 +174,14 @@ now expose an empty `/dev`, remount `/proc` read-only, test those properties,
 and require one complete subject record whose receipt hashes the copied command
 and artifact trees. Both rehearsal pairs require replacement r4 evidence.
 
+The first post-repair author pair at `0b807bf9c9fcf9007f0e2d660241f229a0be69e1`
+proved the new structural boundary and receipt binding, but the subject still
+typed one reflexive `2>/dev/null` fallback. The empty `/dev` denied it, the
+subject disclosed it, and the checker correctly returned `reject`. That failed
+pair is preserved as r4 evidence. The shared and task prompts now state the
+legal alternative explicitly: capture output in the declared writable subtree
+and remove the file afterward. Both shapes require clean replacement r5 pairs.
+
 ## Invalidation
 
 Any packet allowlist, public packet document, prompt, constraint, runner, recorder,
