@@ -1,0 +1,88 @@
+{
+  "schema": "nomos.gate_k.prelaunch_declaration@1",
+  "declaredAt": "2026-08-23T05:04:22Z",
+  "issue": 72,
+  "attempt": {
+    "classification": "formal",
+    "role": "cold-debug-subject",
+    "numberAgainstSeededTask": 1,
+    "priorFormalAttemptsAgainstSeededTask": 0,
+    "orderedPosition": 2
+  },
+  "candidate": {
+    "tag": "gate-k-rc1",
+    "commit": "d8a0b85c55aa33c20f46e5dfd9e0d1f317e1f1c9",
+    "clean": true
+  },
+  "protocol": {
+    "path": "docs/evaluation/COLD_AGENT_PROTOCOL.md",
+    "revision": 3,
+    "resourceAccounting": "recorded-without-ceilings"
+  },
+  "people": {
+    "operator": "Mira/Codex",
+    "owner": "Peter Permenter",
+    "adjudicator": "Peter Permenter"
+  },
+  "subject": {
+    "provider": "deepseek",
+    "model": "deepseek-v4-flash-vision-exp",
+    "label": "DeepSeek V4 Flash Vision Exp",
+    "thinking": "max",
+    "client": "Pi",
+    "clientVersion": "0.84.2",
+    "modelCatalogSha256": "7954fb3ef750bed773619c9fe259a8eb923b6f4f8455442a33cf8e1fe2fa3773"
+  },
+  "neutralPreflight": {
+    "attempts": 3,
+    "failedAttempts": 2,
+    "failedReason": "expected one turn_start event, found 2",
+    "failuresOccurredBeforeTaskPrompt": true,
+    "result": "pass",
+    "passingSessionId": "01a02d01-3f9b-70dc-9d4c-79c7b404bde7",
+    "piPackageTreeSha256": "63a9dd14b0ae82cee2db30c56822682af19145d145febb58b613d5de4dbb27af",
+    "boundaryExtensionSha256": "5076b923aad8ebf6d46110ca0bd45e62911ace563bdfe58e6418b6a14b519f46",
+    "systemPromptSha256": "2cec3aeebce2f8359cde337d3b1b2ec1601913711f282ab0289ab276b02dee79",
+    "authenticated": true,
+    "freshEphemeralSession": true,
+    "activeTools": ["bash"],
+    "networkPermitted": false
+  },
+  "packet": {
+    "shape": "debug",
+    "classification": "formal",
+    "manifestSha256": "765083f63eb118d34cbad43a46dc954c28ed372969ee710417ba91906e04e839",
+    "planSha256": "ae28be83efe94f6e8521856663c930ee32b87e3133a9199005739fe55a0d628a",
+    "briefSha256": "b418502d48b534e7e2f214e7c5ee84427fac861e75414b3e1005de4fc050eb48",
+    "promptSha256": "524204cebca5c1922e7165aedab4ebe5fea426d3246e1721ee94245785880841",
+    "failingCommandsSha256": "a65215c4e327c59d119fc0e4123b3e77741e22b6db92e0dceb40acc167bac86b",
+    "debugEvidenceTreeSha256": "1dca41db535fc4ed471ff93d18398cb2b671424a3b0782e7cdab99a5959fc21d",
+    "binarySha256": "4af70accf3d1680f6b0e78f860be5ac62c5ab11b470026a83f01eb5b95051fd1",
+    "worldPackageDigest": "fd2dca0e9cf8b352a474c414291d9a96c19758f518c1cf70fd4fa46293710440",
+    "failingRunResultSha256": "30a0860a70e6f78e6d4843da4e05882883a20793c5d7e5f597b2a91143ad8d78",
+    "tickOneExplanationSha256": "bbdeff3d9eb73467678e2757172f345dc969cf9021d7f90d7751c0da0ff8fd43",
+    "resultSchema": "nomos.gate_k.debug_result@1"
+  },
+  "sealedMutation": {
+    "sha256": "42dcb05bd8d5acee4ba90c79be48a749a365927078e4c56905111290f9a44ed9",
+    "subjectPacketContainsMutation": false,
+    "checkerOnlyUntilSubjectCompletion": true,
+    "preflightRepairCommandsSha256": "12e77333008a286d63deb19f76a93cfddba85cdde0b8884379af071066d75a14",
+    "preflightRepairResultSha256": "97037109ffc788e61f2e6e0f620a827046f12764afe867f87bd4a3fdba1ef95d"
+  },
+  "independenceConstraints": {
+    "freshSessions": 1,
+    "operatorSubstantiveHintsMaximum": 0,
+    "operatorRetriesAfterModelFailureMaximum": 0,
+    "tokenCeiling": null,
+    "assistantTurnCeiling": null,
+    "toolCallCeiling": null,
+    "diagnosticCycleCeiling": null
+  },
+  "crossRunOrder": [
+    "issue-71-gemini-author-subject-completed",
+    "issue-72-deepseek-debug-subject",
+    "issue-71-deepseek-author-checker",
+    "issue-72-gemini-debug-checker"
+  ]
+}
