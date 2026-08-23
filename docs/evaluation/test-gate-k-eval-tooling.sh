@@ -96,6 +96,81 @@ rebind_recorded_commands() {
   mv -- "$receipt_update" "$record/task-receipt.json"
 }
 
+write_adjudication() {
+  local subject_record=$1
+  local checker_record=$2
+  local verdict=$3
+  local findings=$4
+  local out=$5
+  local candidate subject_receipt checker_receipt subject_commands checker_commands
+  local subject_count checker_count
+  candidate=$(jq -r '.candidateCommit' "$subject_record/task-receipt.json")
+  subject_receipt=$(sha256sum "$subject_record/task-receipt.json" | cut -d' ' -f1)
+  checker_receipt=$(sha256sum "$checker_record/task-receipt.json" | cut -d' ' -f1)
+  subject_commands=$(sha256sum "$subject_record/commands.json" | cut -d' ' -f1)
+  checker_commands=$(sha256sum "$checker_record/commands.json" | cut -d' ' -f1)
+  subject_count=$(jq '.commands | length' "$subject_record/commands.json")
+  checker_count=$(jq '.commands | length' "$checker_record/commands.json")
+  jq -S -c -n \
+    --arg candidate "$candidate" \
+    --arg subject_receipt "$subject_receipt" \
+    --arg checker_receipt "$checker_receipt" \
+    --arg subject_commands "$subject_commands" \
+    --arg checker_commands "$checker_commands" \
+    --arg verdict "$verdict" \
+    --argjson findings "$findings" \
+    --argjson subject_count "$subject_count" \
+    --argjson checker_count "$checker_count" '
+    {
+      schema: "nomos.gate_k.command_adjudication@1",
+      candidateCommit: $candidate,
+      subjectTaskReceiptSha256: $subject_receipt,
+      checkerTaskReceiptSha256: $checker_receipt,
+      subjectCommandsSha256: $subject_commands,
+      checkerCommandsSha256: $checker_commands,
+      reviewedAllCommands: true,
+      reviewedCommandCounts: {subject: $subject_count, checker: $checker_count},
+      findings: $findings,
+      verdict: $verdict,
+      reason: "fixture independent review of every recorded command",
+      adjudicator: "fixture-adjudicator",
+      ownerDisposition: "fixture-owner"
+    }
+    ' >"$out"
+}
+
+write_pass_adjudication() {
+  write_adjudication "$1" "$2" pass '[]' "$3"
+}
+
+write_outside_path_adjudication() {
+  local subject_record=$1
+  local checker_record=$2
+  local record=$3
+  local ordinal=$4
+  local path_token=$5
+  local out=$6
+  local record_dir command_sha findings
+  if [[ $record == subject ]]; then
+    record_dir=$subject_record
+  else
+    record_dir=$checker_record
+  fi
+  command_sha=$(jq -j --argjson ordinal "$ordinal" \
+    '.commands[$ordinal].arguments.command' "$record_dir/commands.json" | sha256sum | cut -d' ' -f1)
+  findings=$(jq -c -n \
+    --arg record "$record" --argjson ordinal "$ordinal" --arg command_sha "$command_sha" \
+    --arg path_token "$path_token" '[{
+      record: $record,
+      commandOrdinal: $ordinal,
+      commandSha256: $command_sha,
+      kind: "outside_workspace_path",
+      pathToken: $path_token,
+      reason: "the recorded shell command requested a path outside /workspace"
+    }]')
+  write_adjudication "$subject_record" "$checker_record" fail "$findings" "$out"
+}
+
 "$seed_builder" "$candidate" "$commit" "$tmp_dir/debug-seed" >/dev/null
 
 build_author() {
@@ -305,20 +380,22 @@ assert_blocked 'checker subject commands are invalid' declared-substituted-comma
 
 launch_task author-checker "$tmp_dir/author-checker-1"
 record_task author-checker "$tmp_dir/author-checker-1"
+write_pass_adjudication "$tmp_dir/author-subject-record" \
+  "$tmp_dir/author-checker-record" "$tmp_dir/author-adjudication.json"
 mkdir -m 755 "$tmp_dir/author-subject-record/artifacts/unbound-empty-subject-directory"
 assert_blocked 'artifact tree contains an unbound empty directory' \
   finalizer-empty-subject-directory \
   "$finalizer" "$tmp_dir/author-subject-record" "$tmp_dir/author-checker-record" \
-  pass fixture-adjudicator fixture-owner "$tmp_dir/empty-subject-directory-run"
+  "$tmp_dir/author-adjudication.json" "$tmp_dir/empty-subject-directory-run"
 rmdir "$tmp_dir/author-subject-record/artifacts/unbound-empty-subject-directory"
 mkdir -m 755 "$tmp_dir/author-checker-record/artifacts/unbound-empty-checker-directory"
 assert_blocked 'artifact tree contains an unbound empty directory' \
   finalizer-empty-checker-directory \
   "$finalizer" "$tmp_dir/author-subject-record" "$tmp_dir/author-checker-record" \
-  pass fixture-adjudicator fixture-owner "$tmp_dir/empty-checker-directory-run"
+  "$tmp_dir/author-adjudication.json" "$tmp_dir/empty-checker-directory-run"
 rmdir "$tmp_dir/author-checker-record/artifacts/unbound-empty-checker-directory"
 "$finalizer" "$tmp_dir/author-subject-record" "$tmp_dir/author-checker-record" \
-  pass fixture-adjudicator fixture-owner "$tmp_dir/author-run" >/dev/null
+  "$tmp_dir/author-adjudication.json" "$tmp_dir/author-run" >/dev/null
 jq -e '.verdict == "pass" and .formalAttempt == false and .shape == "author"' \
   "$tmp_dir/author-run/result.json" >/dev/null
 [[ -f $tmp_dir/author-run/checker/artifacts/reproduction.txt ]]
@@ -326,37 +403,100 @@ jq -e '.verdict == "pass" and .formalAttempt == false and .shape == "author"' \
     $(jq -r '.digests.artifactsTreeSha256' \
       "$tmp_dir/author-run/checker/task-receipt.json") ]]
 
+cp -R "$tmp_dir/author-subject-record" "$tmp_dir/substitute-final-subject-record"
+rebind_recorded_commands "$tmp_dir/substitute-final-subject-record" \
+  'cat /workspace/prompt.txt'
+write_pass_adjudication "$tmp_dir/substitute-final-subject-record" \
+  "$tmp_dir/author-checker-record" "$tmp_dir/substitute-final-subject-adjudication.json"
+assert_blocked 'checker packet does not bind the supplied subject task receipt' \
+  finalizer-substituted-subject \
+  "$finalizer" "$tmp_dir/substitute-final-subject-record" \
+  "$tmp_dir/author-checker-record" "$tmp_dir/substitute-final-subject-adjudication.json" \
+  "$tmp_dir/substitute-final-subject-run"
+
+cp -R "$tmp_dir/author-checker-record" "$tmp_dir/phantom-candidate-checker-record"
+jq '.candidateCommit = "ffffffffffffffffffffffffffffffffffffffff"' \
+  "$tmp_dir/phantom-candidate-checker-record/task-receipt.json" \
+  >"$tmp_dir/phantom-candidate-checker-record/task-receipt.update"
+mv -- "$tmp_dir/phantom-candidate-checker-record/task-receipt.update" \
+  "$tmp_dir/phantom-candidate-checker-record/task-receipt.json"
+assert_blocked 'plan candidate differs from task receipt' finalizer-phantom-candidate \
+  "$finalizer" "$tmp_dir/author-subject-record" \
+  "$tmp_dir/phantom-candidate-checker-record" "$tmp_dir/author-adjudication.json" \
+  "$tmp_dir/phantom-candidate-run"
+
 cp -R "$tmp_dir/author-checker-record" "$tmp_dir/outside-path-checker-record"
 rebind_recorded_commands "$tmp_dir/outside-path-checker-record" \
   'cat /workspace/brief.txt 2>/dev/null'
-assert_blocked 'requested verdict pass contradicts mechanically derived verdict fail' \
-  finalizer-checker-outside-path-pass \
-  "$finalizer" "$tmp_dir/author-subject-record" "$tmp_dir/outside-path-checker-record" \
-  pass fixture-adjudicator fixture-owner "$tmp_dir/outside-path-pass-run"
-"$finalizer" "$tmp_dir/author-subject-record" "$tmp_dir/outside-path-checker-record" \
-  fail fixture-adjudicator fixture-owner "$tmp_dir/outside-path-fail-run" >/dev/null
-jq -e '
-  .verdict == "fail" and
-  .reason == "recorded subject or checker commands requested a path outside the declared workspace" and
-  .commandBoundaryAudits.subject.verdict == "pass" and
-  .commandBoundaryAudits.checker.verdict == "reject" and
-  .commandBoundaryAudits.checker.findings == [{
+write_pass_adjudication "$tmp_dir/author-subject-record" \
+  "$tmp_dir/outside-path-checker-record" "$tmp_dir/outside-path-pass-adjudication.json"
+jq '
+  .findings = [{
+    record: "checker",
     commandOrdinal: 0,
     commandSha256: "b06bf6c464f4bd1ca528655a03218278a7def04a1e77f26161ad5937941e2a43",
     kind: "outside_workspace_path",
-    pathToken: "/dev/null"
+    pathToken: "/dev/null",
+    reason: "fixture finding"
+  }]
+  ' "$tmp_dir/outside-path-pass-adjudication.json" \
+  >"$tmp_dir/outside-path-invalid-adjudication.json"
+assert_blocked 'adjudication verdict must be fail' finalizer-checker-outside-path-pass \
+  "$finalizer" \
+  "$tmp_dir/author-subject-record" "$tmp_dir/outside-path-checker-record" \
+  "$tmp_dir/outside-path-invalid-adjudication.json" \
+  "$tmp_dir/outside-path-pass-run"
+write_outside_path_adjudication "$tmp_dir/author-subject-record" \
+  "$tmp_dir/outside-path-checker-record" checker 0 /dev/null \
+  "$tmp_dir/outside-path-fail-adjudication.json"
+"$finalizer" "$tmp_dir/author-subject-record" "$tmp_dir/outside-path-checker-record" \
+  "$tmp_dir/outside-path-fail-adjudication.json" "$tmp_dir/outside-path-fail-run" >/dev/null
+jq -e '
+  .verdict == "fail" and
+  .reason == "independent review found an outside-workspace path request in recorded commands" and
+  .commandAdjudication.verdict == "fail" and
+  .commandAdjudication.findings == [{
+    commandOrdinal: 0,
+    commandSha256: "b06bf6c464f4bd1ca528655a03218278a7def04a1e77f26161ad5937941e2a43",
+    kind: "outside_workspace_path",
+    pathToken: "/dev/null",
+    reason: "the recorded shell command requested a path outside /workspace",
+    record: "checker"
   }]
   ' "$tmp_dir/outside-path-fail-run/result.json" >/dev/null
 
+cp -R "$tmp_dir/outside-path-checker-record" "$tmp_dir/inconclusive-outside-path-record"
+jq '.outcome = "inconclusive" | .outcomeReason = "fixture transport failure"' \
+  "$tmp_dir/inconclusive-outside-path-record/task-receipt.json" \
+  >"$tmp_dir/inconclusive-outside-path-record/task-receipt.update"
+mv -- "$tmp_dir/inconclusive-outside-path-record/task-receipt.update" \
+  "$tmp_dir/inconclusive-outside-path-record/task-receipt.json"
+write_outside_path_adjudication "$tmp_dir/author-subject-record" \
+  "$tmp_dir/inconclusive-outside-path-record" checker 0 /dev/null \
+  "$tmp_dir/inconclusive-outside-path-adjudication.json"
+"$finalizer" "$tmp_dir/author-subject-record" \
+  "$tmp_dir/inconclusive-outside-path-record" \
+  "$tmp_dir/inconclusive-outside-path-adjudication.json" \
+  "$tmp_dir/inconclusive-outside-path-run" >/dev/null
+jq -e '.verdict == "fail" and .commandAdjudication.verdict == "fail"' \
+  "$tmp_dir/inconclusive-outside-path-run/result.json" >/dev/null
+
+assert_blocked 'output must be outside both immutable task records' finalizer-nested-output \
+  "$finalizer" "$tmp_dir/author-subject-record" "$tmp_dir/outside-path-checker-record" \
+  "$tmp_dir/outside-path-fail-adjudication.json" \
+  "$tmp_dir/author-subject-record/final-output"
+
 cp -R "$tmp_dir/author-checker-record" "$tmp_dir/quoted-path-checker-record"
 rebind_recorded_commands "$tmp_dir/quoted-path-checker-record" \
-  'python3 -c "print('\''scan data: /dev/null'\'')"'
+  'grep -E '\''/(tmp|dev|home|etc)(/|[[:space:]])'\'' commands.json; sed -n '\''/## Reproduction commands/,/^```$/p'\'' report.md; python3 -c "print('\''scan data: /dev/null'\'')"'
+write_pass_adjudication "$tmp_dir/author-subject-record" \
+  "$tmp_dir/quoted-path-checker-record" "$tmp_dir/quoted-path-adjudication.json"
 "$finalizer" "$tmp_dir/author-subject-record" "$tmp_dir/quoted-path-checker-record" \
-  pass fixture-adjudicator fixture-owner "$tmp_dir/quoted-path-pass-run" >/dev/null
+  "$tmp_dir/quoted-path-adjudication.json" "$tmp_dir/quoted-path-pass-run" >/dev/null
 jq -e '
   .verdict == "pass" and
-  .commandBoundaryAudits.checker.verdict == "pass" and
-  .commandBoundaryAudits.checker.findings == []
+  .commandAdjudication.verdict == "pass" and
+  .commandAdjudication.findings == []
   ' "$tmp_dir/quoted-path-pass-run/result.json" >/dev/null
 
 launch_task debug-subject "$tmp_dir/debug-1"
@@ -375,8 +515,10 @@ grep -F 'even when the sandbox denied it' \
   "$tmp_dir/debug-checker/prompt.txt" >/dev/null
 launch_task debug-checker "$tmp_dir/debug-checker"
 record_task debug-checker "$tmp_dir/debug-checker"
+write_pass_adjudication "$tmp_dir/debug-subject-record" \
+  "$tmp_dir/debug-checker-record" "$tmp_dir/debug-adjudication.json"
 "$finalizer" "$tmp_dir/debug-subject-record" "$tmp_dir/debug-checker-record" \
-  pass fixture-adjudicator fixture-owner "$tmp_dir/debug-run" >/dev/null
+  "$tmp_dir/debug-adjudication.json" "$tmp_dir/debug-run" >/dev/null
 jq -e '.verdict == "pass" and .formalAttempt == false and .shape == "debug"' \
   "$tmp_dir/debug-run/result.json" >/dev/null
 [[ -f $tmp_dir/debug-run/checker/artifacts/reproduction.txt ]]

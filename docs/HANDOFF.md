@@ -5,7 +5,11 @@ SW-N. Combined issue #69/#70 evidence closure produced exact candidate
 `gate-k-rc1` at `d8a0b85`. All four formal subject/checker sessions are complete,
 and the owner dispositioned both formal attempts `fail`; Gate K is explicitly
 unaccepted. Issue #79 repairs the finalizer without rewriting or retrying those
-attempts.
+attempts. Its first implementation at `99c4436` passed CI but failed non-author
+review; the replacement uses hash-bound structured command adjudication and
+tightens candidate, subject/checker, and immutable-output bindings. The full
+author proof passes, and the repaired finalizer assembles the preserved #71 and
+#72 records as `fail`; the replacement exact-head non-author rerun remains.
 This file orients a fresh session; it is rewritten at each slice boundary and
 never accumulates history (git has that).
 
@@ -411,10 +415,14 @@ never accumulates history (git has that).
 
 ## What is next
 
-Complete #79, then assemble the immutable #71 and #72 records as the
-owner-disposed failures and merge their evidence PRs #77 and #78. Issue #73 then
-maps all nineteen acceptance criteria and records the final Gate K disposition.
-No formal retry or new semantic feature slice is authorized.
+Complete the replacement non-author rerun and CI for #79. The externally
+assembled immutable #71 and #72 structured results have SHA-256
+`e6990dacde903f527d1cb46784a54d938a7e130f1193e51bb830a4a2284f07dc` and
+`f09c9214329f7f8bd7d4d4b31476a0f24c825add2f5bb434b7bf780f64d8089c`.
+After #79 merges, attach/finalize those owner-disposed failures and merge their
+evidence PRs #77 and #78. Issue #73 then maps all nineteen acceptance criteria
+and records the final Gate K disposition. No formal retry or new semantic
+feature slice is authorized.
 
 `gate-k-rc1` remains the exact historical subject of the completed formal
 attempts. Because #79 changes evaluation-harness code after the tag, it is

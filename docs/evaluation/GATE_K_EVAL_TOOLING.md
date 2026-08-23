@@ -110,20 +110,59 @@ recorded substantive intervention as `assisted` and a transport/harness failure
 that prevents fair evaluation as `inconclusive`. Final task merit belongs to the
 independent checker and owner.
 
-Before final assembly, `gate-k-eval-command-boundary.py` independently audits
-the subject and checker command records. It tokenizes the recorded top-level
-shell command, excludes heredoc bodies from shell-operand analysis, normalizes
-literal absolute and parent-traversal path tokens, and records the command
-ordinal, command digest, and outside-workspace token for every finding. A
-finding mechanically derives `fail` even when `checker.json` self-reports
-`pass`. Forbidden-path strings embedded as quoted Python or heredoc scan data
-are not top-level path tokens and do not become false access findings.
+Before final assembly, an independent reviewer examines every subject and
+checker command and writes `nomos.gate_k.command_adjudication@1` JSON. The
+record binds the candidate, both task receipts, both complete command files,
+their reviewed command counts, the adjudicator, and the owner disposition. Each
+finding binds its subject/checker command ordinal and SHA-256 and records the
+outside-workspace path token and reason. `gate-k-eval-validate-adjudication.py`
+validates that structure and every binding without trying to infer shell
+semantics. This is deliberate: arbitrary Bash can contain nested interpreters,
+heredocs, comments, and quoted scan data, so a partial shell parser is neither a
+sound access detector nor a reliable way to distinguish evidence text from an
+operand. A bound finding takes precedence over transport or intervention state
+and mechanically derives overall `fail`, even when `checker.json` self-reports
+`pass`; finalization refuses an absent, incomplete, stale, or internally
+contradictory adjudication.
+
+The adjudication has this exact top-level shape (digests and identities shown as
+placeholders):
+
+```json
+{
+  "schema": "nomos.gate_k.command_adjudication@1",
+  "candidateCommit": "<40 lowercase hex>",
+  "subjectTaskReceiptSha256": "<sha256>",
+  "checkerTaskReceiptSha256": "<sha256>",
+  "subjectCommandsSha256": "<sha256>",
+  "checkerCommandsSha256": "<sha256>",
+  "reviewedAllCommands": true,
+  "reviewedCommandCounts": {"subject": 1, "checker": 1},
+  "findings": [],
+  "verdict": "pass",
+  "reason": "<independent review disposition>",
+  "adjudicator": "<identity>",
+  "ownerDisposition": "<owner identity and disposition>"
+}
+```
+
+Each finding has exactly `record`, `commandOrdinal`, `commandSha256`, `kind`,
+`pathToken`, and `reason`. Version 1 supports only the
+`outside_workspace_path` kind. An empty array requires adjudication verdict
+`pass`; one or more findings require `fail`. That verdict concerns the command
+review. The finalizer still derives the overall `pass`, `fail`, `assisted`, or
+`inconclusive` run verdict from the complete protocol record, with a command
+finding taking highest precedence.
 
 A completed record contains `RUN.md`, `plan.json`, `packet-manifest.json`,
 `prompt.txt`, the complete sanitized NDJSON event stream, `commands.json`,
-the complete subject and checker artifact trees, and `checker.json` after
-independent checking. Finalization recomputes both artifact-tree digests after
-copying them into the durable run. Missing
+the complete subject and checker artifact trees, `checker.json` after
+independent checking, and `adjudication.json`. Finalization recomputes both
+artifact-tree digests after copying them into the durable run. It also proves
+that each task receipt agrees with its plan, packet manifest, and sandbox
+boundary; that the candidate exists in repository history; and that the checker
+packet manifest binds the exact supplied subject receipt, commands, and every
+artifact. The output must be outside both immutable input records. Missing
 identity, transcript, command, artifact, or result fields fail closed. Operator
 intervention is always present, including the literal disposition `none`.
 Checker prompts declare the finalizer-owned `nomos.gate_k.checker_result@1`
@@ -247,13 +286,16 @@ requested `/dev/null` at command ordinals 1 and 16, then improperly self-waived
 the violation and returned `pass`. The prior finalizer trusted that self-verdict
 and would not encode the evidence-backed failure.
 
-Issue #79 adds the independent command audit and a regression containing a
-`pass` checker result with an actual forbidden redirection. The finalizer now
-refuses to assemble that fixture as pass and records the exact boundary finding
-when the owner requests the mechanically derived `fail`. A companion fixture
-proves that a quoted forbidden-path string used only as scan data remains a
-pass. The DeepSeek debug subject's ordinals 1, 48, and 65 are detected by the
-same mechanism; its Gemini checker correctly returned `reject` independently.
+Issue #79 adds the hash-bound structured adjudication and a regression
+containing a `pass` checker result plus an independently recorded forbidden
+redirection. The finalizer refuses a finding paired with an adjudication
+self-verdict of `pass`, and a valid bound finding mechanically produces overall
+`fail`. A companion fixture records no finding for forbidden-path strings used
+only as quoted grep, sed, or Python scan data. Further regressions reject stale
+subject/checker pairing, phantom candidate bindings, and output nested beneath
+immutable input evidence. The DeepSeek debug subject's ordinals 1, 48, and 65
+are recorded through the same structured path; its Gemini checker correctly
+returned `reject` independently.
 
 Peter Permenter dispositioned both formal attempts `fail` on 2026-08-23. Their
 subject and checker records are immutable, and no retry is authorized or

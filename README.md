@@ -29,8 +29,10 @@ any renderer is built.
 - **Gate K status:** `gate-k-rc1` freezes exact candidate `d8a0b85`. Both formal
   cold-agent attempts are complete and owner-disposed `fail` after otherwise
   correct semantic work because a subject or checker requested a forbidden
-  outside-workspace path. Issue #79 repairs fail-closed final assembly; Gate K
-  is not accepted or green
+  outside-workspace path. Draft PR #80 repairs fail-closed final assembly with
+  hash-bound structured command adjudication; its first non-author audit found
+  defects, and the replacement repair has passed author proof and awaits a
+  fresh non-author rerun. Gate K is not accepted or green
 - **Contract revision:** 7, owner-authorized in decision 0009
 - **Cold-agent protocol revision:** 3, owner-authorized in decision 0010
 - **Scope:** greenfield / vacuum architecture exercise

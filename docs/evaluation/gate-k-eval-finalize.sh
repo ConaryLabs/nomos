@@ -7,22 +7,15 @@ fail() {
   exit 1
 }
 
-[[ $# -eq 6 ]] || fail \
-  'usage: gate-k-eval-finalize.sh SUBJECT_RECORD CHECKER_RECORD VERDICT ADJUDICATOR OWNER OUT'
+[[ $# -eq 4 ]] || fail \
+  'usage: gate-k-eval-finalize.sh SUBJECT_RECORD CHECKER_RECORD ADJUDICATION_JSON OUT'
 subject=$1
 checker=$2
-verdict=$3
-adjudicator=$4
-owner=$5
-out=$6
+adjudication=$3
+out=$4
 script_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
-command_boundary_audit="$script_dir/gate-k-eval-command-boundary.py"
-
-case $verdict in
-  pass | fail | assisted | inconclusive) ;;
-  *) fail "invalid verdict: $verdict" ;;
-esac
-[[ -n $adjudicator && -n $owner ]] || fail 'adjudicator and owner must be recorded'
+repo_root=$(realpath -e "$script_dir/../..")
+adjudication_validator="$script_dir/gate-k-eval-validate-adjudication.py"
 for record in "$subject" "$checker"; do
   [[ -d $record && ! -L $record ]] || fail "task record is absent: $record"
   for file in task-receipt.json plan.json packet-manifest.json prompt.txt transcript.ndjson \
@@ -42,9 +35,19 @@ for record in "$subject" "$checker"; do
   [[ -z $empty_artifact_directory ]] ||
     fail "artifact tree contains an unbound empty directory: ${empty_artifact_directory#"$record/artifacts"/}"
 done
+subject=$(realpath -e "$subject")
+checker=$(realpath -e "$checker")
+[[ $subject != "$checker" ]] || fail 'subject and checker task records are the same directory'
+case "$subject/" in "$checker/"*) fail 'subject task record is nested under checker' ;; esac
+case "$checker/" in "$subject/"*) fail 'checker task record is nested under subject' ;; esac
+[[ -f $adjudication && ! -L $adjudication ]] || fail "adjudication is absent: $adjudication"
+adjudication=$(realpath -e "$adjudication")
 [[ ! -e $out ]] || fail "output already exists: $out"
 out_parent=$(realpath -e "$(dirname "$out")")
 out="$out_parent/$(basename "$out")"
+for record in "$subject" "$checker"; do
+  case "$out/" in "$record/"*) fail 'output must be outside both immutable task records' ;; esac
+done
 
 tree_sha() {
   local root=$1
@@ -90,6 +93,53 @@ for record in "$subject" "$checker"; do
   [[ $(sha256sum "$record/pi-qualification.txt" | cut -d' ' -f1) == \
       $(jq -r '.digests.qualificationSha256' "$record/task-receipt.json") ]] ||
     fail "qualification digest differs from task receipt: $record"
+  [[ $(jq -S -c . "$record/accounting.json") == \
+      $(jq -S -c '.accounting' "$record/task-receipt.json") ]] ||
+    fail "accounting file differs from task receipt: $record"
+
+  for packet_file in plan.json prompt.txt; do
+    packet_file_sha=$(jq -r --arg path "$packet_file" \
+      '.files[] | select(.path == $path) | .sha256' "$record/packet-manifest.json")
+    [[ $(sha256sum "$record/$packet_file" | cut -d' ' -f1) == "$packet_file_sha" ]] ||
+      fail "$packet_file differs from packet manifest: $record"
+  done
+  packet_manifest_sha=$(sha256sum "$record/packet-manifest.json" | cut -d' ' -f1)
+  [[ $(jq -r '.packetManifestSha256' "$record/boundary.json") == "$packet_manifest_sha" ]] ||
+    fail "boundary packet identity differs from packet manifest: $record"
+  prompt_sha=$(sha256sum "$record/prompt.txt" | cut -d' ' -f1)
+  [[ $(jq -r '.taskPromptSha256' "$record/boundary.json") == "$prompt_sha" ]] ||
+    fail "boundary prompt identity differs from packet: $record"
+
+  receipt_commit=$(jq -r '.candidateCommit' "$record/task-receipt.json")
+  [[ $receipt_commit =~ ^[0-9a-f]{40}$ ]] || fail "task receipt candidate is invalid: $record"
+  [[ $(jq -r '.candidate.commit' "$record/plan.json") == "$receipt_commit" ]] ||
+    fail "plan candidate differs from task receipt: $record"
+  [[ $(jq -r '.candidateCommit' "$record/packet-manifest.json") == "$receipt_commit" ]] ||
+    fail "packet-manifest candidate differs from task receipt: $record"
+  [[ $(jq -r '.targetCommit' "$record/boundary.json") == "$receipt_commit" ]] ||
+    fail "boundary candidate differs from task receipt: $record"
+  receipt_shape=$(jq -r '.shape' "$record/task-receipt.json")
+  [[ $(jq -r '.task.shape' "$record/plan.json") == "$receipt_shape" ]] ||
+    fail "plan shape differs from task receipt: $record"
+  [[ $(jq -r '.shape' "$record/packet-manifest.json") == "$receipt_shape" ]] ||
+    fail "packet-manifest shape differs from task receipt: $record"
+  [[ $(jq -r '.taskShape' "$record/boundary.json") == "$receipt_shape" ]] ||
+    fail "boundary shape differs from task receipt: $record"
+  [[ $(jq -r '.task.classification' "$record/plan.json") == \
+      $(jq -r '.classification' "$record/task-receipt.json") ]] ||
+    fail "plan classification differs from task receipt: $record"
+  [[ $(jq -r '.task.formalAttempt' "$record/plan.json") == \
+      $(jq -r '.formalAttempt' "$record/task-receipt.json") ]] ||
+    fail "plan formal-attempt status differs from task receipt: $record"
+  [[ $(jq -r '.operatorIntervention' "$record/plan.json") == \
+      $(jq -r '.operatorIntervention' "$record/task-receipt.json") ]] ||
+    fail "plan intervention differs from task receipt: $record"
+  plan_binary_sha=$(jq -r '.candidate.binarySha256' "$record/plan.json")
+  [[ $plan_binary_sha == $(jq -r '.binarySha256' "$record/boundary.json") ]] ||
+    fail "boundary binary differs from plan: $record"
+  [[ $plan_binary_sha == $(jq -r --arg path bin/nomos \
+      '.files[] | select(.path == $path) | .sha256' "$record/packet-manifest.json") ]] ||
+    fail "manifest binary differs from plan: $record"
 done
 
 subject_shape=$(jq -r '.shape' "$subject/task-receipt.json")
@@ -102,6 +152,8 @@ subject_commit=$(jq -r '.candidateCommit' "$subject/task-receipt.json")
 checker_commit=$(jq -r '.candidateCommit' "$checker/task-receipt.json")
 [[ $subject_commit =~ ^[0-9a-f]{40}$ && $subject_commit == "$checker_commit" ]] ||
   fail 'subject and checker candidate commits differ'
+git -C "$repo_root" cat-file -e "$subject_commit^{commit}" 2>/dev/null ||
+  fail 'candidate commit is absent from repository history'
 subject_class=$(jq -r '.classification' "$subject/task-receipt.json")
 checker_class=$(jq -r '.classification' "$checker/task-receipt.json")
 subject_formal=$(jq -r '.formalAttempt' "$subject/task-receipt.json")
@@ -111,6 +163,28 @@ checker_formal=$(jq -r '.formalAttempt' "$checker/task-receipt.json")
 subject_session=$(jq -r '.identity.sessionId' "$subject/task-receipt.json")
 checker_session=$(jq -r '.identity.sessionId' "$checker/task-receipt.json")
 [[ $subject_session != "$checker_session" ]] || fail 'checker reused the subject session'
+
+subject_receipt_sha=$(sha256sum "$subject/task-receipt.json" | cut -d' ' -f1)
+subject_commands_sha=$(sha256sum "$subject/commands.json" | cut -d' ' -f1)
+checker_manifest="$checker/packet-manifest.json"
+[[ $(jq -r --arg path subject/task-receipt.json \
+    '.files[] | select(.path == $path) | .sha256' "$checker_manifest") == "$subject_receipt_sha" ]] ||
+  fail 'checker packet does not bind the supplied subject task receipt'
+[[ $(jq -r --arg path subject/commands.json \
+    '.files[] | select(.path == $path) | .sha256' "$checker_manifest") == "$subject_commands_sha" ]] ||
+  fail 'checker packet does not bind the supplied subject commands'
+actual_subject_artifacts=$(find "$subject/artifacts" -type f -printf '%P\0' | sort -z |
+  while IFS= read -r -d '' relative; do
+    size=$(stat -c %s "$subject/artifacts/$relative")
+    digest=$(sha256sum "$subject/artifacts/$relative" | cut -d' ' -f1)
+    printf 'subject/artifacts/%s\t%s\t%s\n' "$relative" "$size" "$digest"
+  done)
+manifest_subject_artifacts=$(jq -r '
+  [.files[] | select(.path | startswith("subject/artifacts/")) |
+    [.path, (.bytes | tostring), .sha256] | @tsv] | sort[]
+  ' "$checker_manifest")
+[[ $actual_subject_artifacts == "$manifest_subject_artifacts" ]] ||
+  fail 'checker packet does not bind the supplied subject artifact tree'
 
 subject_outcome=$(jq -r '.outcome' "$subject/task-receipt.json")
 checker_outcome=$(jq -r '.outcome' "$checker/task-receipt.json")
@@ -123,32 +197,37 @@ jq -e '
   (.reasons | type) == "array" and (.reasons | length) > 0
   ' "$checker_result" >/dev/null || fail 'checker result is incomplete'
 checker_verdict=$(jq -r '.verdict' "$checker_result")
-subject_boundary_json=$(python3 "$command_boundary_audit" "$subject/commands.json" subject) ||
-  fail 'subject command boundary audit failed'
-checker_boundary_json=$(python3 "$command_boundary_audit" "$checker/commands.json" checker) ||
-  fail 'checker command boundary audit failed'
-subject_boundary_verdict=$(jq -r '.verdict' <<<"$subject_boundary_json")
-checker_boundary_verdict=$(jq -r '.verdict' <<<"$checker_boundary_json")
+adjudication_json=$(python3 "$adjudication_validator" "$subject" "$checker" "$adjudication") ||
+  fail 'command adjudication validation failed'
+[[ $(jq -r '.candidateCommit' <<<"$adjudication_json") == "$subject_commit" ]] ||
+  fail 'command adjudication candidate differs from task records'
+command_adjudication_verdict=$(jq -r '.verdict' <<<"$adjudication_json")
+verdict=$(jq -r '.verdict' <<<"$adjudication_json")
+adjudicator=$(jq -r '.adjudicator' <<<"$adjudication_json")
+owner=$(jq -r '.ownerDisposition' <<<"$adjudication_json")
 
 logical_verdict=pass
 logical_reason='subject completed within protocol and the independent checker passed'
-if [[ $subject_outcome == inconclusive || $checker_outcome == inconclusive ]]; then
+if [[ $command_adjudication_verdict == fail ]]; then
+  logical_verdict=fail
+  logical_reason='independent review found an outside-workspace path request in recorded commands'
+elif [[ $subject_outcome == inconclusive || $checker_outcome == inconclusive ]]; then
   logical_verdict=inconclusive
   logical_reason='a subject or checker transport/harness failure prevented fair completion'
 elif [[ $(jq -r '.operatorIntervention' "$subject/task-receipt.json") != none ||
         $(jq -r '.operatorIntervention' "$checker/task-receipt.json") != none ]]; then
   logical_verdict=assisted
   logical_reason='substantive operator intervention was recorded'
-elif [[ $subject_boundary_verdict != pass || $checker_boundary_verdict != pass ]]; then
-  logical_verdict=fail
-  logical_reason='recorded subject or checker commands requested a path outside the declared workspace'
 elif [[ $subject_outcome != eligible-for-checker || $checker_outcome != completed-checker ||
         $checker_verdict != pass ]]; then
   logical_verdict=fail
   logical_reason='the subject, checker transport, protocol, or checker result failed'
 fi
-[[ $verdict == "$logical_verdict" ]] ||
-  fail "requested verdict $verdict contradicts mechanically derived verdict $logical_verdict"
+if [[ $command_adjudication_verdict == pass ]]; then
+  verdict=$logical_verdict
+else
+  [[ $logical_verdict == fail ]] || fail 'command finding did not derive fail'
+fi
 
 if [[ $subject_class == rehearsal ]]; then
   [[ $(jq -r '.identity.provider + "/" + .identity.model + "/" + .identity.thinking' \
@@ -186,6 +265,7 @@ cleanup() {
 }
 trap cleanup EXIT
 install -d -m 755 "$stage/artifacts" "$stage/subject" "$stage/checker"
+printf '%s\n' "$adjudication_json" >"$stage/adjudication.json"
 for file in plan.json packet-manifest.json prompt.txt transcript.ndjson commands.json; do
   install -m 644 "$subject/$file" "$stage/$file"
 done
@@ -218,7 +298,6 @@ while IFS= read -r -d '' relative; do
   fi
 done < <(cd "$checker/artifacts" && find . -mindepth 1 -print0 | sort -z)
 
-subject_receipt_sha=$(sha256sum "$subject/task-receipt.json" | cut -d' ' -f1)
 checker_receipt_sha=$(sha256sum "$checker/task-receipt.json" | cut -d' ' -f1)
 checker_result_sha=$(sha256sum "$checker_result" | cut -d' ' -f1)
 checker_json=$(jq -S -c -n \
@@ -251,8 +330,7 @@ result=$(jq -S -c -n \
   --arg shape "$subject_shape" \
   --arg classification "$subject_class" \
   --argjson formal "$subject_formal" \
-  --argjson subject_boundary "$subject_boundary_json" \
-  --argjson checker_boundary "$checker_boundary_json" \
+  --argjson adjudication "$adjudication_json" \
   --slurpfile subject "$subject/task-receipt.json" \
   --slurpfile checker "$checker/task-receipt.json" '
   {
@@ -265,10 +343,7 @@ result=$(jq -S -c -n \
     shape: $shape,
     classification: $classification,
     formalAttempt: $formal,
-    commandBoundaryAudits: {
-      subject: $subject_boundary,
-      checker: $checker_boundary
-    },
+    commandAdjudication: $adjudication,
     subject: $subject[0],
     checker: $checker[0]
   }
@@ -282,6 +357,8 @@ printf '%s\n' "$result" >"$stage/result.json"
     $(jq -r '.digests.artifactsTreeSha256' "$stage/checker/task-receipt.json") ]] ||
   fail 'final checker artifact tree differs from its task receipt'
 
+subject_intervention=$(jq -r '.operatorIntervention' "$subject/task-receipt.json")
+checker_intervention=$(jq -r '.operatorIntervention' "$checker/task-receipt.json")
 printf '%s\n' \
   "# Gate K $subject_shape $subject_class run" \
   '' \
@@ -291,12 +368,12 @@ printf '%s\n' \
   "- Formal attempt: \`$subject_formal\`" \
   "- Subject: \`$(jq -r '.identity.provider + "/" + .identity.model' "$subject/task-receipt.json")\`, session \`$subject_session\`" \
   "- Checker: \`$(jq -r '.identity.provider + "/" + .identity.model' "$checker/task-receipt.json")\`, session \`$checker_session\`" \
-  '- Operator interventions: `none` for subject and checker' \
+  "- Subject operator intervention: \`$subject_intervention\`" \
+  "- Checker operator intervention: \`$checker_intervention\`" \
   '- Operator retries: `0` for subject and checker' \
   "- Adjudicator: $adjudicator" \
   "- Owner disposition: $owner" \
-  "- Subject command boundary: \`$subject_boundary_verdict\`" \
-  "- Checker command boundary: \`$checker_boundary_verdict\`" \
+  "- Command adjudication: \`$command_adjudication_verdict\`" \
   '' \
   'The complete subject transcript, ordered commands, artifacts, independent checker' \
   'record, packet identities, model identities, and accounting are stored beside this file.' \
