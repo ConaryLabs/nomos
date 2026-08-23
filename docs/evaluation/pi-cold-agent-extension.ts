@@ -342,6 +342,14 @@ export default function nomosPiColdAgentExtension(pi: ExtensionAPI): void {
 	const expectedThinking = requiredEnvironment("NOMOS_PI_EXPECTED_THINKING");
 	const expectedPromptSha = requiredEnvironment("NOMOS_PI_SYSTEM_PROMPT_SHA256");
 	const targetCommit = requiredEnvironment("NOMOS_PI_TARGET_COMMIT");
+	const clientPath = requiredEnvironment("NOMOS_PI_CLIENT_PATH");
+	const clientSha = requiredSha256("NOMOS_PI_CLIENT_SHA256");
+	const bwrapSha = requiredSha256("NOMOS_PI_BWRAP_SHA256");
+	const providerExtensionPath = requiredEnvironment("NOMOS_PI_PROVIDER_EXTENSION_PATH");
+	const providerExtensionSha = requiredEnvironment("NOMOS_PI_PROVIDER_EXTENSION_SHA256");
+	if (providerExtensionPath === "none" ? providerExtensionSha !== "none" : !/^[0-9a-f]{64}$/.test(providerExtensionSha)) {
+		throw new Error("provider extension path/digest identity is invalid");
+	}
 	if (!/^[0-9a-f]{40}$/.test(targetCommit)) {
 		throw new Error(`invalid target commit: ${targetCommit}`);
 	}
@@ -438,7 +446,7 @@ export default function nomosPiColdAgentExtension(pi: ExtensionAPI): void {
 
 			const finalSystemPrompt = event.systemPrompt.replaceAll(workspace, GUEST_WORKSPACE);
 			const boundary = {
-				schema: "nomos.pi_cold_agent_boundary@2",
+				schema: "nomos.pi_cold_agent_boundary@3",
 				boundaryKind,
 				mode: ctx.mode,
 				targetCommit,
@@ -463,6 +471,14 @@ export default function nomosPiColdAgentExtension(pi: ExtensionAPI): void {
 				taskShape: taskShape ?? null,
 				writablePaths,
 				budgets: null,
+				runtimeIdentity: {
+					pi: { path: clientPath, sha256: clientSha },
+					providerExtension:
+						providerExtensionPath === "none"
+							? null
+							: { path: providerExtensionPath, sha256: providerExtensionSha },
+					bubblewrap: { path: bwrap, sha256: bwrapSha },
+				},
 				sandbox: {
 					backend: "bubblewrap",
 					binary: bwrap,

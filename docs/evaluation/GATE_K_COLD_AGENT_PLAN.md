@@ -3,8 +3,8 @@ title: Gate K cold-agent eligibility and roster plan
 status: Owner-authorized routing; effective on merge
 date: 2026-08-22
 issue: 7
-protocol: docs/evaluation/COLD_AGENT_PROTOCOL.md revision 3
-protocol_decision: docs/decisions/0010-cold-agent-token-budget.md
+protocol: docs/evaluation/COLD_AGENT_PROTOCOL.md revision 5
+protocol_decision: docs/decisions/0012-cold-agent-evidence-authentication.md
 ---
 
 # Gate K cold-agent eligibility and roster plan
@@ -168,6 +168,12 @@ Every Gemini or DeepSeek formal launch now begins with the matching lane of:
 docs/evaluation/pi-cold-agent-preflight.sh gemini
 docs/evaluation/pi-cold-agent-preflight.sh deepseek
 ```
+
+The operator first commits the exact attempt reservation, completes the neutral
+preflight, then appends and commits the ledger's distinct `launch` event before
+provider invocation. The task launcher requires that marker. Cancellation is
+available only before it exists; after it exists, even a failed transport must
+close from an authenticated inconclusive task record.
 
 Pi is pinned by npm integrity and installed-tree digest. The Gemini adapter is
 separately named and pinned; package discovery remains disabled, and only that

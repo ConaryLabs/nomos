@@ -1,10 +1,86 @@
 # Handoff — state of the repository
 
-Updated 2026-08-23 for the combined issue #69/#70 evidence closure. Semantic
-implementation is complete through SW-N and frozen on `main`; issue #68 merged
-as PR #74, issue #69 merged as PR #75, and issue #70 is owner-approved in PR
-#76. Gate K remains explicitly unaccepted pending combined-head proof and the
-formal gates.
+Updated 2026-08-23 for issue #79. Semantic implementation is complete through
+SW-N. Combined issue #69/#70 evidence closure produced exact candidate
+`gate-k-rc1` at `d8a0b85`. All four formal subject/checker sessions are complete,
+and the owner dispositioned both formal attempts `fail`; Gate K is explicitly
+unaccepted. Issue #79 repairs the finalizer without rewriting or retrying those
+attempts. Its first implementation at `99c4436` passed CI but failed non-author
+review; the replacement uses hash-bound structured command adjudication and
+tightens candidate, subject/checker, and immutable-output bindings. A second
+non-author audit rejected `a7d0d5a` because command records and the candidate
+marker remained self-bound. A third audit rejected `5340158` because the
+candidate packet and writable paths were still self-asserted, checker JSON
+allowed duplicate keys, tool ends could precede starts, and numeric validation
+accepted floats. A fourth audit rejected `0bf8155`: selected hashes did not
+re-prove lifecycle/retry/accounting, qualification and launcher records could be
+truncated, immutable packet members were not fully reopened, output could enter
+a packet, and formal/candidate identity remained relabelable. The current repair
+revalidates the complete Pi lifecycle and receipt chain, verifies every
+immutable packet member, forbids packet/output overlap, and pins formal evidence
+to the exact `gate-k-rc1` commit and binary. A fifth audit rejected `95a5430`:
+event ordering and duplicate NDJSON keys remained open, writable packet output
+was not compared with recorded artifacts, qualification receipts could still be
+selectively truncated, and the invalidated candidate admitted fresh formal
+attempts. A sixth audit of the subsequent repair found that transcript payloads,
+qualification headers and ordering, packet isolation claims, timestamps, usage
+arithmetic, and prelaunch attempt accounting were still incompletely
+authenticated. The current repair validates the complete Pi event semantics and
+pinned qualification environment, reopens every packet-boundary claim, rejects
+invalid numeric/date values, and adds protocol revision 4's committed,
+hash-chained formal-attempt ledger. The four frozen task receipts are imported
+without pretending retroactive prelaunch proof exists. A seventh audit rejected
+`7aef90d` because ledger closes did not authenticate the receipt/launcher,
+runtime executable paths were insufficiently pinned, raw signature removal was
+overbroad, optional usage and RFC 3339 ranges were loose, checker JSON admitted
+non-finite values, and public packet schemas were not exact. The current repair
+implements protocol revision 5 with receipt-backed closes, exact canonical
+schemas, raw-stream digesting and signature-location checks, strict scalar
+validation, and boundary schema `@3` runtime path-and-hash identities. Its fresh
+exact-head eighth audit rejected `4108f06`: close still accepted a skeletal
+launcher, legacy `@2` evidence was not restricted to the four frozen receipts,
+signature removal was not schema-location-aware, Python boolean/integer equality
+weakened exact scalar checks, and tooling metadata still named revision 3. The
+current repair validates the complete task record and committed ledger HEAD,
+admits legacy evidence only by exact frozen receipt hash, restricts sanitization
+to explicit Pi message/result content locations, type-checks every fixed scalar,
+and identifies protocol revision 5 consistently. The tenth audit then rejected
+`ac0f125`: a consistently rehashed but semantically invalid task record could
+still close, current formal launchers carried a qualification digest the
+finalizer rejected, Pi session `version: 3.0` and `toolcall_end` content-index
+floats bypassed exact integer typing, and the active roster plan still named
+protocol revision 3. The current repair makes close invoke finalization's shared
+single-record semantic proof, distinguishes exact frozen legacy launchers from
+all current qualification bindings, requires exact lifecycle integer types, and
+updates the active plan to revision 5. A fresh exact-head audit remains.
+The concurrently completed ninth audit of superseded head `4952e67` also found
+that close omitted the reserved prompt digest, overflowing numeric syntax could
+become a non-finite host float, arbitrary synthetic legacy imports were
+accepted, and final assembly ignored later ledger events. The current repair
+binds the plan prompt to its reservation, rejects overflow in the shared JSON
+loader, admits only the four exact canonical historical imports, and requires
+their exact frozen inventory during Gate K final assembly. A fresh exact-head
+audit remains.
+The eleventh exact-head audit rejected `27e7f25`: authenticated close returned
+before candidate/checker validation, reopened packets did not re-prove their
+complete shape or brief binding, the standalone adjudication consumer accepted
+non-finite numbers, current qualifications admitted the obsolete extension,
+prelaunch cancellation was operator-asserted, and trailing-slash symlink roots
+bypassed lexical checks. The current repair moves all single-record checks ahead
+of close, reuses complete post-run packet verification, shares strict JSON
+loading, separates legacy/current extension hashes, commits a provider-launch
+event before invocation, and rejects final-component path aliases. The twelfth
+exact-head audit rejected `759d60a`: checker-packet construction still consumed
+a duplicate-key subject receipt before strict validation, and the active handoff
+still instructed the operator to commit an already committed repair. The current
+repair strictly validates every structured subject-record input before field
+extraction or packet emission, rejects final-component aliases at packet input
+tree roots, and corrects the active next step. A fresh exact-head audit remains.
+The thirteenth exact-head audit rejected `103ee7f`: a finite fractional schema
+version in a generic JSON artifact produced a manifest that construction
+accepted but verification rejected. The current repair requires positive integer
+object-schema versions and validates the complete generated manifest before it
+can be published. A fresh exact-head audit remains.
 This file orients a fresh session; it is rewritten at each slice boundary and
 never accumulates history (git has that).
 
@@ -410,27 +486,21 @@ never accumulates history (git has that).
 
 ## What is next
 
-Complete PR #76 integration, then rerun the issue #69 mechanical matrix and the
-issue #70 evaluation-tooling proof on the same clean combined head. Only after
-those candidate-bound proofs pass may the owner tag `gate-k-rc1`. No new
-semantic feature slice is authorized before final Gate K disposition. An
-evidence-driven defect may still be repaired through the issue-first flow; any
-acceptance-contract correction still requires an owner-authorized decision
-record.
+Complete the exact-head proof, CI, and fresh non-author audit for the
+thirteenth-audit repair, then merge #79 if all three are green. The externally
+assembled immutable #71 and #72 structured results still have SHA-256
+`e6990dacde903f527d1cb46784a54d938a7e130f1193e51bb830a4a2284f07dc` and
+`f09c9214329f7f8bd7d4d4b31476a0f24c825add2f5bb434b7bf780f64d8089c`.
+After #79 merges, attach/finalize those owner-disposed failures and merge their
+evidence PRs #77 and #78. Issue #73 then maps all nineteen acceptance criteria
+and records the final Gate K disposition. No formal retry or new semantic
+feature slice is authorized.
 
-The remaining formal order is:
-
-1. #71 — Gemini formal cold-author subject;
-2. #72 — DeepSeek formal cold-debug subject;
-3. #71 — DeepSeek independent author checker;
-4. #72 — Gemini independent debugger checker;
-5. #73 — complete nineteen-criterion owner disposition.
-
-After a `gate-k-rcN` candidate is frozen, any later code, schema, CLI, public
-packet documentation, or evaluation-harness change requires a new candidate
-and invalidates later exact-head evidence against the old candidate. No
-release-candidate tag exists yet, and implementation completion alone does not
-make Gate K green.
+`gate-k-rc1` remains the exact historical subject of the completed formal
+attempts. Because #79 changes evaluation-harness code after the tag, it is
+invalid for any later exact-head evidence. A future formal launch would require
+a new candidate, combined-head proof, and explicit owner authorization; issue
+#79 itself does not authorize one.
 
 The old `agy` Gemini route remains falsified evidence. Issue #49 qualifies Pi as
 the replacement transport without spending a formal attempt or changing the
@@ -479,13 +549,14 @@ issue #24 have the same author/non-author/CI chain as recorded above. Earlier
 SW-C, revision-4, and Rust-1.98 maintenance reruns also passed.
 Issue #69 closes the final exact-head disposition for Linux aarch64 release,
 ten runs per target, measured Gate K budgets, and the final explicit schema-
-ownership source review. Formal cold-agent gates remain unperformed regardless
-of #69's result.
+ownership source review at `gate-k-rc1`. The formal cold-agent sessions are now
+performed, but neither criterion 17 nor 18 passes.
 
 ## Remaining evidence points
 
-Issue #69's dedicated workflow supplies the merged mechanical evidence
-artifacts, and issue #70 supplies the evaluation harness and non-formal
-rehearsals. Their proofs must still pass together on the combined clean head
-before `gate-k-rc1` is tagged. The whole-kernel roster and invalidation rules
-are resolved; the formal runs remain unperformed.
+Issues #69 and #70 supply the merged mechanical evidence, evaluation harness,
+and non-formal rehearsals behind `gate-k-rc1`. Draft PR #77 preserves the
+Gemini author and DeepSeek checker; draft PR #78 preserves the DeepSeek debugger
+and Gemini checker. The semantic authoring and diagnosis were correct, but
+recorded outside-workspace requests make both formal attempts fail under the
+frozen rubric. Issue #79 is the only active tooling repair before #73.

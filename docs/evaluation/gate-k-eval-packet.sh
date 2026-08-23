@@ -71,7 +71,12 @@ case $classification in
   *) fail "classification must be rehearsal or formal: $classification" ;;
 esac
 
-for name in git cargo jq sha256sum stat find sort install awk realpath; do
+script_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+document_validator="$script_dir/gate-k-eval-validate-documents.py"
+json_validator="$script_dir/gate-k-eval-validate-json.py"
+transcript_validator="$script_dir/gate-k-eval-validate-transcript.py"
+
+for name in git cargo jq sha256sum stat find sort install awk realpath python3; do
   command -v "$name" >/dev/null 2>&1 || fail "required executable not found: $name"
 done
 
@@ -100,15 +105,33 @@ regular_file() {
   [[ -f $1 && ! -L $1 ]] || fail "expected a regular non-symlink file: $1"
 }
 
+real_directory() {
+  local supplied=$1
+  local label=$2
+  local stripped=$supplied
+  local parent name resolved
+  while [[ $stripped != / && $stripped == */ ]]; do
+    stripped=${stripped%/}
+  done
+  [[ -d $stripped && ! -L $stripped ]] || fail "$label: $supplied"
+  parent=$(realpath -e "$(dirname -- "$stripped")")
+  name=$(basename -- "$stripped")
+  [[ $name != . && $name != .. ]] || fail "$label: $supplied"
+  resolved=$(realpath -e "$stripped")
+  [[ $resolved == "$parent/$name" ]] || fail "$label: $supplied"
+  printf '%s\n' "$resolved"
+}
+
 regular_tree() {
-  [[ -d $1 && ! -L $1 ]] || fail "expected a directory, not a symlink: $1"
-  [[ -z $(find "$1" -type l -print -quit) ]] || fail "tree contains a symlink: $1"
-  [[ -z $(find "$1" ! -type f ! -type d -print -quit) ]] ||
-    fail "tree contains a special entry: $1"
-  empty=$(find "$1" -mindepth 1 -type d -empty -print -quit)
-  [[ -z $empty ]] || fail "tree contains an unbound empty directory: ${empty#"$1"/}"
+  local root
+  root=$(real_directory "$1" 'expected a directory, not a symlink')
+  [[ -z $(find "$root" -type l -print -quit) ]] || fail "tree contains a symlink: $root"
+  [[ -z $(find "$root" ! -type f ! -type d -print -quit) ]] ||
+    fail "tree contains a special entry: $root"
+  empty=$(find "$root" -mindepth 1 -type d -empty -print -quit)
+  [[ -z $empty ]] || fail "tree contains an unbound empty directory: ${empty#"$root"/}"
   while IFS= read -r -d '' entry; do
-    relative=${entry#"$1"/}
+    relative=${entry#"$root"/}
     [[ $relative =~ ^[A-Za-z0-9.][A-Za-z0-9._/-]*$ && $relative != *..* &&
       $relative != *//* ]] || fail "tree contains an unsafe path: $relative"
     lower=${relative,,}
@@ -125,7 +148,7 @@ regular_tree() {
         fail "tree contains an excluded source, transcript, or credential-like file: $relative"
         ;;
     esac
-  done < <(find "$1" -mindepth 1 -print0 | sort -z)
+  done < <(find "$root" -mindepth 1 -print0 | sort -z)
 }
 
 exact_tree_files() {
@@ -149,8 +172,7 @@ tree_sha() {
 validate_subject_record() {
   local expected_shape=$1
   local actual_top expected_top
-  [[ -d $subject_record && ! -L $subject_record ]] ||
-    fail "subject record is not a real directory: $subject_record"
+  subject_record=$(real_directory "$subject_record" 'subject record is not a real directory')
   [[ -z $(find "$subject_record" -type l -print -quit) ]] ||
     fail 'subject record contains a symlink'
   [[ -z $(find "$subject_record" ! -type f ! -type d -print -quit) ]] ||
@@ -166,6 +188,18 @@ validate_subject_record() {
     task-receipt.json transcript.ndjson; do
     regular_file "$subject_record/$file"
   done
+  python3 "$document_validator" task-receipt "$subject_record/task-receipt.json" ||
+    fail 'subject task receipt does not satisfy its exact schema'
+  python3 "$document_validator" plan "$subject_record/plan.json" ||
+    fail 'subject plan does not satisfy its exact schema'
+  python3 "$document_validator" manifest "$subject_record/packet-manifest.json" ||
+    fail 'subject packet manifest does not satisfy its exact schema'
+  for json_file in accounting.json boundary.json commands.json; do
+    python3 "$json_validator" "$subject_record/$json_file" ||
+      fail "subject $json_file contains invalid or duplicate-key JSON"
+  done
+  python3 "$transcript_validator" "$subject_record/transcript.ndjson" --syntax-only ||
+    fail 'subject transcript contains invalid or duplicate-key JSON'
   jq -e --arg commit "$commit" --arg shape "$expected_shape" \
     --arg classification "$classification" '
     .schema == "nomos.gate_k.task_receipt@1" and
@@ -466,13 +500,18 @@ schema_identity() {
   local first_line
   case $path in
     *.json)
+      python3 "$json_validator" "$path" >/dev/null ||
+        fail "packet JSON contains invalid or duplicate-key input: $path"
       jq -r '
-        if (.schema | type) == "string" then .schema
+        if has("schema") | not then empty
+        elif (.schema | type) == "string" then .schema
         elif (.schema | type) == "object" and (.schema.name | type) == "string" and
-             (.schema.version | type) == "number"
+             (.schema.version | type) == "number" and .schema.version > 0 and
+             (.schema.version | floor) == .schema.version
         then "\(.schema.name)@\(.schema.version)"
-        else empty end
-      ' "$path" 2>/dev/null || true
+        else error("invalid schema identity") end
+      ' "$path" 2>/dev/null ||
+        fail "packet JSON declares an invalid schema identity: $path"
       ;;
     *.nomos | *.commands)
       IFS= read -r first_line <"$path" || true
@@ -522,6 +561,8 @@ manifest=$(jq -S -c -n \
   }
 ')
 printf '%s\n' "$manifest" >"$stage/packet-manifest.json"
+python3 "$document_validator" manifest "$stage/packet-manifest.json" ||
+  fail 'generated packet manifest does not satisfy its exact schema'
 
 expected_count=$(jq '.files | length' "$stage/packet-manifest.json")
 actual_count=$(find "$stage" -type f ! -name packet-manifest.json | wc -l)
