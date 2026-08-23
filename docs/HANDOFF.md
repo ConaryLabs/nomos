@@ -73,7 +73,7 @@ After the formal records merged, final evidence-main workflows also passed:
 
 ## Evidence boundary
 
-Issues #68–#72 and #79 are closed. Their PRs are merged:
+Issues #68–#73, #79, #82, and #83 are closed. Their PRs are merged:
 
 | Issue | PR | Disposition |
 | ---: | ---: | --- |
