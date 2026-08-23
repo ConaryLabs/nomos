@@ -37,7 +37,14 @@ non-finite values, and public packet schemas were not exact. The current repair
 implements protocol revision 5 with receipt-backed closes, exact canonical
 schemas, raw-stream digesting and signature-location checks, strict scalar
 validation, and boundary schema `@3` runtime path-and-hash identities. Its fresh
-exact-head non-author rerun remains.
+exact-head eighth audit rejected `4108f06`: close still accepted a skeletal
+launcher, legacy `@2` evidence was not restricted to the four frozen receipts,
+signature removal was not schema-location-aware, Python boolean/integer equality
+weakened exact scalar checks, and tooling metadata still named revision 3. The
+current repair validates the complete task record and committed ledger HEAD,
+admits legacy evidence only by exact frozen receipt hash, restricts sanitization
+to explicit Pi message/result content locations, type-checks every fixed scalar,
+and identifies protocol revision 5 consistently. A fresh exact-head audit remains.
 This file orients a fresh session; it is rewritten at each slice boundary and
 never accumulates history (git has that).
 

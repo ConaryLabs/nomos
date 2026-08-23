@@ -1,8 +1,8 @@
 ---
 title: Gate K cold-agent packet and run tooling
-status: Issue 70 pre-formal tooling plan
+status: Gate K evidence-authentication tooling; current through issue 79
 date: 2026-08-23
-protocol: docs/evaluation/COLD_AGENT_PROTOCOL.md revision 3
+protocol: docs/evaluation/COLD_AGENT_PROTOCOL.md revision 5
 roster: docs/evaluation/GATE_K_COLD_AGENT_PLAN.md
 ---
 
@@ -356,8 +356,11 @@ during issue #79. The four frozen task receipts are imported, explicitly without
 retroactive prelaunch proof, into the hash-chained formal-attempt ledger. A
 future formal launcher requires an exact open reservation already committed in
 that ledger and records the ledger commit and digest in its task receipt. The
-completion event is derived from the exact canonical task receipt and completed
-launcher, then closes the reservation with the receipt hash and outcome;
+completion event is derived from the complete task record. The exact canonical
+receipt and exact launcher schema must bind the retained transcript, commands,
+manifest, qualification, stderr, boundary, and artifact tree; launcher status
+derives the outcome, and the bound ledger commit must be the committed HEAD.
+Only then does the event close the reservation with the receipt hash and outcome;
 another reservation cannot hide or overtake an unfinished task.
 A prelaunch cancellation instead appends `discarded-before-launch` plus its
 reason; it cannot impersonate a completed provider task or erase the reservation.

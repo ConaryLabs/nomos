@@ -261,10 +261,13 @@ Before a formal provider task launches, the operator appends a content-addressed
 reservation to `docs/evaluation/gate-k-formal-attempt-ledger.jsonl` and commits
 it. Reservations are globally ordered and hash-chained. A launch must bind the
 exact open reservation, candidate, packet manifest, prompt, shape, provider,
-model, and thinking level. The finished task receipt and completed launcher are
-validated together, and their derived receipt hash and outcome are then appended
-as a closing event even when the outcome is fail or inconclusive. A bare hash
-cannot close an attempt. A new reservation
+model, and thinking level. The complete recorded task directory is validated:
+the canonical receipt and exact launcher must agree with the retained manifest,
+transcript, commands, qualification, stderr, boundary, and artifact tree. The
+launcher status mechanically determines the receipt outcome, and its ledger
+commit must be the repository HEAD that contains the open reservation. Only then
+are the derived receipt hash and outcome appended as a closing event, including
+an inconclusive transport. A bare hash or skeletal launcher cannot close an attempt. A new reservation
 is forbidden while an earlier one is open. This prelaunch record, rather than a
 finished receipt's self-reported retry count, makes abandoned or discarded
 formal transports visible.

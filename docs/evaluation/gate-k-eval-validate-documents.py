@@ -11,6 +11,7 @@ import sys
 from pathlib import Path
 
 from gate_k_eval_pi_protocol import (
+    LEGACY_TASK_RECEIPT_SHA256S,
     fail,
     loads,
     require_keys,
@@ -98,11 +99,14 @@ def validate_plan(value: object) -> None:
         fail("plan active tools differ")
     budgets = require_keys(plan["budgets"], {"freshSessions", "operatorRetriesMaximum",
                                              "operatorSubstantiveHintsMaximum"}, set(), "plan.budgets")
+    for field in budgets:
+        require_int(budgets[field], f"plan.budgets.{field}")
     if budgets != {"freshSessions": 1, "operatorRetriesMaximum": 0,
                    "operatorSubstantiveHintsMaximum": 0}:
         fail("plan budgets differ")
     recording = require_keys(plan["recording"], {"eventStream", "removedProviderFields",
                                                   "commandOrderPreserved", "transcriptLossLimit"}, set(), "plan.recording")
+    require_bool(recording["commandOrderPreserved"], "plan.recording.commandOrderPreserved")
     if recording != {"eventStream": "complete-ndjson",
                       "removedProviderFields": ["textSignature", "thinkingSignature"],
                       "commandOrderPreserved": True,
@@ -142,11 +146,15 @@ def validate_manifest(value: object) -> None:
         fail("packet manifest paths are not unique and sorted")
 
 
-def validate_task_receipt(value: object) -> None:
+def validate_task_receipt(value: object, digest: str) -> None:
+    legacy = digest in LEGACY_TASK_RECEIPT_SHA256S
     required = {"schema", "shape", "classification", "formalAttempt", "candidateCommit", "identity",
                 "environment", "disclosures", "operatorIntervention", "operatorRetries", "accounting",
                 "outcome", "outcomeReason", "digests"}
-    receipt = require_keys(value, required, {"attemptReservation", "execution"}, "task receipt")
+    optional = {"attemptReservation", "execution"} if legacy else set()
+    if not legacy:
+        required |= {"attemptReservation", "execution"}
+    receipt = require_keys(value, required, optional, "task receipt")
     if receipt["schema"] != "nomos.gate_k.task_receipt@1" or receipt["shape"] not in SHAPES or receipt["classification"] not in CLASSES:
         fail("task receipt identity is invalid")
     require_bool(receipt["formalAttempt"], "task receipt formalAttempt")
@@ -170,8 +178,12 @@ def validate_task_receipt(value: object) -> None:
     expected_disclosures = {"persistedSession": False, "projectMemory": False, "personalContext": False,
                             "contextFiles": [], "connectors": [], "webAccess": False,
                             "toolNetworkAccess": False, "activeTools": ["bash"], "repositoryMounted": False}
+    for field in ("persistedSession", "projectMemory", "personalContext", "webAccess",
+                  "toolNetworkAccess", "repositoryMounted"):
+        require_bool(disclosures[field], f"task receipt disclosures {field}")
     if disclosures != expected_disclosures:
         fail("task receipt disclosures differ")
+    require_int(receipt["operatorRetries"], "task receipt operator retries")
     if receipt["operatorIntervention"] != "none" or receipt["operatorRetries"] != 0:
         fail("task receipt operator accounting differs")
     accounting = require_keys(receipt["accounting"], {"assistantTurns", "providerReportedTokens", "toolCalls"}, set(), "task receipt accounting")
@@ -180,9 +192,12 @@ def validate_task_receipt(value: object) -> None:
     if receipt["outcome"] not in OUTCOMES:
         fail("task receipt outcome is invalid")
     require_string(receipt["outcomeReason"], "task receipt outcome reason")
-    digests = require_keys(receipt["digests"], {"packetManifestSha256", "transcriptSha256", "commandsSha256",
-                                                "artifactsTreeSha256", "boundarySha256", "qualificationSha256"},
-                           {"rawTranscriptSha256"}, "task receipt digests")
+    required_digests = {"packetManifestSha256", "transcriptSha256", "commandsSha256",
+                        "artifactsTreeSha256", "boundarySha256", "qualificationSha256"}
+    if not legacy:
+        required_digests.add("rawTranscriptSha256")
+    digests = require_keys(receipt["digests"], required_digests,
+                           {"rawTranscriptSha256"} if legacy else set(), "task receipt digests")
     for field in digests:
         require_sha256(digests[field], f"task receipt digest {field}")
     if "attemptReservation" in receipt:
@@ -195,7 +210,10 @@ def validate_task_receipt(value: object) -> None:
                 fail("task receipt ledger commit is invalid")
         elif reservation is not None:
             fail("rehearsal task receipt has an attempt reservation")
-    if "execution" in receipt:
+    if legacy:
+        if receipt.get("execution") is not None:
+            validate_execution(receipt["execution"], "task receipt execution")
+    else:
         validate_execution(receipt["execution"], "task receipt execution")
 
 
@@ -249,8 +267,10 @@ def main() -> None:
         if args.kind == "checker-result":
             validate_checker(value, hashlib.sha256(args.path.read_bytes()).hexdigest())
         else:
-            {"plan": validate_plan, "manifest": validate_manifest,
-             "task-receipt": validate_task_receipt}[args.kind](value)
+            if args.kind == "task-receipt":
+                validate_task_receipt(value, hashlib.sha256(args.path.read_bytes()).hexdigest())
+            else:
+                {"plan": validate_plan, "manifest": validate_manifest}[args.kind](value)
     except (OSError, ValueError) as error:
         print(f"gate-k evaluation document validation: FAIL: {error}", file=sys.stderr)
         raise SystemExit(1)

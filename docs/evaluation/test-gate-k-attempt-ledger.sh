@@ -20,27 +20,99 @@ assert_blocked() {
 }
 
 python3 "$validator" validate "$ledger"
-cp "$ledger" "$tmp_dir/ledger.jsonl"
+mkdir -p "$tmp_dir/repo/docs/evaluation"
+cp "$ledger" "$tmp_dir/repo/docs/evaluation/gate-k-formal-attempt-ledger.jsonl"
+ledger_copy="$tmp_dir/repo/docs/evaluation/gate-k-formal-attempt-ledger.jsonl"
+git -C "$tmp_dir/repo" init -q
+git -C "$tmp_dir/repo" config user.name 'Gate K fixture'
+git -C "$tmp_dir/repo" config user.email gate-k-fixture@example.invalid
+git -C "$tmp_dir/repo" add docs/evaluation/gate-k-formal-attempt-ledger.jsonl
+git -C "$tmp_dir/repo" commit -qm 'Import attempt ledger'
 
 candidate=1111111111111111111111111111111111111111
 manifest=2222222222222222222222222222222222222222222222222222222222222222
 prompt=3333333333333333333333333333333333333333333333333333333333333333
 nonce=4444444444444444444444444444444444444444444444444444444444444444
 
-python3 "$validator" next-reservation "$tmp_dir/ledger.jsonl" future-author "$candidate" \
+python3 "$validator" next-reservation "$ledger_copy" future-author "$candidate" \
   author antigravity gemini-future high "$manifest" "$prompt" "$nonce" \
-  >>"$tmp_dir/ledger.jsonl"
-assert_blocked 'formal attempt remains open' python3 "$validator" validate "$tmp_dir/ledger.jsonl"
-python3 "$validator" verify-reservation "$tmp_dir/ledger.jsonl" future-author "$candidate" \
+  >>"$ledger_copy"
+git -C "$tmp_dir/repo" add docs/evaluation/gate-k-formal-attempt-ledger.jsonl
+git -C "$tmp_dir/repo" commit -qm 'Reserve future author attempt'
+assert_blocked 'formal attempt remains open' python3 "$validator" validate "$ledger_copy"
+python3 "$validator" verify-reservation "$ledger_copy" future-author "$candidate" \
   author antigravity gemini-future high "$manifest" "$prompt" >/dev/null
 assert_blocked 'earlier formal attempt remains open' python3 "$validator" next-reservation \
-  "$tmp_dir/ledger.jsonl" hidden-retry "$candidate" author antigravity gemini-future high \
+  "$ledger_copy" hidden-retry "$candidate" author antigravity gemini-future high \
   "$manifest" "$prompt" "$nonce"
 
-ledger_sha=$(sha256sum "$tmp_dir/ledger.jsonl" | cut -d' ' -f1)
-ledger_commit=6666666666666666666666666666666666666666
+ledger_sha=$(sha256sum "$ledger_copy" | cut -d' ' -f1)
+ledger_commit=$(git -C "$tmp_dir/repo" rev-parse HEAD)
+record="$tmp_dir/task-record"
+mkdir -p "$record/artifacts"
+printf '# Fixture task receipt\n' >"$record/TASK.md"
+printf 'fixture prompt\n' >"$record/prompt.txt"
+printf '%s\n' '{"assistantTurns":1,"providerReportedTokens":2,"toolCalls":1}' \
+  >"$record/accounting.json"
+prompt_sha=$(sha256sum "$record/prompt.txt" | cut -d' ' -f1)
+jq -S -c -n --arg candidate "$candidate" --arg prompt_sha "$prompt_sha" '
+  {schema:"nomos.gate_k.eval_plan@1",
+   task:{shape:"author",classification:"formal",formalAttempt:true},
+   candidate:{commit:$candidate,binaryPath:"bin/nomos",binarySha256:("5"*64)},
+   packet:{briefPath:"brief.txt",briefSha256:("6"*64),promptPath:"prompt.txt",
+     promptSha256:$prompt_sha,writablePaths:["workspace"],repositoryMounted:false,
+     gitMetadataPresent:false,networkPermitted:false,activeTools:["bash"]},
+   budgets:{freshSessions:1,operatorRetriesMaximum:0,operatorSubstantiveHintsMaximum:0},
+   rubric:["identity","evidence","disposition"],
+   recording:{eventStream:"complete-ndjson",
+     removedProviderFields:["textSignature","thinkingSignature"],
+     commandOrderPreserved:true,
+     transcriptLossLimit:"only-the-two-declared-provider-signature-fields"},
+   operatorIntervention:"none",verdicts:["pass","fail","assisted","inconclusive"]}
+' >"$record/plan.json"
+plan_sha=$(sha256sum "$record/plan.json" | cut -d' ' -f1)
+plan_bytes=$(stat -c %s "$record/plan.json")
+prompt_bytes=$(stat -c %s "$record/prompt.txt")
+jq -S -c -n --arg candidate "$candidate" --arg plan_sha "$plan_sha" \
+  --arg prompt_sha "$prompt_sha" --argjson plan_bytes "$plan_bytes" \
+  --argjson prompt_bytes "$prompt_bytes" '
+  {schema:"nomos.gate_k.packet_manifest@1",candidateCommit:$candidate,shape:"author",
+   manifestExcludesSelf:true,writablePaths:["workspace"],files:[
+     {path:"plan.json",bytes:$plan_bytes,mode:"644",sha256:$plan_sha,
+      schemaIdentity:"nomos.gate_k.eval_plan@1"},
+     {path:"prompt.txt",bytes:$prompt_bytes,mode:"644",sha256:$prompt_sha,
+      schemaIdentity:null}]}
+' >"$record/packet-manifest.json"
+printf 'transcript\n' >"$record/transcript.ndjson"
+printf 'commands\n' >"$record/commands.json"
+printf 'boundary\n' >"$record/boundary.json"
+printf 'qualification\n' >"$record/pi-qualification.txt"
+printf 'stderr\n' >"$record/pi-stderr.txt"
+printf 'artifact\n' >"$record/artifacts/result.txt"
+manifest=$(sha256sum "$record/packet-manifest.json" | cut -d' ' -f1)
+transcript=$(sha256sum "$record/transcript.ndjson" | cut -d' ' -f1)
+commands=$(sha256sum "$record/commands.json" | cut -d' ' -f1)
+boundary=$(sha256sum "$record/boundary.json" | cut -d' ' -f1)
+qualification=$(sha256sum "$record/pi-qualification.txt" | cut -d' ' -f1)
+stderr_sha=$(sha256sum "$record/pi-stderr.txt" | cut -d' ' -f1)
+artifacts=$(cd "$record/artifacts" && sha256sum result.txt | sha256sum | cut -d' ' -f1)
+raw=7777777777777777777777777777777777777777777777777777777777777777
+
+# Rebuild the committed reservation with the actual packet identity used below.
+git -C "$tmp_dir/repo" reset -q --soft HEAD^
+git -C "$tmp_dir/repo" reset -q
+git -C "$tmp_dir/repo" checkout -q -- docs/evaluation/gate-k-formal-attempt-ledger.jsonl
+python3 "$validator" next-reservation "$ledger_copy" future-author "$candidate" \
+  author antigravity gemini-future high "$manifest" "$prompt" "$nonce" >>"$ledger_copy"
+git -C "$tmp_dir/repo" add docs/evaluation/gate-k-formal-attempt-ledger.jsonl
+git -C "$tmp_dir/repo" commit -qm 'Reserve future author attempt'
+ledger_sha=$(sha256sum "$ledger_copy" | cut -d' ' -f1)
+ledger_commit=$(git -C "$tmp_dir/repo" rev-parse HEAD)
+
 jq -S -c -n --arg candidate "$candidate" --arg manifest "$manifest" \
-  --arg ledger_sha "$ledger_sha" --arg ledger_commit "$ledger_commit" '
+  --arg ledger_sha "$ledger_sha" --arg ledger_commit "$ledger_commit" \
+  --arg transcript "$transcript" --arg commands "$commands" --arg artifacts "$artifacts" \
+  --arg boundary "$boundary" --arg qualification "$qualification" '
   {schema:"nomos.gate_k.task_receipt@1",shape:"author",classification:"formal",
    formalAttempt:true,candidateCommit:$candidate,
    identity:{provider:"antigravity",model:"gemini-future",thinking:"high",
@@ -52,44 +124,70 @@ jq -S -c -n --arg candidate "$candidate" --arg manifest "$manifest" \
      activeTools:["bash"],repositoryMounted:false},operatorIntervention:"none",
    operatorRetries:0,attemptReservation:{attemptId:"future-author",ledgerSha256:$ledger_sha,
      ledgerCommit:$ledger_commit},accounting:{assistantTurns:1,providerReportedTokens:2,toolCalls:1},
-   outcome:"inconclusive",outcomeReason:"fixture transport failed",
-   digests:{packetManifestSha256:$manifest,transcriptSha256:("7"*64),commandsSha256:("8"*64),
-     artifactsTreeSha256:("9"*64),boundarySha256:("a"*64),qualificationSha256:("b"*64)}}' \
-  >"$tmp_dir/task-receipt.json"
-cat >"$tmp_dir/launcher.txt" <<EOF
+   outcome:"inconclusive",outcomeReason:"Pi transport exited 1",
+   execution:{pi:{path:"/fixture/pi",sha256:("1"*64)},providerExtension:null,
+     bubblewrap:{path:"/fixture/bwrap",sha256:("2"*64)}},
+   digests:{packetManifestSha256:$manifest,rawTranscriptSha256:("7"*64),
+     transcriptSha256:$transcript,commandsSha256:$commands,
+     artifactsTreeSha256:$artifacts,boundarySha256:$boundary,
+     qualificationSha256:$qualification}}' >"$record/task-receipt.json"
+cat >"$record/launcher.txt" <<EOF
 PI_TASK_STATUS 1
 PI_TASK_MODEL antigravity	gemini-future	Gemini Future	high
+PI_TASK_SESSION 11111111-2222-4333-8444-555555555555 ephemeral
 PI_TASK_COMMIT $candidate
 PI_TASK_PACKET_MANIFEST_SHA256 $manifest
+PI_TASK_RAW_EVENTS_SHA256 $raw
+PI_TASK_EVENTS_SHA256 $transcript
+PI_TASK_STDERR_SHA256 $stderr_sha
+PI_TASK_QUALIFICATION_SHA256 $qualification
 PI_TASK_ATTEMPT_ID future-author
 PI_TASK_ATTEMPT_LEDGER_SHA256 $ledger_sha
 PI_TASK_ATTEMPT_LEDGER_COMMIT $ledger_commit
 PI_COLD_AGENT_TASK RECORDED
 EOF
-assert_blocked 'task receipt is not a regular file' python3 "$validator" next-close \
-  "$tmp_dir/ledger.jsonl" future-author "$tmp_dir/absent.json" "$tmp_dir/launcher.txt" inconclusive
-cp "$tmp_dir/launcher.txt" "$tmp_dir/incomplete-launcher.txt"
-sed -i '/PI_COLD_AGENT_TASK RECORDED/d' "$tmp_dir/incomplete-launcher.txt"
-assert_blocked 'completed provider launch' python3 "$validator" next-close \
-  "$tmp_dir/ledger.jsonl" future-author "$tmp_dir/task-receipt.json" \
-  "$tmp_dir/incomplete-launcher.txt" inconclusive
-assert_blocked 'usage:' python3 "$validator" next-close "$tmp_dir/ledger.jsonl" \
-  future-author 5555555555555555555555555555555555555555555555555555555555555555 inconclusive
-python3 "$validator" next-close "$tmp_dir/ledger.jsonl" future-author \
-  "$tmp_dir/task-receipt.json" "$tmp_dir/launcher.txt" inconclusive \
-  >>"$tmp_dir/ledger.jsonl"
-python3 "$validator" validate "$tmp_dir/ledger.jsonl"
+assert_blocked 'task record is not a regular directory' python3 "$validator" next-close \
+  "$ledger_copy" future-author "$tmp_dir/absent" inconclusive --committed-repo "$tmp_dir/repo"
+cp -R "$record" "$tmp_dir/incomplete-record"
+sed -i '/PI_COLD_AGENT_TASK RECORDED/d' "$tmp_dir/incomplete-record/launcher.txt"
+assert_blocked 'exact record schema' python3 "$validator" next-close \
+  "$ledger_copy" future-author "$tmp_dir/incomplete-record" inconclusive \
+  --committed-repo "$tmp_dir/repo"
+cp -R "$record" "$tmp_dir/forged-stderr-record"
+printf 'forged\n' >"$tmp_dir/forged-stderr-record/pi-stderr.txt"
+assert_blocked 'stderr evidence' python3 "$validator" next-close \
+  "$ledger_copy" future-author "$tmp_dir/forged-stderr-record" inconclusive \
+  --committed-repo "$tmp_dir/repo"
+cp -R "$record" "$tmp_dir/status-record"
+sed -i 's/^PI_TASK_STATUS 1$/PI_TASK_STATUS 0/' "$tmp_dir/status-record/launcher.txt"
+assert_blocked 'status differs from the task outcome' python3 "$validator" next-close \
+  "$ledger_copy" future-author "$tmp_dir/status-record" inconclusive \
+  --committed-repo "$tmp_dir/repo"
+cp -R "$record" "$tmp_dir/forged-head-record"
+forged_head=6666666666666666666666666666666666666666
+sed -i "s/^PI_TASK_ATTEMPT_LEDGER_COMMIT .*/PI_TASK_ATTEMPT_LEDGER_COMMIT $forged_head/" \
+  "$tmp_dir/forged-head-record/launcher.txt"
+jq -S -c --arg commit "$forged_head" '.attemptReservation.ledgerCommit = $commit' \
+  "$tmp_dir/forged-head-record/task-receipt.json" >"$tmp_dir/forged-head-record/task-receipt.update"
+mv -- "$tmp_dir/forged-head-record/task-receipt.update" \
+  "$tmp_dir/forged-head-record/task-receipt.json"
+assert_blocked 'committed ledger HEAD' python3 "$validator" next-close \
+  "$ledger_copy" future-author "$tmp_dir/forged-head-record" inconclusive \
+  --committed-repo "$tmp_dir/repo"
+python3 "$validator" next-close "$ledger_copy" future-author "$record" inconclusive \
+  --committed-repo "$tmp_dir/repo" >>"$ledger_copy"
+python3 "$validator" validate "$ledger_copy"
 cancel_nonce=cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
-python3 "$validator" next-reservation "$tmp_dir/ledger.jsonl" cancelled-author "$candidate" \
+python3 "$validator" next-reservation "$ledger_copy" cancelled-author "$candidate" \
   author antigravity gemini-future high "$manifest" "$prompt" "$cancel_nonce" \
-  >>"$tmp_dir/ledger.jsonl"
-python3 "$validator" next-cancel "$tmp_dir/ledger.jsonl" cancelled-author \
-  'operator cancelled before provider launch' >>"$tmp_dir/ledger.jsonl"
-python3 "$validator" validate "$tmp_dir/ledger.jsonl"
+  >>"$ledger_copy"
+python3 "$validator" next-cancel "$ledger_copy" cancelled-author \
+  'operator cancelled before provider launch' >>"$ledger_copy"
+python3 "$validator" validate "$ledger_copy"
 assert_blocked 'does not name the one open formal attempt' python3 "$validator" next-cancel \
-  "$tmp_dir/ledger.jsonl" cancelled-author 'second hidden cancellation'
+  "$ledger_copy" cancelled-author 'second hidden cancellation'
 sed '2s/"previousEventSha256":"[0-9a-f]*"/"previousEventSha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"/' \
-  "$tmp_dir/ledger.jsonl" >"$tmp_dir/tampered.jsonl"
+  "$ledger_copy" >"$tmp_dir/tampered.jsonl"
 assert_blocked 'breaks the hash chain' python3 "$validator" validate "$tmp_dir/tampered.jsonl"
 
 printf 'gate-k formal-attempt ledger harness: PASS\n'

@@ -5,6 +5,7 @@ import argparse
 import hashlib
 import json
 import re
+import stat
 import subprocess
 import sys
 from pathlib import Path
@@ -116,24 +117,110 @@ def next_event(path: Path, values: dict[str, object]) -> str:
     return canonical(values)
 
 
-def one_launcher_value(text: str, prefix: str) -> str:
-    values = [line[len(prefix):] for line in text.splitlines() if line.startswith(prefix)]
-    if len(values) != 1 or not values[0]:
-        fail(f"formal launcher does not contain exactly one {prefix.strip()} record")
-    return values[0]
+def regular_file(record: Path, name: str) -> Path:
+    path = record / name
+    if not path.is_file() or path.is_symlink():
+        fail(f"formal close {name} is not a regular file")
+    return path
 
 
-def authenticated_close(path: Path, attempt_id: str, receipt_path: Path,
-                        launcher_path: Path, outcome: str) -> str:
+def validate_record_members(record: Path) -> None:
+    files = {
+        "TASK.md", "accounting.json", "boundary.json", "commands.json", "launcher.txt",
+        "packet-manifest.json", "pi-qualification.txt", "pi-stderr.txt", "plan.json",
+        "prompt.txt", "task-receipt.json", "transcript.ndjson",
+    }
+    if {entry.name for entry in record.iterdir()} != files | {"artifacts"}:
+        fail("formal close task record member set differs from the exact schema")
+    for name in files:
+        regular_file(record, name)
+    if not (record / "artifacts").is_dir() or (record / "artifacts").is_symlink():
+        fail("formal close artifacts are not a regular directory")
+
+
+def sha256_file(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def artifacts_sha256(path: Path) -> str:
+    if not path.is_dir() or path.is_symlink():
+        fail("formal close artifacts are not a regular directory")
+    rows = bytearray()
+    for entry in sorted(path.rglob("*")):
+        if entry.is_symlink() or (not entry.is_file() and not entry.is_dir()):
+            fail("formal close artifacts contain a symlink or special entry")
+        if entry.is_file():
+            relative = entry.relative_to(path).as_posix()
+            rows.extend(f"{sha256_file(entry)}  {relative}\n".encode())
+    return hashlib.sha256(rows).hexdigest()
+
+
+def parse_launcher(path: Path) -> dict[str, object]:
+    text = path.read_text()
+    if not text.endswith("\n"):
+        fail("formal close launcher is not newline terminated")
+    lines = text.splitlines()
+    prefixes = (
+        "PI_TASK_STATUS ", "PI_TASK_MODEL ", "PI_TASK_SESSION ", "PI_TASK_COMMIT ",
+        "PI_TASK_PACKET_MANIFEST_SHA256 ", "PI_TASK_RAW_EVENTS_SHA256 ",
+        "PI_TASK_EVENTS_SHA256 ", "PI_TASK_STDERR_SHA256 ",
+        "PI_TASK_QUALIFICATION_SHA256 ", "PI_TASK_ATTEMPT_ID ",
+        "PI_TASK_ATTEMPT_LEDGER_SHA256 ", "PI_TASK_ATTEMPT_LEDGER_COMMIT ",
+    )
+    if len(lines) != len(prefixes) + 1 or lines[-1] != "PI_COLD_AGENT_TASK RECORDED":
+        fail("formal close launcher does not satisfy its exact record schema")
+    values: dict[str, object] = {}
+    for index, prefix in enumerate(prefixes):
+        if not lines[index].startswith(prefix) or not lines[index][len(prefix):]:
+            fail(f"formal close launcher record {index + 1} must be {prefix.strip()}")
+        values[prefix.strip()] = lines[index][len(prefix):]
+    status = values["PI_TASK_STATUS"]
+    if type(status) is not str or re.fullmatch(r"[0-9]+", status) is None:
+        fail("formal close launcher status is invalid")
+    values["PI_TASK_STATUS"] = int(status)
+    model = str(values["PI_TASK_MODEL"]).split("\t")
+    if len(model) != 4 or any(not field for field in model):
+        fail("formal close launcher model record is invalid")
+    values["PI_TASK_MODEL"] = model
+    session = str(values["PI_TASK_SESSION"]).split()
+    if len(session) != 2 or re.fullmatch(r"[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}", session[0]) is None or session[1] != "ephemeral":
+        fail("formal close launcher session record is invalid")
+    values["PI_TASK_SESSION"] = session[0]
+    if re.fullmatch(r"[0-9a-f]{40}", str(values["PI_TASK_COMMIT"])) is None:
+        fail("formal close launcher candidate is invalid")
+    for field in ("PI_TASK_PACKET_MANIFEST_SHA256", "PI_TASK_RAW_EVENTS_SHA256",
+                  "PI_TASK_EVENTS_SHA256", "PI_TASK_STDERR_SHA256",
+                  "PI_TASK_QUALIFICATION_SHA256", "PI_TASK_ATTEMPT_LEDGER_SHA256"):
+        require_sha256(values[field], f"formal close launcher {field}")
+    require_string(values["PI_TASK_ATTEMPT_ID"], "formal close launcher attempt ID")
+    if re.fullmatch(r"[0-9a-f]{40}", str(values["PI_TASK_ATTEMPT_LEDGER_COMMIT"])) is None:
+        fail("formal close launcher ledger commit is invalid")
+    return values
+
+
+def authenticated_close(path: Path, attempt_id: str, record: Path,
+                        outcome: str, committed_repo: Path) -> str:
     events, open_attempts = load_ledger(path)
     if open_attempts != [attempt_id]:
         fail("close does not name the one open formal attempt")
-    if not receipt_path.is_file() or receipt_path.is_symlink():
-        fail("formal close task receipt is not a regular file")
-    if not launcher_path.is_file() or launcher_path.is_symlink():
-        fail("formal close launcher receipt is not a regular file")
+    if not record.is_dir() or record.is_symlink():
+        fail("formal close task record is not a regular directory")
+    validate_record_members(record)
+    receipt_path = regular_file(record, "task-receipt.json")
+    launcher_path = regular_file(record, "launcher.txt")
+    manifest_path = regular_file(record, "packet-manifest.json")
+    transcript_path = regular_file(record, "transcript.ndjson")
+    commands_path = regular_file(record, "commands.json")
+    boundary_path = regular_file(record, "boundary.json")
+    qualification_path = regular_file(record, "pi-qualification.txt")
+    stderr_path = regular_file(record, "pi-stderr.txt")
+    plan_path = regular_file(record, "plan.json")
+    prompt_path = regular_file(record, "prompt.txt")
+    accounting_path = regular_file(record, "accounting.json")
     validator = Path(__file__).with_name("gate-k-eval-validate-documents.py")
-    subprocess.run([sys.executable, str(validator), "task-receipt", str(receipt_path)], check=True)
+    for kind, document in (("task-receipt", receipt_path), ("plan", plan_path),
+                           ("manifest", manifest_path)):
+        subprocess.run([sys.executable, str(validator), kind, str(document)], check=True)
     receipt_bytes = receipt_path.read_bytes()
     receipt = loads(receipt_bytes.decode(), "formal close task receipt")
     reservation = next(event for event in events if event["attemptId"] == attempt_id)
@@ -146,31 +233,87 @@ def authenticated_close(path: Path, attempt_id: str, receipt_path: Path,
         fail("formal close receipt differs from its reservation")
     if receipt["outcome"] != outcome:
         fail("formal close outcome differs from the task receipt")
+    plan = loads(plan_path.read_text(), "formal close plan")
+    manifest = loads(manifest_path.read_text(), "formal close packet manifest")
+    if (plan["candidate"]["commit"] != receipt["candidateCommit"] or
+            plan["task"] != {"classification": "formal", "formalAttempt": True,
+                             "shape": receipt["shape"]}):
+        fail("formal close plan differs from the task receipt")
+    if (manifest["candidateCommit"] != receipt["candidateCommit"] or
+            manifest["shape"] != receipt["shape"]):
+        fail("formal close manifest differs from the task receipt")
+    if sha256_file(prompt_path) != plan["packet"]["promptSha256"]:
+        fail("formal close prompt differs from the plan")
+    rows = {row["path"]: row for row in manifest["files"]}
+    for name in ("plan.json", "prompt.txt"):
+        evidence_path = record / name
+        row = rows.get(name)
+        if (type(row) is not dict or row["bytes"] != evidence_path.stat().st_size or
+                row["mode"] != format(stat.S_IMODE(evidence_path.stat().st_mode), "o") or
+                row["sha256"] != sha256_file(evidence_path)):
+            fail(f"formal close manifest does not bind {name}")
+    accounting = loads(accounting_path.read_text(), "formal close accounting")
+    if canonical(accounting) + "\n" != accounting_path.read_text() or accounting != receipt["accounting"]:
+        fail("formal close accounting differs from the task receipt")
     bound = receipt.get("attemptReservation")
     if type(bound) is not dict or bound.get("attemptId") != attempt_id:
         fail("formal close receipt lacks its reservation ID")
     ledger_sha = hashlib.sha256(path.read_bytes()).hexdigest()
     if bound.get("ledgerSha256") != ledger_sha:
         fail("formal close receipt ledger digest differs from the open ledger")
-    launcher = launcher_path.read_text()
-    if launcher.splitlines().count("PI_COLD_AGENT_TASK RECORDED") != 1:
-        fail("formal close launcher did not record a completed provider launch")
-    if one_launcher_value(launcher, "PI_TASK_ATTEMPT_ID ") != attempt_id:
+    launcher = parse_launcher(launcher_path)
+    if launcher["PI_TASK_ATTEMPT_ID"] != attempt_id:
         fail("formal close launcher attempt ID differs")
-    if one_launcher_value(launcher, "PI_TASK_ATTEMPT_LEDGER_SHA256 ") != ledger_sha:
+    if launcher["PI_TASK_ATTEMPT_LEDGER_SHA256"] != ledger_sha:
         fail("formal close launcher ledger digest differs")
-    ledger_commit = one_launcher_value(launcher, "PI_TASK_ATTEMPT_LEDGER_COMMIT ")
-    if bound.get("ledgerCommit") != ledger_commit or re.fullmatch(r"[0-9a-f]{40}", ledger_commit) is None:
+    ledger_commit = launcher["PI_TASK_ATTEMPT_LEDGER_COMMIT"]
+    if bound.get("ledgerCommit") != ledger_commit:
         fail("formal close launcher ledger commit differs")
-    if re.fullmatch(r"[0-9]+", one_launcher_value(launcher, "PI_TASK_STATUS ")) is None:
-        fail("formal close launcher status is invalid")
-    if one_launcher_value(launcher, "PI_TASK_COMMIT ") != receipt["candidateCommit"]:
+    if require_committed(path, committed_repo) != ledger_commit:
+        fail("formal close launcher does not name the committed ledger HEAD")
+    status = launcher["PI_TASK_STATUS"]
+    expected_outcome = (
+        "inconclusive" if status != 0 else
+        "completed-checker" if str(receipt["shape"]).endswith("-checker") else
+        "eligible-for-checker"
+    )
+    if outcome != expected_outcome:
+        fail("formal close launcher status differs from the task outcome")
+    expected_reason = (
+        f"Pi transport exited {status}" if status != 0 else
+        "checker transport and protocol accounting complete; checker artifact requires final assembly"
+        if str(receipt["shape"]).endswith("-checker") else
+        "subject transport and protocol accounting complete; task merit requires checker adjudication"
+    )
+    if receipt["outcomeReason"] != expected_reason:
+        fail("formal close launcher status differs from the task outcome reason")
+    if launcher["PI_TASK_COMMIT"] != receipt["candidateCommit"]:
         fail("formal close launcher candidate differs")
-    if one_launcher_value(launcher, "PI_TASK_PACKET_MANIFEST_SHA256 ") != receipt["digests"]["packetManifestSha256"]:
+    if launcher["PI_TASK_PACKET_MANIFEST_SHA256"] != receipt["digests"]["packetManifestSha256"] or sha256_file(manifest_path) != receipt["digests"]["packetManifestSha256"]:
         fail("formal close launcher packet differs")
-    model = one_launcher_value(launcher, "PI_TASK_MODEL ").split("\t")
+    model = launcher["PI_TASK_MODEL"]
     if len(model) != 4 or (model[0], model[1], model[3]) != tuple(receipt["identity"][field] for field in ("provider", "model", "thinking")):
         fail("formal close launcher model differs")
+    if launcher["PI_TASK_SESSION"] != receipt["identity"]["sessionId"]:
+        fail("formal close launcher session differs")
+    evidence = (
+        ("PI_TASK_RAW_EVENTS_SHA256", None, "rawTranscriptSha256"),
+        ("PI_TASK_EVENTS_SHA256", transcript_path, "transcriptSha256"),
+        ("PI_TASK_QUALIFICATION_SHA256", qualification_path, "qualificationSha256"),
+    )
+    for launcher_field, evidence_path, receipt_field in evidence:
+        digest = receipt["digests"][receipt_field]
+        if launcher[launcher_field] != digest or (evidence_path is not None and sha256_file(evidence_path) != digest):
+            fail(f"formal close launcher does not bind {receipt_field}")
+    if launcher["PI_TASK_STDERR_SHA256"] != sha256_file(stderr_path):
+        fail("formal close launcher does not bind stderr evidence")
+    for evidence_path, receipt_field in (
+        (commands_path, "commandsSha256"), (boundary_path, "boundarySha256")
+    ):
+        if sha256_file(evidence_path) != receipt["digests"][receipt_field]:
+            fail(f"formal close task record does not bind {receipt_field}")
+    if artifacts_sha256(record / "artifacts") != receipt["digests"]["artifactsTreeSha256"]:
+        fail("formal close task record does not bind artifactsTreeSha256")
     return next_event(path, {"event": "close", "attemptId": attempt_id,
                              "taskReceiptSha256": hashlib.sha256(receipt_bytes).hexdigest(),
                              "outcome": outcome})
@@ -222,9 +365,9 @@ def main() -> None:
     close = sub.add_parser("next-close")
     close.add_argument("ledger", type=Path)
     close.add_argument("attempt_id")
-    close.add_argument("task_receipt", type=Path)
-    close.add_argument("launcher", type=Path)
+    close.add_argument("task_record", type=Path)
     close.add_argument("outcome")
+    close.add_argument("--committed-repo", type=Path, required=True)
     cancel = sub.add_parser("next-cancel")
     cancel.add_argument("ledger", type=Path)
     cancel.add_argument("attempt_id")
@@ -257,8 +400,8 @@ def main() -> None:
                 "promptSha256": args.prompt_sha256, "nonce": args.nonce,
             }))
         elif args.command == "next-close":
-            print(authenticated_close(args.ledger, args.attempt_id, args.task_receipt,
-                                      args.launcher, args.outcome))
+            print(authenticated_close(args.ledger, args.attempt_id, args.task_record,
+                                      args.outcome, args.committed_repo))
         else:
             print(next_event(args.ledger, {"event": "cancel", "attemptId": args.attempt_id,
                                           "outcome": "discarded-before-launch",

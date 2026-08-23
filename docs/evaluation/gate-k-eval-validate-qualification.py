@@ -10,6 +10,7 @@ import sys
 from pathlib import Path
 
 from gate_k_eval_pi_protocol import (
+    LEGACY_TASK_RECEIPT_SHA256S,
     fail,
     loads,
     require_keys,
@@ -270,8 +271,17 @@ def validate_boundary(values: dict[str, str], args: argparse.Namespace, session:
                     fail("qualification runtime provider extension identity differs")
             elif runtime["providerExtension"] is not None:
                 fail("qualification runtime unexpectedly loads a provider extension")
-    elif "runtimeIdentity" in boundary:
-        fail("legacy qualification boundary unexpectedly declares runtime identity")
+    else:
+        legacy_digest = None
+        if args.task_receipt is not None:
+            try:
+                legacy_digest = hashlib.sha256(args.task_receipt.read_bytes()).hexdigest()
+            except OSError as error:
+                fail(f"legacy task receipt cannot be authenticated: {error}")
+        if legacy_digest not in LEGACY_TASK_RECEIPT_SHA256S:
+            fail("legacy qualification boundary is not bound to one of the four frozen formal task receipts")
+        if "runtimeIdentity" in boundary:
+            fail("legacy qualification boundary unexpectedly declares runtime identity")
 
 
 def validate(args: argparse.Namespace) -> None:
@@ -298,6 +308,7 @@ def main() -> None:
     parser.add_argument("qualification", type=Path)
     for name in ("commit", "version", "host", "provider", "model", "thinking", "lane", "worktree"):
         parser.add_argument(f"--{name}", required=True)
+    parser.add_argument("--task-receipt", type=Path)
     args = parser.parse_args()
     try:
         validate(args)

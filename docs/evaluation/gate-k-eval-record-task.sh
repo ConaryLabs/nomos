@@ -280,9 +280,11 @@ mv -- "$stage" "$out"
 trap - EXIT
 rm -r -- "$tmp_dir"
 if [[ $formal == true ]]; then
+  repo_root=$(git -C "$script_dir" rev-parse --show-toplevel) ||
+    fail 'formal task record cannot resolve the committed attempt-ledger repository'
   close_event=$(python3 "$attempt_validator" next-close \
     "$script_dir/gate-k-formal-attempt-ledger.jsonl" "$attempt_id" \
-    "$out/task-receipt.json" "$out/launcher.txt" "$outcome") ||
+    "$out" "$outcome" --committed-repo "$repo_root") ||
     fail 'formal task record cannot produce an authenticated close event'
   printf 'PI_TASK_ATTEMPT_CLOSE %s\n' "$close_event"
 fi

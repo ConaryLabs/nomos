@@ -14,6 +14,12 @@ SHA256 = re.compile(r"[0-9a-f]{64}")
 RFC3339_UTC = re.compile(
     r"\d{4}-\d{2}-\d{2}T(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d{1,9})?Z"
 )
+LEGACY_TASK_RECEIPT_SHA256S = {
+    "732af45918ebc27c02675f6c75c32e7718407545c9fa3a39de327d3591d382a8",
+    "2e8c97d5a939ddd6fa9b33769f6e24b80fc242b1420c2660eef7f9742d542db3",
+    "2820d2f46b2d895abc22b6677f4f3ba908199cdb9d057aee181b477eaeb82390",
+    "0053d3df610e7e31322a2cfd9dfc641e160d3e5c64582df387d34cd4ddd37d37",
+}
 
 
 def fail(message: str) -> None:

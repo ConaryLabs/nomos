@@ -31,10 +31,12 @@ path-and-digest identity for Pi, a provider extension, and Bubblewrap.
 
 ## Replacement wording
 
-A formal close is derived only from the exact canonical task receipt and its
-completed launcher record. Both must bind the one open reservation, candidate,
-packet, provider, model, thinking level, ledger commit, ledger digest, and
-outcome. A hash alone cannot close an attempt.
+A formal close is derived only from the complete recorded task directory. Its
+exact canonical task receipt, exact launcher schema, transcript, commands,
+packet manifest, qualification, stderr, boundary, and artifact tree must agree.
+The launcher and receipt must bind the one open reservation, candidate, packet,
+session, provider, model, thinking level, committed ledger HEAD, ledger digest,
+and status-derived outcome. A hash or skeletal launcher cannot close an attempt.
 
 A reservation cancelled before provider launch is retained as an explicit
 `discarded-before-launch` event with a reason rather than fabricated as a task

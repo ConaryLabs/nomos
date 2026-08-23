@@ -235,7 +235,8 @@ for record in "$subject" "$checker"; do
   python3 "$qualification_validator" "$record/pi-qualification.txt" \
     --commit "$receipt_commit" --version "$receipt_client_version" --host "$receipt_host_os" \
     --provider "$receipt_provider" --model "$receipt_model" --thinking "$receipt_thinking" \
-    --lane "${qualification_lanes[0]}" --worktree "${qualification_worktree[0]}" ||
+    --lane "${qualification_lanes[0]}" --worktree "${qualification_worktree[0]}" \
+    --task-receipt "$record/task-receipt.json" ||
     fail "qualification receipt is incomplete: $record"
   mapfile -t launcher_commits < <(
     awk '$1 == "PI_TASK_COMMIT" && NF == 2 {print $2}' "$record/launcher.txt"
@@ -387,6 +388,16 @@ for record in "$subject" "$checker"; do
   qualified_bwrap=$(jq -r '.sandbox.binary' <<<"$qualified_boundary")
   receipt_execution=$(jq -c '.execution // null' "$record/task-receipt.json")
   qualified_execution=$(jq -S -c '.runtimeIdentity // null' <<<"$qualified_boundary")
+  receipt_sha=$(sha256sum "$record/task-receipt.json" | cut -d' ' -f1)
+  legacy_runtime=false
+  case $receipt_sha in
+    732af45918ebc27c02675f6c75c32e7718407545c9fa3a39de327d3591d382a8 | \
+    2e8c97d5a939ddd6fa9b33769f6e24b80fc242b1420c2660eef7f9742d542db3 | \
+    2820d2f46b2d895abc22b6677f4f3ba908199cdb9d057aee181b477eaeb82390 | \
+    0053d3df610e7e31322a2cfd9dfc641e160d3e5c64582df387d34cd4ddd37d37)
+      legacy_runtime=true
+      ;;
+  esac
   if [[ $receipt_execution != null && $receipt_execution != "$qualified_execution" ]]; then
     fail "task runtime executables differ from the authenticated qualification: $record"
   fi
@@ -404,6 +415,7 @@ for record in "$subject" "$checker"; do
     --arg prompt "$prompt_sha" \
     --arg shape "$receipt_shape" \
     --arg writable "$expected_writable" \
+    --argjson legacy_runtime "$legacy_runtime" \
     --argjson execution "$receipt_execution" '
     (keys == (["schema", "boundaryKind", "mode", "targetCommit", "hostWorkspace",
       "guestWorkspace", "provider", "model", "thinking", "sessionId", "sessionFile",
@@ -417,7 +429,7 @@ for record in "$subject" "$checker"; do
       "contextFiles", "skills", "systemPromptSha256", "finalSystemPromptSha256",
       "packetManifestSha256", "binarySha256", "taskPromptSha256", "taskShape",
       "writablePaths", "budgets", "runtimeIdentity", "sandbox"] | sort)) and
-    ((.schema == "nomos.pi_cold_agent_boundary@2" and $execution == null and
+    ((.schema == "nomos.pi_cold_agent_boundary@2" and $legacy_runtime and $execution == null and
       (has("runtimeIdentity") | not)) or
      (.schema == "nomos.pi_cold_agent_boundary@3" and .runtimeIdentity == $execution)) and
     .boundaryKind == "packet-run" and
