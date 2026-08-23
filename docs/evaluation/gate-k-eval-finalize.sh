@@ -116,6 +116,45 @@ for record in "$subject" "$checker"; do
 
   receipt_commit=$(jq -r '.candidateCommit' "$record/task-receipt.json")
   [[ $receipt_commit =~ ^[0-9a-f]{40}$ ]] || fail "task receipt candidate is invalid: $record"
+
+  mapfile -t qualification_commits < <(
+    awk '$1 == "PI_TARGET_COMMIT" && NF == 2 {print $2}' "$record/pi-qualification.txt"
+  )
+  [[ ${#qualification_commits[@]} -eq 1 &&
+      ${qualification_commits[0]} == "$receipt_commit" ]] ||
+    fail "qualification candidate differs from task receipt: $record"
+  mapfile -t launcher_commits < <(
+    awk '$1 == "PI_TASK_COMMIT" && NF == 2 {print $2}' "$record/launcher.txt"
+  )
+  [[ ${#launcher_commits[@]} -eq 1 && ${launcher_commits[0]} == "$receipt_commit" ]] ||
+    fail "launcher candidate differs from task receipt: $record"
+  mapfile -t launcher_manifests < <(
+    awk '$1 == "PI_TASK_PACKET_MANIFEST_SHA256" && NF == 2 {print $2}' \
+      "$record/launcher.txt"
+  )
+  [[ ${#launcher_manifests[@]} -eq 1 &&
+      ${launcher_manifests[0]} == "$packet_manifest_sha" ]] ||
+    fail "launcher packet identity differs from task record: $record"
+  mapfile -t launcher_stderr < <(
+    awk '$1 == "PI_TASK_STDERR_SHA256" && NF == 2 {print $2}' "$record/launcher.txt"
+  )
+  [[ ${#launcher_stderr[@]} -eq 1 &&
+      ${launcher_stderr[0]} == "$(sha256sum "$record/pi-stderr.txt" | cut -d' ' -f1)" ]] ||
+    fail "launcher does not bind the Pi stderr evidence: $record"
+
+  mapfile -t stderr_boundaries < <(sed -n 's/^NOMOS_PI_BOUNDARY //p' "$record/pi-stderr.txt")
+  [[ ${#stderr_boundaries[@]} -eq 1 ]] ||
+    fail "Pi stderr does not contain exactly one packet boundary: $record"
+  stderr_boundary_json=$(jq -S -c . <<<"${stderr_boundaries[0]}")
+  [[ $stderr_boundary_json == "$(jq -S -c . "$record/boundary.json")" ]] ||
+    fail "Pi stderr boundary differs from task record: $record"
+  mapfile -t stderr_accounting < <(sed -n 's/^NOMOS_PI_ACCOUNTING //p' "$record/pi-stderr.txt")
+  [[ ${#stderr_accounting[@]} -eq 1 ]] ||
+    fail "Pi stderr does not contain exactly one accounting record: $record"
+  stderr_accounting_json=$(jq -S -c . <<<"${stderr_accounting[0]}")
+  [[ $stderr_accounting_json == "$(jq -S -c . "$record/accounting.json")" ]] ||
+    fail "Pi stderr accounting differs from task record: $record"
+
   jq -e '
     .schema == "nomos.gate_k.packet_manifest@1" and
     .manifestExcludesSelf == true and
@@ -151,6 +190,35 @@ for record in "$subject" "$checker"; do
     fail "packet-manifest shape differs from task receipt: $record"
   [[ $(jq -r '.taskShape' "$record/boundary.json") == "$receipt_shape" ]] ||
     fail "boundary shape differs from task receipt: $record"
+  case $receipt_shape in
+    author) expected_writable=workspace ;;
+    debug | author-checker | debug-checker) expected_writable=output ;;
+    *) fail "task receipt shape is invalid: $record" ;;
+  esac
+  expected_writable_json=$(jq -n -c --arg path "$expected_writable" '[$path]')
+  [[ $(jq -c '.packet.writablePaths' "$record/plan.json") == "$expected_writable_json" ]] ||
+    fail "plan writable paths differ from task shape: $record"
+  [[ $(jq -c '.writablePaths' "$record/packet-manifest.json") == "$expected_writable_json" ]] ||
+    fail "manifest writable paths differ from task shape: $record"
+  [[ $(jq -c '.writablePaths' "$record/boundary.json") == "$expected_writable_json" ]] ||
+    fail "boundary writable paths differ from task shape: $record"
+  [[ $(jq -c '.sandbox.checks.declaredWritablePaths' "$record/boundary.json") == \
+      "$expected_writable_json" ]] ||
+    fail "sandbox writable paths differ from task shape: $record"
+
+  packet_root_claim=$(jq -r '.hostWorkspace' "$record/boundary.json")
+  [[ $packet_root_claim == /* && -d $packet_root_claim && ! -L $packet_root_claim ]] ||
+    fail "recorded immutable packet root is unavailable: $record"
+  packet_root=$(realpath -e "$packet_root_claim")
+  for packet_evidence in packet-manifest.json .nomos-candidate-commit bin/nomos; do
+    [[ -f $packet_root/$packet_evidence && ! -L $packet_root/$packet_evidence ]] ||
+      fail "recorded immutable packet evidence is unavailable: $record/$packet_evidence"
+  done
+  [[ $(sha256sum "$packet_root/packet-manifest.json" | cut -d' ' -f1) == \
+      "$packet_manifest_sha" ]] ||
+    fail "recorded immutable packet manifest differs from task record: $record"
+  [[ $(<"$packet_root/.nomos-candidate-commit") == "$receipt_commit" ]] ||
+    fail "recorded immutable packet marker differs from task receipt: $record"
   [[ $(jq -r '.task.classification' "$record/plan.json") == \
       $(jq -r '.classification' "$record/task-receipt.json") ]] ||
     fail "plan classification differs from task receipt: $record"
@@ -168,6 +236,8 @@ for record in "$subject" "$checker"; do
   [[ $plan_binary_sha == $(jq -r --arg path bin/nomos \
       '.files[] | select(.path == $path) | .sha256' "$record/packet-manifest.json") ]] ||
     fail "manifest binary differs from plan: $record"
+  [[ $(sha256sum "$packet_root/bin/nomos" | cut -d' ' -f1) == "$plan_binary_sha" ]] ||
+    fail "recorded immutable packet binary differs from plan: $record"
 done
 
 subject_shape=$(jq -r '.shape' "$subject/task-receipt.json")

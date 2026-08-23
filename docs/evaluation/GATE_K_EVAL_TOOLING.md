@@ -157,11 +157,15 @@ finding taking highest precedence.
 `commands.json` is not trusted as a self-reported inventory. Recording and
 finalization both derive its exact canonical bytes from paired
 `tool_execution_start` and `tool_execution_end` events in `transcript.ndjson`.
-The derivation rejects missing, duplicate, or unpaired tool-call IDs. The
+The derivation rejects missing, duplicate, unpaired, or end-before-start
+tool-call lifecycles. The
 adjudication validator then requires exact command-document and row fields,
-contiguous integer ordinals, unique nonempty call IDs, completed Bash calls,
-boolean error flags, and one nonempty shell-command argument. It also checks the
-adjudication candidate directly against both bound task receipts.
+contiguous exact-integer ordinals, unique nonempty call IDs, completed Bash
+calls, boolean error flags, one nonempty shell-command argument, and exact
+positive-integer review counts. Its duplicate-key-rejecting parser covers every
+JSON document consumed during finalization, including the checker result. It
+also checks the adjudication candidate directly against both bound task
+receipts.
 
 A completed record contains `RUN.md`, `plan.json`, `packet-manifest.json`,
 `prompt.txt`, the complete sanitized NDJSON event stream, `commands.json`,
@@ -173,8 +177,13 @@ boundary; that the packet's candidate marker is the exact candidate plus one
 newline; that the sandbox independently matched the supplied candidate binary;
 that the candidate exists in repository history; and that the checker packet
 manifest binds the exact supplied subject receipt, commands, and every artifact.
-Checker command/reason arrays are validated element by element. The output must
-be outside both immutable input records. Missing
+The qualification, launcher, stderr boundary, and accounting records must agree
+exactly. Finalization reopens the recorded packet root and hashes the actual
+manifest, candidate marker, and binary instead of trusting copied metadata.
+Writable paths are exact by shape (`workspace` only for author subjects;
+`output` for the other three shapes) and must agree across the plan, manifest,
+boundary, and sandbox receipt. Checker command/reason arrays are validated
+element by element. The output must be outside both immutable input records. Missing
 identity, transcript, command, artifact, or result fields fail closed. Operator
 intervention is always present, including the literal disposition `none`.
 Checker prompts declare the finalizer-owned `nomos.gate_k.checker_result@1`

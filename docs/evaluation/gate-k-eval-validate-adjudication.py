@@ -103,7 +103,11 @@ def load_commands(path: Path) -> list[dict[str, Any]]:
         if not isinstance(row, dict) or set(row) != COMMAND_KEYS:
             fail(f"command {ordinal} fields differ from the schema allowlist: {path}")
         row_ordinal = row.get("ordinal")
-        if isinstance(row_ordinal, bool) or row_ordinal != ordinal:
+        if (
+            isinstance(row_ordinal, bool)
+            or not isinstance(row_ordinal, int)
+            or row_ordinal != ordinal
+        ):
             fail(f"commands are not contiguous at ordinal {ordinal}: {path}")
         tool_call_id = row.get("toolCallId")
         if not isinstance(tool_call_id, str) or not tool_call_id.strip():
@@ -138,6 +142,18 @@ def validate(
     subject: Path, checker: Path, adjudication_path: Path
 ) -> dict[str, Any]:
     document = load_json(adjudication_path)
+    # The shell finalizer also consumes these documents. Parse them with the
+    # duplicate-key-rejecting loader before any final output can be constructed.
+    for record in (subject, checker):
+        for name in (
+            "accounting.json",
+            "boundary.json",
+            "packet-manifest.json",
+            "plan.json",
+            "task-receipt.json",
+        ):
+            load_json(record / name)
+    load_json(checker / "artifacts" / "checker.json")
     if set(document) != ROOT_KEYS:
         fail("adjudication fields differ from the schema allowlist")
     if document.get("schema") != "nomos.gate_k.command_adjudication@1":
@@ -178,6 +194,15 @@ def validate(
     }
     counts = document.get("reviewedCommandCounts")
     expected_counts = {record: len(rows) for record, rows in commands.items()}
+    if (
+        not isinstance(counts, dict)
+        or set(counts) != set(expected_counts)
+        or any(
+            isinstance(value, bool) or not isinstance(value, int) or value < 1
+            for value in counts.values()
+        )
+    ):
+        fail("reviewedCommandCounts must contain positive integer subject/checker counts")
     if counts != expected_counts:
         fail("reviewedCommandCounts do not cover the supplied command records")
 

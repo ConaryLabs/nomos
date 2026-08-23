@@ -9,9 +9,12 @@ attempts. Its first implementation at `99c4436` passed CI but failed non-author
 review; the replacement uses hash-bound structured command adjudication and
 tightens candidate, subject/checker, and immutable-output bindings. A second
 non-author audit rejected `a7d0d5a` because command records and the candidate
-marker remained self-bound. The current repair derives every command from the
-complete transcript, validates the marker and binary boundary claims, and
-strictly validates command and checker-result rows. Its exact-head non-author
+marker remained self-bound. A third audit rejected `5340158` because the
+candidate packet and writable paths were still self-asserted, checker JSON
+allowed duplicate keys, tool ends could precede starts, and numeric validation
+accepted floats. The current repair reopens each recorded immutable packet,
+hashes its actual marker, binary, and manifest, binds the complete Pi receipt
+chain, and fails closed on all five adversarial cases. Its exact-head non-author
 rerun remains.
 This file orients a fresh session; it is rewritten at each slice boundary and
 never accumulates history (git has that).
@@ -418,9 +421,9 @@ never accumulates history (git has that).
 
 ## What is next
 
-Complete the replacement exact-head non-author rerun and CI for #79. The
-externally
-assembled immutable #71 and #72 structured results have SHA-256
+Commit the five-finding repair, complete its exact-head non-author rerun, and
+finish CI for #79. The externally assembled immutable #71 and #72 structured
+results still have SHA-256
 `e6990dacde903f527d1cb46784a54d938a7e130f1193e51bb830a4a2284f07dc` and
 `f09c9214329f7f8bd7d4d4b31476a0f24c825add2f5bb434b7bf780f64d8089c`.
 After #79 merges, attach/finalize those owner-disposed failures and merge their

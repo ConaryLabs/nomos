@@ -9,6 +9,7 @@ seed_builder="$repo_root/docs/evaluation/gate-k-eval-seed-rehearsal.sh"
 task_launcher="$repo_root/docs/evaluation/pi-cold-agent-task.sh"
 task_recorder="$repo_root/docs/evaluation/gate-k-eval-record-task.sh"
 finalizer="$repo_root/docs/evaluation/gate-k-eval-finalize.sh"
+command_deriver="$repo_root/docs/evaluation/gate-k-eval-derive-commands.sh"
 adjudication_validator="$repo_root/docs/evaluation/gate-k-eval-validate-adjudication.py"
 fake_pi="$repo_root/docs/evaluation/fixtures/fake-pi-cold-agent"
 fake_bwrap="$repo_root/docs/evaluation/fixtures/fake-bwrap-pi-cold-agent"
@@ -134,6 +135,34 @@ refresh_record_receipt_digests() {
     .digests.qualificationSha256 = $qualification
     ' "$record/task-receipt.json" >"$update"
   mv -- "$update" "$record/task-receipt.json"
+}
+
+refresh_record_runtime_evidence() {
+  local record=$1
+  local boundary accounting update manifest commit stderr_digest
+  boundary=$(jq -c . "$record/boundary.json")
+  accounting=$(jq -c . "$record/accounting.json")
+  update=$(mktemp "$tmp_dir/pi-stderr-refresh.XXXXXX")
+  awk -v boundary="$boundary" -v accounting="$accounting" '
+    /^NOMOS_PI_BOUNDARY / {print "NOMOS_PI_BOUNDARY " boundary; next}
+    /^NOMOS_PI_ACCOUNTING / {print "NOMOS_PI_ACCOUNTING " accounting; next}
+    {print}
+    ' "$record/pi-stderr.txt" >"$update"
+  mv -- "$update" "$record/pi-stderr.txt"
+  manifest=$(sha256sum "$record/packet-manifest.json" | cut -d' ' -f1)
+  commit=$(jq -r '.candidateCommit' "$record/task-receipt.json")
+  stderr_digest=$(sha256sum "$record/pi-stderr.txt" | cut -d' ' -f1)
+  update=$(mktemp "$tmp_dir/launcher-refresh.XXXXXX")
+  awk -v commit="$commit" -v manifest="$manifest" -v stderr_digest="$stderr_digest" '
+    $1 == "PI_TASK_COMMIT" {print "PI_TASK_COMMIT " commit; next}
+    $1 == "PI_TASK_PACKET_MANIFEST_SHA256" {
+      print "PI_TASK_PACKET_MANIFEST_SHA256 " manifest; next
+    }
+    $1 == "PI_TASK_STDERR_SHA256" {print "PI_TASK_STDERR_SHA256 " stderr_digest; next}
+    {print}
+    ' "$record/launcher.txt" >"$update"
+  mv -- "$update" "$record/launcher.txt"
+  refresh_record_receipt_digests "$record"
 }
 
 write_adjudication() {
@@ -443,6 +472,18 @@ jq -e '.verdict == "pass" and .formalAttempt == false and .shape == "author"' \
     $(jq -r '.digests.artifactsTreeSha256' \
       "$tmp_dir/author-run/checker/task-receipt.json") ]]
 
+jq -c -s '
+  to_entries as $events |
+  ($events | map(select(.value.type == "tool_execution_start"))[0]) as $start |
+  ($events | map(select(
+    .value.type == "tool_execution_end" and
+    .value.toolCallId == $start.value.toolCallId))[0]) as $end |
+  [$end.value] + [$events[] | select(.key != $end.key) | .value] | .[]
+  ' "$tmp_dir/author-checker-record/transcript.ndjson" \
+  >"$tmp_dir/end-before-start-transcript.ndjson"
+assert_blocked 'tool end before its matching start' transcript-end-before-start \
+  "$command_deriver" "$tmp_dir/end-before-start-transcript.ndjson"
+
 jq -S -c '.candidateCommit = "0000000000000000000000000000000000000000"' \
   "$tmp_dir/author-adjudication.json" >"$tmp_dir/wrong-candidate-adjudication.json"
 assert_blocked 'candidateCommit differs from the subject task receipt' \
@@ -481,6 +522,25 @@ assert_blocked 'commands are not contiguous at ordinal 0' malformed-command-adju
   python3 "$adjudication_validator" "$tmp_dir/author-subject-record" \
   "$tmp_dir/malformed-command-checker-record" "$tmp_dir/malformed-command-adjudication.json"
 
+cp -R "$tmp_dir/author-checker-record" "$tmp_dir/float-command-checker-record"
+sed '0,/"ordinal":0/s//"ordinal":0.0/' \
+  "$tmp_dir/float-command-checker-record/commands.json" \
+  >"$tmp_dir/float-command-checker-record/commands.update"
+mv -- "$tmp_dir/float-command-checker-record/commands.update" \
+  "$tmp_dir/float-command-checker-record/commands.json"
+refresh_record_receipt_digests "$tmp_dir/float-command-checker-record"
+write_pass_adjudication "$tmp_dir/author-subject-record" \
+  "$tmp_dir/float-command-checker-record" "$tmp_dir/float-command-adjudication.json"
+assert_blocked 'commands are not contiguous at ordinal 0' float-command-adjudication \
+  python3 "$adjudication_validator" "$tmp_dir/author-subject-record" \
+  "$tmp_dir/float-command-checker-record" "$tmp_dir/float-command-adjudication.json"
+
+sed -E 's/"subject":([0-9]+)/"subject":\1.0/' \
+  "$tmp_dir/author-adjudication.json" >"$tmp_dir/float-count-adjudication.json"
+assert_blocked 'positive integer subject/checker counts' float-count-adjudication \
+  python3 "$adjudication_validator" "$tmp_dir/author-subject-record" \
+  "$tmp_dir/author-checker-record" "$tmp_dir/float-count-adjudication.json"
+
 cp -R "$tmp_dir/author-checker-record" "$tmp_dir/malformed-result-checker-record"
 jq -S -c '.commands = [null]' \
   "$tmp_dir/malformed-result-checker-record/artifacts/checker.json" \
@@ -494,6 +554,20 @@ assert_blocked 'checker result is incomplete' finalizer-malformed-checker-result
   "$finalizer" "$tmp_dir/author-subject-record" \
   "$tmp_dir/malformed-result-checker-record" "$tmp_dir/malformed-result-adjudication.json" \
   "$tmp_dir/malformed-result-run"
+
+cp -R "$tmp_dir/author-checker-record" "$tmp_dir/duplicate-result-checker-record"
+sed '0,/"verdict":"pass"/s//"verdict":"reject","verdict":"pass"/' \
+  "$tmp_dir/duplicate-result-checker-record/artifacts/checker.json" \
+  >"$tmp_dir/duplicate-result-checker-record/artifacts/checker.update"
+mv -- "$tmp_dir/duplicate-result-checker-record/artifacts/checker.update" \
+  "$tmp_dir/duplicate-result-checker-record/artifacts/checker.json"
+refresh_record_receipt_digests "$tmp_dir/duplicate-result-checker-record"
+write_pass_adjudication "$tmp_dir/author-subject-record" \
+  "$tmp_dir/duplicate-result-checker-record" "$tmp_dir/duplicate-result-adjudication.json"
+assert_blocked 'duplicate JSON key: verdict' finalizer-duplicate-checker-result \
+  "$finalizer" "$tmp_dir/author-subject-record" \
+  "$tmp_dir/duplicate-result-checker-record" "$tmp_dir/duplicate-result-adjudication.json" \
+  "$tmp_dir/duplicate-result-run"
 
 cp -R "$tmp_dir/author-checker-record" "$tmp_dir/changed-marker-checker-record"
 jq -S -c '
@@ -513,13 +587,86 @@ jq -S -c --arg digest "$changed_manifest_sha" '.packetManifestSha256 = $digest' 
   >"$tmp_dir/changed-marker-checker-record/boundary.update"
 mv -- "$tmp_dir/changed-marker-checker-record/boundary.update" \
   "$tmp_dir/changed-marker-checker-record/boundary.json"
-refresh_record_receipt_digests "$tmp_dir/changed-marker-checker-record"
+refresh_record_runtime_evidence "$tmp_dir/changed-marker-checker-record"
 write_pass_adjudication "$tmp_dir/author-subject-record" \
   "$tmp_dir/changed-marker-checker-record" "$tmp_dir/changed-marker-adjudication.json"
 assert_blocked 'packet candidate marker differs from task receipt' finalizer-changed-marker \
   "$finalizer" "$tmp_dir/author-subject-record" \
   "$tmp_dir/changed-marker-checker-record" "$tmp_dir/changed-marker-adjudication.json" \
   "$tmp_dir/changed-marker-run"
+
+cp -R "$tmp_dir/author-checker-record" "$tmp_dir/writable-path-checker-record"
+jq -S -c '.packet.writablePaths = ["input"]' \
+  "$tmp_dir/writable-path-checker-record/plan.json" \
+  >"$tmp_dir/writable-path-checker-record/plan.update"
+mv -- "$tmp_dir/writable-path-checker-record/plan.update" \
+  "$tmp_dir/writable-path-checker-record/plan.json"
+refresh_packet_file "$tmp_dir/writable-path-checker-record" plan.json
+jq -S -c '.writablePaths = ["input"]' \
+  "$tmp_dir/writable-path-checker-record/packet-manifest.json" \
+  >"$tmp_dir/writable-path-checker-record/packet-manifest.update"
+mv -- "$tmp_dir/writable-path-checker-record/packet-manifest.update" \
+  "$tmp_dir/writable-path-checker-record/packet-manifest.json"
+writable_manifest_sha=$(sha256sum \
+  "$tmp_dir/writable-path-checker-record/packet-manifest.json" | cut -d' ' -f1)
+jq -S -c --arg digest "$writable_manifest_sha" '
+  .packetManifestSha256 = $digest |
+  .writablePaths = ["input"] |
+  .sandbox.checks.declaredWritablePaths = ["input"]
+  ' "$tmp_dir/writable-path-checker-record/boundary.json" \
+  >"$tmp_dir/writable-path-checker-record/boundary.update"
+mv -- "$tmp_dir/writable-path-checker-record/boundary.update" \
+  "$tmp_dir/writable-path-checker-record/boundary.json"
+refresh_record_runtime_evidence "$tmp_dir/writable-path-checker-record"
+write_pass_adjudication "$tmp_dir/author-subject-record" \
+  "$tmp_dir/writable-path-checker-record" "$tmp_dir/writable-path-adjudication.json"
+assert_blocked 'plan writable paths differ from task shape' finalizer-writable-path \
+  "$finalizer" "$tmp_dir/author-subject-record" \
+  "$tmp_dir/writable-path-checker-record" "$tmp_dir/writable-path-adjudication.json" \
+  "$tmp_dir/writable-path-run"
+
+cp -R "$tmp_dir/author-checker-record" "$tmp_dir/relabeled-checker-record"
+relabeled_commit=$(git -C "$repo_root" rev-parse HEAD^)
+relabeled_marker_sha=$(printf '%s\n' "$relabeled_commit" | sha256sum | cut -d' ' -f1)
+jq -S -c --arg commit "$relabeled_commit" '.candidateCommit = $commit' \
+  "$tmp_dir/relabeled-checker-record/task-receipt.json" \
+  >"$tmp_dir/relabeled-checker-record/task-receipt.update"
+mv -- "$tmp_dir/relabeled-checker-record/task-receipt.update" \
+  "$tmp_dir/relabeled-checker-record/task-receipt.json"
+jq -S -c --arg commit "$relabeled_commit" '.candidate.commit = $commit' \
+  "$tmp_dir/relabeled-checker-record/plan.json" \
+  >"$tmp_dir/relabeled-checker-record/plan.update"
+mv -- "$tmp_dir/relabeled-checker-record/plan.update" \
+  "$tmp_dir/relabeled-checker-record/plan.json"
+refresh_packet_file "$tmp_dir/relabeled-checker-record" plan.json
+jq -S -c --arg commit "$relabeled_commit" --arg marker "$relabeled_marker_sha" '
+  .candidateCommit = $commit |
+  .files |= map(if .path == ".nomos-candidate-commit" then .sha256 = $marker else . end)
+  ' "$tmp_dir/relabeled-checker-record/packet-manifest.json" \
+  >"$tmp_dir/relabeled-checker-record/packet-manifest.update"
+mv -- "$tmp_dir/relabeled-checker-record/packet-manifest.update" \
+  "$tmp_dir/relabeled-checker-record/packet-manifest.json"
+relabeled_manifest_sha=$(sha256sum \
+  "$tmp_dir/relabeled-checker-record/packet-manifest.json" | cut -d' ' -f1)
+jq -S -c --arg commit "$relabeled_commit" --arg manifest "$relabeled_manifest_sha" '
+  .targetCommit = $commit | .packetManifestSha256 = $manifest
+  ' "$tmp_dir/relabeled-checker-record/boundary.json" \
+  >"$tmp_dir/relabeled-checker-record/boundary.update"
+mv -- "$tmp_dir/relabeled-checker-record/boundary.update" \
+  "$tmp_dir/relabeled-checker-record/boundary.json"
+sed "s/^PI_TARGET_COMMIT .*/PI_TARGET_COMMIT $relabeled_commit/" \
+  "$tmp_dir/relabeled-checker-record/pi-qualification.txt" \
+  >"$tmp_dir/relabeled-checker-record/pi-qualification.update"
+mv -- "$tmp_dir/relabeled-checker-record/pi-qualification.update" \
+  "$tmp_dir/relabeled-checker-record/pi-qualification.txt"
+refresh_record_runtime_evidence "$tmp_dir/relabeled-checker-record"
+write_pass_adjudication "$tmp_dir/author-subject-record" \
+  "$tmp_dir/relabeled-checker-record" "$tmp_dir/relabeled-adjudication.json"
+assert_blocked 'recorded immutable packet manifest differs from task record' \
+  finalizer-relabeled-candidate \
+  "$finalizer" "$tmp_dir/author-subject-record" \
+  "$tmp_dir/relabeled-checker-record" "$tmp_dir/relabeled-adjudication.json" \
+  "$tmp_dir/relabeled-run"
 
 cp -R "$tmp_dir/author-subject-record" "$tmp_dir/substitute-final-subject-record"
 rebind_recorded_commands "$tmp_dir/substitute-final-subject-record" \
@@ -538,7 +685,7 @@ jq '.candidateCommit = "ffffffffffffffffffffffffffffffffffffffff"' \
   >"$tmp_dir/phantom-candidate-checker-record/task-receipt.update"
 mv -- "$tmp_dir/phantom-candidate-checker-record/task-receipt.update" \
   "$tmp_dir/phantom-candidate-checker-record/task-receipt.json"
-assert_blocked 'plan candidate differs from task receipt' finalizer-phantom-candidate \
+assert_blocked 'qualification candidate differs from task receipt' finalizer-phantom-candidate \
   "$finalizer" "$tmp_dir/author-subject-record" \
   "$tmp_dir/phantom-candidate-checker-record" "$tmp_dir/author-adjudication.json" \
   "$tmp_dir/phantom-candidate-run"

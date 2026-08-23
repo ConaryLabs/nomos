@@ -12,22 +12,32 @@ transcript=$1
 [[ -f $transcript && ! -L $transcript ]] || fail 'transcript is absent or not a regular file'
 
 jq -e -S -c -s '
-  [.[] | select(.type == "tool_execution_start")] as $starts |
-  [.[] | select(.type == "tool_execution_end")] as $ends |
+  to_entries as $events |
+  [$events[] | select(.value.type == "tool_execution_start") |
+    {position: .key, event: .value}] as $starts |
+  [$events[] | select(.value.type == "tool_execution_end") |
+    {position: .key, event: .value}] as $ends |
   if ($starts | length) == 0 then error("transcript has no tool starts")
-  elif ([$starts[].toolCallId] | length) != ([$starts[].toolCallId] | unique | length)
+  elif ([$starts[].event.toolCallId] | length) !=
+       ([$starts[].event.toolCallId] | unique | length)
   then error("transcript has duplicate tool starts")
-  elif ([$ends[].toolCallId] | length) != ([$ends[].toolCallId] | unique | length)
+  elif ([$ends[].event.toolCallId] | length) !=
+       ([$ends[].event.toolCallId] | unique | length)
   then error("transcript has duplicate tool ends")
-  elif ([$starts[].toolCallId] | sort) != ([$ends[].toolCallId] | sort)
+  elif ([$starts[].event.toolCallId] | sort) != ([$ends[].event.toolCallId] | sort)
   then error("transcript tool starts and ends do not pair")
+  elif any($starts[]; . as $start |
+    any($ends[];
+      .event.toolCallId == $start.event.toolCallId and
+      .position <= $start.position))
+  then error("transcript has a tool end before its matching start")
   else
     $starts
     | to_entries
     | map(
         .key as $ordinal |
-        .value as $start |
-        ([$ends[] | select(.toolCallId == $start.toolCallId)] | first) as $end |
+        .value.event as $start |
+        ([$ends[] | select(.event.toolCallId == $start.toolCallId) | .event] | first) as $end |
         {
           ordinal: $ordinal,
           toolCallId: $start.toolCallId,
