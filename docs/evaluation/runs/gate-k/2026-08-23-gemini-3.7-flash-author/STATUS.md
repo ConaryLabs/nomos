@@ -22,9 +22,10 @@ shell redirection at ordinals 1 and 16. The checker prompt explicitly requires
 the checker acknowledged the requests and improperly self-waived them.
 
 No formal checker retry is permitted or planned. Acceptance 17 is not passing.
-The current finalizer would mechanically trust the checker self-verdict and
-refuse an evidence-backed `fail`, so the run is not falsely assembled as a pass.
-Issue #79 records that fail-open adjudication conflict and the required explicit
-repair. On 2026-08-23 Peter Permenter, owner and adjudicator, dispositioned the
-formal attempt as `fail`. Durable final assembly remains blocked on #79; all
-subject and checker evidence remains immutable.
+On 2026-08-23 Peter Permenter, owner and adjudicator, dispositioned the formal
+attempt as `fail`. Issue #79 repaired the fail-open finalization path with
+hash-bound structured command adjudication. The repaired finalizer assembled
+this immutable subject/checker pair as `fail`; `result.json` has SHA-256
+`e6990dacde903f527d1cb46784a54d938a7e130f1193e51bb830a4a2284f07dc`.
+The raw subject and checker evidence remains immutable, and no retry is
+authorized or planned.
