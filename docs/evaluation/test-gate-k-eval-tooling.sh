@@ -481,7 +481,7 @@ assert_blocked 'unbound empty directory' checker-empty-directory-artifacts \
 cp -R "$tmp_dir/author-subject-record" "$tmp_dir/substituted-command-record"
 printf '%s\n' 'SECRET_EXPECTED_ANSWER_AND_UNRECORDED_COMMANDS' \
   >"$tmp_dir/substituted-command-record/commands.json"
-assert_blocked 'subject commands are invalid' checker-substituted-commands \
+assert_blocked 'subject commands.json contains invalid or duplicate-key JSON' checker-substituted-commands \
   "$packet_builder" author-checker --candidate "$candidate" --commit "$commit" \
   --brief "$rehearsals/author-checker-brief.txt" \
   --prompt "$rehearsals/author-checker-prompt.txt" \

@@ -72,6 +72,11 @@ outside-host paths, and unshared network before the first provider request.
 
 Every build requires the exact forty-character candidate commit, a clean Git
 worktree at that commit, and an absent output directory outside the worktree.
+Checker construction rejects final-component aliases on the subject-record and
+input-tree roots, then runs the shared exact document, strict JSON, and NDJSON
+validators over the complete structured subject record before any `jq` field
+extraction or packet emission. Every other JSON packet input passes the shared
+strict loader before manifest construction inspects its optional schema identity.
 It builds `nomos` in release mode before packet construction. Packet files use
 fixed modes and repository-independent relative paths. `plan.json` and
 `packet-manifest.json` use canonical compact JSON with sorted object keys; the

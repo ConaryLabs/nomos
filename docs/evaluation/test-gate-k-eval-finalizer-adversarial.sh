@@ -4,7 +4,7 @@
 # has been recorded. Keep these attacks separate so the primary harness stays
 # below the shop's code-file decomposition threshold.
 
-for required in tmp_dir finalizer transcript_validator; do
+for required in tmp_dir finalizer transcript_validator packet_builder; do
   [[ -n ${!required:-} ]] || {
     printf 'missing adversarial fixture variable: %s\n' "$required" >&2
     exit 1
@@ -13,6 +13,24 @@ done
 
 base_subject="$tmp_dir/author-subject-record"
 base_checker="$tmp_dir/author-checker-record"
+
+cp -R "$base_subject" "$tmp_dir/duplicate-subject-receipt-record"
+sed 's/"candidateCommit":/"candidateCommit":"duplicate","candidateCommit":/' \
+  "$base_subject/task-receipt.json" \
+  >"$tmp_dir/duplicate-subject-receipt-record/task-receipt.json"
+assert_blocked 'duplicate JSON key: candidateCommit' duplicate-subject-receipt-packet \
+  "$packet_builder" author-checker --candidate "$candidate" --commit "$commit" \
+  --brief "$rehearsals/author-checker-brief.txt" \
+  --prompt "$rehearsals/author-checker-prompt.txt" \
+  --subject-record "$tmp_dir/duplicate-subject-receipt-record" \
+  --out "$tmp_dir/duplicate-subject-receipt-packet"
+ln -s "$base_subject" "$tmp_dir/subject-record-alias"
+assert_blocked 'subject record is not a real directory' trailing-slash-subject-record-alias \
+  "$packet_builder" author-checker --candidate "$candidate" --commit "$commit" \
+  --brief "$rehearsals/author-checker-brief.txt" \
+  --prompt "$rehearsals/author-checker-prompt.txt" \
+  --subject-record "$tmp_dir/subject-record-alias/" \
+  --out "$tmp_dir/trailing-slash-subject-record-packet"
 
 printf '%s\n' '{"overflow":1e309}' >"$tmp_dir/overflow.json"
 assert_blocked 'non-finite JSON number' overflow-json \
