@@ -1,10 +1,11 @@
 ---
 title: The executable semantic kernel
-status: Implementation complete through SW-N; Gate K evidence closure in progress
+status: Gate K failed; acceptance 17 and 18 failed; implementation complete through SW-N
 gate: K
 contract_revision: 7
 supersedes_contract_revision: 6
 decision_record: docs/decisions/0009-transition-explanation-input-boundary.md
+disposition_record: docs/decisions/0013-gate-k-disposition.md
 ---
 
 # The executable semantic kernel
@@ -28,6 +29,12 @@ These criteria are fixed before code so code cannot silently redefine them.
 They may be corrected only through the amendment process in `AGENTS.md` and a
 new owner-authorized decision record. Contract repair is allowed; weakening a
 criterion because an implementation failed it is not.
+
+Gate K was finally dispositioned `failed` on 2026-08-23 in decision 0013.
+Criteria 1–16 and 19 passed; the one formal cold-author and cold-debug attempts
+failed criteria 17 and 18 under their frozen rubric. Contract revision 7 is
+unchanged, no retry is authorized, and this status does not authorize Gate 0 or
+renderer work.
 
 ## 1. Exact base fixture
 
