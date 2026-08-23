@@ -214,6 +214,18 @@ recording, and finalization now reject every empty descendant directory, and
 the offline suite reproduces the attack at each boundary. Both shapes require
 clean replacement r6 pairs.
 
+The clean r6 author and debug pairs target exact repaired candidate
+`c800c98a67f2599b5522a84d42a7549600d53d1f`. Both independent checkers passed.
+The author pair recorded 14/20 assistant turns, 21/32 tool calls, and
+208,252/770,315 provider-reported tokens. The debug pair recorded 19/15 turns,
+30/19 tool calls, and 611,607/393,092 provider-reported tokens. All four task
+sessions are distinct, record no intervention or retry, state
+`formalAttempt: false`, and contain no empty artifact directory. Every actual
+command operand stayed inside `/workspace`; checker-only forbidden-path strings
+were quoted scan patterns, not access attempts. Durable records live at
+`docs/evaluation/runs/rehearsal/2026-08-23-claude-opus-5-author-r6/` and
+`docs/evaluation/runs/rehearsal/2026-08-23-claude-opus-5-debug-r6/`.
+
 ## Invalidation
 
 Any packet allowlist, public packet document, prompt, constraint, runner, recorder,
