@@ -757,12 +757,19 @@ else
 fi
 
 if [[ $subject_class == rehearsal ]]; then
-  [[ $(jq -r '.identity.provider + "/" + .identity.model + "/" + .identity.thinking' \
-      "$subject/task-receipt.json") == anthropic/claude-opus-5/high ]] ||
-    fail 'rehearsal subject is not the supplemental Claude Opus 5 high route'
-  [[ $(jq -r '.identity.provider + "/" + .identity.model + "/" + .identity.thinking' \
-      "$checker/task-receipt.json") == anthropic/claude-opus-5/high ]] ||
-    fail 'rehearsal checker is not the supplemental Claude Opus 5 high route'
+  subject_route=$(jq -r \
+    '.identity.provider + "/" + .identity.model + "/" + .identity.thinking' \
+    "$subject/task-receipt.json")
+  checker_route=$(jq -r \
+    '.identity.provider + "/" + .identity.model + "/" + .identity.thinking' \
+    "$checker/task-receipt.json")
+  case "$subject_shape:$subject_route:$checker_route" in
+    author:anthropic/claude-opus-5/high:anthropic/claude-opus-5/high | \
+      debug:anthropic/claude-opus-5/high:anthropic/claude-opus-5/high | \
+      author:antigravity/gemini-3.7-flash/high:deepseek/deepseek-v4-flash-vision-exp/max | \
+      debug:deepseek/deepseek-v4-flash-vision-exp/max:antigravity/gemini-3.7-flash/high) ;;
+    *) fail 'rehearsal subject/checker identities differ from the approved routes' ;;
+  esac
   [[ $subject_formal == false && $checker_formal == false ]] ||
     fail 'rehearsal was marked as a formal attempt'
 else
