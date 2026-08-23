@@ -706,6 +706,9 @@ negative_task forbidden-tool 'task boundary record does not prove the declared p
 negative_task outside-read-succeeded 'task boundary record does not prove the declared packet isolation'
 negative_task outside-write-succeeded 'task boundary record does not prove the declared packet isolation'
 negative_task temporary-write-succeeded 'task boundary record does not prove the declared packet isolation'
+negative_task extra-device-exposed 'task boundary record does not prove the declared packet isolation'
+negative_task null-read-denied 'task boundary record does not prove the declared packet isolation'
+negative_task null-write-denied 'task boundary record does not prove the declared packet isolation'
 negative_task missing-session 'raw task stream has invalid JSON or misplaced provider signatures'
 
 cp -R "$tmp_dir/author-2" "$tmp_dir/negative-leak-packet"

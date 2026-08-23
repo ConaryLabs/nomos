@@ -121,4 +121,14 @@ assert_blocked 'does not force independence integrity to fail' revision6-ingress
   python3 "$adjudication_validator" "$tmp_dir/author-subject-record" \
   "$tmp_dir/forbidden-device-checker-record" "$tmp_dir/revision6-ingress-unmapped.json"
 
+for token in /dev/fd/1 /proc/self/fd/1 /workspace/output/null-alias; do
+  label=${token//\//-}
+  jq --arg token "$token" '.findings[0].pathToken = $token' \
+    "$tmp_dir/forbidden-device-adjudication.json" \
+    >"$tmp_dir/revision6-exact-exception$label.json"
+  python3 "$adjudication_validator" "$tmp_dir/author-subject-record" \
+    "$tmp_dir/forbidden-device-checker-record" \
+    "$tmp_dir/revision6-exact-exception$label.json" >/dev/null
+done
+
 printf 'gate-k revision-6 adjudication regressions: PASS\n'
