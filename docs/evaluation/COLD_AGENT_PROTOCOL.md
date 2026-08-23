@@ -1,10 +1,10 @@
 ---
 title: Cold-agent evaluation protocol
 status: Contractual for formal cold-agent claims
-revision: 2
-supersedes_protocol_revision: 1
-date: 2026-08-22
-decision_record: docs/decisions/0008-cold-agent-nomos-cli-identity.md
+revision: 3
+supersedes_protocol_revision: 2
+date: 2026-08-23
+decision_record: docs/decisions/0010-cold-agent-token-budget.md
 applies_to: Gate K, Gate 3, Gate 4, cold design review
 ---
 
@@ -146,7 +146,7 @@ Unless an owner-authorized run plan declares stricter limits:
 
 ```text
 fresh model sessions                 1
-provider-reported total token budget 64,000
+provider-reported total token budget 256,000
 assistant/model turns                40 maximum
 validation/compile cycles            12 maximum
 cold-debug diagnostic CLI cycles     12 maximum

@@ -49,55 +49,58 @@ it.
 3. [docs/decisions/0009-transition-explanation-input-boundary.md](docs/decisions/0009-transition-explanation-input-boundary.md)
    — the owner-authorized revision-6 to revision-7 repair requiring a verified
    world for transition explanations and separate tick-7 run evidence.
-4. [docs/decisions/0008-cold-agent-nomos-cli-identity.md](docs/decisions/0008-cold-agent-nomos-cli-identity.md)
+4. [docs/decisions/0010-cold-agent-token-budget.md](docs/decisions/0010-cold-agent-token-budget.md)
+   — the owner-authorized cold-agent protocol revision 3 increase from 64,000
+   to 256,000 cumulative provider-reported tokens; all other limits remain.
+5. [docs/decisions/0008-cold-agent-nomos-cli-identity.md](docs/decisions/0008-cold-agent-nomos-cli-identity.md)
    — the owner-authorized cold-agent protocol revision 2 correction from the
    prototype `estate` CLI name to active `nomos`; no tool scope or rubric changes.
-5. [docs/decisions/0007-adopt-nomos-identity.md](docs/decisions/0007-adopt-nomos-identity.md)
+6. [docs/decisions/0007-adopt-nomos-identity.md](docs/decisions/0007-adopt-nomos-identity.md)
    — the owner-authorized revision-5 to revision-6 identity cutover: Nomos is
    the project/runtime, The Signed World remains the thesis, and active schemas
    begin a fresh pre-Gate epoch.
-6. [docs/decisions/0006-package-evidence-boundary.md](docs/decisions/0006-package-evidence-boundary.md)
+7. [docs/decisions/0006-package-evidence-boundary.md](docs/decisions/0006-package-evidence-boundary.md)
    — the owner-authorized revision-4 to revision-5 repair sealing package
    receipts, publication, exact manifest decoding, and filesystem entry types.
-7. [docs/decisions/0003-contract-profile-closure.md](docs/decisions/0003-contract-profile-closure.md)
+8. [docs/decisions/0003-contract-profile-closure.md](docs/decisions/0003-contract-profile-closure.md)
    — the owner-authorized revision-2 to revision-3 closure of the canonical
    profile and workspace-evidence contract gaps.
-8. [docs/decisions/0004-world-ir-construction-lineage.md](docs/decisions/0004-world-ir-construction-lineage.md)
+9. [docs/decisions/0004-world-ir-construction-lineage.md](docs/decisions/0004-world-ir-construction-lineage.md)
    — the owner-authorized revision-3 to revision-4 repair separating incomplete
    construction snapshots from the stable World IR migration line.
-9. [docs/decisions/0005-gate-k-dependency-policy.md](docs/decisions/0005-gate-k-dependency-policy.md)
+10. [docs/decisions/0005-gate-k-dependency-policy.md](docs/decisions/0005-gate-k-dependency-policy.md)
    — the owner-authorized temporary zero-third-party-dependency policy for Gate
    K; it does not amend contract revision 4 or bind later gates.
-10. [docs/decisions/0001-contract-repair.md](docs/decisions/0001-contract-repair.md)
+11. [docs/decisions/0001-contract-repair.md](docs/decisions/0001-contract-repair.md)
    — the owner-authorized revision-1 to revision-2 contract repair.
-11. [docs/evaluation/COLD_AGENT_PROTOCOL.md](docs/evaluation/COLD_AGENT_PROTOCOL.md)
+12. [docs/evaluation/COLD_AGENT_PROTOCOL.md](docs/evaluation/COLD_AGENT_PROTOCOL.md)
    — the reproducible cold-author, cold-debug, and cold-review procedure.
-12. [docs/evaluation/GATE_K_COLD_AGENT_PLAN.md](docs/evaluation/GATE_K_COLD_AGENT_PLAN.md)
+13. [docs/evaluation/GATE_K_COLD_AGENT_PLAN.md](docs/evaluation/GATE_K_COLD_AGENT_PLAN.md)
    — the owner-authorized whole-kernel subject roster and eligibility checks.
-13. [docs/workspace.md](docs/workspace.md) — the crate map, how to run the
+14. [docs/workspace.md](docs/workspace.md) — the crate map, how to run the
    proof, and the decisions the first implementation slice had to make.
-14. [docs/authoring.md](docs/authoring.md) — source schema version 1 and the
+15. [docs/authoring.md](docs/authoring.md) — source schema version 1 and the
    approved Gate K authoring vocabulary.
-15. [docs/compiler.md](docs/compiler.md) — parser/linker stages, schema
+16. [docs/compiler.md](docs/compiler.md) — parser/linker stages, schema
    ownership, proof coverage, and limits.
-16. [docs/transitions.md](docs/transitions.md) — compiled command/event
+17. [docs/transitions.md](docs/transitions.md) — compiled command/event
    semantics, causal ordering, and immutable runtime preparation.
-17. [docs/movement.md](docs/movement.md) — compiled claim composition,
+18. [docs/movement.md](docs/movement.md) — compiled claim composition,
    shared simulation/navigation movement semantics, and SW-E evidence.
-18. [docs/packages.md](docs/packages.md) — atomic package publication, exact
+19. [docs/packages.md](docs/packages.md) — atomic package publication, exact
    manifest/member verification, and the revision-5 evidence boundary.
-19. [docs/migration.md](docs/migration.md) — stable-v1 to stable-v2 movement
+20. [docs/migration.md](docs/migration.md) — stable-v1 to stable-v2 movement
    migration, normalized runtime proof, and digest mapping.
-20. [docs/provenance.md](docs/provenance.md) — typed fact identities, resolved
+21. [docs/provenance.md](docs/provenance.md) — typed fact identities, resolved
     values, causal inputs, and the boundary between semantics and display text.
-21. [docs/runtime.md](docs/runtime.md) — compiler-owned light union, immutable
+22. [docs/runtime.md](docs/runtime.md) — compiler-owned light union, immutable
     runtime snapshots, state hashes, atomic commit, and typed causal receipts.
-22. [docs/explanations.md](docs/explanations.md) — package-bound entity and
+23. [docs/explanations.md](docs/explanations.md) — package-bound entity and
     transition explanations, stable selection failures, and SW-N evidence.
-23. [docs/review/2026-08-21-founding-review.md](docs/review/2026-08-21-founding-review.md)
+24. [docs/review/2026-08-21-founding-review.md](docs/review/2026-08-21-founding-review.md)
    — the condensed primary record of the founding adversarial review, written
    in the originating session, with its provenance limits stated.
-24. [docs/review/2026-08-21-founding-review-synthesis.md](docs/review/2026-08-21-founding-review-synthesis.md)
+25. [docs/review/2026-08-21-founding-review-synthesis.md](docs/review/2026-08-21-founding-review-synthesis.md)
     — the contract-revision-2 edited synthesis of that review.
 
 ## Layout

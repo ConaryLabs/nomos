@@ -2,15 +2,16 @@
 title: Gate K cold-agent packet and run tooling
 status: Issue 70 pre-formal tooling plan
 date: 2026-08-23
-protocol: docs/evaluation/COLD_AGENT_PROTOCOL.md revision 2
+protocol: docs/evaluation/COLD_AGENT_PROTOCOL.md revision 3
 roster: docs/evaluation/GATE_K_COLD_AGENT_PLAN.md
 ---
 
 # Gate K cold-agent packet and run tooling
 
 This document fixes the issue #70 harness method before either formal Gate K
-attempt. It does not amend the protocol, choose a release candidate, disclose a
-formal debug mutation, or spend a Gemini or DeepSeek attempt.
+attempt. Decision 0010 separately amends only the default cumulative token
+budget. This tooling does not choose a release candidate, disclose a formal
+debug mutation, or spend a Gemini or DeepSeek attempt.
 
 ## Boundary composition
 
@@ -66,7 +67,7 @@ The default protocol budgets remain unchanged:
 
 ```text
 fresh sessions                 1
-provider-reported tokens       64,000 maximum
+provider-reported tokens       256,000 maximum
 assistant turns                40 maximum
 validation/compile cycles      12 maximum
 debug diagnostic CLI cycles    12 maximum

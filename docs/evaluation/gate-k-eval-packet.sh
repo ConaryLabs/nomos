@@ -286,7 +286,7 @@ plan=$(jq -S -c -n \
     },
     budgets: {
       freshSessions: 1,
-      providerReportedTokensMaximum: 64000,
+      providerReportedTokensMaximum: 256000,
       assistantTurnsMaximum: 40,
       validationCompileCyclesMaximum: 12,
       debugDiagnosticCyclesMaximum: 12,
