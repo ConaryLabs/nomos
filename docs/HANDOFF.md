@@ -1,11 +1,10 @@
 # Handoff — state of the repository
 
-Updated 2026-08-23 for issue #70 after the clean r6 non-formal cold-agent
-rehearsals. Semantic implementation is complete through SW-N on `main`; issue
-#68
-merged as PR #74, issue #69 is implemented in draft PR #75, and issue #70 is
-active in draft PR #76 on branch `gate-k-eval-tooling-70`. Gate K evidence
-closure remains in progress.
+Updated 2026-08-23 for the combined issue #69/#70 evidence closure. Semantic
+implementation is complete through SW-N and frozen on `main`; issue #68 merged
+as PR #74, issue #69 merged as PR #75, and issue #70 is owner-approved in PR
+#76. Gate K remains explicitly unaccepted pending combined-head proof and the
+formal gates.
 This file orients a fresh session; it is rewritten at each slice boundary and
 never accumulates history (git has that).
 
@@ -387,22 +386,39 @@ never accumulates history (git has that).
   PR #67 merged as
   `05ba8e1007fe507288bae0c7f4019ba7d750f0f8`, issue #65 closed, and post-merge
   CI run `32587114490` passed.
+- **The post-SW-N implementation candidate is frozen (#68/#74):** the accepted
+  semantic implementation boundary is merge commit
+  `eb86f25f5084a5da83cdd4f26e42e68089367a11`. README and handoff status,
+  candidate invalidation rules, the no-new-feature boundary, and the Gate K
+  closure order are explicit. PR #74 and post-merge CI run `32602527283`
+  passed, issue #68 closed, and its feature branch was removed. This is an
+  implementation-complete boundary, not an RC tag or Gate K pass.
+- **Mechanical evidence closure is merged (#69/#75):** the predeclared method
+  lives in `docs/evaluation/GATE_K_EVIDENCE_PLAN.md`; the dedicated workflow
+  runs ten public compile/run/replay processes on native Linux x86_64 debug,
+  x86_64 release, and aarch64 release lanes, then fails on any within-lane or
+  cross-target byte difference. It also records clean release build time,
+  sampled peak/final target disk, process RSS, and three warmup plus twenty
+  measured validate/command/replay samples with raw data and distribution
+  summaries. `docs/evaluation/SCHEMA_OWNERSHIP.md` records the finding-free
+  source review of the exact twenty canonical identities and explicitly
+  dispositions the shared compiler receipt profiles. The final exact-head
+  workflow and non-author disposition are recorded externally on PR #75
+  because committing their receipt would create a different head. PR #75
+  merged as `8c32286dc779b76ce8e30f3b1b7817a551f41ba9`; no formal cold-agent
+  attempt is part of this slice.
 
 ## What is next
 
-Finish issue #70 by running exact-head repository proof and obtaining a
-replacement non-author audit of the packet allowlists, isolation composition,
-receipt binding, accounting, and r4/r5/r6 evidence. Issue #69 is separately
-implemented and green in draft PR #75; issue #70 remains active in draft PR
-#76.
-No new semantic feature slice is authorized before final Gate K disposition.
-An evidence-driven defect may still be repaired through the repository's
-issue-first flow; any acceptance-contract correction still requires an
-owner-authorized decision record.
+Complete PR #76 integration, then rerun the issue #69 mechanical matrix and the
+issue #70 evaluation-tooling proof on the same clean combined head. Only after
+those candidate-bound proofs pass may the owner tag `gate-k-rc1`. No new
+semantic feature slice is authorized before final Gate K disposition. An
+evidence-driven defect may still be repaired through the issue-first flow; any
+acceptance-contract correction still requires an owner-authorized decision
+record.
 
-After #69 and #70 are owner-disposed and merged, rerun their candidate-bound
-proofs on the same clean combined head. Only then may the owner tag
-`gate-k-rc1`. The remaining order is:
+The remaining formal order is:
 
 1. #71 — Gemini formal cold-author subject;
 2. #72 — DeepSeek formal cold-debug subject;
@@ -461,14 +477,15 @@ author proof, Luna max exact-head rerun, PR CI, and post-merge CI also passed al
 four commands; the focused release SW-G test passed. SW-F, SW-D, and
 issue #24 have the same author/non-author/CI chain as recorded above. Earlier
 SW-C, revision-4, and Rust-1.98 maintenance reruns also passed.
-Still unproven: Linux aarch64 release, ten runs per target, measured Gate K
-budgets, and formal cold-agent gates. The contract also requires a final
-explicit schema-ownership
-source-review receipt after the Gate K schema set stabilizes; that final
-receipt does not exist yet.
+Issue #69 closes the final exact-head disposition for Linux aarch64 release,
+ten runs per target, measured Gate K budgets, and the final explicit schema-
+ownership source review. Formal cold-agent gates remain unperformed regardless
+of #69's result.
 
 ## Remaining evidence points
 
-Linux aarch64 release and the ten-runs-per-target matrix remain evidence gaps,
-not contract-wording questions. The whole-kernel roster and invalidation rules
+Issue #69's dedicated workflow supplies the merged mechanical evidence
+artifacts, and issue #70 supplies the evaluation harness and non-formal
+rehearsals. Their proofs must still pass together on the combined clean head
+before `gate-k-rc1` is tagged. The whole-kernel roster and invalidation rules
 are resolved; the formal runs remain unperformed.

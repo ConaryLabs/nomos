@@ -1,13 +1,9 @@
 name: verify
 
 # The SW-B proof lane: formatting, lints, tests, the KERNEL.md section 10
-# dependency-boundary check, and a determinism step.
-#
-# Scope limit, stated rather than implied: KERNEL.md section 7 requires ten runs
-# on each of Linux x86_64 debug, Linux x86_64 release, and Linux aarch64
-# release. This workflow proves x86_64 debug and release only. The aarch64
-# target and the ten-run count are recorded as UNPROVED and belong to the slice
-# that owns the determinism matrix. Gate K is not green until they exist.
+# dependency-boundary check, and a frozen canonicalization regression. The
+# separate `gate-k-evidence.yml` workflow owns the process-level three-target
+# determinism matrix and measured acceptance-16 evidence.
 
 on:
   push:
@@ -69,7 +65,7 @@ jobs:
       - name: Gate K evaluation packet and recorder harness
         run: docs/evaluation/test-gate-k-eval-tooling.sh
 
-      - name: Determinism
+      - name: Frozen canonical hash-domain regression
         # The canonical-hash test prints `HASH <name> <hex>` lines. Four runs —
         # debug twice, release twice — must produce byte-identical lines.
         run: |
@@ -100,7 +96,7 @@ jobs:
           cargo build --workspace --locked
           echo "build seconds: $(( $(date +%s) - start ))"
 
-      - name: Budgets (acceptance 16)
+      - name: Coarse disk diagnostics (not acceptance-16 evidence)
         if: always()
         run: |
           du -sh target

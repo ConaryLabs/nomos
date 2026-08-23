@@ -57,12 +57,17 @@ docs/evaluation/test-pi-cold-agent-preflight.sh
 docs/evaluation/test-gate-k-eval-tooling.sh
 ```
 
-`.github/workflows/verify.yml` runs exactly these, plus a determinism step and
-disk/time budgets. The evaluation harness test is entirely offline: it builds
-all four packet shapes twice, proves byte identity and allowlist enforcement,
-exercises the task boundary through the fake Pi/Bubblewrap fixtures, and rejects
-identity, transcript, command, credential, packet, budget, and harness failures.
-It spends no provider attempt. To run the determinism step locally:
+`.github/workflows/verify.yml` runs exactly these, plus the frozen canonical
+hash-domain regression and coarse disk diagnostics. The evaluation harness test
+is entirely offline: it builds all four packet shapes twice, proves byte
+identity and allowlist enforcement, exercises the task boundary through the
+fake Pi/Bubblewrap fixtures, and rejects identity, transcript, command,
+credential, packet, empty-directory, budget, and harness failures. It spends no
+provider attempt. These checks are not the complete section 7 matrix or
+acceptance-16 receipt. The dedicated
+`.github/workflows/gate-k-evidence.yml` workflow and
+[`GATE_K_EVIDENCE_PLAN.md`](evaluation/GATE_K_EVIDENCE_PLAN.md) own that
+evidence. To run the canonicalization regression locally:
 
 ```bash
 hashes() {
@@ -200,19 +205,25 @@ it tracked the real runtime-state schema, a legitimate schema change would look
 exactly like a canonicalisation regression, and the test would stop meaning
 anything.
 
-## Budgets
+## Budgets and whole-kernel determinism
 
-Acceptance 16 requires measured numbers. SW-B measures build time and target
-size. SW-H, SW-J, and SW-K make validation latency, command latency, and replay
-throughput measurable, but the dedicated budget receipt has not yet recorded
-them and Gate K cannot call acceptance 16 passing. The CI `Budgets` step prints
-`du -sh target` and `df -h` on every run.
+Acceptance 16 requires measured numbers. The ordinary verification lane's
+`du`/`df` output is only a coarse runner diagnostic. Issue #69 predeclares clean
+release build/disk/memory and process-level validate/command/replay measurements
+in `GATE_K_EVIDENCE_PLAN.md`; the dedicated workflow preserves their raw
+samples and summaries.
+
+The same workflow runs ten fresh public-CLI compile/run/replay executions on
+Linux x86_64 debug, Linux x86_64 release, and native Linux aarch64 release, then
+compares the complete preserved semantic baseline across all three lanes. The
+older `nomos.hash_domain_fixture@1` debug/release comparison remains a smaller
+canonicalization regression and is never presented as that matrix.
 
 ## Not proved by SW-B
 
-- The section 7 execution matrix. CI proves x86_64 debug and release; **Linux
-  aarch64 release is unproved**, and the ten-runs-per-target count is not
-  implemented. Gate K is not green until both exist.
+- The section 7 execution matrix and acceptance-16 measurements remain unproved
+  until the dedicated issue #69 workflow passes on the exact candidate and its
+  raw receipts receive the required non-author audit.
 - The final complete mutation/evidence disposition and the cold-agent gates.
   The filesystem commands through strict v1-to-v2 `migrate` now exist, and SW-N
   adds the section 8 explanation surface without changing the workspace graph.
