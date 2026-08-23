@@ -588,6 +588,9 @@ assert_blocked 'launcher does not bind the transcript' finalizer-truncated-launc
   "$finalizer" "$tmp_dir/author-subject-record" "$tmp_dir/truncated-launcher-record" \
   "$tmp_dir/truncated-launcher.json" "$tmp_dir/truncated-launcher-run"
 
+"$finalizer" --validate-task-record "$tmp_dir/author-subject-record" >/dev/null
+"$finalizer" --validate-task-record "$tmp_dir/author-checker-record" >/dev/null
+
 source "$repo_root/docs/evaluation/test-gate-k-eval-finalizer-adversarial.sh"
 
 jq -c -s '

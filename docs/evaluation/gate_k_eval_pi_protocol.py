@@ -39,10 +39,22 @@ def reject_constant(value: str) -> None:
     fail(f"non-finite JSON number: {value}")
 
 
+def finite_float(value: str) -> float:
+    number = float(value)
+    if not math.isfinite(number):
+        fail(f"non-finite JSON number: {value}")
+    return number
+
+
 def loads(value: str, description: str) -> Any:
     try:
-        return json.loads(value, object_pairs_hook=reject_duplicates, parse_constant=reject_constant)
-    except (json.JSONDecodeError, ValueError) as error:
+        return json.loads(
+            value,
+            object_pairs_hook=reject_duplicates,
+            parse_constant=reject_constant,
+            parse_float=finite_float,
+        )
+    except (json.JSONDecodeError, OverflowError, ValueError) as error:
         fail(f"{description} is invalid: {error}")
 
 
@@ -230,6 +242,7 @@ def validate_update(value: object, name: str) -> dict[str, object] | None:
     if type(update) is not dict:
         fail(f"{name}.assistantMessageEvent is not an object")
     kind = update.get("type")
+    call = None
     if kind in ("text_start", "thinking_start", "toolcall_start"):
         require_keys(update, {"type", "contentIndex"}, set(), f"{name}.assistantMessageEvent")
     elif kind in ("text_delta", "thinking_delta", "toolcall_delta"):
@@ -243,12 +256,12 @@ def validate_update(value: object, name: str) -> dict[str, object] | None:
     elif kind == "toolcall_end":
         require_keys(update, {"type", "contentIndex", "toolCall"}, set(), f"{name}.assistantMessageEvent")
         calls = validate_assistant_content([update["toolCall"]], f"{name}.toolCall")
-        return calls[0]
+        call = calls[0]
     else:
         fail(f"{name}.assistantMessageEvent type is forbidden")
     if type(update["contentIndex"]) is not int or update["contentIndex"] < 0:
         fail(f"{name}.assistantMessageEvent.contentIndex is invalid")
-    return None
+    return call
 
 
 def validate_result_payload(value: object, name: str) -> dict[str, object]:

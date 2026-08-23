@@ -7,12 +7,23 @@ fail() {
   exit 1
 }
 
-[[ $# -eq 4 ]] || fail \
-  'usage: gate-k-eval-finalize.sh SUBJECT_RECORD CHECKER_RECORD ADJUDICATION_JSON OUT'
-subject=$1
-checker=$2
-adjudication=$3
-out=$4
+record_only=false
+if [[ $# -eq 2 && $1 == --validate-task-record ]]; then
+  record_only=true
+  subject=$2
+  checker=
+  adjudication=
+  out=
+  records=("$subject")
+elif [[ $# -eq 4 ]]; then
+  subject=$1
+  checker=$2
+  adjudication=$3
+  out=$4
+  records=("$subject" "$checker")
+else
+  fail 'usage: gate-k-eval-finalize.sh SUBJECT_RECORD CHECKER_RECORD ADJUDICATION_JSON OUT | --validate-task-record RECORD'
+fi
 script_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 repo_root=$(realpath -e "$script_dir/../..")
 repo_head=$(git -C "$repo_root" rev-parse HEAD)
@@ -26,9 +37,11 @@ json_validator="$script_dir/gate-k-eval-validate-json.py"
 document_validator="$script_dir/gate-k-eval-validate-documents.py"
 attempt_validator="$script_dir/gate-k-eval-attempt-ledger.py"
 attempt_ledger="$script_dir/gate-k-formal-attempt-ledger.jsonl"
-python3 "$attempt_validator" validate "$attempt_ledger" ||
-  fail 'formal-attempt ledger is invalid or contains an unclosed attempt'
-for record in "$subject" "$checker"; do
+if [[ $record_only == false ]]; then
+  python3 "$attempt_validator" validate-frozen-inventory "$attempt_ledger" ||
+    fail 'formal-attempt ledger differs from the exact frozen Gate K inventory'
+fi
+for record in "${records[@]}"; do
   [[ -d $record && ! -L $record ]] || fail "task record is absent: $record"
   for file in task-receipt.json plan.json packet-manifest.json prompt.txt transcript.ndjson \
     commands.json accounting.json boundary.json TASK.md pi-qualification.txt launcher.txt pi-stderr.txt; do
@@ -59,19 +72,23 @@ for record in "$subject" "$checker"; do
     fail "packet manifest does not satisfy its exact schema: $record"
 done
 subject=$(realpath -e "$subject")
-checker=$(realpath -e "$checker")
-[[ $subject != "$checker" ]] || fail 'subject and checker task records are the same directory'
-case "$subject/" in "$checker/"*) fail 'subject task record is nested under checker' ;; esac
-case "$checker/" in "$subject/"*) fail 'checker task record is nested under subject' ;; esac
-[[ -f $adjudication && ! -L $adjudication ]] || fail "adjudication is absent: $adjudication"
-adjudication=$(realpath -e "$adjudication")
-python3 "$json_validator" "$adjudication" || fail 'adjudication contains invalid or duplicate-key JSON'
-[[ ! -e $out ]] || fail "output already exists: $out"
-out_parent=$(realpath -e "$(dirname "$out")")
-out="$out_parent/$(basename "$out")"
-for record in "$subject" "$checker"; do
-  case "$out/" in "$record/"*) fail 'output must be outside both immutable task records' ;; esac
-done
+records=("$subject")
+if [[ $record_only == false ]]; then
+  checker=$(realpath -e "$checker")
+  records+=("$checker")
+  [[ $subject != "$checker" ]] || fail 'subject and checker task records are the same directory'
+  case "$subject/" in "$checker/"*) fail 'subject task record is nested under checker' ;; esac
+  case "$checker/" in "$subject/"*) fail 'checker task record is nested under subject' ;; esac
+  [[ -f $adjudication && ! -L $adjudication ]] || fail "adjudication is absent: $adjudication"
+  adjudication=$(realpath -e "$adjudication")
+  python3 "$json_validator" "$adjudication" || fail 'adjudication contains invalid or duplicate-key JSON'
+  [[ ! -e $out ]] || fail "output already exists: $out"
+  out_parent=$(realpath -e "$(dirname "$out")")
+  out="$out_parent/$(basename "$out")"
+  for record in "${records[@]}"; do
+    case "$out/" in "$record/"*) fail 'output must be outside both immutable task records' ;; esac
+  done
+fi
 
 tree_sha() {
   local root=$1
@@ -81,7 +98,7 @@ tree_sha() {
     done | sha256sum | cut -d' ' -f1
 }
 
-for record in "$subject" "$checker"; do
+for record in "${records[@]}"; do
   jq -e '
     .schema == "nomos.gate_k.task_receipt@1" and
     .identity.freshEphemeralSession == true and
@@ -116,7 +133,8 @@ for record in "$subject" "$checker"; do
   receipt_class=$(jq -r '.classification' "$record/task-receipt.json")
   receipt_formal=$(jq -r '.formalAttempt' "$record/task-receipt.json")
   receipt_shape=$(jq -r '.shape' "$record/task-receipt.json")
-  if [[ $receipt_class == formal && $receipt_formal == true ]]; then
+  receipt_sha=$(sha256sum "$record/task-receipt.json" | cut -d' ' -f1)
+  if [[ $record_only == false && $receipt_class == formal && $receipt_formal == true ]]; then
     case $receipt_shape in
       author) frozen_receipt_sha=732af45918ebc27c02675f6c75c32e7718407545c9fa3a39de327d3591d382a8 ;;
       author-checker) frozen_receipt_sha=2e8c97d5a939ddd6fa9b33769f6e24b80fc242b1420c2660eef7f9742d542db3 ;;
@@ -126,7 +144,6 @@ for record in "$subject" "$checker"; do
     esac
     [[ $(sha256sum "$record/task-receipt.json" | cut -d' ' -f1) == "$frozen_receipt_sha" ]] ||
       fail "formal task receipt is not one of the four frozen gate-k-rc1 records: $record"
-    receipt_sha=$(sha256sum "$record/task-receipt.json" | cut -d' ' -f1)
     ledger_matches=$(jq -s --arg commit "$(jq -r .candidateCommit "$record/task-receipt.json")" \
       --arg shape "$receipt_shape" --arg provider "$(jq -r .identity.provider "$record/task-receipt.json")" \
       --arg model "$(jq -r .identity.model "$record/task-receipt.json")" \
@@ -273,7 +290,16 @@ for record in "$subject" "$checker"; do
   mapfile -t launcher_qualification < <(
     awk '$1 == "PI_TASK_QUALIFICATION_SHA256" && NF == 2 {print $2}' "$record/launcher.txt"
   )
-  if [[ $receipt_class == rehearsal ]]; then
+  legacy_receipt=false
+  case $receipt_sha in
+    732af45918ebc27c02675f6c75c32e7718407545c9fa3a39de327d3591d382a8 | \
+    2e8c97d5a939ddd6fa9b33769f6e24b80fc242b1420c2660eef7f9742d542db3 | \
+    2820d2f46b2d895abc22b6677f4f3ba908199cdb9d057aee181b477eaeb82390 | \
+    0053d3df610e7e31322a2cfd9dfc641e160d3e5c64582df387d34cd4ddd37d37)
+      legacy_receipt=true
+      ;;
+  esac
+  if [[ $legacy_receipt == false ]]; then
     [[ ${#launcher_qualification[@]} -eq 1 &&
         ${launcher_qualification[0]} == "$(sha256sum "$record/pi-qualification.txt" | cut -d' ' -f1)" ]] ||
       fail "launcher does not bind the qualification receipt: $record"
@@ -467,7 +493,9 @@ for record in "$subject" "$checker"; do
   [[ $packet_root_claim == /* && -d $packet_root_claim && ! -L $packet_root_claim ]] ||
     fail "recorded immutable packet root is unavailable: $record"
   packet_root=$(realpath -e "$packet_root_claim")
-  case "$out/" in "$packet_root/"*) fail 'output must be outside both immutable packets' ;; esac
+  if [[ $record_only == false ]]; then
+    case "$out/" in "$packet_root/"*) fail 'output must be outside both immutable packets' ;; esac
+  fi
   [[ -z $(find "$packet_root" -type l -print -quit) ]] ||
     fail "recorded immutable packet contains a symlink: $record"
   [[ -z $(find "$packet_root" ! -type f ! -type d -print -quit) ]] ||
@@ -521,8 +549,10 @@ for record in "$subject" "$checker"; do
     fail "plan formal-attempt status differs from task receipt: $record"
   case $receipt_class:$receipt_formal in
     formal:true)
-      [[ $receipt_commit == "$gate_k_rc1_commit" ]] ||
-        fail "formal attempt candidate differs from frozen gate-k-rc1: $record"
+      if [[ $record_only == false ]]; then
+        [[ $receipt_commit == "$gate_k_rc1_commit" ]] ||
+          fail "formal attempt candidate differs from frozen gate-k-rc1: $record"
+      fi
       ;;
     rehearsal:false)
       [[ $receipt_commit == "$repo_head" ]] ||
@@ -542,10 +572,16 @@ for record in "$subject" "$checker"; do
     fail "manifest binary differs from plan: $record"
   [[ $(sha256sum "$packet_root/bin/nomos" | cut -d' ' -f1) == "$plan_binary_sha" ]] ||
     fail "recorded immutable packet binary differs from plan: $record"
-  if [[ $receipt_class == formal && $plan_binary_sha != "$gate_k_rc1_binary_sha" ]]; then
+  if [[ $record_only == false && $receipt_class == formal &&
+    $plan_binary_sha != "$gate_k_rc1_binary_sha" ]]; then
     fail "formal attempt binary differs from frozen gate-k-rc1: $record"
   fi
 done
+
+if [[ $record_only == true ]]; then
+  printf 'GATE_K_TASK_RECORD_VALIDATED record=%s\n' "$subject"
+  exit 0
+fi
 
 subject_shape=$(jq -r '.shape' "$subject/task-receipt.json")
 checker_shape=$(jq -r '.shape' "$checker/task-receipt.json")

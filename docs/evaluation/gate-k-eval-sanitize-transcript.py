@@ -120,7 +120,7 @@ def main() -> None:
         for index, line in enumerate(lines, 1):
             event = loads(line, f"Pi event line {index}")
             cleaned = sanitize_event(event, f"event[{index}]")
-            print(json.dumps(cleaned, separators=(",", ":"), ensure_ascii=True))
+            print(json.dumps(cleaned, separators=(",", ":"), ensure_ascii=True, allow_nan=False))
     except (OSError, ValueError) as error:
         print(f"gate-k transcript sanitization: FAIL: {error}", file=sys.stderr)
         raise SystemExit(1)

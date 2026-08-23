@@ -20,6 +20,11 @@ assert_blocked() {
 }
 
 python3 "$validator" validate "$ledger"
+python3 "$validator" validate-frozen-inventory "$ledger"
+cp "$ledger" "$tmp_dir/forged-import-ledger.jsonl"
+sed -i '1s/732af459/832af459/' "$tmp_dir/forged-import-ledger.jsonl"
+assert_blocked 'not an exact frozen Gate K import' python3 "$validator" validate \
+  "$tmp_dir/forged-import-ledger.jsonl"
 mkdir -p "$tmp_dir/repo/docs/evaluation"
 cp "$ledger" "$tmp_dir/repo/docs/evaluation/gate-k-formal-attempt-ledger.jsonl"
 ledger_copy="$tmp_dir/repo/docs/evaluation/gate-k-formal-attempt-ledger.jsonl"
@@ -103,7 +108,7 @@ git -C "$tmp_dir/repo" reset -q --soft HEAD^
 git -C "$tmp_dir/repo" reset -q
 git -C "$tmp_dir/repo" checkout -q -- docs/evaluation/gate-k-formal-attempt-ledger.jsonl
 python3 "$validator" next-reservation "$ledger_copy" future-author "$candidate" \
-  author antigravity gemini-future high "$manifest" "$prompt" "$nonce" >>"$ledger_copy"
+  author antigravity gemini-future high "$manifest" "$prompt_sha" "$nonce" >>"$ledger_copy"
 git -C "$tmp_dir/repo" add docs/evaluation/gate-k-formal-attempt-ledger.jsonl
 git -C "$tmp_dir/repo" commit -qm 'Reserve future author attempt'
 ledger_sha=$(sha256sum "$ledger_copy" | cut -d' ' -f1)
@@ -174,8 +179,13 @@ mv -- "$tmp_dir/forged-head-record/task-receipt.update" \
 assert_blocked 'committed ledger HEAD' python3 "$validator" next-close \
   "$ledger_copy" future-author "$tmp_dir/forged-head-record" inconclusive \
   --committed-repo "$tmp_dir/repo"
-python3 "$validator" next-close "$ledger_copy" future-author "$record" inconclusive \
-  --committed-repo "$tmp_dir/repo" >>"$ledger_copy"
+assert_blocked 'gate-k eval finalizer: FAIL' python3 "$validator" next-close \
+  "$ledger_copy" future-author "$record" inconclusive --committed-repo "$tmp_dir/repo"
+python3 "$validator" next-cancel "$ledger_copy" future-author \
+  'fixture record deliberately fails semantic validation' >>"$ledger_copy"
+python3 "$validator" validate "$ledger_copy"
+assert_blocked 'differs from the exact frozen Gate K inventory' \
+  python3 "$validator" validate-frozen-inventory "$ledger_copy"
 python3 "$validator" validate "$ledger_copy"
 cancel_nonce=cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 python3 "$validator" next-reservation "$ledger_copy" cancelled-author "$candidate" \

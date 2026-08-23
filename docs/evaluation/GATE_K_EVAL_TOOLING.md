@@ -356,17 +356,26 @@ during issue #79. The four frozen task receipts are imported, explicitly without
 retroactive prelaunch proof, into the hash-chained formal-attempt ledger. A
 future formal launcher requires an exact open reservation already committed in
 that ledger and records the ledger commit and digest in its task receipt. The
-completion event is derived from the complete task record. The exact canonical
+completion event is derived from the complete task record. The reserved prompt
+digest must equal the plan-bound prompt digest. The exact canonical
 receipt and exact launcher schema must bind the retained transcript, commands,
 manifest, qualification, stderr, boundary, and artifact tree; launcher status
 derives the outcome, and the bound ledger commit must be the committed HEAD.
-Only then does the event close the reservation with the receipt hash and outcome;
+The close invokes the same single-record semantic validation used by final
+assembly, including lifecycle, command derivation, qualification, boundary,
+accounting, immutable packet, and artifact proofs. Only then does the event
+close the reservation with the receipt hash and outcome;
 another reservation cannot hide or overtake an unfinished task.
 A prelaunch cancellation instead appends `discarded-before-launch` plus its
 reason; it cannot impersonate a completed provider task or erase the reservation.
+The four historical imports are exact authenticated events, not a permissive
+event class. Final assembly accepts only their exact frozen four-event inventory;
+any later event requires a new candidate and explicit protocol/tooling revision
+so it cannot be omitted from Gate K disposition.
 
 Public plans, packet manifests, and task receipts now have exact allowlisted
-schemas and canonical bytes. Raw Pi streams are validated before only the two
+schemas and canonical bytes. All evaluation JSON rejects duplicate keys and
+non-finite or host-overflowing numbers. Raw Pi streams are validated before only the two
 documented provider signature fields are removed, and their raw digest is
 retained. Boundary schema `nomos.pi_cold_agent_boundary@3` binds the resolved
 Pi, provider-extension, and Bubblewrap paths and hashes into both the runtime

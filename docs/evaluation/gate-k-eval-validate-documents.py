@@ -44,7 +44,9 @@ SCHEMA_ID = re.compile(r"[a-z][a-z0-9_.]*@[1-9][0-9]*")
 
 
 def canonical(value: object) -> str:
-    return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=True) + "\n"
+    return json.dumps(
+        value, sort_keys=True, separators=(",", ":"), ensure_ascii=True, allow_nan=False
+    ) + "\n"
 
 
 def load(path: Path, enforce_canonical: bool = True) -> object:

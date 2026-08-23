@@ -17,6 +17,13 @@ BASE = {"schema", "sequence", "previousEventSha256", "event", "attemptId",
         "candidateCommit", "shape", "provider", "model", "thinking",
         "packetManifestSha256"}
 IDENTITY = ("candidateCommit", "shape", "provider", "model", "thinking", "packetManifestSha256")
+FROZEN_IMPORT_EVENT_SHA256S = (
+    "3b94641e19bf07907ee7528e9b5ce1b5050d749600f86d6c79e735cd41f930d5",
+    "0f0d6e671d655e78918f964469199190d50819914fc9cc5f4bd82811dd8b97ef",
+    "800639cd9af0b6b3e9810ecf9cb6caa917057cd4e871e752ba8169c1b84ad4b7",
+    "9a226d12a0abc01578c7bdf21472d292a0e422190600490072ed05b191e06f79",
+)
+FROZEN_INVENTORY_SHA256 = "69162588b5a43b0456e739d49a34a2d329f4f53d8d6527a45997ec064ecba794"
 
 
 def event_sha(line: str) -> str:
@@ -24,7 +31,9 @@ def event_sha(line: str) -> str:
 
 
 def canonical(event: dict[str, object]) -> str:
-    return json.dumps(event, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
+    return json.dumps(
+        event, sort_keys=True, separators=(",", ":"), ensure_ascii=True, allow_nan=False
+    )
 
 
 def validate_event(event: object, sequence: int, previous: str | None) -> dict[str, object]:
@@ -80,6 +89,11 @@ def load_ledger(path: Path) -> tuple[list[dict[str, object]], list[str]]:
         event = validate_event(parsed, sequence, previous)
         if canonical(event) != line:
             fail(f"ledger event {sequence} is not canonical JSON")
+        if event["event"] == "import-close" and (
+            sequence > len(FROZEN_IMPORT_EVENT_SHA256S)
+            or event_sha(line) != FROZEN_IMPORT_EVENT_SHA256S[sequence - 1]
+        ):
+            fail(f"ledger event {sequence} is not an exact frozen Gate K import")
         attempt_id = event["attemptId"]
         if event["event"] in ("reserve", "import-close"):
             if attempt_id in seen:
@@ -245,6 +259,8 @@ def authenticated_close(path: Path, attempt_id: str, record: Path,
         fail("formal close manifest differs from the task receipt")
     if sha256_file(prompt_path) != plan["packet"]["promptSha256"]:
         fail("formal close prompt differs from the plan")
+    if plan["packet"]["promptSha256"] != reservation["promptSha256"]:
+        fail("formal close prompt differs from its reservation")
     rows = {row["path"]: row for row in manifest["files"]}
     for name in ("plan.json", "prompt.txt"):
         evidence_path = record / name
@@ -315,6 +331,8 @@ def authenticated_close(path: Path, attempt_id: str, record: Path,
             fail(f"formal close task record does not bind {receipt_field}")
     if artifacts_sha256(record / "artifacts") != receipt["digests"]["artifactsTreeSha256"]:
         fail("formal close task record does not bind artifactsTreeSha256")
+    record_validator = Path(__file__).with_name("gate-k-eval-finalize.sh")
+    subprocess.run([str(record_validator), "--validate-task-record", str(record)], check=True)
     return next_event(path, {"event": "close", "attemptId": attempt_id,
                              "taskReceiptSha256": hashlib.sha256(receipt_bytes).hexdigest(),
                              "outcome": outcome})
@@ -352,6 +370,8 @@ def main() -> None:
     sub = parser.add_subparsers(dest="command", required=True)
     validate_parser = sub.add_parser("validate")
     validate_parser.add_argument("ledger", type=Path)
+    frozen_parser = sub.add_parser("validate-frozen-inventory")
+    frozen_parser.add_argument("ledger", type=Path)
     verify = sub.add_parser("verify-reservation")
     verify.add_argument("ledger", type=Path)
     verify.add_argument("attempt_id")
@@ -379,6 +399,15 @@ def main() -> None:
         if args.command == "validate":
             if open_attempts:
                 fail(f"formal attempt remains open: {open_attempts[0]}")
+            return
+        if args.command == "validate-frozen-inventory":
+            if open_attempts:
+                fail(f"formal attempt remains open: {open_attempts[0]}")
+            if (
+                len(events) != len(FROZEN_IMPORT_EVENT_SHA256S)
+                or sha256_file(args.ledger) != FROZEN_INVENTORY_SHA256
+            ):
+                fail("formal-attempt ledger differs from the exact frozen Gate K inventory")
             return
         if args.command == "verify-reservation":
             if open_attempts != [args.attempt_id]:

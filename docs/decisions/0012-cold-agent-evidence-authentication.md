@@ -35,8 +35,11 @@ A formal close is derived only from the complete recorded task directory. Its
 exact canonical task receipt, exact launcher schema, transcript, commands,
 packet manifest, qualification, stderr, boundary, and artifact tree must agree.
 The launcher and receipt must bind the one open reservation, candidate, packet,
-session, provider, model, thinking level, committed ledger HEAD, ledger digest,
-and status-derived outcome. A hash or skeletal launcher cannot close an attempt.
+prompt, session, provider, model, thinking level, committed ledger HEAD, ledger digest,
+and status-derived outcome. Close and final assembly use the same semantic
+single-record proof for lifecycle, command derivation, qualification, boundary,
+accounting, immutable packet, and artifact evidence. A hash, skeletal launcher,
+or consistently rehashed invalid record cannot close an attempt.
 
 A reservation cancelled before provider launch is retained as an explicit
 `discarded-before-launch` event with a reason rather than fabricated as a task
@@ -44,9 +47,15 @@ receipt or left available for silent reuse.
 
 `plan.json`, `packet-manifest.json`, and `task-receipt.json` use exact
 allowlisted schemas, strict scalar types, and canonical sorted compact JSON.
-Checker results reject duplicate keys and non-finite numbers before their
+All evaluation JSON rejects duplicate keys and non-finite numbers, including
+finite syntax that overflows the host numeric representation, before its
 declared top-level shape is evaluated. Pi usage fields and UTC timestamps are
 strictly typed and ranged.
+
+Each legacy import is admitted only as its exact canonical frozen event. Gate K
+final assembly requires the exact four-event frozen inventory; later attempts,
+closes, cancellations, or imports require a new candidate plus an explicit
+protocol/tooling revision and cannot be silently omitted from disposition.
 
 Raw Pi streams are parsed before sanitization. `textSignature` and
 `thinkingSignature` may be removed only from their documented content blocks;

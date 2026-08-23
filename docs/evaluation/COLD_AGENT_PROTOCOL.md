@@ -264,13 +264,22 @@ exact open reservation, candidate, packet manifest, prompt, shape, provider,
 model, and thinking level. The complete recorded task directory is validated:
 the canonical receipt and exact launcher must agree with the retained manifest,
 transcript, commands, qualification, stderr, boundary, and artifact tree. The
-launcher status mechanically determines the receipt outcome, and its ledger
+plan's prompt digest must equal the reserved prompt digest. The launcher status
+mechanically determines the receipt outcome, and its ledger
 commit must be the repository HEAD that contains the open reservation. Only then
 are the derived receipt hash and outcome appended as a closing event, including
-an inconclusive transport. A bare hash or skeletal launcher cannot close an attempt. A new reservation
+an inconclusive transport. Close uses finalization's same semantic task-record
+proof; a bare hash, skeletal launcher, or consistently rehashed invalid record
+cannot close an attempt. A new reservation
 is forbidden while an earlier one is open. This prelaunch record, rather than a
 finished receipt's self-reported retry count, makes abandoned or discarded
 formal transports visible.
+
+The four historical `gate-k-rc1` imports are accepted only as their exact
+canonical events. Gate K final assembly requires the exact frozen four-event
+inventory, so a later reservation, close, cancellation, or import cannot be
+omitted from the final disposition. A future authorized attempt therefore
+requires an explicit protocol/tooling revision and a new frozen candidate.
 
 If the operator cancels before provider launch, the reservation is closed only
 by an explicit `discarded-before-launch` event with a non-empty reason. It has no
@@ -300,8 +309,10 @@ checker.json           independent reproduction/check result
 
 The three public packet documents use exact allowlisted schemas:
 `plan.json`, `packet-manifest.json`, and `task-receipt.json` are canonical
-sorted compact JSON with strict scalar types. Checker JSON rejects duplicate
-keys and non-finite numbers before its declared result shape is inspected.
+sorted compact JSON with strict scalar types. Every evaluation JSON parser
+rejects duplicate keys and non-finite numbers, including finite syntax whose
+magnitude overflows the host numeric representation, before a declared result
+shape is inspected.
 
 Pi event streams are parsed before provider signatures are removed. Only
 `textSignature` on a text content block and `thinkingSignature` on a thinking

@@ -3,8 +3,8 @@ title: Gate K cold-agent eligibility and roster plan
 status: Owner-authorized routing; effective on merge
 date: 2026-08-22
 issue: 7
-protocol: docs/evaluation/COLD_AGENT_PROTOCOL.md revision 3
-protocol_decision: docs/decisions/0010-cold-agent-token-budget.md
+protocol: docs/evaluation/COLD_AGENT_PROTOCOL.md revision 5
+protocol_decision: docs/decisions/0012-cold-agent-evidence-authentication.md
 ---
 
 # Gate K cold-agent eligibility and roster plan

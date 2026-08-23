@@ -44,11 +44,23 @@ weakened exact scalar checks, and tooling metadata still named revision 3. The
 current repair validates the complete task record and committed ledger HEAD,
 admits legacy evidence only by exact frozen receipt hash, restricts sanitization
 to explicit Pi message/result content locations, type-checks every fixed scalar,
-and identifies protocol revision 5 consistently. The tenth audit then reproduced
-one remaining scalar alias at `ac0f125`: Pi
-session `version: 3.0` compared equal to integer `3`. The current repair requires
-the exact integer type for Pi session versions and ledger sequence numbers and
-adds adversarial regressions for both. A fresh exact-head audit remains.
+and identifies protocol revision 5 consistently. The tenth audit then rejected
+`ac0f125`: a consistently rehashed but semantically invalid task record could
+still close, current formal launchers carried a qualification digest the
+finalizer rejected, Pi session `version: 3.0` and `toolcall_end` content-index
+floats bypassed exact integer typing, and the active roster plan still named
+protocol revision 3. The current repair makes close invoke finalization's shared
+single-record semantic proof, distinguishes exact frozen legacy launchers from
+all current qualification bindings, requires exact lifecycle integer types, and
+updates the active plan to revision 5. A fresh exact-head audit remains.
+The concurrently completed ninth audit of superseded head `4952e67` also found
+that close omitted the reserved prompt digest, overflowing numeric syntax could
+become a non-finite host float, arbitrary synthetic legacy imports were
+accepted, and final assembly ignored later ledger events. The current repair
+binds the plan prompt to its reservation, rejects overflow in the shared JSON
+loader, admits only the four exact canonical historical imports, and requires
+their exact frozen inventory during Gate K final assembly. A fresh exact-head
+audit remains.
 This file orients a fresh session; it is rewritten at each slice boundary and
 never accumulates history (git has that).
 

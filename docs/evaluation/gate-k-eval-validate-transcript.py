@@ -279,7 +279,11 @@ def main() -> None:
         for name in ("prompt", "provider", "model", "session", "started", "workspace"):
             if getattr(args, name) is None:
                 fail(f"missing --{name}")
-        print(json.dumps(validate(events, args), sort_keys=True, separators=(",", ":")))
+        print(
+            json.dumps(
+                validate(events, args), sort_keys=True, separators=(",", ":"), allow_nan=False
+            )
+        )
     except (OSError, ValueError) as error:
         print(f"gate-k transcript validation: FAIL: {error}", file=sys.stderr)
         raise SystemExit(1)
