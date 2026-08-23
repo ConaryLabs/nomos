@@ -247,7 +247,7 @@ if [[ $boundary_kind == packet-run ]]; then
       if [[ $mode_name == budget-aborted ]]; then
         budget='"provider_reported_tokens"'
         reported_tokens=0
-        printf 'NOMOS_PI_BUDGET_EXCEEDED {"category":"provider_reported_tokens","observed":256001,"maximum":256000}\n' >&2
+        printf 'NOMOS_PI_BUDGET_EXCEEDED {"category":"provider_reported_tokens","observed":1000001,"maximum":1000000}\n' >&2
       else
         budget='"validation_compile_cycles"'
         reported_tokens=15

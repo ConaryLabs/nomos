@@ -146,7 +146,7 @@ Unless an owner-authorized run plan declares stricter limits:
 
 ```text
 fresh model sessions                 1
-provider-reported total token budget 256,000
+provider-reported total token budget 1,000,000
 assistant/model turns                40 maximum
 validation/compile cycles            12 maximum
 cold-debug diagnostic CLI cycles     12 maximum

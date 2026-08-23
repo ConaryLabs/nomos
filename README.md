@@ -51,7 +51,7 @@ it.
    world for transition explanations and separate tick-7 run evidence.
 4. [docs/decisions/0010-cold-agent-token-budget.md](docs/decisions/0010-cold-agent-token-budget.md)
    — the owner-authorized cold-agent protocol revision 3 increase from 64,000
-   to 256,000 cumulative provider-reported tokens; all other limits remain.
+   to 1,000,000 cumulative provider-reported tokens; all other limits remain.
 5. [docs/decisions/0008-cold-agent-nomos-cli-identity.md](docs/decisions/0008-cold-agent-nomos-cli-identity.md)
    — the owner-authorized cold-agent protocol revision 2 correction from the
    prototype `estate` CLI name to active `nomos`; no tool scope or rubric changes.

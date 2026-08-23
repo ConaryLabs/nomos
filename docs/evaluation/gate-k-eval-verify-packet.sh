@@ -112,7 +112,7 @@ jq -e \
   .packet.activeTools == ["bash"] and
   .budgets == {
     "freshSessions": 1,
-    "providerReportedTokensMaximum": 256000,
+    "providerReportedTokensMaximum": 1000000,
     "assistantTurnsMaximum": 40,
     "validationCompileCyclesMaximum": 12,
     "debugDiagnosticCyclesMaximum": 12,

@@ -113,10 +113,11 @@ never accumulates history (git has that).
   launched by it.
 - **Cold-agent protocol revision 3 is owner-authorized (#70):** decision 0010
   raises only the cumulative provider-reported token ceiling from 64,000 to
-  256,000 after an ineligible Opus rehearsal demonstrated that cached context
-  usage exhausted the lower ceiling in nine turns. Turn, CLI-cycle, hint,
-  retry, packet, eligibility, and rubric rules remain unchanged. No formal
-  attempt has begun, and the affected rehearsal transports are not reclassified.
+  1,000,000 after Opus rehearsal transports demonstrated that cached context
+  usage exhausted 64,000 in nine turns and reached 237,082 on the small author
+  task. Turn, CLI-cycle, hint, retry, packet, eligibility, and rubric rules
+  remain unchanged. No formal attempt has begun, and the superseded rehearsal
+  transports are not reclassified.
 - **CI uses `actions/checkout@v7` (#11):** PR and post-merge verification passed
   without the Node 20 compatibility annotation.
 - **The GPT Pro architecture checkpoint is owner-disposed (#25):** review of

@@ -67,7 +67,7 @@ The default protocol budgets remain unchanged:
 
 ```text
 fresh sessions                 1
-provider-reported tokens       256,000 maximum
+provider-reported tokens       1,000,000 maximum
 assistant turns                40 maximum
 validation/compile cycles      12 maximum
 debug diagnostic CLI cycles    12 maximum
