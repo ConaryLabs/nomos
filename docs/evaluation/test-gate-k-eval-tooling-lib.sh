@@ -318,4 +318,3 @@ write_outside_path_adjudication() {
     }]')
   write_adjudication "$subject_record" "$checker_record" fail "$findings" "$out"
 }
-
