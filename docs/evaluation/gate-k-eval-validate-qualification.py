@@ -79,6 +79,15 @@ def file_sha256(path: str, name: str) -> str:
         fail(f"{name} cannot be authenticated: {error}")
 
 
+def legacy_task_receipt_digest(args: argparse.Namespace) -> str | None:
+    if args.task_receipt is None:
+        return None
+    try:
+        return hashlib.sha256(args.task_receipt.read_bytes()).hexdigest()
+    except OSError as error:
+        fail(f"legacy task receipt cannot be authenticated: {error}")
+
+
 def parse_receipt(path: Path) -> tuple[dict[str, str], list[dict[str, object]]]:
     lines = path.read_text().splitlines()
     if len(lines) < len(HEADERS) + 11:
@@ -272,13 +281,7 @@ def validate_boundary(values: dict[str, str], args: argparse.Namespace, session:
             elif runtime["providerExtension"] is not None:
                 fail("qualification runtime unexpectedly loads a provider extension")
     else:
-        legacy_digest = None
-        if args.task_receipt is not None:
-            try:
-                legacy_digest = hashlib.sha256(args.task_receipt.read_bytes()).hexdigest()
-            except OSError as error:
-                fail(f"legacy task receipt cannot be authenticated: {error}")
-        if legacy_digest not in LEGACY_TASK_RECEIPT_SHA256S:
+        if legacy_task_receipt_digest(args) not in LEGACY_TASK_RECEIPT_SHA256S:
             fail("legacy qualification boundary is not bound to one of the four frozen formal task receipts")
         if "runtimeIdentity" in boundary:
             fail("legacy qualification boundary unexpectedly declares runtime identity")
@@ -286,6 +289,10 @@ def validate_boundary(values: dict[str, str], args: argparse.Namespace, session:
 
 def validate(args: argparse.Namespace) -> None:
     values, events = parse_receipt(args.qualification)
+    boundary = loads(values["PI_BOUNDARY"], "qualification boundary")
+    if (type(boundary) is dict and boundary.get("schema") == "nomos.pi_cold_agent_boundary@2" and
+            legacy_task_receipt_digest(args) not in LEGACY_TASK_RECEIPT_SHA256S):
+        fail("legacy qualification boundary is not bound to one of the four frozen formal task receipts")
     session, extension, _ = validate_headers(values, args)
     validate_boundary(values, args, session, extension)
     session_event = events[0]
