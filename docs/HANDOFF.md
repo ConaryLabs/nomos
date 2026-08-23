@@ -22,9 +22,15 @@ to the exact `gate-k-rc1` commit and binary. A fifth audit rejected `95a5430`:
 event ordering and duplicate NDJSON keys remained open, writable packet output
 was not compared with recorded artifacts, qualification receipts could still be
 selectively truncated, and the invalidated candidate admitted fresh formal
-attempts. The current repair adds strict structured transcript and qualification
-validators, binds the final writable tree, and admits only the four exact frozen
-formal task receipts. Its exact-head non-author rerun remains.
+attempts. A sixth audit of the subsequent repair found that transcript payloads,
+qualification headers and ordering, packet isolation claims, timestamps, usage
+arithmetic, and prelaunch attempt accounting were still incompletely
+authenticated. The current repair validates the complete Pi event semantics and
+pinned qualification environment, reopens every packet-boundary claim, rejects
+invalid numeric/date values, and adds protocol revision 4's committed,
+hash-chained formal-attempt ledger. The four frozen task receipts are imported
+without pretending retroactive prelaunch proof exists. Its exact-head non-author
+rerun remains.
 This file orients a fresh session; it is rewritten at each slice boundary and
 never accumulates history (git has that).
 
@@ -430,7 +436,7 @@ never accumulates history (git has that).
 
 ## What is next
 
-Commit the complete evidence-chain repair, complete its exact-head non-author rerun, and
+Commit the sixth-audit repair, complete its exact-head non-author rerun, and
 finish CI for #79. The externally assembled immutable #71 and #72 structured
 results still have SHA-256
 `e6990dacde903f527d1cb46784a54d938a7e130f1193e51bb830a4a2284f07dc` and

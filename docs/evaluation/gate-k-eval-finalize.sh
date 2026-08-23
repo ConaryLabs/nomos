@@ -23,6 +23,10 @@ command_deriver="$script_dir/gate-k-eval-derive-commands.sh"
 transcript_validator="$script_dir/gate-k-eval-validate-transcript.py"
 qualification_validator="$script_dir/gate-k-eval-validate-qualification.py"
 json_validator="$script_dir/gate-k-eval-validate-json.py"
+attempt_validator="$script_dir/gate-k-eval-attempt-ledger.py"
+attempt_ledger="$script_dir/gate-k-formal-attempt-ledger.jsonl"
+python3 "$attempt_validator" validate "$attempt_ledger" ||
+  fail 'formal-attempt ledger is invalid or contains an unclosed attempt'
 for record in "$subject" "$checker"; do
   [[ -d $record && ! -L $record ]] || fail "task record is absent: $record"
   for file in task-receipt.json plan.json packet-manifest.json prompt.txt transcript.ndjson \
@@ -115,6 +119,20 @@ for record in "$subject" "$checker"; do
     esac
     [[ $(sha256sum "$record/task-receipt.json" | cut -d' ' -f1) == "$frozen_receipt_sha" ]] ||
       fail "formal task receipt is not one of the four frozen gate-k-rc1 records: $record"
+    receipt_sha=$(sha256sum "$record/task-receipt.json" | cut -d' ' -f1)
+    ledger_matches=$(jq -s --arg commit "$(jq -r .candidateCommit "$record/task-receipt.json")" \
+      --arg shape "$receipt_shape" --arg provider "$(jq -r .identity.provider "$record/task-receipt.json")" \
+      --arg model "$(jq -r .identity.model "$record/task-receipt.json")" \
+      --arg thinking "$(jq -r .identity.thinking "$record/task-receipt.json")" \
+      --arg manifest "$(jq -r .digests.packetManifestSha256 "$record/task-receipt.json")" \
+      --arg receipt "$receipt_sha" --arg outcome "$(jq -r .outcome "$record/task-receipt.json")" '
+      [.[] | select(.event == "import-close" and .candidateCommit == $commit and
+        .shape == $shape and .provider == $provider and .model == $model and
+        .thinking == $thinking and .packetManifestSha256 == $manifest and
+        .taskReceiptSha256 == $receipt and .outcome == $outcome)] | length
+      ' "$attempt_ledger")
+    [[ $ledger_matches -eq 1 ]] ||
+      fail "formal task receipt is absent from the append-only attempt ledger: $record"
   fi
   [[ $(sha256sum "$record/packet-manifest.json" | cut -d' ' -f1) == \
       $(jq -r '.digests.packetManifestSha256' "$record/task-receipt.json") ]] ||
@@ -330,20 +348,6 @@ for record in "$subject" "$checker"; do
     fail "packet-manifest shape differs from task receipt: $record"
   [[ $(jq -r '.taskShape' "$record/boundary.json") == "$receipt_shape" ]] ||
     fail "boundary shape differs from task receipt: $record"
-  jq -e \
-    --arg provider "$receipt_provider" \
-    --arg model "$receipt_model" \
-    --arg thinking "$receipt_thinking" \
-    --arg session "$receipt_session" '
-    .schema == "nomos.pi_cold_agent_boundary@2" and
-    .boundaryKind == "packet-run" and
-    .mode == "json" and
-    .provider == $provider and
-    .model == $model and
-    .thinking == $thinking and
-    .sessionId == $session
-    ' "$record/boundary.json" >/dev/null ||
-    fail "boundary identity differs from task receipt: $record"
   case $receipt_shape in
     author) expected_writable=workspace ;;
     debug | author-checker | debug-checker) expected_writable=output ;;
@@ -361,6 +365,63 @@ for record in "$subject" "$checker"; do
     fail "sandbox writable paths differ from task shape: $record"
 
   packet_root_claim=$(jq -r '.hostWorkspace' "$record/boundary.json")
+  plan_binary_sha=$(jq -r '.candidate.binarySha256' "$record/plan.json")
+  qualified_extension_line=$(sed -n 's/^PI_EXTENSION //p' "$record/pi-qualification.txt")
+  qualified_extension=${qualified_extension_line% *}
+  qualified_boundary=$(sed -n 's/^PI_BOUNDARY //p' "$record/pi-qualification.txt")
+  qualified_bwrap=$(jq -r '.sandbox.binary' <<<"$qualified_boundary")
+  jq -e \
+    --arg commit "$receipt_commit" \
+    --arg packet "$packet_root_claim" \
+    --arg provider "$receipt_provider" \
+    --arg model "$receipt_model" \
+    --arg thinking "$receipt_thinking" \
+    --arg session "$receipt_session" \
+    --arg extension "$qualified_extension" \
+    --arg bwrap "$qualified_bwrap" \
+    --arg manifest "$packet_manifest_sha" \
+    --arg binary "$plan_binary_sha" \
+    --arg prompt "$prompt_sha" \
+    --arg shape "$receipt_shape" \
+    --arg writable "$expected_writable" '
+    keys == (["schema", "boundaryKind", "mode", "targetCommit", "hostWorkspace",
+      "guestWorkspace", "provider", "model", "thinking", "sessionId", "sessionFile",
+      "projectTrusted", "entryTypesBeforeRun", "activeTools", "configuredTools",
+      "contextFiles", "skills", "systemPromptSha256", "finalSystemPromptSha256",
+      "packetManifestSha256", "binarySha256", "taskPromptSha256", "taskShape",
+      "writablePaths", "budgets", "sandbox"] | sort) and
+    .schema == "nomos.pi_cold_agent_boundary@2" and .boundaryKind == "packet-run" and
+    .mode == "json" and .targetCommit == $commit and .hostWorkspace == $packet and
+    .guestWorkspace == "/workspace" and .provider == $provider and .model == $model and
+    .thinking == $thinking and .sessionId == $session and .sessionFile == null and
+    .projectTrusted == false and
+    .entryTypesBeforeRun == ["model_change", "thinking_level_change"] and
+    .activeTools == ["bash"] and
+    .configuredTools == [{"name":"bash","source":{"path":$extension,"source":"cli",
+      "scope":"temporary","origin":"top-level"}}] and
+    .contextFiles == [] and .skills == [] and
+    .systemPromptSha256 == "2cec3aeebce2f8359cde337d3b1b2ec1601913711f282ab0289ab276b02dee79" and
+    .finalSystemPromptSha256 == "a78cae9025d8b63562a13c111e79e9f27c32ab20e726a53d2d9d8c094712e2b7" and
+    .packetManifestSha256 == $manifest and .binarySha256 == $binary and
+    .taskPromptSha256 == $prompt and .taskShape == $shape and
+    .writablePaths == [$writable] and .budgets == null and
+    (.sandbox | keys) == (["backend", "binary", "root", "workspace", "network",
+      "environment", "checks", "selfTest"] | sort) and
+    .sandbox.backend == "bubblewrap" and .sandbox.binary == $bwrap and
+    .sandbox.root == "read-only" and
+    .sandbox.workspace == "read-only-packet-with-declared-writable-paths" and
+    .sandbox.network == "unshared" and .sandbox.environment == "cleared-and-allowlisted" and
+    .sandbox.selfTest == "pass" and
+    (.sandbox.checks | keys) == (["targetCommitResolved", "workspaceRead",
+      "packetManifestMatched", "candidateBinaryMatched", "packetRootReadOnly",
+      "temporaryStorageReadOnly", "deviceFilesystemEmpty", "processFilesystemReadOnly",
+      "declaredWritablePaths", "gitMetadataAbsent", "outsideReadDenied",
+      "outsideWriteDenied", "credentialEnvironmentAbsent", "networkDenied"] | sort) and
+    .sandbox.checks.declaredWritablePaths == [$writable] and
+    all(.sandbox.checks | to_entries[] | select(.key != "declaredWritablePaths");
+      .value == true)
+    ' "$record/boundary.json" >/dev/null ||
+    fail "boundary does not prove the authenticated packet isolation: $record"
   [[ $packet_root_claim == /* && -d $packet_root_claim && ! -L $packet_root_claim ]] ||
     fail "recorded immutable packet root is unavailable: $record"
   packet_root=$(realpath -e "$packet_root_claim")
@@ -430,7 +491,6 @@ for record in "$subject" "$checker"; do
   [[ $(jq -r '.operatorIntervention' "$record/plan.json") == \
       $(jq -r '.operatorIntervention' "$record/task-receipt.json") ]] ||
     fail "plan intervention differs from task receipt: $record"
-  plan_binary_sha=$(jq -r '.candidate.binarySha256' "$record/plan.json")
   [[ $plan_binary_sha == $(jq -r '.binarySha256' "$record/boundary.json") ]] ||
     fail "boundary binary differs from plan: $record"
   [[ $(jq -r '.sandbox.checks.candidateBinaryMatched' "$record/boundary.json") == true ]] ||

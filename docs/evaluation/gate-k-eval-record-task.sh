@@ -157,6 +157,22 @@ artifacts_sha=$(find "$stage/artifacts" -type f -printf '%P\0' | sort -z |
 boundary_sha=$(sha256sum "$stage/boundary.json" | cut -d' ' -f1)
 qualification_sha=$(sha256sum "$stage/pi-qualification.txt" | cut -d' ' -f1)
 
+attempt_reservation=null
+if [[ $formal == true ]]; then
+  attempt_id=$(sed -n 's/^PI_TASK_ATTEMPT_ID //p' "$launcher")
+  attempt_ledger_sha=$(sed -n 's/^PI_TASK_ATTEMPT_LEDGER_SHA256 //p' "$launcher")
+  attempt_ledger_commit=$(sed -n 's/^PI_TASK_ATTEMPT_LEDGER_COMMIT //p' "$launcher")
+  [[ -n $attempt_id && $attempt_ledger_sha =~ ^[0-9a-f]{64}$ &&
+    $attempt_ledger_commit =~ ^[0-9a-f]{40}$ ]] ||
+    fail 'formal launcher lacks its committed attempt-ledger binding'
+  attempt_reservation=$(jq -S -c -n --arg id "$attempt_id" --arg sha "$attempt_ledger_sha" \
+    --arg commit "$attempt_ledger_commit" \
+    '{attemptId:$id,ledgerSha256:$sha,ledgerCommit:$commit}')
+else
+  [[ -z $(sed -n '/^PI_TASK_ATTEMPT_/p' "$launcher") ]] ||
+    fail 'rehearsal launcher unexpectedly claims a formal-attempt reservation'
+fi
+
 result=$(jq -S -c -n \
   --arg shape "$shape" \
   --arg classification "$classification" \
@@ -177,6 +193,7 @@ result=$(jq -S -c -n \
   --arg artifacts_sha "$artifacts_sha" \
   --arg boundary_sha "$boundary_sha" \
   --arg qualification_sha "$qualification_sha" \
+  --argjson attempt_reservation "$attempt_reservation" \
   --argjson accounting "$accounting" '
   {
     schema: "nomos.gate_k.task_receipt@1",
@@ -209,6 +226,7 @@ result=$(jq -S -c -n \
     },
     operatorIntervention: "none",
     operatorRetries: 0,
+    attemptReservation: $attempt_reservation,
     accounting: $accounting,
     outcome: $outcome,
     outcomeReason: $reason,

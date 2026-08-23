@@ -28,7 +28,11 @@ preflight="$script_dir/pi-cold-agent-preflight.sh"
 verify_packet="$script_dir/gate-k-eval-verify-packet.sh"
 transcript_validator="$script_dir/gate-k-eval-validate-transcript.py"
 json_validator="$script_dir/gate-k-eval-validate-json.py"
-[[ -x $preflight && -x $verify_packet && -x $transcript_validator && -x $json_validator ]] ||
+attempt_validator="$script_dir/gate-k-eval-attempt-ledger.py"
+attempt_ledger="$script_dir/gate-k-formal-attempt-ledger.jsonl"
+repo_root=$(realpath -e "$script_dir/../..")
+[[ -x $preflight && -x $verify_packet && -x $transcript_validator && -x $json_validator &&
+  -x $attempt_validator && -f $attempt_ledger ]] ||
   fail 'required repository tooling is absent'
 
 for name in jq sha256sum timeout realpath git mktemp cp chmod grep sed; do
@@ -53,6 +57,7 @@ done
 
 "$verify_packet" "$packet" "$commit" >/dev/null
 shape=$(jq -r '.task.shape' "$packet/plan.json")
+classification=$(jq -r '.task.classification' "$packet/plan.json")
 writable=$(jq -r '.packet.writablePaths[0]' "$packet/plan.json")
 manifest_sha=$(sha256sum "$packet/packet-manifest.json")
 manifest_sha=${manifest_sha%% *}
@@ -90,6 +95,19 @@ system_prompt=$(<"$system_prompt_file")
   fail 'qualified system prompt changed before task launch'
 bwrap=$(sed -n 's/^PI_BOUNDARY //p' "$qualification_out" | jq -r '.sandbox.binary')
 [[ -x $bwrap ]] || fail "qualified Bubblewrap binary is absent: $bwrap"
+
+attempt_id=
+attempt_ledger_commit=
+if [[ $classification == formal ]]; then
+  attempt_id=${NOMOS_FORMAL_ATTEMPT_ID:-}
+  [[ -n $attempt_id ]] || fail 'formal launch requires NOMOS_FORMAL_ATTEMPT_ID'
+  [[ -z $(git -C "$repo_root" status --porcelain=v1 --untracked-files=all) ]] ||
+    fail 'formal launch tooling and attempt ledger must be a clean committed checkout'
+  attempt_ledger_commit=$(python3 "$attempt_validator" verify-reservation "$attempt_ledger" \
+    "$attempt_id" "$commit" "$shape" "$provider" "$model" "$thinking" \
+    "$manifest_sha" "$prompt_sha" --committed-repo "$repo_root") ||
+    fail 'formal launch lacks an exact committed prelaunch reservation'
+fi
 
 tmp_dir=$(mktemp -d)
 cleanup() {
@@ -321,4 +339,9 @@ printf 'PI_TASK_EVENTS_SHA256 %s\n' "$(sha256sum "$events_out" | cut -d' ' -f1)"
 printf 'PI_TASK_STDERR_SHA256 %s\n' "$(sha256sum "$stderr_out" | cut -d' ' -f1)"
 printf 'PI_TASK_QUALIFICATION_SHA256 %s\n' \
   "$(sha256sum "$qualification_out" | cut -d' ' -f1)"
+if [[ $classification == formal ]]; then
+  printf 'PI_TASK_ATTEMPT_ID %s\n' "$attempt_id"
+  printf 'PI_TASK_ATTEMPT_LEDGER_SHA256 %s\n' "$(sha256sum "$attempt_ledger" | cut -d' ' -f1)"
+  printf 'PI_TASK_ATTEMPT_LEDGER_COMMIT %s\n' "$attempt_ledger_commit"
+fi
 printf 'PI_COLD_AGENT_TASK RECORDED\n'

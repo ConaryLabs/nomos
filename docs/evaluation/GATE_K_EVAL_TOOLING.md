@@ -351,6 +351,14 @@ their candidate binding. It does invalidate `gate-k-rc1` for any later
 exact-head evidence: a future launch would require a newly frozen
 `gate-k-rcN`, combined-head proof, and explicit owner authorization.
 
+Protocol revision 4 also closes the prospective attempt-accounting gap found
+during issue #79. The four frozen task receipts are imported, explicitly without
+retroactive prelaunch proof, into the hash-chained formal-attempt ledger. A
+future formal launcher requires an exact open reservation already committed in
+that ledger and records the ledger commit and digest in its task receipt. The
+completion event closes the reservation with the exact receipt hash and outcome;
+another reservation cannot hide or overtake an unfinished task.
+
 Any packet allowlist, public packet document, prompt, constraint, runner, recorder,
 checker construction, or boundary-extension change after a candidate is tagged
 invalidates later exact-head evidence for that candidate. Repairing a rehearsal

@@ -3,6 +3,7 @@
 set -euo pipefail
 
 repo_root=$(git rev-parse --show-toplevel)
+"$repo_root/docs/evaluation/test-gate-k-attempt-ledger.sh"
 packet_builder="$repo_root/docs/evaluation/gate-k-eval-packet.sh"
 packet_verifier="$repo_root/docs/evaluation/gate-k-eval-verify-packet.sh"
 seed_builder="$repo_root/docs/evaluation/gate-k-eval-seed-rehearsal.sh"
@@ -36,7 +37,11 @@ assert_blocked() {
     printf 'expected %s to be blocked\n' "$name" >&2
     exit 1
   fi
-  grep -F "$expected" "$tmp_dir/$name.err" >/dev/null
+  if ! grep -F "$expected" "$tmp_dir/$name.err" >/dev/null; then
+    printf 'expected %s failure containing: %s\n' "$name" "$expected" >&2
+    sed -n '1,120p' "$tmp_dir/$name.err" >&2
+    return 1
+  fi
 }
 
 declare_packet_file() {
@@ -94,7 +99,26 @@ rebind_recorded_commands() {
   mv -- "$commands_update" "$record/commands.json"
   transcript_update=$(mktemp "$tmp_dir/transcript-update.XXXXXX")
   jq -c --arg tool_call_id "$tool_call_id" --arg command "$command" '
-    if .type == "tool_execution_start" and .toolCallId == $tool_call_id
+    if (.type == "message_update" and
+        .assistantMessageEvent.type == "toolcall_delta")
+    then .assistantMessageEvent.delta = ({command: $command} | tojson)
+    elif (.type == "message_update" and
+          .assistantMessageEvent.type == "toolcall_end" and
+          .assistantMessageEvent.toolCall.id == $tool_call_id)
+    then .assistantMessageEvent.toolCall.arguments.command = $command
+    elif (.type == "message_end" and .message.role == "assistant") or
+         (.type == "turn_end")
+    then .message.content |= map(
+      if .type == "toolCall" and .id == $tool_call_id
+      then .arguments.command = $command else . end)
+    elif .type == "agent_end"
+    then .messages |= map(
+      if .role == "assistant" then
+        .content |= map(if .type == "toolCall" and .id == $tool_call_id
+          then .arguments.command = $command else . end)
+      else . end)
+    elif ((.type == "tool_execution_start" or .type == "tool_execution_update") and
+          .toolCallId == $tool_call_id)
     then .args.command = $command
     else .
     end

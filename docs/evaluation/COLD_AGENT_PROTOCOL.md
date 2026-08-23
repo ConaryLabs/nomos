@@ -1,10 +1,10 @@
 ---
 title: Cold-agent evaluation protocol
 status: Contractual for formal cold-agent claims
-revision: 3
-supersedes_protocol_revision: 2
+revision: 4
+supersedes_protocol_revision: 3
 date: 2026-08-23
-decision_record: docs/decisions/0010-cold-agent-token-budget.md
+decision_record: docs/decisions/0011-cold-agent-attempt-ledger.md
 applies_to: Gate K, Gate 3, Gate 4, cold design review
 ---
 
@@ -256,6 +256,16 @@ Each run receives exactly one verdict:
 Only `pass` satisfies a cold gate. Repeated failures may inform design, but the
 best run cannot be cherry-picked without reporting all formal attempts against
 the same brief.
+
+Before a formal provider task launches, the operator appends a content-addressed
+reservation to `docs/evaluation/gate-k-formal-attempt-ledger.jsonl` and commits
+it. Reservations are globally ordered and hash-chained. A launch must bind the
+exact open reservation, candidate, packet manifest, prompt, shape, provider,
+model, and thinking level. The finished task receipt is then appended as a
+closing event even when the outcome is fail or inconclusive. A new reservation
+is forbidden while an earlier one is open. This prelaunch record, rather than a
+finished receipt's self-reported retry count, makes abandoned or discarded
+formal transports visible.
 
 ## 9. Required evidence record
 
