@@ -92,6 +92,9 @@ function sandboxArguments(
 		boundaryKind === "source-preflight"
 			? ["--ro-bind", toolchainHome as string, "/toolchain", "--tmpfs", "/cargo", "--tmpfs", "/tmp"]
 			: [];
+	const deviceMount = boundaryKind === "source-preflight" ? ["--dev", "/dev"] : [];
+	const processMountPolicy =
+		boundaryKind === "packet-run" ? ["--remount-ro", "/proc"] : [];
 	const writableMounts =
 		boundaryKind === "packet-run"
 			? writablePaths.flatMap((path) => [
@@ -155,8 +158,8 @@ function sandboxArguments(
 		...writableMounts,
 		"--proc",
 		"/proc",
-		"--dev",
-		"/dev",
+		...processMountPolicy,
+		...deviceMount,
 		"--setenv",
 		"HOME",
 		"/home/subject",
@@ -242,22 +245,28 @@ async function proveSandbox(
 	binarySha: string | undefined,
 ) {
 	let output = "";
+	const probeSink =
+		boundaryKind === "source-preflight"
+			? "/tmp/.nomos-boundary-probe"
+			: `/workspace/${writablePaths[0]}/.nomos-boundary-probe`;
 	const common = [
 		"set -eu",
+		`probe_sink='${probeSink}'`,
+		': > "$probe_sink"',
 		'test "$PWD" = /workspace',
 		"test ! -e /etc/passwd",
 		"test ! -e /work/signed-dev",
 		"test ! -e /run/user",
-		"if touch /outside 2>/dev/null; then exit 71; fi",
+		'if touch /outside 2>"$probe_sink"; then exit 71; fi',
 		"if env | cut -d= -f1 | grep -Eq '(API_KEY|AUTH_TOKEN|OAUTH_TOKEN|ACCESS_TOKEN|REFRESH_TOKEN|PASSWORD|SECRET)$'; then exit 72; fi",
 		"test \"$(awk -F: 'NR > 2 {gsub(/[[:space:]]/, \"\", $1); if ($1 != \"lo\") print $1}' /proc/net/dev)\" = ''",
-		"if curl --connect-timeout 1 --max-time 2 --silent http://1.1.1.1/ >/dev/null 2>&1; then exit 73; fi",
+		'if curl --connect-timeout 1 --max-time 2 --silent http://1.1.1.1/ >"$probe_sink" 2>&1; then exit 73; fi',
 	];
 	const sourceChecks = [
 		"test -r README.md",
 		`test "$(git rev-parse HEAD)" = '${targetCommit}'`,
 		"test -w /workspace",
-		"cargo --version >/dev/null",
+		'cargo --version >"$probe_sink"',
 	];
 	const packetChecks = [
 		"test -r reference/README.md",
@@ -266,19 +275,22 @@ async function proveSandbox(
 		`test "$(sha256sum bin/nomos | cut -d' ' -f1)" = '${binarySha}'`,
 		"test -x bin/nomos",
 		"test ! -e .git",
-		"if touch /workspace/.nomos-undeclared-write 2>/dev/null; then exit 74; fi",
-		"if touch /tmp/.nomos-undeclared-write 2>/dev/null; then exit 75; fi",
-		"if touch /home/subject/.nomos-undeclared-write 2>/dev/null; then exit 76; fi",
+		'if touch /workspace/.nomos-undeclared-write 2>"$probe_sink"; then exit 74; fi',
+		'if touch /tmp/.nomos-undeclared-write 2>"$probe_sink"; then exit 75; fi',
+		'if touch /home/subject/.nomos-undeclared-write 2>"$probe_sink"; then exit 76; fi',
+		"test -z \"$(find /dev -mindepth 1 -print -quit)\"",
+		'test ! -w /proc/self/comm',
 		...writablePaths.flatMap((path) => [
 			`test -w '/workspace/${path}'`,
 			`touch '/workspace/${path}/.nomos-boundary-write-probe'`,
 			`rm '/workspace/${path}/.nomos-boundary-write-probe'`,
 		]),
-		"bin/nomos --help >/dev/null",
+		'bin/nomos --help >"$probe_sink"',
 	];
 	const command = [
 		...common,
 		...(boundaryKind === "source-preflight" ? sourceChecks : packetChecks),
+		'rm "$probe_sink"',
 		"printf 'NOMOS_PI_SANDBOX_SELF_TEST PASS\\n'",
 	].join("\n");
 	const result = await operations.exec(command, GUEST_WORKSPACE, {
@@ -307,6 +319,8 @@ async function proveSandbox(
 				candidateBinaryMatched: true,
 				packetRootReadOnly: true,
 				temporaryStorageReadOnly: true,
+				deviceFilesystemEmpty: true,
+				processFilesystemReadOnly: true,
 				declaredWritablePaths: [...writablePaths],
 				gitMetadataAbsent: true,
 			};

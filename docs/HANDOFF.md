@@ -146,6 +146,13 @@ never accumulates history (git has that).
   `docs/evaluation/runs/rehearsal/2026-08-23-claude-opus-5-author-r3/` and
   `docs/evaluation/runs/rehearsal/2026-08-23-claude-opus-5-debug-r3/`. No
   superseded rehearsal transport is reclassified.
+  A replacement non-author audit at evidence commit `18525aa` then found that
+  packet-run `--dev /dev` exposed writable `/dev/null` and `/dev/shm`, the r3
+  author/checker used `/dev/null` contrary to the exact rubric, and checker
+  packet inputs were not bound to the subject receipt. The repair removes the
+  packet-run device mount, remounts `/proc` read-only, proves both properties,
+  and changes checker construction to accept and verify one complete subject
+  record. R3 remains preserved but invalidated; both pairs require r4 reruns.
 - **CI uses `actions/checkout@v7` (#11):** PR and post-merge verification passed
   without the Node 20 compatibility annotation.
 - **The GPT Pro architecture checkpoint is owner-disposed (#25):** review of
@@ -353,9 +360,10 @@ never accumulates history (git has that).
 
 ## What is next
 
-Finish issue #70 by running the exact-head repository proof and obtaining a
-replacement non-author audit of the repaired packet allowlists, isolation
-composition, accounting, and r3 rehearsal evidence. Issue #69 is separately
+Finish issue #70 by committing the second audit repair, rerunning both non-formal
+rehearsal pairs as r4, running exact-head repository proof, and obtaining a
+replacement non-author audit of the packet allowlists, isolation composition,
+receipt binding, accounting, and r4 evidence. Issue #69 is separately
 implemented and green in draft PR #75; issue #70 remains active in draft PR
 #76.
 No new semantic feature slice is authorized before final Gate K disposition.

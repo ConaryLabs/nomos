@@ -93,6 +93,14 @@ exact_packet_tree() {
   [[ $actual == "$expected" ]] || fail "$label file allowlist mismatch"
 }
 
+tree_sha() {
+  local root=$1
+  find "$root" -type f -printf '%P\0' | sort -z |
+    while IFS= read -r -d '' relative; do
+      sha256sum "$root/$relative" | sed "s#  $root/#  #"
+    done | sha256sum | cut -d' ' -f1
+}
+
 while IFS= read -r relative; do
   lower=${relative,,}
   base=${lower##*/}
@@ -127,12 +135,14 @@ while IFS= read -r relative; do
       allowed=true
       ;;
     author-checker:reference/authoring.md | author-checker:reference/compiler.md | \
-      author-checker:subject/commands.json | author-checker:subject/artifacts/*)
+      author-checker:subject/commands.json | author-checker:subject/task-receipt.json | \
+      author-checker:subject/artifacts/*)
       allowed=true
       ;;
     debug-checker:reference/compiler.md | debug-checker:reference/runtime.md | \
       debug-checker:reference/explanations.md | debug-checker:subject/commands.json | \
-      debug-checker:subject/artifacts/* | debug-checker:input/hidden-mutation.json | \
+      debug-checker:subject/task-receipt.json | debug-checker:subject/artifacts/* | \
+      debug-checker:input/hidden-mutation.json | \
       debug-checker:input/debug-evidence/*)
       allowed=true
       ;;
@@ -216,6 +226,37 @@ for required in reference/README.md reference/nomos-help.txt brief.txt prompt.tx
   [[ -f $packet/$required ]] || fail "required packet file is absent: $required"
 done
 
+verify_bound_subject() {
+  local expected_shape=$1
+  local receipt="$packet/subject/task-receipt.json"
+  [[ -f $receipt && ! -L $receipt ]] || fail 'checker subject task receipt is absent'
+  jq -e --arg commit "$expected_commit" --arg shape "$expected_shape" \
+    --arg classification "$(jq -r '.task.classification' "$packet/plan.json")" '
+    .schema == "nomos.gate_k.task_receipt@1" and
+    .candidateCommit == $commit and .shape == $shape and
+    .classification == $classification and
+    .formalAttempt == ($classification == "formal") and
+    .outcome == "eligible-for-checker" and
+    (.digests.commandsSha256 | test("^[0-9a-f]{64}$")) and
+    (.digests.artifactsTreeSha256 | test("^[0-9a-f]{64}$"))
+    ' "$receipt" >/dev/null || fail 'checker subject task receipt identity is invalid'
+  jq -e '
+    .schema == "nomos.gate_k.commands@1" and
+    (.commands | type) == "array" and (.commands | length) > 0 and
+    (.commands | to_entries | all(.[];
+      .value.ordinal == .key and .value.tool == "bash" and
+      .value.completed == true and (.value.isError | type) == "boolean" and
+      (.value.arguments.command | type) == "string" and
+      (.value.arguments.command | length) > 0))
+    ' "$packet/subject/commands.json" >/dev/null || fail 'checker subject commands are invalid'
+  [[ $(sha256sum "$packet/subject/commands.json" | cut -d' ' -f1) == \
+      $(jq -r '.digests.commandsSha256' "$receipt") ]] ||
+    fail 'checker subject commands differ from the task receipt'
+  [[ $(tree_sha "$packet/subject/artifacts") == \
+      $(jq -r '.digests.artifactsTreeSha256' "$receipt") ]] ||
+    fail 'checker subject artifacts differ from the task receipt'
+}
+
 case $shape in
   author)
     [[ $writable == workspace ]] || fail 'author writable path is not workspace'
@@ -237,11 +278,13 @@ case $shape in
     [[ $writable == output ]] || fail 'author-checker writable path is not output'
     [[ -f $packet/subject/commands.json ]] || fail 'author-checker commands are absent'
     [[ -d $packet/subject/artifacts ]] || fail 'author-checker artifacts are absent'
+    verify_bound_subject author
     ;;
   debug-checker)
     [[ $writable == output ]] || fail 'debug-checker writable path is not output'
     [[ -f $packet/subject/commands.json ]] || fail 'debug-checker commands are absent'
     [[ -d $packet/subject/artifacts ]] || fail 'debug-checker artifacts are absent'
+    verify_bound_subject debug
     [[ -f $packet/input/hidden-mutation.json ]] || fail 'debug-checker hidden mutation is absent'
     [[ -d $packet/input/debug-evidence ]] || fail 'debug-checker evidence is absent'
     ;;

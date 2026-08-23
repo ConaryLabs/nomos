@@ -28,12 +28,14 @@ The task mount has two layers:
 2. exactly one declared packet directory is remounted read-write:
    `workspace/` for a cold author or `output/` for a cold debugger/checker.
 
-For packet runs, the otherwise empty `/tmp` and `/home/subject` directories are
-also read-only. The boundary self-test proves writes fail at the packet root,
-`/tmp`, `/home/subject`, and the sandbox root before it proves that the one
-declared task directory accepts a write. Source-only neutral qualification keeps
-its disposable `/tmp` because Cargo needs temporary storage; that worktree is a
-separate preflight boundary and is never the callable task packet.
+For packet runs, the otherwise empty `/tmp`, `/dev`, and `/home/subject`
+directories are read-only, and the process filesystem is remounted read-only.
+The boundary self-test proves the device filesystem is empty and writes fail at
+the packet root, `/tmp`, `/home/subject`, the process filesystem, and the sandbox
+root before it proves that the one declared task directory accepts a write.
+Source-only neutral qualification keeps its disposable `/tmp` because Cargo
+needs temporary storage; that worktree is a separate preflight boundary and is
+never the callable task packet.
 
 The task and checker prompts name `/tmp`, `/home`, `/etc`, and `/workspace/..`
 as forbidden explicitly. A checker must inspect every subject command and
@@ -55,10 +57,11 @@ outside-host paths, and unshared network before the first provider request.
 - `debug`: public orientation plus runtime, explanation, and compiler references,
   CLI help, verified compiled world, failing input, failure artifacts, brief,
   prompt, and copied candidate binary;
-- `author-checker`: permitted verification references, the subject output and
-  published commands, prompt, and copied candidate binary;
-- `debug-checker`: the debugger's output and commands, original permitted debug
-  evidence, the hidden seeded mutation, prompt, and copied candidate binary.
+- `author-checker`: permitted verification references, the subject output,
+  published commands, binding task receipt, prompt, and copied candidate binary;
+- `debug-checker`: the debugger's output, commands, binding task receipt,
+  original permitted debug evidence, the hidden seeded mutation, prompt, and
+  copied candidate binary.
 
 Every build requires the exact forty-character candidate commit, a clean Git
 worktree at that commit, and an absent output directory outside the worktree.
@@ -75,7 +78,10 @@ itself. A rebuild comparison is over the complete directory, including the
 manifest. Debug worlds, run bundles, forensics, and checker debug evidence use
 exact relative-file allowlists. All copied trees reject nested Git metadata,
 repository source, prior transcripts, reviews, and credential-like files; the
-verifier independently repeats the shape allowlist after construction.
+verifier independently repeats the shape allowlist after construction. Checker
+construction accepts one complete recorder-produced subject record rather than
+independent artifact and command paths. Both builder and verifier recompute the
+artifact-tree and command hashes bound by the copied subject task receipt.
 
 ## Constraints, accounting, and records
 
@@ -157,6 +163,16 @@ Claude qualification probe twice emitted two turns and failed closed before a
 task launch; replacement neutral probes passed without changing either task
 packet. No failed probe received a task prompt or spent a rehearsal/formal
 attempt.
+
+A replacement non-author audit at evidence commit
+`18525aa37ab1bf06d2f64a50684f657f26c0d7ae` invalidated r3. Bubblewrap's
+packet-run device mount exposed writable `/dev/null` and `/dev/shm`; the r3
+author and checker used `/dev/null` despite the outside-path rubric. The audit
+also proved checker construction accepted caller-substituted artifacts and
+commands because they were not bound to the subject task receipt. Packet runs
+now expose an empty `/dev`, remount `/proc` read-only, test those properties,
+and require one complete subject record whose receipt hashes the copied command
+and artifact trees. Both rehearsal pairs require replacement r4 evidence.
 
 ## Invalidation
 

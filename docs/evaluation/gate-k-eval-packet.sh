@@ -14,8 +14,8 @@ usage: gate-k-eval-packet.sh SHAPE --candidate DIR --commit SHA --brief FILE --p
 SHAPE and required inputs:
   author          --fixture FILE
   debug           --world DIR --failure-input FILE --run-artifacts DIR --forensics DIR
-  author-checker  --subject-artifacts DIR --commands FILE
-  debug-checker   --subject-artifacts DIR --commands FILE --debug-evidence DIR --hidden-mutation FILE
+  author-checker  --subject-record DIR
+  debug-checker   --subject-record DIR --debug-evidence DIR --hidden-mutation FILE
 
 Common optional input:
   --classification rehearsal|formal   (default: rehearsal)
@@ -38,8 +38,7 @@ world=
 failure_input=
 run_artifacts=
 forensics=
-subject_artifacts=
-commands=
+subject_record=
 debug_evidence=
 hidden_mutation=
 
@@ -56,8 +55,7 @@ while [[ $# -gt 0 ]]; do
     --failure-input) failure_input=${2:-}; shift 2 ;;
     --run-artifacts) run_artifacts=${2:-}; shift 2 ;;
     --forensics) forensics=${2:-}; shift 2 ;;
-    --subject-artifacts) subject_artifacts=${2:-}; shift 2 ;;
-    --commands) commands=${2:-}; shift 2 ;;
+    --subject-record) subject_record=${2:-}; shift 2 ;;
     --debug-evidence) debug_evidence=${2:-}; shift 2 ;;
     --hidden-mutation) hidden_mutation=${2:-}; shift 2 ;;
     *) usage ;;
@@ -138,6 +136,89 @@ exact_tree_files() {
   [[ $actual == "$expected" ]] || fail "$label file allowlist mismatch"
 }
 
+tree_sha() {
+  local root=$1
+  find "$root" -type f -printf '%P\0' | sort -z |
+    while IFS= read -r -d '' relative; do
+      sha256sum "$root/$relative" | sed "s#  $root/#  #"
+    done | sha256sum | cut -d' ' -f1
+}
+
+validate_subject_record() {
+  local expected_shape=$1
+  local actual_top expected_top
+  [[ -d $subject_record && ! -L $subject_record ]] ||
+    fail "subject record is not a real directory: $subject_record"
+  [[ -z $(find "$subject_record" -type l -print -quit) ]] ||
+    fail 'subject record contains a symlink'
+  [[ -z $(find "$subject_record" ! -type f ! -type d -print -quit) ]] ||
+    fail 'subject record contains a special entry'
+  actual_top=$(find "$subject_record" -mindepth 1 -maxdepth 1 -printf '%f\n' | sort)
+  expected_top=$(printf '%s\n' TASK.md accounting.json artifacts boundary.json commands.json \
+    launcher.txt packet-manifest.json pi-qualification.txt pi-stderr.txt plan.json prompt.txt \
+    task-receipt.json transcript.ndjson | sort)
+  [[ $actual_top == "$expected_top" ]] || fail 'subject record top-level allowlist mismatch'
+  regular_tree "$subject_record/artifacts"
+  for file in TASK.md accounting.json boundary.json commands.json launcher.txt \
+    packet-manifest.json pi-qualification.txt pi-stderr.txt plan.json prompt.txt \
+    task-receipt.json transcript.ndjson; do
+    regular_file "$subject_record/$file"
+  done
+  jq -e --arg commit "$commit" --arg shape "$expected_shape" \
+    --arg classification "$classification" '
+    .schema == "nomos.gate_k.task_receipt@1" and
+    .candidateCommit == $commit and .shape == $shape and
+    .classification == $classification and
+    .formalAttempt == ($classification == "formal") and
+    .outcome == "eligible-for-checker" and
+    (.digests.packetManifestSha256 | test("^[0-9a-f]{64}$")) and
+    (.digests.transcriptSha256 | test("^[0-9a-f]{64}$")) and
+    (.digests.commandsSha256 | test("^[0-9a-f]{64}$")) and
+    (.digests.artifactsTreeSha256 | test("^[0-9a-f]{64}$")) and
+    (.digests.boundarySha256 | test("^[0-9a-f]{64}$")) and
+    (.digests.qualificationSha256 | test("^[0-9a-f]{64}$"))
+    ' "$subject_record/task-receipt.json" >/dev/null ||
+    fail 'subject task receipt identity is invalid'
+  jq -e --arg commit "$commit" --arg shape "$expected_shape" \
+    --arg classification "$classification" '
+    .schema == "nomos.gate_k.eval_plan@1" and .candidate.commit == $commit and
+    .task.shape == $shape and .task.classification == $classification and
+    .task.formalAttempt == ($classification == "formal")
+    ' "$subject_record/plan.json" >/dev/null || fail 'subject plan identity is invalid'
+  jq -e --arg commit "$commit" --arg shape "$expected_shape" '
+    .schema == "nomos.gate_k.packet_manifest@1" and
+    .candidateCommit == $commit and .shape == $shape
+    ' "$subject_record/packet-manifest.json" >/dev/null ||
+    fail 'subject packet manifest identity is invalid'
+  jq -e '
+    .schema == "nomos.gate_k.commands@1" and
+    (.commands | type) == "array" and (.commands | length) > 0 and
+    (.commands | to_entries | all(.[];
+      .value.ordinal == .key and .value.tool == "bash" and
+      .value.completed == true and (.value.isError | type) == "boolean" and
+      (.value.arguments.command | type) == "string" and
+      (.value.arguments.command | length) > 0))
+    ' "$subject_record/commands.json" >/dev/null || fail 'subject commands are invalid'
+  [[ $(sha256sum "$subject_record/packet-manifest.json" | cut -d' ' -f1) == \
+      $(jq -r '.digests.packetManifestSha256' "$subject_record/task-receipt.json") ]] ||
+    fail 'subject packet manifest differs from its task receipt'
+  [[ $(sha256sum "$subject_record/transcript.ndjson" | cut -d' ' -f1) == \
+      $(jq -r '.digests.transcriptSha256' "$subject_record/task-receipt.json") ]] ||
+    fail 'subject transcript differs from its task receipt'
+  [[ $(sha256sum "$subject_record/commands.json" | cut -d' ' -f1) == \
+      $(jq -r '.digests.commandsSha256' "$subject_record/task-receipt.json") ]] ||
+    fail 'subject commands differ from its task receipt'
+  [[ $(tree_sha "$subject_record/artifacts") == \
+      $(jq -r '.digests.artifactsTreeSha256' "$subject_record/task-receipt.json") ]] ||
+    fail 'subject artifacts differ from its task receipt'
+  [[ $(sha256sum "$subject_record/boundary.json" | cut -d' ' -f1) == \
+      $(jq -r '.digests.boundarySha256' "$subject_record/task-receipt.json") ]] ||
+    fail 'subject boundary differs from its task receipt'
+  [[ $(sha256sum "$subject_record/pi-qualification.txt" | cut -d' ' -f1) == \
+      $(jq -r '.digests.qualificationSha256' "$subject_record/task-receipt.json") ]] ||
+    fail 'subject qualification differs from its task receipt'
+}
+
 regular_file "$brief"
 regular_file "$prompt"
 
@@ -165,15 +246,13 @@ case $shape in
     writable_path=output
     ;;
   author-checker)
-    [[ -n $subject_artifacts && -n $commands ]] || usage
-    regular_tree "$subject_artifacts"
-    regular_file "$commands"
+    [[ -n $subject_record ]] || usage
+    validate_subject_record author
     writable_path=output
     ;;
   debug-checker)
-    [[ -n $subject_artifacts && -n $commands && -n $debug_evidence && -n $hidden_mutation ]] || usage
-    regular_tree "$subject_artifacts"
-    regular_file "$commands"
+    [[ -n $subject_record && -n $debug_evidence && -n $hidden_mutation ]] || usage
+    validate_subject_record debug
     regular_tree "$debug_evidence"
     regular_file "$hidden_mutation"
     exact_tree_files "$debug_evidence" 'debug checker evidence' \
@@ -282,13 +361,15 @@ case $shape in
     ;;
   author-checker)
     install -d -m 755 "$stage/subject"
-    copy_tree "$subject_artifacts" "$stage/subject/artifacts"
-    install -m 644 "$commands" "$stage/subject/commands.json"
+    copy_tree "$subject_record/artifacts" "$stage/subject/artifacts"
+    install -m 644 "$subject_record/commands.json" "$stage/subject/commands.json"
+    install -m 644 "$subject_record/task-receipt.json" "$stage/subject/task-receipt.json"
     ;;
   debug-checker)
     install -d -m 755 "$stage/subject"
-    copy_tree "$subject_artifacts" "$stage/subject/artifacts"
-    install -m 644 "$commands" "$stage/subject/commands.json"
+    copy_tree "$subject_record/artifacts" "$stage/subject/artifacts"
+    install -m 644 "$subject_record/commands.json" "$stage/subject/commands.json"
+    install -m 644 "$subject_record/task-receipt.json" "$stage/subject/task-receipt.json"
     copy_tree "$debug_evidence" "$stage/input/debug-evidence"
     install -m 644 "$hidden_mutation" "$stage/input/hidden-mutation.json"
     ;;

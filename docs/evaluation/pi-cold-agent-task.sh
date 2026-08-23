@@ -231,6 +231,8 @@ printf '%s\n' "$boundary_json" | jq -e \
   .sandbox.checks.candidateBinaryMatched == true and
   .sandbox.checks.packetRootReadOnly == true and
   .sandbox.checks.temporaryStorageReadOnly == true and
+  .sandbox.checks.deviceFilesystemEmpty == true and
+  .sandbox.checks.processFilesystemReadOnly == true and
   .sandbox.checks.declaredWritablePaths == [$writable] and
   .sandbox.checks.gitMetadataAbsent == true and
   .sandbox.checks.outsideReadDenied == true and

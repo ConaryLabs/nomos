@@ -57,6 +57,20 @@ declare_packet_file() {
   mv -- "$update" "$packet/packet-manifest.json"
 }
 
+refresh_packet_file() {
+  local packet=$1
+  local relative=$2
+  local path="$packet/$relative"
+  local size digest update
+  size=$(stat -c %s "$path")
+  digest=$(sha256sum "$path" | cut -d' ' -f1)
+  update=$(mktemp "$tmp_dir/manifest-refresh.XXXXXX")
+  jq -S -c --arg path "$relative" --argjson size "$size" --arg digest "$digest" '
+    .files |= map(if .path == $path then .bytes = $size | .sha256 = $digest else . end)
+    ' "$packet/packet-manifest.json" >"$update"
+  mv -- "$update" "$packet/packet-manifest.json"
+}
+
 tree_sha() {
   local root=$1
   find "$root" -type f -printf '%P\0' | sort -z |
@@ -184,21 +198,59 @@ jq -e '.outcome == "eligible-for-checker" and .formalAttempt == false' \
   --candidate "$candidate" --commit "$commit" \
   --brief "$rehearsals/author-checker-brief.txt" \
   --prompt "$rehearsals/author-checker-prompt.txt" \
-  --subject-artifacts "$tmp_dir/author-subject-record/artifacts" \
-  --commands "$tmp_dir/author-subject-record/commands.json" \
+  --subject-record "$tmp_dir/author-subject-record" \
   --out "$tmp_dir/author-checker-1" >/dev/null
 "$packet_builder" author-checker \
   --candidate "$candidate" --commit "$commit" \
   --brief "$rehearsals/author-checker-brief.txt" \
   --prompt "$rehearsals/author-checker-prompt.txt" \
-  --subject-artifacts "$tmp_dir/author-subject-record/artifacts" \
-  --commands "$tmp_dir/author-subject-record/commands.json" \
+  --subject-record "$tmp_dir/author-subject-record" \
   --out "$tmp_dir/author-checker-2" >/dev/null
 diff -r "$tmp_dir/author-checker-1" "$tmp_dir/author-checker-2" >/dev/null
 grep -F 'schema` exactly `nomos.gate_k.checker_result@1' \
   "$tmp_dir/author-checker-1/prompt.txt" >/dev/null
 grep -F 'even when the sandbox denied it' \
   "$tmp_dir/author-checker-1/prompt.txt" >/dev/null
+
+cp -R "$tmp_dir/author-subject-record" "$tmp_dir/injected-subject-record"
+mkdir -m 755 "$tmp_dir/injected-subject-record/artifacts/source"
+printf '%s\n' 'not an answer' >"$tmp_dir/injected-subject-record/artifacts/expected-answer.txt"
+printf '%s\n' '{}' >"$tmp_dir/injected-subject-record/artifacts/hidden-mutation.json"
+printf '%s\n' 'not source' >"$tmp_dir/injected-subject-record/artifacts/source/kernel.c"
+printf '%s\n' 'unrelated' >"$tmp_dir/injected-subject-record/artifacts/unrelated.md"
+assert_blocked 'subject artifacts differ from its task receipt' checker-injected-artifacts \
+  "$packet_builder" author-checker --candidate "$candidate" --commit "$commit" \
+  --brief "$rehearsals/author-checker-brief.txt" \
+  --prompt "$rehearsals/author-checker-prompt.txt" \
+  --subject-record "$tmp_dir/injected-subject-record" \
+  --out "$tmp_dir/injected-checker-packet"
+
+cp -R "$tmp_dir/author-subject-record" "$tmp_dir/substituted-command-record"
+printf '%s\n' 'SECRET_EXPECTED_ANSWER_AND_UNRECORDED_COMMANDS' \
+  >"$tmp_dir/substituted-command-record/commands.json"
+assert_blocked 'subject commands are invalid' checker-substituted-commands \
+  "$packet_builder" author-checker --candidate "$candidate" --commit "$commit" \
+  --brief "$rehearsals/author-checker-brief.txt" \
+  --prompt "$rehearsals/author-checker-prompt.txt" \
+  --subject-record "$tmp_dir/substituted-command-record" \
+  --out "$tmp_dir/substituted-command-packet"
+
+cp -R "$tmp_dir/author-checker-2" "$tmp_dir/declared-injected-checker-packet"
+printf '%s\n' 'not an answer' \
+  >"$tmp_dir/declared-injected-checker-packet/subject/artifacts/expected-answer.txt"
+declare_packet_file "$tmp_dir/declared-injected-checker-packet" \
+  subject/artifacts/expected-answer.txt
+assert_blocked 'checker subject artifacts differ from the task receipt' \
+  declared-injected-checker \
+  "$packet_verifier" "$tmp_dir/declared-injected-checker-packet" "$commit"
+
+cp -R "$tmp_dir/author-checker-2" "$tmp_dir/declared-substituted-command-packet"
+printf '%s\n' 'SECRET_EXPECTED_ANSWER_AND_UNRECORDED_COMMANDS' \
+  >"$tmp_dir/declared-substituted-command-packet/subject/commands.json"
+refresh_packet_file "$tmp_dir/declared-substituted-command-packet" subject/commands.json
+assert_blocked 'checker subject commands are invalid' declared-substituted-command \
+  "$packet_verifier" "$tmp_dir/declared-substituted-command-packet" "$commit"
+
 launch_task author-checker "$tmp_dir/author-checker-1"
 record_task author-checker "$tmp_dir/author-checker-1"
 "$finalizer" "$tmp_dir/author-subject-record" "$tmp_dir/author-checker-record" \
@@ -216,8 +268,7 @@ record_task debug-subject "$tmp_dir/debug-1"
   --candidate "$candidate" --commit "$commit" \
   --brief "$rehearsals/debug-checker-brief.txt" \
   --prompt "$rehearsals/debug-checker-prompt.txt" \
-  --subject-artifacts "$tmp_dir/debug-subject-record/artifacts" \
-  --commands "$tmp_dir/debug-subject-record/commands.json" \
+  --subject-record "$tmp_dir/debug-subject-record" \
   --debug-evidence "$tmp_dir/debug-2/input" \
   --hidden-mutation "$tmp_dir/debug-seed/hidden-mutation.json" \
   --out "$tmp_dir/debug-checker" >/dev/null
