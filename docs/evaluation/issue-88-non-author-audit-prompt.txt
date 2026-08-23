@@ -1,0 +1,80 @@
+You are the independent non-author auditor for Nomos issue #88. Review the
+exact detached Git commit currently checked out. You did not author this
+implementation. Do not modify, create, or delete any tracked file.
+
+First read AGENTS.md, README.md, THESIS.md, KERNEL.md,
+docs/decisions/0015-gate-k-round-two.md,
+docs/evaluation/COLD_AGENT_PROTOCOL.md, docs/evaluation/GATE_K_COLD_AGENT_PLAN.md,
+and docs/HANDOFF.md. Inspect the complete diff from origin/main through HEAD and
+all files it changes.
+
+Audit issue #88 against these requirements:
+
+- strictly versioned, canonical, allowlisted revision-6 packet, task, checker,
+  adjudication, and final-result records;
+- separately hash-bound semantic_merit, independence_integrity, and
+  operational_compliance results for every subject and checker;
+- fail-closed mechanical verdict precedence and complete criterion mapping;
+- exactly the real /dev/null exposed read/write through boundary generation 4,
+  with no other device or outside-path exception and no alias exception;
+- complete uncapped resource accounting;
+- adversarial regression coverage for omissions, invalid values, mismatches,
+  stale generations, identity/hash disagreements, undeclared ingress, and
+  boundary exposure;
+- a decomposed maintainable test harness;
+- fresh cross-family non-formal author/checker and debugger/checker rehearsal
+  records at their exact tooling head, with zero coaching and retry, all three
+  dimensions, mechanical pass, and explicit formal ineligibility;
+- byte-for-byte successful re-finalization of both frozen gate-k-rc1 pairs and
+  preservation of their historical final hashes and failures;
+- no change to KERNEL.md, THESIS.md, Cargo inputs, crates, fixtures, xtask, CI,
+  semantic behavior, gate-k-rc1, or historical verdicts.
+
+Run and independently assess all of these commands:
+
+git status --short
+git diff --check origin/main...HEAD
+cargo fmt --all -- --check
+cargo clippy --workspace --all-targets --locked -- -D warnings
+cargo test --workspace --locked
+cargo xtask boundary
+docs/evaluation/test-pi-cold-agent-preflight.sh
+docs/evaluation/test-gate-k-eval-tooling.sh
+
+Also verify that the checkout remains clean after review. Treat any substantive,
+correctness, evidence-integrity, acceptance, regression, security, or
+maintainability defect as a finding. Do not invent stylistic findings. A pass
+requires zero findings and every required command passing.
+
+Your final response must be exactly one JSON object and no Markdown. Use this
+shape:
+
+{
+  "schema": "nomos.issue88.non_author_audit@1",
+  "reviewedCommit": "full 40-character HEAD commit",
+  "reviewer": {
+    "provider": "deepseek",
+    "model": "exact model ID",
+    "freshSession": true,
+    "nonAuthor": true
+  },
+  "status": "pass or fail",
+  "findings": [
+    {
+      "severity": "blocking, major, or minor",
+      "location": "file and line or evidence path",
+      "summary": "concise finding",
+      "evidence": "specific supporting evidence"
+    }
+  ],
+  "verification": [
+    {
+      "command": "exact command",
+      "status": "pass or fail",
+      "details": "concise observed result"
+    }
+  ],
+  "protectedSurfaceUnchanged": true,
+  "checkoutCleanBeforeAndAfter": true,
+  "notes": ["concise evidence-backed note"]
+}

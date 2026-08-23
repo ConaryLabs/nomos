@@ -12,8 +12,8 @@ Gate K is closed as **failed**. Peter Permenter's owner disposition is
 - formal launch protocol: revision 3;
 - current cold-agent protocol: revision 6, owner-authorized in decision 0015;
 - revision-6 tooling: implemented under issue #88; both live rehearsal pairs
-  passed at exact tooling commit `cbfa3f7`, pending complete proof and an
-  independent exact-head audit;
+  passed at exact tooling commit `cbfa3f7`, and the complete repository proof
+  passed at `459748b`; an independent exact-head audit remains;
 - implementation: complete through SW-N;
 - acceptance: criteria 1–16 and 19 pass; criteria 17 and 18 fail;
 - round-one retries: none authorized; a distinct round two is conditionally
@@ -148,9 +148,9 @@ The fresh non-formal Gemini-author/DeepSeek-checker and
 DeepSeek-debugger/Gemini-checker pairs both passed at exact tooling commit
 `cbfa3f7`. Their complete revision-6 records are under
 `docs/evaluation/runs/rehearsal/2026-08-24-*-r6/`; both results explicitly have
-`formalAttempt: false` and no Gate K acceptance value. The remaining #88 work
-is complete repository proof and an exact-head non-author audit. Only after #88
-merges may a separate slice prove
+`formalAttempt: false` and no Gate K acceptance value. The complete six-command
+repository and evaluation proof passed at `459748b`. The remaining #88 work is
+an exact-head non-author audit. Only after #88 merges may a separate slice prove
 the unchanged semantic inputs and freeze `gate-k-rc2`. Formal reservations and
 launches wait until the complete mechanical matrix passes against that exact
 candidate.
