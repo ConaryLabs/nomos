@@ -1,10 +1,10 @@
 ---
 title: Cold-agent evaluation protocol
 status: Contractual for formal cold-agent claims
-revision: 3
-supersedes_protocol_revision: 2
+revision: 5
+supersedes_protocol_revision: 4
 date: 2026-08-23
-decision_record: docs/decisions/0010-cold-agent-token-budget.md
+decision_record: docs/decisions/0012-cold-agent-evidence-authentication.md
 applies_to: Gate K, Gate 3, Gate 4, cold design review
 ---
 
@@ -257,6 +257,38 @@ Only `pass` satisfies a cold gate. Repeated failures may inform design, but the
 best run cannot be cherry-picked without reporting all formal attempts against
 the same brief.
 
+Before a formal provider task launches, the operator appends a content-addressed
+reservation to `docs/evaluation/gate-k-formal-attempt-ledger.jsonl` and commits
+it. After all prelaunch checks, the operator appends and commits a distinct
+`launch` event immediately before invoking the provider. Reservations and
+launches are globally ordered and hash-chained. The launcher requires that exact
+committed marker and binds the open reservation, candidate, packet manifest,
+prompt, shape, provider, model, and thinking level. The complete recorded task directory is validated:
+the canonical receipt and exact launcher must agree with the retained manifest,
+transcript, commands, qualification, stderr, boundary, and artifact tree. The
+plan's prompt digest must equal the reserved prompt digest. The launcher status
+mechanically determines the receipt outcome, and its ledger
+commit must be the repository HEAD that contains the launch marker. Only then
+are the derived receipt hash and outcome appended as a closing event, including
+an inconclusive transport. Close uses finalization's same semantic task-record
+proof; a bare hash, skeletal launcher, or consistently rehashed invalid record
+cannot close an attempt. A new reservation
+is forbidden while an earlier one is open. This prelaunch record, rather than a
+finished receipt's self-reported retry count, makes abandoned or discarded
+formal transports visible.
+
+The four historical `gate-k-rc1` imports are accepted only as their exact
+canonical events. Gate K final assembly requires the exact frozen four-event
+inventory, so a later reservation, close, cancellation, or import cannot be
+omitted from the final disposition. A future authorized attempt therefore
+requires an explicit protocol/tooling revision and a new frozen candidate.
+
+If the operator cancels before the committed launch marker, the reservation is closed only
+by an explicit `discarded-before-launch` event with a non-empty reason. It has no
+task receipt and cannot be represented as a completed or inconclusive provider
+run. Once the marker exists, cancellation is forbidden; a failed transport
+remains open until an authenticated inconclusive receipt closes it.
+
 ## 9. Required evidence record
 
 Store formal runs under:
@@ -277,6 +309,21 @@ commands.json          ordered CLI/tool invocations
 artifacts/             subject outputs or content-addressed references
 checker.json           independent reproduction/check result
 ```
+
+The three public packet documents use exact allowlisted schemas:
+`plan.json`, `packet-manifest.json`, and `task-receipt.json` are canonical
+sorted compact JSON with strict scalar types. Every evaluation JSON parser
+rejects duplicate keys and non-finite numbers, including finite syntax whose
+magnitude overflows the host numeric representation, before a declared result
+shape is inspected.
+
+Pi event streams are parsed before provider signatures are removed. Only
+`textSignature` on a text content block and `thinkingSignature` on a thinking
+content block may be removed, and the raw-stream digest is retained. Boundary
+schema `nomos.pi_cold_agent_boundary@3` records the resolved path and SHA-256 of
+Pi, Bubblewrap, and any provider extension; the task receipt repeats the exact
+runtime identity. The four frozen `gate-k-rc1` task records retain their legacy
+`@2` boundaries and are not retroactively upgraded.
 
 `RUN.md` records:
 

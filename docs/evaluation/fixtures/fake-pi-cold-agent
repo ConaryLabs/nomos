@@ -185,6 +185,14 @@ esac
 
 system_prompt_sha=$(printf '%s' "$system_prompt" | sha256sum)
 system_prompt_sha=${system_prompt_sha%% *}
+runtime_identity=$(jq -cn \
+  --arg pi_path "${NOMOS_PI_CLIENT_PATH:?}" --arg pi_sha "${NOMOS_PI_CLIENT_SHA256:?}" \
+  --arg provider_path "${NOMOS_PI_PROVIDER_EXTENSION_PATH:?}" \
+  --arg provider_sha "${NOMOS_PI_PROVIDER_EXTENSION_SHA256:?}" \
+  --arg bwrap "${NOMOS_PI_BWRAP:?}" --arg bwrap_sha "${NOMOS_PI_BWRAP_SHA256:?}" '
+  {pi:{path:$pi_path,sha256:$pi_sha},
+   providerExtension:(if $provider_path == "none" then null else {path:$provider_path,sha256:$provider_sha} end),
+   bubblewrap:{path:$bwrap,sha256:$bwrap_sha}}')
 if [[ $boundary_kind == packet-run ]]; then
   case ${NOMOS_PI_TASK_SHAPE:?} in
     author) session_id=11111111-2222-4333-8444-555555555551 ;;
@@ -197,13 +205,13 @@ if [[ $boundary_kind == packet-run ]]; then
     packet_manifest_sha=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
   fi
   if [[ $mode_name != missing-boundary ]]; then
-    printf 'NOMOS_PI_BOUNDARY {"schema":"nomos.pi_cold_agent_boundary@2","boundaryKind":"packet-run","mode":"json","targetCommit":"%s","hostWorkspace":"%s","guestWorkspace":"/workspace","provider":"%s","model":"%s","thinking":"%s","sessionId":"%s","sessionFile":%s,"projectTrusted":false,"entryTypesBeforeRun":%s,"activeTools":%s,"configuredTools":[{"name":"bash","source":{"path":"%s","source":"cli","scope":"temporary","origin":"top-level"}}],"contextFiles":%s,"skills":%s,"systemPromptSha256":"%s","finalSystemPromptSha256":"fixture","packetManifestSha256":"%s","binarySha256":"%s","taskPromptSha256":"%s","taskShape":"%s","writablePaths":["%s"],"budgets":null,"sandbox":{"backend":"bubblewrap","binary":"%s","root":"read-only","workspace":"read-only-packet-with-declared-writable-paths","network":"%s","environment":"cleared-and-allowlisted","checks":{"targetCommitResolved":%s,"workspaceRead":%s,"packetManifestMatched":true,"candidateBinaryMatched":true,"packetRootReadOnly":true,"temporaryStorageReadOnly":%s,"deviceFilesystemEmpty":true,"processFilesystemReadOnly":true,"declaredWritablePaths":["%s"],"gitMetadataAbsent":true,"outsideReadDenied":%s,"outsideWriteDenied":%s,"credentialEnvironmentAbsent":%s,"networkDenied":%s},"selfTest":"%s"}}\n' \
+    printf 'NOMOS_PI_BOUNDARY {"schema":"nomos.pi_cold_agent_boundary@3","boundaryKind":"packet-run","mode":"json","targetCommit":"%s","hostWorkspace":"%s","guestWorkspace":"/workspace","provider":"%s","model":"%s","thinking":"%s","sessionId":"%s","sessionFile":%s,"projectTrusted":false,"entryTypesBeforeRun":%s,"activeTools":%s,"configuredTools":[{"name":"bash","source":{"path":"%s","source":"cli","scope":"temporary","origin":"top-level"}}],"contextFiles":%s,"skills":%s,"systemPromptSha256":"%s","finalSystemPromptSha256":"a78cae9025d8b63562a13c111e79e9f27c32ab20e726a53d2d9d8c094712e2b7","packetManifestSha256":"%s","binarySha256":"%s","taskPromptSha256":"%s","taskShape":"%s","writablePaths":["%s"],"budgets":null,"runtimeIdentity":%s,"sandbox":{"backend":"bubblewrap","binary":"%s","root":"read-only","workspace":"read-only-packet-with-declared-writable-paths","network":"%s","environment":"cleared-and-allowlisted","checks":{"targetCommitResolved":%s,"workspaceRead":%s,"packetManifestMatched":true,"candidateBinaryMatched":true,"packetRootReadOnly":true,"temporaryStorageReadOnly":%s,"deviceFilesystemEmpty":true,"processFilesystemReadOnly":true,"declaredWritablePaths":["%s"],"gitMetadataAbsent":true,"outsideReadDenied":%s,"outsideWriteDenied":%s,"credentialEnvironmentAbsent":%s,"networkDenied":%s},"selfTest":"%s"}}\n' \
       "${NOMOS_PI_TARGET_COMMIT:?}" \
       "$boundary_workspace" "$boundary_provider" "$boundary_model" "$boundary_thinking" \
       "$session_id" "$session_file" "$entry_types" "$active_tools" "$extension" \
       "$context_files" "$skills" "$system_prompt_sha" "$packet_manifest_sha" \
       "${NOMOS_PI_BINARY_SHA256:?}" "${NOMOS_PI_TASK_PROMPT_SHA256:?}" \
-      "${NOMOS_PI_TASK_SHAPE:?}" "${NOMOS_PI_WRITABLE_PATHS:?}" \
+      "${NOMOS_PI_TASK_SHAPE:?}" "${NOMOS_PI_WRITABLE_PATHS:?}" "$runtime_identity" \
       "${NOMOS_PI_BWRAP:?}" "$sandbox_network" "$sandbox_target_commit" \
       "$sandbox_workspace_read" "$sandbox_temporary_storage_read_only" \
       "${NOMOS_PI_WRITABLE_PATHS:?}" \
@@ -228,20 +236,46 @@ if [[ $boundary_kind == packet-run ]]; then
   if [[ $mode_name == missing-identity ]]; then
     assistant_provider=wrong-provider
   fi
+  usage='{"input":10,"output":5,"cacheRead":0,"cacheWrite":0,"totalTokens":15,"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"total":0}}'
+  zero_usage='{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"totalTokens":0,"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"total":0}}'
+  user_message=$(jq -cn --arg text "$prompt" '{role:"user",content:[{type:"text",text:$text}],timestamp:1787443200000}')
   printf '{"type":"session","version":3,"id":"%s","timestamp":"2026-08-23T00:00:00Z","cwd":"%s"}\n' "$session_id" "$session_workspace"
   printf '{"type":"agent_start"}\n'
-  printf '{"type":"turn_start","turnIndex":0,"timestamp":0}\n'
-  printf '%s' "$prompt" | jq -cRs '{type:"message_end",message:{role:"user",content:[{type:"text",text:.}]}}'
+  printf '{"type":"turn_start"}\n'
+  printf '%s\n' "$user_message" | jq -c '{type:"message_start",message:.}'
+  printf '%s\n' "$user_message" | jq -c '{type:"message_end",message:.}'
   if [[ $mode_name != absent-command ]]; then
+    tool_call='{"type":"toolCall","id":"tool-1","name":"bash","arguments":{"command":"ls"}}'
+    tool_assistant=$(jq -cn --arg provider "$assistant_provider" --arg model "$assistant_model" --argjson usage "$usage" --argjson call "$tool_call" '{role:"assistant",content:[$call],api:"fixture-api",provider:$provider,model:$model,usage:$usage,stopReason:"toolUse",timestamp:1787443200001}')
+    printf '%s\n' "$zero_usage" | jq -c --arg provider "$assistant_provider" --arg model "$assistant_model" '{type:"message_start",message:{role:"assistant",content:[],api:"fixture-api",provider:$provider,model:$model,usage:.,stopReason:"pending",timestamp:1787443200001}}'
+    printf '%s\n' "$zero_usage" | jq -c '{type:"message_update",assistantMessageEvent:{type:"toolcall_start",contentIndex:0},usage:.}'
+    printf '%s\n' "$zero_usage" | jq -c '{type:"message_update",assistantMessageEvent:{type:"toolcall_delta",contentIndex:0,delta:"{\"command\":\"ls\"}"},usage:.}'
+    printf '%s\n' "$zero_usage" | jq -c --argjson call "$tool_call" '{type:"message_update",assistantMessageEvent:{type:"toolcall_end",contentIndex:0,toolCall:$call},usage:.}'
+    printf '%s\n' "$tool_assistant" | jq -c '{type:"message_end",message:.}'
     printf '{"type":"tool_execution_start","toolCallId":"tool-1","toolName":"bash","args":{"command":"ls"}}\n'
-    printf '{"type":"tool_execution_end","toolCallId":"tool-1","toolName":"bash","result":"brief.txt","isError":false}\n'
+    printf '{"type":"tool_execution_end","toolCallId":"tool-1","toolName":"bash","result":{"content":[{"type":"text","text":"brief.txt"}]},"isError":false}\n'
+    tool_result='{"role":"toolResult","toolCallId":"tool-1","toolName":"bash","content":[{"type":"text","text":"brief.txt"}],"isError":false,"timestamp":1787443200002}'
+    printf '%s\n' "$tool_result" | jq -c '{type:"message_start",message:.}'
+    printf '%s\n' "$tool_result" | jq -c '{type:"message_end",message:.}'
+    jq -cn --argjson message "$tool_assistant" --argjson result "$tool_result" '{type:"turn_end",message:$message,toolResults:[$result]}'
+    printf '{"type":"turn_start"}\n'
   fi
-  printf '{"type":"message_end","message":{"role":"assistant","content":[{"type":"text","text":"fake task complete"}],"provider":"%s","model":"%s","stopReason":"stop","usage":{"input":10,"output":5,"cacheRead":0,"cacheWrite":0,"totalTokens":15}}}\n' "$assistant_provider" "$assistant_model"
-  printf '{"type":"turn_end","turnIndex":0,"message":{"role":"assistant","content":[{"type":"text","text":"fake task complete"}],"provider":"%s","model":"%s","stopReason":"stop"},"toolResults":[]}\n' "$assistant_provider" "$assistant_model"
-  printf '{"type":"agent_end","messages":[],"willRetry":false}\n'
+  final_assistant=$(jq -cn --arg provider "$assistant_provider" --arg model "$assistant_model" --argjson usage "$usage" '{role:"assistant",content:[{type:"text",text:"fake task complete"}],api:"fixture-api",provider:$provider,model:$model,usage:$usage,stopReason:"stop",timestamp:1787443200003}')
+  printf '%s\n' "$zero_usage" | jq -c --arg provider "$assistant_provider" --arg model "$assistant_model" '{type:"message_start",message:{role:"assistant",content:[],api:"fixture-api",provider:$provider,model:$model,usage:.,stopReason:"pending",timestamp:1787443200003}}'
+  printf '%s\n' "$zero_usage" | jq -c '{type:"message_update",assistantMessageEvent:{type:"text_start",contentIndex:0},usage:.}'
+  printf '%s\n' "$zero_usage" | jq -c '{type:"message_update",assistantMessageEvent:{type:"text_delta",contentIndex:0,delta:"fake task complete"},usage:.}'
+  printf '%s\n' "$usage" | jq -c '{type:"message_update",assistantMessageEvent:{type:"text_end",contentIndex:0,content:"fake task complete"},usage:.}'
+  printf '%s\n' "$final_assistant" | jq -c '{type:"message_end",message:.}'
+  jq -cn --argjson message "$final_assistant" '{type:"turn_end",message:$message,toolResults:[]}'
+  if [[ $mode_name == absent-command ]]; then
+    jq -cn --argjson user "$user_message" --argjson final "$final_assistant" '{type:"agent_end",messages:[$user,$final],willRetry:false}'
+  else
+    jq -cn --argjson user "$user_message" --argjson tool "$tool_assistant" --argjson result "$tool_result" --argjson final "$final_assistant" '{type:"agent_end",messages:[$user,$tool,$result,$final],willRetry:false}'
+  fi
   printf '{"type":"agent_settled"}\n'
   if [[ $mode_name != missing-accounting ]]; then
-    printf 'NOMOS_PI_ACCOUNTING {"assistantTurns":1,"toolCalls":1,"providerReportedTokens":15}\n' >&2
+    if [[ $mode_name == absent-command ]]; then assistant_turns=1; tool_calls=0; else assistant_turns=2; tool_calls=1; fi
+    printf 'NOMOS_PI_ACCOUNTING {"assistantTurns":%s,"toolCalls":%s,"providerReportedTokens":%s}\n' "$assistant_turns" "$tool_calls" "$((assistant_turns * 15))" >&2
   fi
   if [[ $mode_name == harness-mutation ]]; then
     printf 'mutated\n' >"$workspace/brief.txt"
@@ -253,11 +287,11 @@ if [[ $boundary_kind == packet-run ]]; then
 fi
 
 if [[ $mode_name != missing-boundary ]]; then
-  printf 'NOMOS_PI_BOUNDARY {"schema":"nomos.pi_cold_agent_boundary@2","boundaryKind":"source-preflight","mode":"json","targetCommit":"%s","hostWorkspace":"%s","guestWorkspace":"/workspace","provider":"%s","model":"%s","thinking":"%s","sessionId":"%s","sessionFile":%s,"projectTrusted":false,"entryTypesBeforeRun":%s,"activeTools":%s,"configuredTools":[{"name":"bash","source":{"path":"%s","source":"cli","scope":"temporary","origin":"top-level"}}],"contextFiles":%s,"skills":%s,"systemPromptSha256":"%s","finalSystemPromptSha256":"fixture","packetManifestSha256":null,"binarySha256":null,"taskPromptSha256":null,"taskShape":null,"writablePaths":[],"budgets":null,"sandbox":{"backend":"bubblewrap","binary":"%s","root":"read-only","workspace":"read-write-only-host-mount","network":"%s","environment":"cleared-and-allowlisted","checks":{"targetCommitResolved":%s,"workspaceRead":%s,"workspaceWrite":%s,"outsideReadDenied":%s,"outsideWriteDenied":%s,"credentialEnvironmentAbsent":%s,"networkDenied":%s,"cargoAvailable":%s},"selfTest":"%s"}}\n' \
+  printf 'NOMOS_PI_BOUNDARY {"schema":"nomos.pi_cold_agent_boundary@3","boundaryKind":"source-preflight","mode":"json","targetCommit":"%s","hostWorkspace":"%s","guestWorkspace":"/workspace","provider":"%s","model":"%s","thinking":"%s","sessionId":"%s","sessionFile":%s,"projectTrusted":false,"entryTypesBeforeRun":%s,"activeTools":%s,"configuredTools":[{"name":"bash","source":{"path":"%s","source":"cli","scope":"temporary","origin":"top-level"}}],"contextFiles":%s,"skills":%s,"systemPromptSha256":"%s","finalSystemPromptSha256":"fixture","packetManifestSha256":null,"binarySha256":null,"taskPromptSha256":null,"taskShape":null,"writablePaths":[],"budgets":null,"runtimeIdentity":%s,"sandbox":{"backend":"bubblewrap","binary":"%s","root":"read-only","workspace":"read-write-only-host-mount","network":"%s","environment":"cleared-and-allowlisted","checks":{"targetCommitResolved":%s,"workspaceRead":%s,"workspaceWrite":%s,"outsideReadDenied":%s,"outsideWriteDenied":%s,"credentialEnvironmentAbsent":%s,"networkDenied":%s,"cargoAvailable":%s},"selfTest":"%s"}}\n' \
     "${NOMOS_PI_TARGET_COMMIT:?}" \
     "$boundary_workspace" "$boundary_provider" "$boundary_model" "$boundary_thinking" \
     "$session_id" "$session_file" "$entry_types" "$active_tools" "$extension" \
-    "$context_files" "$skills" "$system_prompt_sha" "${NOMOS_PI_BWRAP:?}" \
+    "$context_files" "$skills" "$system_prompt_sha" "$runtime_identity" "${NOMOS_PI_BWRAP:?}" \
     "$sandbox_network" "$sandbox_target_commit" "$sandbox_workspace_read" \
     "$sandbox_workspace_write" "$sandbox_outside_read_denied" "$sandbox_outside_write_denied" \
     "$sandbox_credentials_absent" "$sandbox_network_denied" "$sandbox_cargo_available" \
@@ -268,19 +302,26 @@ if [[ $mode_name == missing-session ]]; then
   exit 0
 fi
 
+usage='{"input":1,"output":1,"cacheRead":0,"cacheWrite":0,"totalTokens":2,"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"total":0}}'
+zero_usage='{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"totalTokens":0,"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"total":0}}'
+user_message=$(jq -cn --arg text "$prompt" '{role:"user",content:[{type:"text",text:$text}],timestamp:1787356800000}')
+assistant_message=$(jq -cn --arg provider "$provider" --arg model "$model" --argjson usage "$usage" '{role:"assistant",content:[{type:"text",text:"pi boundary preflight"}],api:"fixture-api",provider:$provider,model:$model,usage:$usage,stopReason:"stop",timestamp:1787356800001}')
 printf '{"type":"session","version":3,"id":"%s","timestamp":"2026-08-22T00:00:00Z","cwd":"%s"}\n' "$session_id" "$session_workspace"
 printf '{"type":"agent_start"}\n'
 printf '{"type":"turn_start"}\n'
-printf '{"type":"message_start","message":{"role":"user","content":[{"type":"text","text":"%s"}]}}\n' "$prompt"
-printf '{"type":"message_end","message":{"role":"user","content":[{"type":"text","text":"%s"}]}}\n' "$prompt"
+printf '%s\n' "$user_message" | jq -c '{type:"message_start",message:.}'
+printf '%s\n' "$user_message" | jq -c '{type:"message_end",message:.}'
 if [[ $mode_name == unexpected-tool ]]; then
   printf '{"type":"tool_execution_start","toolCallId":"tool-1","toolName":"bash","args":{"command":"pwd"}}\n'
   printf '{"type":"tool_execution_end","toolCallId":"tool-1","toolName":"bash","result":"/workspace","isError":false}\n'
 fi
-printf '{"type":"message_start","message":{"role":"assistant","content":[],"provider":"%s","model":"%s"}}\n' "$provider" "$model"
-printf '{"type":"message_end","message":{"role":"assistant","content":[{"type":"text","text":"pi boundary preflight"}],"provider":"%s","model":"%s","stopReason":"stop","usage":{"input":1,"output":1,"cacheRead":0,"cacheWrite":0,"totalTokens":2}}}\n' "$provider" "$model"
-printf '{"type":"turn_end","message":{"role":"assistant","content":[{"type":"text","text":"pi boundary preflight"}],"provider":"%s","model":"%s","stopReason":"stop"},"toolResults":[]}\n' "$provider" "$model"
-printf '{"type":"agent_end","messages":[],"willRetry":false}\n'
+printf '%s\n' "$zero_usage" | jq -c --arg provider "$provider" --arg model "$model" '{type:"message_start",message:{role:"assistant",content:[],api:"fixture-api",provider:$provider,model:$model,usage:.,stopReason:"pending",timestamp:1787356800001}}'
+printf '%s\n' "$zero_usage" | jq -c '{type:"message_update",assistantMessageEvent:{type:"text_start",contentIndex:0},usage:.}'
+printf '%s\n' "$zero_usage" | jq -c '{type:"message_update",assistantMessageEvent:{type:"text_delta",contentIndex:0,delta:"pi boundary preflight"},usage:.}'
+printf '%s\n' "$usage" | jq -c '{type:"message_update",assistantMessageEvent:{type:"text_end",contentIndex:0,content:"pi boundary preflight"},usage:.}'
+printf '%s\n' "$assistant_message" | jq -c '{type:"message_end",message:.}'
+jq -cn --argjson message "$assistant_message" '{type:"turn_end",message:$message,toolResults:[]}'
+jq -cn --argjson user "$user_message" --argjson assistant "$assistant_message" '{type:"agent_end",messages:[$user,$assistant],willRetry:false}'
 printf '{"type":"agent_settled"}\n'
 if [[ $mode_name == leak-secret ]]; then
   printf '%s\n' "${NOMOS_PI_TEST_SECRET:?}"
