@@ -232,6 +232,21 @@ This roster must be reconsidered before launch if any of these occurs:
 An invalidated plan blocks the formal run. It does not permit substituting a
 same-family subject or inventing slice boundaries after results are known.
 
+## Revision-6 non-formal rehearsal evidence
+
+Issue #88 ran fresh cross-family rehearsals at exact tooling commit
+`cbfa3f74e92c2e68f9916cff4ceac26859bd2994`:
+
+- Gemini author with independent DeepSeek checker: revision-6 result `pass`,
+  SHA-256 `847a03198affb8ab896b541ff2f7f04ed9635a7877cbec960fc33bbad5627f2e`;
+- DeepSeek debugger with independent Gemini checker: revision-6 result `pass`,
+  SHA-256 `6458c901ca637f6cdab796af28e89a21b3d831a6cdd29644d7438a9d7dac2ba4`.
+
+Every subject and checker used a fresh session with zero operator coaching and
+zero retries. All three dimensions passed separately and the finalizer derived
+each overall pass. Both runs are explicitly non-formal and spend no formal
+attempt; they prove the revision-6 tooling prerequisite, not Gate K.
+
 ## Owner disposition
 
 Peter authorized direct `agy` with Gemini 3.7 Flash High and the original

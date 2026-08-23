@@ -11,8 +11,9 @@ Gate K is closed as **failed**. Peter Permenter's owner disposition is
 - contract: `KERNEL.md` revision 7;
 - formal launch protocol: revision 3;
 - current cold-agent protocol: revision 6, owner-authorized in decision 0015;
-- revision-6 tooling: implemented under issue #88, pending its live rehearsal
-  evidence and independent exact-head audit;
+- revision-6 tooling: implemented under issue #88; both live rehearsal pairs
+  passed at exact tooling commit `cbfa3f7`, pending complete proof and an
+  independent exact-head audit;
 - implementation: complete through SW-N;
 - acceptance: criteria 1–16 and 19 pass; criteria 17 and 18 fail;
 - round-one retries: none authorized; a distinct round two is conditionally
@@ -143,9 +144,13 @@ generation 4, which exposes exactly `/dev/null` while failing every other
 device or outside path closed. The offline proof also re-finalizes both frozen
 round-one pairs byte-for-byte without changing their verdicts.
 
-The remaining #88 work is fresh non-formal author/debug subject and checker
-rehearsal evidence at the exact tooling head, complete repository proof, and an
-exact-head non-author audit. Only after #88 merges may a separate slice prove
+The fresh non-formal Gemini-author/DeepSeek-checker and
+DeepSeek-debugger/Gemini-checker pairs both passed at exact tooling commit
+`cbfa3f7`. Their complete revision-6 records are under
+`docs/evaluation/runs/rehearsal/2026-08-24-*-r6/`; both results explicitly have
+`formalAttempt: false` and no Gate K acceptance value. The remaining #88 work
+is complete repository proof and an exact-head non-author audit. Only after #88
+merges may a separate slice prove
 the unchanged semantic inputs and freeze `gate-k-rc2`. Formal reservations and
 launches wait until the complete mechanical matrix passes against that exact
 candidate.

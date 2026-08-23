@@ -1,0 +1,45 @@
+PI_VERSION 0.84.2
+PI_INSTALL npm install -g --ignore-scripts @earendil-works/pi-coding-agent@0.84.2
+PI_NPM_INTEGRITY sha512-l4E+B7hgXKWddRo8bC/eSue2aWZjEgJ9xIpf5p0Og+lq8a2TArCwJ0HCoCPCgaBP/tN4zbYH/wOwvx9pJpeLCA==
+PI_PACKAGE_TREE_SHA256 63a9dd14b0ae82cee2db30c56822682af19145d145febb58b613d5de4dbb27af
+PI_NODE v26.7.0
+PI_NPM 12.0.2
+PI_BWRAP bubblewrap 0.11.2
+PI_BWRAP_SHA256 6ad2138a73d592acb43525432965e3c66f6fad8a2f3d610c6ca0b6855e993cbe
+PI_RUST_TOOLCHAIN 1.98.0-x86_64-unknown-linux-gnu
+PI_HOST_OS Linux 7.1.8-arch1-3 x86_64
+PI_TARGET_COMMIT cbfa3f74e92c2e68f9916cff4ceac26859bd2994
+PI_LANE gemini
+PI_MODEL antigravity	gemini-3.7-flash	Gemini 3.7 Flash	high
+PI_AUTH_TYPE oauth
+PI_EXTENSION /work/signed-dev/src/signed-world/docs/evaluation/pi-cold-agent-extension.ts d242e2de63e1228a32d7e890bf7cb852e71680813a7aa8f55fc500af64923043
+PI_PROVIDER_EXTENSION /work/signed-dev/.local/lib/node_modules/pi-antigravity/src/index.ts
+PI_PROVIDER_PACKAGE pi-antigravity@0.4.0 sha512-Trl0lWZRDM6TUhw8UjZ+si4Tx2IxCtLLdEwQ10gOS3BUJfgv/C32HY3m/v9PcLNZWYzo+LEfmamiB5+f0jciCg== 7980e6825a23f18a9d298953c0efc9f13c1231ce4c814394803b9da9bfb565ce
+PI_PROVIDER_INSTALL npm install -g --ignore-scripts --legacy-peer-deps pi-antigravity@0.4.0
+PI_PROVIDER_ENV overrides-cleared prewarm-disabled
+PI_MODEL_CATALOG none
+PI_SYSTEM_PROMPT /work/signed-dev/src/signed-world/docs/evaluation/pi-cold-agent-system-prompt.txt c1c41bf11dd3fc42f47c174b9d431e36dd87afb60aa04d08062dd6e11963c333
+PI_WORKSPACE /work/signed-dev/src/signed-world
+PI_WORKTREE_STATUS clean
+PI_CONFIG_ROOT /tmp/tmp.RB7XbAKUMI/config ephemeral-auth-only
+PI_SESSION 01a030cd-5cea-717a-9359-8928a6d0cdd4 ephemeral
+PI_INVOCATION pi --provider antigravity --model gemini-3.7-flash --thinking high --mode json --no-session --no-approve --offline --no-extensions -e /work/signed-dev/.local/lib/node_modules/pi-antigravity/src/index.ts -e /work/signed-dev/src/signed-world/docs/evaluation/pi-cold-agent-extension.ts --no-skills --no-prompt-templates --no-themes --no-context-files --no-builtin-tools --tools bash --system-prompt <sha256:c1c41bf11dd3fc42f47c174b9d431e36dd87afb60aa04d08062dd6e11963c333> <neutral-prompt>
+PI_BOUNDARY {"schema":"nomos.pi_cold_agent_boundary@4","boundaryKind":"source-preflight","mode":"json","targetCommit":"cbfa3f74e92c2e68f9916cff4ceac26859bd2994","hostWorkspace":"/work/signed-dev/src/signed-world","guestWorkspace":"/workspace","provider":"antigravity","model":"gemini-3.7-flash","thinking":"high","sessionId":"01a030cd-5cea-717a-9359-8928a6d0cdd4","sessionFile":null,"projectTrusted":false,"entryTypesBeforeRun":["model_change","thinking_level_change"],"activeTools":["bash"],"configuredTools":[{"name":"bash","source":{"path":"/work/signed-dev/src/signed-world/docs/evaluation/pi-cold-agent-extension.ts","source":"cli","scope":"temporary","origin":"top-level"}}],"contextFiles":[],"skills":[],"systemPromptSha256":"c1c41bf11dd3fc42f47c174b9d431e36dd87afb60aa04d08062dd6e11963c333","finalSystemPromptSha256":"53f4008b4724e55b7385412897ceed086b75ff89d03fb397b571a98343161a23","packetManifestSha256":null,"binarySha256":null,"taskPromptSha256":null,"taskShape":null,"writablePaths":[],"budgets":null,"runtimeIdentity":{"pi":{"path":"/work/signed-dev/.local/lib/node_modules/@earendil-works/pi-coding-agent/dist/cli.js","sha256":"840d1e8e689ed9e4937bcb00b9a810e02a8567d9afb10a47097f11ca93ea1521"},"providerExtension":{"path":"/work/signed-dev/.local/lib/node_modules/pi-antigravity/src/index.ts","sha256":"1c41a45c2820eb52f1b41955ae5fbb833470cba2203226d3b0c626c6f9dbe10b"},"bubblewrap":{"path":"/usr/bin/bwrap","sha256":"6ad2138a73d592acb43525432965e3c66f6fad8a2f3d610c6ca0b6855e993cbe"}},"sandbox":{"backend":"bubblewrap","binary":"/usr/bin/bwrap","root":"read-only","workspace":"read-write-only-host-mount","network":"unshared","environment":"cleared-and-allowlisted","checks":{"targetCommitResolved":true,"workspaceRead":true,"outsideReadDenied":true,"outsideWriteDenied":true,"credentialEnvironmentAbsent":true,"networkDenied":true,"workspaceWrite":true,"cargoAvailable":true},"selfTest":"pass"}}
+PI_RAW_EVENTS_SHA256 fc25c70b9fa7f3b92c87e8aa69789ff71a81851b8defe4fbc818dc530303d97b
+PI_EVENTS_BEGIN
+{"type":"session","version":3,"id":"01a030cd-5cea-717a-9359-8928a6d0cdd4","timestamp":"2026-08-23T22:46:00.170Z","cwd":"/work/signed-dev/src/signed-world"}
+{"type":"agent_start"}
+{"type":"turn_start"}
+{"type":"message_start","message":{"role":"user","content":[{"type":"text","text":"Output exactly this line and nothing else: pi boundary preflight"}],"timestamp":1787525160470}}
+{"type":"message_end","message":{"role":"user","content":[{"type":"text","text":"Output exactly this line and nothing else: pi boundary preflight"}],"timestamp":1787525160470}}
+{"type":"message_start","message":{"role":"assistant","content":[{"type":"text","text":"pi boundary preflight"}],"api":"antigravity-api","provider":"antigravity","model":"gemini-3.7-flash","usage":{"input":433,"output":120,"cacheRead":0,"cacheWrite":0,"totalTokens":553,"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"total":0}},"stopReason":"stop","timestamp":1787525160582}}
+{"type":"message_update","usage":{"input":433,"output":120,"cacheRead":0,"cacheWrite":0,"totalTokens":553,"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"total":0}},"assistantMessageEvent":{"type":"text_start","contentIndex":0}}
+{"type":"message_update","usage":{"input":433,"output":120,"cacheRead":0,"cacheWrite":0,"totalTokens":553,"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"total":0}},"assistantMessageEvent":{"type":"text_delta","contentIndex":0,"delta":"pi boundary preflight"}}
+{"type":"message_update","usage":{"input":433,"output":120,"cacheRead":0,"cacheWrite":0,"totalTokens":553,"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"total":0}},"assistantMessageEvent":{"type":"text_delta","contentIndex":0,"delta":""}}
+{"type":"message_update","usage":{"input":433,"output":120,"cacheRead":0,"cacheWrite":0,"totalTokens":553,"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"total":0}},"assistantMessageEvent":{"type":"text_end","contentIndex":0,"content":"pi boundary preflight"}}
+{"type":"message_end","message":{"role":"assistant","content":[{"type":"text","text":"pi boundary preflight"}],"api":"antigravity-api","provider":"antigravity","model":"gemini-3.7-flash","usage":{"input":433,"output":120,"cacheRead":0,"cacheWrite":0,"totalTokens":553,"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"total":0}},"stopReason":"stop","timestamp":1787525160582}}
+{"type":"turn_end","message":{"role":"assistant","content":[{"type":"text","text":"pi boundary preflight"}],"api":"antigravity-api","provider":"antigravity","model":"gemini-3.7-flash","usage":{"input":433,"output":120,"cacheRead":0,"cacheWrite":0,"totalTokens":553,"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"total":0}},"stopReason":"stop","timestamp":1787525160582},"toolResults":[]}
+{"type":"agent_end","messages":[{"role":"user","content":[{"type":"text","text":"Output exactly this line and nothing else: pi boundary preflight"}],"timestamp":1787525160470},{"role":"assistant","content":[{"type":"text","text":"pi boundary preflight"}],"api":"antigravity-api","provider":"antigravity","model":"gemini-3.7-flash","usage":{"input":433,"output":120,"cacheRead":0,"cacheWrite":0,"totalTokens":553,"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"total":0}},"stopReason":"stop","timestamp":1787525160582}],"willRetry":false}
+{"type":"agent_settled"}
+PI_EVENTS_END
+PI_COLD_AGENT_BOUNDARY PASS
