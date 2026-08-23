@@ -10,10 +10,12 @@ Gate K is closed as **failed**. Peter Permenter's owner disposition is
 - tree: `4013e6629ea274c6f2e2e2570306cb35b6d41505`;
 - contract: `KERNEL.md` revision 7;
 - formal launch protocol: revision 3;
-- current evidence-authentication protocol: revision 5;
+- current cold-agent protocol: revision 6, owner-authorized in decision 0015;
+- revision-6 tooling: not yet implemented;
 - implementation: complete through SW-N;
 - acceptance: criteria 1–16 and 19 pass; criteria 17 and 18 fail;
-- formal retries: none authorized;
+- round-one retries: none authorized; a distinct round two is conditionally
+  authorized after tooling, rehearsal, candidate freeze, and mechanical proof;
 - renderer, executable Gate 0 work, and semantic development: not authorized;
 - one static, quarantined gaol target-pack study: authorized by decision 0014,
   assembled under issue #83, and owner-disposed as
@@ -22,6 +24,11 @@ Gate K is closed as **failed**. Peter Permenter's owner disposition is
 The exact 1–19 matrix, owner consequence, protocol boundary, and limitations
 are in decision 0013. The machine-readable content-addressed inventory is
 `docs/evaluation/GATE_K_FINAL_EVIDENCE_INDEX.json`.
+
+Decision 0015 changes no historical verdict. It prospectively separates
+semantic merit, independence integrity, and operational compliance, permits
+exactly `/dev/null` as a non-information-bearing device, and fixes the order for
+a fresh `gate-k-rc2` round. No provider task or candidate tag exists yet.
 
 ## Why Gate K failed
 
@@ -78,6 +85,7 @@ Issues #68–#72 and #79 are closed. Their PRs are merged:
 | #79 | #80 | fail-closed evidence authentication and deterministic assembly |
 | #73 | #81 | final owner verdict |
 | #82 | #84 | authorize the quarantined gaol visual-target experiment |
+| #83 | #85 | assemble and owner-dispose the static visual target pack |
 
 Issue #79 changed evidence tooling and protocol documentation after the
 candidate was frozen. It changed no kernel crate, fixture, Cargo input, CLI,
@@ -126,10 +134,20 @@ The pack is the preserved desired target. A fresh, prospectively governed Gate K
 attempt remains required before renderer architecture or adoption; neither is
 authorized by the visual verdict.
 
-After #83 merges there is no active implementation slice. Any Gate K round two
-requires a new owner decision that prospectively revises the protocol, names a
-fresh candidate, preserves the failed revision-3 attempts, and authorizes new
-formal work. Renderer architecture and project adoption remain out of scope.
+Issue #86 is the active decision slice. It establishes protocol revision 6 and
+authorizes a fresh round only after its prerequisites pass. It changes no
+kernel code, fixture, Cargo input, semantic behavior, or historical evidence.
+
+After #86 merges, the next slice is revision-6 evaluation tooling: add the three
+dimension results and derived verdict, implement the exact `/dev/null`
+exception while failing every other outside path closed, update schemas and
+finalization, run non-formal author/debug rehearsals, and obtain an exact-head
+non-author audit. Only then may a separate slice prove and freeze
+`gate-k-rc2`. Formal reservations and launches wait until the complete
+mechanical matrix passes against that exact candidate.
+
+Renderer architecture and project adoption remain out of scope until a new
+owner disposition passes Gate K.
 
 Decision 0005's temporary zero-third-party-dependency policy ended with the
 Gate K disposition. That does not admit any dependency automatically; a future

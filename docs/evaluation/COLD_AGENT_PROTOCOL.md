@@ -1,10 +1,10 @@
 ---
 title: Cold-agent evaluation protocol
 status: Contractual for formal cold-agent claims
-revision: 5
-supersedes_protocol_revision: 4
+revision: 6
+supersedes_protocol_revision: 5
 date: 2026-08-23
-decision_record: docs/decisions/0012-cold-agent-evidence-authentication.md
+decision_record: docs/decisions/0015-gate-k-round-two.md
 applies_to: Gate K, Gate 3, Gate 4, cold design review
 ---
 
@@ -128,10 +128,21 @@ Default formal-run tools:
 - use ordinary file operations such as `ls`, `cat`, and `diff`.
 
 The packet root and all sandbox paths outside the single declared task output
-subtree are read-only. In particular, packet runs expose no writable `/tmp` or
-home directory. A model-requested boundary probe or outside-path access fails
-the task rubric even when denied; any successful undeclared read or write is a
-harness failure, not subject evidence.
+subtree are read-only, with exactly one exception: the device path `/dev/null`.
+In particular, packet runs expose no writable `/tmp` or home directory.
+
+Reading `/dev/null`, writing it, or redirecting a command stream to it is
+allowed. It supplies no project information, remains present in ordered-command
+accounting, and cannot replace required transcript, diagnostic, or artifact
+evidence. No alias, symlink, file-descriptor path, or other device receives this
+exception.
+
+A model-requested boundary probe or access to any other outside-workspace path
+fails operational compliance even when denied. A subject-requested successful
+undeclared access also fails operational compliance; if undeclared information
+enters the task, independence integrity fails. An unrequested harness exposure
+is a harness failure and cannot become passing subject evidence. Finalization
+fails closed for each case.
 
 Default forbidden tools:
 
@@ -246,16 +257,35 @@ The owner dispositions each finding separately.
 
 ## 8. Verdicts
 
-Each run receives exactly one verdict:
+Every formal subject and checker receives three separately evidenced dimension
+results:
+
+- `semantic_merit` — whether the declared authoring, debugging, or checking
+  task and explanation are correct;
+- `independence_integrity` — whether only declared information entered the task
+  and no substantive outside help occurred;
+- `operational_compliance` — whether every declared tool, path, and execution
+  restriction was obeyed.
+
+Each dimension is exactly `pass`, `fail`, or `inconclusive`. One passing
+dimension never compensates for another failed or inconclusive dimension.
+
+Each run also receives exactly one overall verdict:
 
 - `pass` — all declared criteria met;
 - `fail` — a declared task criterion was violated;
 - `assisted` — substantive human or external help occurred;
 - `inconclusive` — environment or harness failure prevented a fair result.
 
-Only `pass` satisfies a cold gate. Repeated failures may inform design, but the
-best run cannot be cherry-picked without reporting all formal attempts against
-the same brief.
+The overall verdict is derived in this order: substantive human or external
+help produces `assisted`; otherwise any failed dimension produces `fail`;
+otherwise any inconclusive dimension produces `inconclusive`; only three
+passing dimensions produce `pass`.
+
+Only overall `pass` satisfies a cold gate. It does not replace the applicable
+task criteria or independent-checker requirement. Repeated failures may inform
+design, but the best run cannot be cherry-picked without reporting all formal
+attempts against the same brief.
 
 Before a formal provider task launches, the operator appends a content-addressed
 reservation to `docs/evaluation/gate-k-formal-attempt-ledger.jsonl` and commits
@@ -280,8 +310,9 @@ formal transports visible.
 The four historical `gate-k-rc1` imports are accepted only as their exact
 canonical events. Gate K final assembly requires the exact frozen four-event
 inventory, so a later reservation, close, cancellation, or import cannot be
-omitted from the final disposition. A future authorized attempt therefore
-requires an explicit protocol/tooling revision and a new frozen candidate.
+omitted from the final disposition. Decision 0015 authorizes a future round-two
+attempt only after revision-6 tooling and rehearsal pass and a new exact
+`gate-k-rc2` candidate is frozen and mechanically proved.
 
 If the operator cancels before the committed launch marker, the reservation is closed only
 by an explicit `discarded-before-launch` event with a non-empty reason. It has no
@@ -336,6 +367,7 @@ runtime identity. The four frozen `gate-k-rc1` task records retain their legacy
 - operator interventions, including none;
 - restarts or environment failures;
 - result against every rubric item;
+- the three dimension results, their evidence, and the derived overall verdict;
 - adjudicator and owner disposition.
 
 Secrets, private credentials, and unrelated personal context are never stored.
