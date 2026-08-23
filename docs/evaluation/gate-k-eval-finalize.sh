@@ -7,6 +7,23 @@ fail() {
   exit 1
 }
 
+real_directory() {
+  local supplied=$1
+  local label=$2
+  local stripped=$supplied
+  local parent name resolved
+  while [[ $stripped != / && $stripped == */ ]]; do
+    stripped=${stripped%/}
+  done
+  [[ -d $stripped && ! -L $stripped ]] || fail "$label: $supplied"
+  parent=$(realpath -e "$(dirname -- "$stripped")")
+  name=$(basename -- "$stripped")
+  [[ $name != . && $name != .. ]] || fail "$label: $supplied"
+  resolved=$(realpath -e "$stripped")
+  [[ $resolved == "$parent/$name" ]] || fail "$label: $supplied"
+  printf '%s\n' "$resolved"
+}
+
 record_only=false
 if [[ $# -eq 2 && $1 == --validate-task-record ]]; then
   record_only=true
@@ -35,6 +52,7 @@ transcript_validator="$script_dir/gate-k-eval-validate-transcript.py"
 qualification_validator="$script_dir/gate-k-eval-validate-qualification.py"
 json_validator="$script_dir/gate-k-eval-validate-json.py"
 document_validator="$script_dir/gate-k-eval-validate-documents.py"
+packet_verifier="$script_dir/gate-k-eval-verify-packet.sh"
 attempt_validator="$script_dir/gate-k-eval-attempt-ledger.py"
 attempt_ledger="$script_dir/gate-k-formal-attempt-ledger.jsonl"
 if [[ $record_only == false ]]; then
@@ -42,7 +60,7 @@ if [[ $record_only == false ]]; then
     fail 'formal-attempt ledger differs from the exact frozen Gate K inventory'
 fi
 for record in "${records[@]}"; do
-  [[ -d $record && ! -L $record ]] || fail "task record is absent: $record"
+  record=$(real_directory "$record" 'task record is absent')
   for file in task-receipt.json plan.json packet-manifest.json prompt.txt transcript.ndjson \
     commands.json accounting.json boundary.json TASK.md pi-qualification.txt launcher.txt pi-stderr.txt; do
     [[ -f $record/$file && ! -L $record/$file ]] || fail "task record file is absent: $record/$file"
@@ -490,9 +508,10 @@ for record in "${records[@]}"; do
       .value == true)
     ' "$record/boundary.json" >/dev/null ||
     fail "boundary does not prove the authenticated packet isolation: $record"
-  [[ $packet_root_claim == /* && -d $packet_root_claim && ! -L $packet_root_claim ]] ||
+  [[ $packet_root_claim == /* ]] ||
     fail "recorded immutable packet root is unavailable: $record"
-  packet_root=$(realpath -e "$packet_root_claim")
+  packet_root=$(real_directory "$packet_root_claim" \
+    "recorded immutable packet root is unavailable: $record")
   if [[ $record_only == false ]]; then
     case "$out/" in "$packet_root/"*) fail 'output must be outside both immutable packets' ;; esac
   fi
@@ -508,6 +527,8 @@ for record in "${records[@]}"; do
   [[ $(sha256sum "$packet_root/packet-manifest.json" | cut -d' ' -f1) == \
       "$packet_manifest_sha" ]] ||
     fail "recorded immutable packet manifest differs from task record: $record"
+  "$packet_verifier" --post-run "$packet_root" "$receipt_commit" >/dev/null ||
+    fail "recorded immutable packet does not satisfy its complete shape: $record"
   actual_immutable_files=$(find "$packet_root" -type f \
     ! -path "$packet_root/$expected_writable/*" -printf '%P\n' | sort)
   expected_immutable_files=$({
@@ -576,6 +597,19 @@ for record in "${records[@]}"; do
     $plan_binary_sha != "$gate_k_rc1_binary_sha" ]]; then
     fail "formal attempt binary differs from frozen gate-k-rc1: $record"
   fi
+  git -C "$repo_root" cat-file -e "$receipt_commit^{commit}" 2>/dev/null ||
+    fail "candidate commit is absent from repository history: $record"
+  case $receipt_shape in
+    author-checker | debug-checker)
+      checker_result="$record/artifacts/checker.json"
+      [[ -f $checker_result && ! -L $checker_result ]] ||
+        fail "checker did not publish artifacts/checker.json: $record"
+      python3 "$json_validator" "$checker_result" ||
+        fail "checker result contains invalid or duplicate-key JSON: $record"
+      python3 "$document_validator" checker-result "$checker_result" ||
+        fail "checker result does not satisfy a declared exact schema: $record"
+      ;;
+  esac
 done
 
 if [[ $record_only == true ]]; then

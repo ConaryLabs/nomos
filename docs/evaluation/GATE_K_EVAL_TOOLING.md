@@ -354,8 +354,9 @@ exact-head evidence: a future launch would require a newly frozen
 Protocol revision 5 closes the remaining evidence-authentication gaps found
 during issue #79. The four frozen task receipts are imported, explicitly without
 retroactive prelaunch proof, into the hash-chained formal-attempt ledger. A
-future formal launcher requires an exact open reservation already committed in
-that ledger and records the ledger commit and digest in its task receipt. The
+future formal launcher requires an exact open reservation and a distinct
+provider-launch event already committed in that ledger, then records the launch
+ledger commit and digest in its task receipt. The
 completion event is derived from the complete task record. The reserved prompt
 digest must equal the plan-bound prompt digest. The exact canonical
 receipt and exact launcher schema must bind the retained transcript, commands,
@@ -367,7 +368,8 @@ accounting, immutable packet, and artifact proofs. Only then does the event
 close the reservation with the receipt hash and outcome;
 another reservation cannot hide or overtake an unfinished task.
 A prelaunch cancellation instead appends `discarded-before-launch` plus its
-reason; it cannot impersonate a completed provider task or erase the reservation.
+reason only while no launch marker exists. Once marked launched, the attempt
+must close from a complete task record, including an inconclusive transport.
 The four historical imports are exact authenticated events, not a permissive
 event class. Final assembly accepts only their exact frozen four-event inventory;
 any later event requires a new candidate and explicit protocol/tooling revision
@@ -381,6 +383,11 @@ retained. Boundary schema `nomos.pi_cold_agent_boundary@3` binds the resolved
 Pi, provider-extension, and Bubblewrap paths and hashes into both the runtime
 boundary and task receipt. Legacy `@2` boundaries remain admissible only through
 the four exact frozen formal task receipts.
+Record close and final assembly reopen the packet through the complete shape
+verifier used before launch, excluding only the declared mutable subtree from
+prelaunch byte comparison. The plan's prompt and brief digests must match the
+reopened immutable bytes, and path roots reject final-component symlink aliases
+even when written with trailing separators.
 
 Any packet allowlist, public packet document, prompt, constraint, runner, recorder,
 checker construction, or boundary-extension change after a candidate is tagged

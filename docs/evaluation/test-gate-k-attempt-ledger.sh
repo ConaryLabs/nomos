@@ -111,6 +111,25 @@ python3 "$validator" next-reservation "$ledger_copy" future-author "$candidate" 
   author antigravity gemini-future high "$manifest" "$prompt_sha" "$nonce" >>"$ledger_copy"
 git -C "$tmp_dir/repo" add docs/evaluation/gate-k-formal-attempt-ledger.jsonl
 git -C "$tmp_dir/repo" commit -qm 'Reserve future author attempt'
+python3 "$validator" next-launch "$ledger_copy" future-author \
+  --committed-repo "$tmp_dir/repo" >>"$ledger_copy"
+git -C "$tmp_dir/repo" add docs/evaluation/gate-k-formal-attempt-ledger.jsonl
+git -C "$tmp_dir/repo" commit -qm 'Authenticate future author launch'
+python3 "$validator" verify-launch "$ledger_copy" future-author "$candidate" \
+  author antigravity gemini-future high "$manifest" "$prompt_sha" \
+  --committed-repo "$tmp_dir/repo" >/dev/null
+git clone -q "$tmp_dir/repo" "$tmp_dir/squashed-repo"
+git -C "$tmp_dir/squashed-repo" config user.name 'Gate K fixture'
+git -C "$tmp_dir/squashed-repo" config user.email gate-k-fixture@example.invalid
+git -C "$tmp_dir/squashed-repo" reset -q --soft HEAD~2
+git -C "$tmp_dir/squashed-repo" commit -qm 'Illegally combine reservation and launch'
+assert_blocked 'launch marker was not committed after its reservation' python3 "$validator" \
+  verify-launch "$tmp_dir/squashed-repo/docs/evaluation/gate-k-formal-attempt-ledger.jsonl" \
+  future-author "$candidate" author antigravity gemini-future high "$manifest" \
+  "$prompt_sha" --committed-repo "$tmp_dir/squashed-repo"
+assert_blocked 'already has an authenticated launch marker' python3 "$validator" \
+  verify-reservation "$ledger_copy" future-author "$candidate" author antigravity \
+  gemini-future high "$manifest" "$prompt_sha"
 ledger_sha=$(sha256sum "$ledger_copy" | cut -d' ' -f1)
 ledger_commit=$(git -C "$tmp_dir/repo" rev-parse HEAD)
 
@@ -181,25 +200,29 @@ assert_blocked 'committed ledger HEAD' python3 "$validator" next-close \
   --committed-repo "$tmp_dir/repo"
 assert_blocked 'gate-k eval finalizer: FAIL' python3 "$validator" next-close \
   "$ledger_copy" future-author "$record" inconclusive --committed-repo "$tmp_dir/repo"
-python3 "$validator" next-cancel "$ledger_copy" future-author \
-  'fixture record deliberately fails semantic validation' >>"$ledger_copy"
-python3 "$validator" validate "$ledger_copy"
-assert_blocked 'differs from the exact frozen Gate K inventory' \
+assert_blocked 'cannot be cancelled after provider launch' python3 "$validator" next-cancel \
+  "$ledger_copy" future-author 'fixture record deliberately fails semantic validation'
+assert_blocked 'formal attempt remains open' python3 "$validator" validate "$ledger_copy"
+assert_blocked 'formal attempt remains open' \
   python3 "$validator" validate-frozen-inventory "$ledger_copy"
-python3 "$validator" validate "$ledger_copy"
+cancel_ledger="$tmp_dir/cancellation-ledger.jsonl"
+cp "$ledger" "$cancel_ledger"
 cancel_nonce=cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
-python3 "$validator" next-reservation "$ledger_copy" cancelled-author "$candidate" \
+python3 "$validator" next-reservation "$cancel_ledger" cancelled-author "$candidate" \
   author antigravity gemini-future high "$manifest" "$prompt" "$cancel_nonce" \
-  >>"$ledger_copy"
-python3 "$validator" next-cancel "$ledger_copy" cancelled-author \
-  'operator cancelled before provider launch' >>"$ledger_copy"
-python3 "$validator" validate "$ledger_copy"
+  >>"$cancel_ledger"
+assert_blocked 'formal close lacks its authenticated launch marker' python3 "$validator" \
+  next-close "$cancel_ledger" cancelled-author "$record" inconclusive \
+  --committed-repo "$tmp_dir/repo"
+python3 "$validator" next-cancel "$cancel_ledger" cancelled-author \
+  'operator cancelled before provider launch' >>"$cancel_ledger"
+python3 "$validator" validate "$cancel_ledger"
 assert_blocked 'does not name the one open formal attempt' python3 "$validator" next-cancel \
-  "$ledger_copy" cancelled-author 'second hidden cancellation'
+  "$cancel_ledger" cancelled-author 'second hidden cancellation'
 sed '2s/"previousEventSha256":"[0-9a-f]*"/"previousEventSha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"/' \
-  "$ledger_copy" >"$tmp_dir/tampered.jsonl"
+  "$cancel_ledger" >"$tmp_dir/tampered.jsonl"
 assert_blocked 'breaks the hash chain' python3 "$validator" validate "$tmp_dir/tampered.jsonl"
-sed '1s/"sequence":1/"sequence":1.0/' "$ledger_copy" >"$tmp_dir/float-sequence.jsonl"
+sed '1s/"sequence":1/"sequence":1.0/' "$cancel_ledger" >"$tmp_dir/float-sequence.jsonl"
 assert_blocked 'invalid schema or sequence' python3 "$validator" validate \
   "$tmp_dir/float-sequence.jsonl"
 

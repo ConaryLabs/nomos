@@ -20,6 +20,48 @@ assert_blocked 'non-finite JSON number' overflow-json \
 assert_blocked 'non-finite JSON number' overflow-transcript \
   python3 "$repo_root/docs/evaluation/gate-k-eval-sanitize-transcript.py" "$tmp_dir/overflow.json"
 
+cp -R "$tmp_dir/author-2" "$tmp_dir/unbound-brief-packet"
+printf 'self-consistently rehashed but unbound brief\n' \
+  >"$tmp_dir/unbound-brief-packet/brief.txt"
+refresh_packet_file "$tmp_dir/unbound-brief-packet" brief.txt
+assert_blocked 'plan does not bind the packet and protocol defaults' unbound-brief-packet \
+  "$packet_verifier" "$tmp_dir/unbound-brief-packet" "$commit"
+cp -R "$tmp_dir/author-2" "$tmp_dir/incomplete-shape-packet"
+rm -- "$tmp_dir/incomplete-shape-packet/reference/README.md"
+jq -S -c '.files |= map(select(.path != "reference/README.md"))' \
+  "$tmp_dir/incomplete-shape-packet/packet-manifest.json" \
+  >"$tmp_dir/incomplete-shape-packet/packet-manifest.update"
+mv -- "$tmp_dir/incomplete-shape-packet/packet-manifest.update" \
+  "$tmp_dir/incomplete-shape-packet/packet-manifest.json"
+assert_blocked 'required packet file is absent: reference/README.md' incomplete-shape-packet \
+  "$packet_verifier" "$tmp_dir/incomplete-shape-packet" "$commit"
+
+cp -R "$base_checker" "$tmp_dir/nonfinite-adjudication-record"
+sed 's/}$/,"nonfinite":NaN}/' "$base_checker/boundary.json" \
+  >"$tmp_dir/nonfinite-adjudication-record/boundary.json"
+assert_blocked 'non-finite JSON number' nonfinite-adjudication-evidence \
+  python3 "$adjudication_validator" "$base_subject" \
+  "$tmp_dir/nonfinite-adjudication-record" "$tmp_dir/author-adjudication.json"
+
+ln -s "$base_checker" "$tmp_dir/checker-record-alias"
+assert_blocked 'task record is absent' trailing-slash-record-alias \
+  "$finalizer" --validate-task-record "$tmp_dir/checker-record-alias/"
+packet_root=$(jq -r '.hostWorkspace' "$base_checker/boundary.json")
+ln -s "$packet_root" "$tmp_dir/checker-packet-alias"
+assert_blocked 'packet is not a real directory' trailing-slash-packet-alias \
+  "$repo_root/docs/evaluation/gate-k-eval-verify-packet.sh" \
+  "$tmp_dir/checker-packet-alias/" \
+  "$(jq -r '.candidateCommit' "$base_checker/task-receipt.json")"
+
+cp -R "$base_checker" "$tmp_dir/obsolete-extension-record"
+sed 's/3205bdd3bae1eadba56337379a797a4900fcbe31a200db31f4f6faa2ed775a36/5076b923aad8ebf6d46110ca0bd45e62911ace563bdfe58e6418b6a14b519f46/' \
+  "$base_checker/pi-qualification.txt" \
+  >"$tmp_dir/obsolete-extension-record/pi-qualification.txt"
+refresh_record_receipt_digests "$tmp_dir/obsolete-extension-record"
+assert_blocked 'current qualification names an obsolete boundary extension' \
+  obsolete-current-extension "$finalizer" --validate-task-record \
+  "$tmp_dir/obsolete-extension-record"
+
 cp -R "$base_checker" "$tmp_dir/reordered-lifecycle-record"
 jq -c -s '
   to_entries as $events |

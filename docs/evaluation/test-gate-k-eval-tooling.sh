@@ -673,6 +673,9 @@ install -m 644 "$tmp_dir/malformed-result-checker-record/artifacts/checker.json"
 refresh_record_receipt_digests "$tmp_dir/malformed-result-checker-record"
 write_pass_adjudication "$tmp_dir/author-subject-record" \
   "$tmp_dir/malformed-result-checker-record" "$tmp_dir/malformed-result-adjudication.json"
+assert_blocked 'checker result does not satisfy a declared exact schema' \
+  record-only-malformed-checker-result "$finalizer" --validate-task-record \
+  "$tmp_dir/malformed-result-checker-record"
 assert_blocked 'checker command 0 is not an object' finalizer-malformed-checker-result \
   "$finalizer" "$tmp_dir/author-subject-record" \
   "$tmp_dir/malformed-result-checker-record" "$tmp_dir/malformed-result-adjudication.json" \
@@ -904,12 +907,12 @@ jq -e '
   ' "$tmp_dir/quoted-path-pass-run/result.json" >/dev/null
 
 printf '%s\n' 'tampered immutable brief' >>"$tmp_dir/author-checker-1/brief.txt"
-assert_blocked 'recorded immutable packet member size differs' finalizer-packet-tamper \
+assert_blocked 'recorded immutable packet does not satisfy its complete shape' finalizer-packet-tamper \
   "$finalizer" "$tmp_dir/author-subject-record" "$tmp_dir/author-checker-record" \
   "$tmp_dir/author-adjudication.json" "$tmp_dir/packet-tamper-run"
 install -m 644 "$tmp_dir/author-checker-2/brief.txt" "$tmp_dir/author-checker-1/brief.txt"
 printf '\n' >>"$tmp_dir/author-checker-1/.nomos-candidate-commit"
-assert_blocked 'recorded immutable packet member size differs' finalizer-marker-bytes \
+assert_blocked 'recorded immutable packet does not satisfy its complete shape' finalizer-marker-bytes \
   "$finalizer" "$tmp_dir/author-subject-record" "$tmp_dir/author-checker-record" \
   "$tmp_dir/author-adjudication.json" "$tmp_dir/marker-bytes-run"
 install -m 644 "$tmp_dir/author-checker-2/.nomos-candidate-commit" \

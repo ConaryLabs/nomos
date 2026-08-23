@@ -44,6 +44,8 @@ def validate_event(event: object, sequence: int, previous: str | None) -> dict[s
         optional = {"promptSha256", "nonce"}
     elif kind in ("close", "import-close"):
         optional = {"taskReceiptSha256", "outcome"}
+    elif kind == "launch":
+        optional = set()
     else:
         optional = {"outcome", "reason"}
     require_keys(event, BASE | optional, set(), f"ledger event {sequence}")
@@ -67,6 +69,8 @@ def validate_event(event: object, sequence: int, previous: str | None) -> dict[s
         require_sha256(event["taskReceiptSha256"], f"ledger event {sequence} task receipt")
         if event["outcome"] not in ("eligible-for-checker", "completed-checker", "inconclusive"):
             fail(f"ledger event {sequence} outcome is invalid")
+    elif kind == "launch":
+        pass
     elif kind == "cancel":
         if event["outcome"] != "discarded-before-launch":
             fail(f"ledger event {sequence} cancellation outcome is invalid")
@@ -76,12 +80,13 @@ def validate_event(event: object, sequence: int, previous: str | None) -> dict[s
     return event
 
 
-def load_ledger(path: Path) -> tuple[list[dict[str, object]], list[str]]:
+def load_ledger(path: Path) -> tuple[list[dict[str, object]], list[str], list[str]]:
     lines = path.read_text().splitlines()
     if not lines:
         fail("formal-attempt ledger is empty")
     events: list[dict[str, object]] = []
     open_attempts: dict[str, dict[str, object]] = {}
+    launched_attempts: set[str] = set()
     seen: set[str] = set()
     previous = None
     for sequence, line in enumerate(lines, 1):
@@ -103,27 +108,47 @@ def load_ledger(path: Path) -> tuple[list[dict[str, object]], list[str]]:
             seen.add(attempt_id)
             if event["event"] == "reserve":
                 open_attempts[attempt_id] = event
+        elif event["event"] == "launch":
+            if attempt_id not in open_attempts:
+                fail(f"ledger event {sequence} launches an absent reservation")
+            if attempt_id in launched_attempts:
+                fail(f"ledger event {sequence} repeats a formal launch")
+            reservation = open_attempts[attempt_id]
+            if any(event[field] != reservation[field] for field in IDENTITY):
+                fail(f"ledger event {sequence} identity differs from its reservation")
+            launched_attempts.add(attempt_id)
         else:
             if attempt_id not in open_attempts:
                 fail(f"ledger event {sequence} closes an absent reservation")
+            if event["event"] == "close" and attempt_id not in launched_attempts:
+                fail(f"ledger event {sequence} closes a formal attempt that never launched")
+            if event["event"] == "cancel" and attempt_id in launched_attempts:
+                fail(f"ledger event {sequence} cancels a formal attempt after launch")
             reservation = open_attempts.pop(attempt_id)
             if any(event[field] != reservation[field] for field in IDENTITY):
                 fail(f"ledger event {sequence} identity differs from its reservation")
+            launched_attempts.discard(attempt_id)
         events.append(event)
         previous = event_sha(line)
-    return events, list(open_attempts)
+    return events, list(open_attempts), sorted(launched_attempts)
 
 
 def next_event(path: Path, values: dict[str, object]) -> str:
-    events, open_attempts = load_ledger(path)
+    events, open_attempts, launched_attempts = load_ledger(path)
     if open_attempts and values["event"] == "reserve":
         fail("an earlier formal attempt remains open")
-    if values["event"] in ("close", "cancel"):
+    if values["event"] in ("launch", "close", "cancel"):
         if open_attempts != [values["attemptId"]]:
             fail("close does not name the one open formal attempt")
         reservation = next(event for event in events if event["attemptId"] == values["attemptId"])
         for field in IDENTITY:
             values[field] = reservation[field]
+        if values["event"] == "launch" and launched_attempts:
+            fail("formal attempt already has an authenticated launch marker")
+        if values["event"] == "close" and launched_attempts != [values["attemptId"]]:
+            fail("formal close lacks its authenticated launch marker")
+        if values["event"] == "cancel" and launched_attempts:
+            fail("formal attempt cannot be cancelled after provider launch")
     values.update({
         "schema": "nomos.gate_k.formal_attempt_event@1",
         "sequence": len(events) + 1,
@@ -215,9 +240,11 @@ def parse_launcher(path: Path) -> dict[str, object]:
 
 def authenticated_close(path: Path, attempt_id: str, record: Path,
                         outcome: str, committed_repo: Path) -> str:
-    events, open_attempts = load_ledger(path)
+    events, open_attempts, launched_attempts = load_ledger(path)
     if open_attempts != [attempt_id]:
         fail("close does not name the one open formal attempt")
+    if launched_attempts != [attempt_id]:
+        fail("formal close lacks its authenticated launch marker")
     if not record.is_dir() or record.is_symlink():
         fail("formal close task record is not a regular directory")
     validate_record_members(record)
@@ -338,7 +365,7 @@ def authenticated_close(path: Path, attempt_id: str, record: Path,
                              "outcome": outcome})
 
 
-def require_committed(path: Path, repo: Path) -> str:
+def require_committed(path: Path, repo: Path, require_prior_event: bool = False) -> str:
     repo = repo.resolve()
     path = path.resolve()
     try:
@@ -355,6 +382,8 @@ def require_committed(path: Path, repo: Path) -> str:
         ["git", "-C", str(repo), "log", "--format=%H", "--follow", "--", str(relative)],
         check=True, text=True, capture_output=True,
     ).stdout.splitlines()
+    prior = "".join(tracked.splitlines(keepends=True)[:-1])
+    prior_was_committed = False
     for commit in history:
         historical = subprocess.run(
             ["git", "-C", str(repo), "show", f"{commit}:{relative}"],
@@ -362,6 +391,10 @@ def require_committed(path: Path, repo: Path) -> str:
         ).stdout
         if not tracked.startswith(historical):
             fail("formal-attempt ledger rewrites or removes committed history")
+        if historical == prior:
+            prior_was_committed = True
+    if require_prior_event and not prior_was_committed:
+        fail("formal launch marker was not committed after its reservation")
     return head
 
 
@@ -378,11 +411,22 @@ def main() -> None:
     for field in ("candidate_commit", "shape", "provider", "model", "thinking", "packet_manifest_sha256", "prompt_sha256"):
         verify.add_argument(field)
     verify.add_argument("--committed-repo", type=Path)
+    verify_launch = sub.add_parser("verify-launch")
+    verify_launch.add_argument("ledger", type=Path)
+    verify_launch.add_argument("attempt_id")
+    for field in ("candidate_commit", "shape", "provider", "model", "thinking",
+                  "packet_manifest_sha256", "prompt_sha256"):
+        verify_launch.add_argument(field)
+    verify_launch.add_argument("--committed-repo", type=Path)
     reserve = sub.add_parser("next-reservation")
     reserve.add_argument("ledger", type=Path)
     reserve.add_argument("attempt_id")
     for field in ("candidate_commit", "shape", "provider", "model", "thinking", "packet_manifest_sha256", "prompt_sha256", "nonce"):
         reserve.add_argument(field)
+    launch = sub.add_parser("next-launch")
+    launch.add_argument("ledger", type=Path)
+    launch.add_argument("attempt_id")
+    launch.add_argument("--committed-repo", type=Path, required=True)
     close = sub.add_parser("next-close")
     close.add_argument("ledger", type=Path)
     close.add_argument("attempt_id")
@@ -395,7 +439,7 @@ def main() -> None:
     cancel.add_argument("reason")
     args = parser.parse_args()
     try:
-        events, open_attempts = load_ledger(args.ledger)
+        events, open_attempts, launched_attempts = load_ledger(args.ledger)
         if args.command == "validate":
             if open_attempts:
                 fail(f"formal attempt remains open: {open_attempts[0]}")
@@ -409,9 +453,13 @@ def main() -> None:
             ):
                 fail("formal-attempt ledger differs from the exact frozen Gate K inventory")
             return
-        if args.command == "verify-reservation":
+        if args.command in ("verify-reservation", "verify-launch"):
             if open_attempts != [args.attempt_id]:
                 fail("requested formal attempt is not the one open reservation")
+            if args.command == "verify-reservation" and launched_attempts:
+                fail("formal reservation already has an authenticated launch marker")
+            if args.command == "verify-launch" and launched_attempts != [args.attempt_id]:
+                fail("formal provider invocation lacks its committed launch marker")
             reservation = next(event for event in events if event["attemptId"] == args.attempt_id)
             supplied = (args.candidate_commit, args.shape, args.provider, args.model, args.thinking,
                         args.packet_manifest_sha256, args.prompt_sha256)
@@ -419,7 +467,10 @@ def main() -> None:
             if supplied != expected:
                 fail("formal launch differs from its prelaunch reservation")
             if args.committed_repo:
-                print(require_committed(args.ledger, args.committed_repo))
+                print(require_committed(
+                    args.ledger, args.committed_repo,
+                    require_prior_event=args.command == "verify-launch",
+                ))
             return
         if args.command == "next-reservation":
             print(next_event(args.ledger, {
@@ -429,6 +480,9 @@ def main() -> None:
                 "packetManifestSha256": args.packet_manifest_sha256,
                 "promptSha256": args.prompt_sha256, "nonce": args.nonce,
             }))
+        elif args.command == "next-launch":
+            require_committed(args.ledger, args.committed_repo)
+            print(next_event(args.ledger, {"event": "launch", "attemptId": args.attempt_id}))
         elif args.command == "next-close":
             print(authenticated_close(args.ledger, args.attempt_id, args.task_record,
                                       args.outcome, args.committed_repo))

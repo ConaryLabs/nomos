@@ -43,10 +43,8 @@ PI_INTEGRITY = "sha512-l4E+B7hgXKWddRo8bC/eSue2aWZjEgJ9xIpf5p0Og+lq8a2TArCwJ0HCo
 PI_TREE = "63a9dd14b0ae82cee2db30c56822682af19145d145febb58b613d5de4dbb27af"
 BWRAP_SHA = "6ad2138a73d592acb43525432965e3c66f6fad8a2f3d610c6ca0b6855e993cbe"
 RUST = "1.98.0-x86_64-unknown-linux-gnu"
-EXTENSION_SHAS = {
-    "5076b923aad8ebf6d46110ca0bd45e62911ace563bdfe58e6418b6a14b519f46",  # frozen @2
-    "3205bdd3bae1eadba56337379a797a4900fcbe31a200db31f4f6faa2ed775a36",  # current @3
-}
+LEGACY_EXTENSION_SHA = "5076b923aad8ebf6d46110ca0bd45e62911ace563bdfe58e6418b6a14b519f46"
+CURRENT_EXTENSION_SHA = "3205bdd3bae1eadba56337379a797a4900fcbe31a200db31f4f6faa2ed775a36"
 PI_CLIENT_SHA = "840d1e8e689ed9e4937bcb00b9a810e02a8567d9afb10a47097f11ca93ea1521"
 PROVIDER_EXTENSION_SHA = "1c41a45c2820eb52f1b41955ae5fbb833470cba2203226d3b0c626c6f9dbe10b"
 SYSTEM_SHA = "2cec3aeebce2f8359cde337d3b1b2ec1601913711f282ab0289ab276b02dee79"
@@ -149,7 +147,8 @@ def validate_headers(values: dict[str, str], args: argparse.Namespace) -> tuple[
     if (provider, model, thinking) != (args.provider, args.model, args.thinking) or values["PI_AUTH_TYPE"] != auth:
         fail("qualification authenticated model identity differs from task receipt")
     extension, extension_sha = parse_path_digest(values["PI_EXTENSION"], "Pi extension")
-    if not extension.endswith("/docs/evaluation/pi-cold-agent-extension.ts") or extension_sha not in EXTENSION_SHAS:
+    if (not extension.endswith("/docs/evaluation/pi-cold-agent-extension.ts") or
+            extension_sha not in (LEGACY_EXTENSION_SHA, CURRENT_EXTENSION_SHA)):
         fail("qualification boundary extension differs from the pinned source")
     system_prompt, system_sha = parse_path_digest(values["PI_SYSTEM_PROMPT"], "Pi system prompt")
     if not system_prompt.endswith("/docs/evaluation/pi-cold-agent-system-prompt.txt") or system_sha != SYSTEM_SHA:
@@ -206,6 +205,7 @@ def validate_headers(values: dict[str, str], args: argparse.Namespace) -> tuple[
 
 
 def validate_boundary(values: dict[str, str], args: argparse.Namespace, session: str, extension: str) -> None:
+    _, extension_sha = parse_path_digest(values["PI_EXTENSION"], "Pi extension")
     boundary = loads(values["PI_BOUNDARY"], "qualification boundary")
     boundary = require_keys(boundary, {
         "schema", "boundaryKind", "mode", "targetCommit", "hostWorkspace", "guestWorkspace",
@@ -246,7 +246,9 @@ def validate_boundary(values: dict[str, str], args: argparse.Namespace, session:
     if boundary["schema"] == "nomos.pi_cold_agent_boundary@3":
         if "PI_RAW_EVENTS_SHA256" not in values:
             fail("current qualification omits the raw event-stream digest")
-        if not fixture and file_sha256(extension, "Pi boundary extension") not in EXTENSION_SHAS:
+        if extension_sha != CURRENT_EXTENSION_SHA:
+            fail("current qualification names an obsolete boundary extension")
+        if not fixture and file_sha256(extension, "Pi boundary extension") != CURRENT_EXTENSION_SHA:
             fail("qualification boundary extension bytes differ")
         runtime = require_keys(
             boundary.get("runtimeIdentity"),
@@ -281,6 +283,8 @@ def validate_boundary(values: dict[str, str], args: argparse.Namespace, session:
             elif runtime["providerExtension"] is not None:
                 fail("qualification runtime unexpectedly loads a provider extension")
     else:
+        if extension_sha != LEGACY_EXTENSION_SHA:
+            fail("legacy qualification boundary extension differs")
         if legacy_task_receipt_digest(args) not in LEGACY_TASK_RECEIPT_SHA256S:
             fail("legacy qualification boundary is not bound to one of the four frozen formal task receipts")
         if "runtimeIdentity" in boundary:

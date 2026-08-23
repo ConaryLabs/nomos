@@ -169,6 +169,12 @@ docs/evaluation/pi-cold-agent-preflight.sh gemini
 docs/evaluation/pi-cold-agent-preflight.sh deepseek
 ```
 
+The operator first commits the exact attempt reservation, completes the neutral
+preflight, then appends and commits the ledger's distinct `launch` event before
+provider invocation. The task launcher requires that marker. Cancellation is
+available only before it exists; after it exists, even a failed transport must
+close from an authenticated inconclusive task record.
+
 Pi is pinned by npm integrity and installed-tree digest. The Gemini adapter is
 separately named and pinned; package discovery remains disabled, and only that
 provider entry point plus the repository boundary extension are loaded

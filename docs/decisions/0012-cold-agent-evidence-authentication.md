@@ -41,9 +41,12 @@ single-record proof for lifecycle, command derivation, qualification, boundary,
 accounting, immutable packet, and artifact evidence. A hash, skeletal launcher,
 or consistently rehashed invalid record cannot close an attempt.
 
-A reservation cancelled before provider launch is retained as an explicit
-`discarded-before-launch` event with a reason rather than fabricated as a task
-receipt or left available for silent reuse.
+A reservation is followed by a separately committed launch event immediately
+before provider invocation. The launcher requires that exact marker. A reserved
+attempt may be cancelled as `discarded-before-launch` only while no launch event
+exists; after launch it must remain open until receipt-backed close, including
+an inconclusive transport. This makes cancellation state authenticated rather
+than operator-asserted.
 
 `plan.json`, `packet-manifest.json`, and `task-receipt.json` use exact
 allowlisted schemas, strict scalar types, and canonical sorted compact JSON.
@@ -81,8 +84,8 @@ result hashes. No old session is upgraded to revision 5 and no retry is erased
 or authorized.
 
 Future formal tasks require boundary schema `@3`, an authenticated runtime
-identity, a raw-stream digest, an exact prospective reservation, and a
-receipt-backed close event.
+identity, a raw-stream digest, an exact prospective reservation, a separately
+committed launch marker, and a receipt-backed close event.
 
 ## Owner disposition
 

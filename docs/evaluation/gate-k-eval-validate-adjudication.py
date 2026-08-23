@@ -11,6 +11,8 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from gate_k_eval_pi_protocol import loads
+
 
 SHA256 = re.compile(r"^[0-9a-f]{64}$")
 ROOT_KEYS = {
@@ -52,21 +54,10 @@ def fail(message: str) -> None:
     raise SystemExit(f"gate-k command adjudication: FAIL: {message}")
 
 
-def reject_duplicate_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
-    result: dict[str, Any] = {}
-    for key, value in pairs:
-        if key in result:
-            fail(f"duplicate JSON key: {key}")
-        result[key] = value
-    return result
-
-
 def load_json(path: Path) -> dict[str, Any]:
     try:
-        value = json.loads(
-            path.read_text(encoding="utf-8"), object_pairs_hook=reject_duplicate_keys
-        )
-    except (OSError, UnicodeError, json.JSONDecodeError) as error:
+        value = loads(path.read_text(encoding="utf-8"), str(path))
+    except (OSError, UnicodeError, ValueError) as error:
         fail(f"cannot read {path}: {error}")
     if not isinstance(value, dict):
         fail(f"JSON root is not an object: {path}")

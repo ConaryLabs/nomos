@@ -7,12 +7,30 @@ fail() {
   exit 1
 }
 
-[[ $# -eq 2 ]] || fail 'usage: gate-k-eval-verify-packet.sh PACKET EXPECTED_COMMIT'
-packet=$1
-expected_commit=$2
+post_run=false
+if [[ $# -eq 3 && $1 == --post-run ]]; then
+  post_run=true
+  packet=$2
+  expected_commit=$3
+elif [[ $# -eq 2 ]]; then
+  packet=$1
+  expected_commit=$2
+else
+  fail 'usage: gate-k-eval-verify-packet.sh [--post-run] PACKET EXPECTED_COMMIT'
+fi
 [[ $expected_commit =~ ^[0-9a-f]{40}$ ]] || fail 'expected commit is not a full lowercase SHA-1'
-[[ -d $packet && ! -L $packet ]] || fail "packet is not a real directory: $packet"
-packet=$(realpath -e "$packet")
+supplied_packet=$packet
+while [[ $supplied_packet != / && $supplied_packet == */ ]]; do
+  supplied_packet=${supplied_packet%/}
+done
+[[ -d $supplied_packet && ! -L $supplied_packet ]] ||
+  fail "packet is not a real directory: $packet"
+packet_parent=$(realpath -e "$(dirname -- "$supplied_packet")")
+packet_name=$(basename -- "$supplied_packet")
+[[ $packet_name != . && $packet_name != .. ]] || fail "packet is not a real directory: $packet"
+packet=$(realpath -e "$supplied_packet")
+[[ $packet == "$packet_parent/$packet_name" ]] ||
+  fail "packet is not a real directory: $supplied_packet"
 document_validator="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)/gate-k-eval-validate-documents.py"
 
 for name in jq sha256sum stat find sort cmp; do
@@ -54,18 +72,35 @@ jq -e \
     (.schemaIdentity == null or (.schemaIdentity | test("^[a-z][a-z0-9_.]*@[1-9][0-9]*$"))))
   ' "$packet/packet-manifest.json" >/dev/null || fail 'packet manifest shape is invalid'
 
+shape=$(jq -r '.shape' "$packet/packet-manifest.json")
+writable=$(jq -r '.writablePaths[0]' "$packet/packet-manifest.json")
+
 tmp_dir=$(mktemp -d)
 trap 'rm -r -- "$tmp_dir"' EXIT
-find "$packet" -type f -printf '%P\n' | sort >"$tmp_dir/actual-paths"
-{
-  jq -r '.files[].path' "$packet/packet-manifest.json"
-  printf 'packet-manifest.json\n'
-} | sort >"$tmp_dir/declared-paths"
+if [[ $post_run == true ]]; then
+  find "$packet" -type f ! -path "$packet/$writable/*" -printf '%P\n' |
+    sort >"$tmp_dir/actual-paths"
+  {
+    jq -r --arg writable "$writable" '
+      .files[].path | select(. != $writable and (startswith($writable + "/") | not))
+      ' "$packet/packet-manifest.json"
+    printf 'packet-manifest.json\n'
+  } | sort >"$tmp_dir/declared-paths"
+else
+  find "$packet" -type f -printf '%P\n' | sort >"$tmp_dir/actual-paths"
+  {
+    jq -r '.files[].path' "$packet/packet-manifest.json"
+    printf 'packet-manifest.json\n'
+  } | sort >"$tmp_dir/declared-paths"
+fi
 cmp -s "$tmp_dir/actual-paths" "$tmp_dir/declared-paths" ||
   fail 'packet file set differs from its manifest'
 
-jq -r '.files[] | [.path, (.bytes|tostring), .mode, .sha256] | @tsv' \
-  "$packet/packet-manifest.json" >"$tmp_dir/rows"
+jq -r --arg writable "$writable" --argjson post_run "$post_run" '
+  .files[] |
+  select(($post_run and (.path == $writable or (.path | startswith($writable + "/")))) | not) |
+  [.path, (.bytes|tostring), .mode, .sha256] | @tsv
+  ' "$packet/packet-manifest.json" >"$tmp_dir/rows"
 while IFS=$'\t' read -r relative expected_bytes expected_mode expected_sha; do
   path="$packet/$relative"
   [[ -f $path && ! -L $path ]] || fail "declared file is absent or not regular: $relative"
@@ -78,8 +113,6 @@ while IFS=$'\t' read -r relative expected_bytes expected_mode expected_sha; do
   [[ $actual_sha == "$expected_sha" ]] || fail "SHA-256 mismatch: $relative"
 done <"$tmp_dir/rows"
 
-shape=$(jq -r '.shape' "$packet/packet-manifest.json")
-writable=$(jq -r '.writablePaths[0]' "$packet/packet-manifest.json")
 [[ -d $packet/$writable && ! -L $packet/$writable ]] ||
   fail "declared writable directory is absent: $writable"
 empty_directories=$(find "$packet" -mindepth 1 -type d -empty -printf '%P\n' | sort)
@@ -192,13 +225,16 @@ plan_binary_sha=$(jq -r '.candidate.binarySha256 // empty' "$packet/plan.json")
   fail 'binary identity differs between plan and manifest'
 prompt_sha=$(sha256sum "$packet/prompt.txt")
 prompt_sha=${prompt_sha%% *}
+brief_sha=$(sha256sum "$packet/brief.txt")
+brief_sha=${brief_sha%% *}
 
 jq -e \
   --arg commit "$expected_commit" \
   --arg shape "$shape" \
   --arg writable "$writable" \
   --arg binary_sha "$manifest_binary_sha" \
-  --arg prompt_sha "$prompt_sha" '
+  --arg prompt_sha "$prompt_sha" \
+  --arg brief_sha "$brief_sha" '
   .schema == "nomos.gate_k.eval_plan@1" and
   .task.shape == $shape and
   (.task.classification == "rehearsal" or .task.classification == "formal") and
@@ -206,6 +242,8 @@ jq -e \
   .candidate.commit == $commit and
   .candidate.binaryPath == "bin/nomos" and
   .candidate.binarySha256 == $binary_sha and
+  .packet.briefPath == "brief.txt" and
+  .packet.briefSha256 == $brief_sha and
   .packet.promptPath == "prompt.txt" and
   .packet.promptSha256 == $prompt_sha and
   .packet.writablePaths == [$writable] and

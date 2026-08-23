@@ -128,10 +128,10 @@ if [[ $classification == formal ]]; then
   [[ -n $attempt_id ]] || fail 'formal launch requires NOMOS_FORMAL_ATTEMPT_ID'
   [[ -z $(git -C "$repo_root" status --porcelain=v1 --untracked-files=all) ]] ||
     fail 'formal launch tooling and attempt ledger must be a clean committed checkout'
-  attempt_ledger_commit=$(python3 "$attempt_validator" verify-reservation "$attempt_ledger" \
+  attempt_ledger_commit=$(python3 "$attempt_validator" verify-launch "$attempt_ledger" \
     "$attempt_id" "$commit" "$shape" "$provider" "$model" "$thinking" \
     "$manifest_sha" "$prompt_sha" --committed-repo "$repo_root") ||
-    fail 'formal launch lacks an exact committed prelaunch reservation'
+    fail 'formal launch lacks an exact committed launch marker'
 fi
 
 tmp_dir=$(mktemp -d)

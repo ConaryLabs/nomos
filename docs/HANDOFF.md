@@ -61,6 +61,16 @@ binds the plan prompt to its reservation, rejects overflow in the shared JSON
 loader, admits only the four exact canonical historical imports, and requires
 their exact frozen inventory during Gate K final assembly. A fresh exact-head
 audit remains.
+The eleventh exact-head audit rejected `27e7f25`: authenticated close returned
+before candidate/checker validation, reopened packets did not re-prove their
+complete shape or brief binding, the standalone adjudication consumer accepted
+non-finite numbers, current qualifications admitted the obsolete extension,
+prelaunch cancellation was operator-asserted, and trailing-slash symlink roots
+bypassed lexical checks. The current repair moves all single-record checks ahead
+of close, reuses complete post-run packet verification, shares strict JSON
+loading, separates legacy/current extension hashes, commits a provider-launch
+event before invocation, and rejects final-component path aliases. A fresh
+exact-head audit remains.
 This file orients a fresh session; it is rewritten at each slice boundary and
 never accumulates history (git has that).
 
@@ -466,7 +476,7 @@ never accumulates history (git has that).
 
 ## What is next
 
-Commit the sixth-audit repair, complete its exact-head non-author rerun, and
+Commit the eleventh-audit repair, complete its exact-head non-author rerun, and
 finish CI for #79. The externally assembled immutable #71 and #72 structured
 results still have SHA-256
 `e6990dacde903f527d1cb46784a54d938a7e130f1193e51bb830a4a2284f07dc` and

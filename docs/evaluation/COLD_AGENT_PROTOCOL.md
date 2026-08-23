@@ -259,14 +259,16 @@ the same brief.
 
 Before a formal provider task launches, the operator appends a content-addressed
 reservation to `docs/evaluation/gate-k-formal-attempt-ledger.jsonl` and commits
-it. Reservations are globally ordered and hash-chained. A launch must bind the
-exact open reservation, candidate, packet manifest, prompt, shape, provider,
-model, and thinking level. The complete recorded task directory is validated:
+it. After all prelaunch checks, the operator appends and commits a distinct
+`launch` event immediately before invoking the provider. Reservations and
+launches are globally ordered and hash-chained. The launcher requires that exact
+committed marker and binds the open reservation, candidate, packet manifest,
+prompt, shape, provider, model, and thinking level. The complete recorded task directory is validated:
 the canonical receipt and exact launcher must agree with the retained manifest,
 transcript, commands, qualification, stderr, boundary, and artifact tree. The
 plan's prompt digest must equal the reserved prompt digest. The launcher status
 mechanically determines the receipt outcome, and its ledger
-commit must be the repository HEAD that contains the open reservation. Only then
+commit must be the repository HEAD that contains the launch marker. Only then
 are the derived receipt hash and outcome appended as a closing event, including
 an inconclusive transport. Close uses finalization's same semantic task-record
 proof; a bare hash, skeletal launcher, or consistently rehashed invalid record
@@ -281,10 +283,11 @@ inventory, so a later reservation, close, cancellation, or import cannot be
 omitted from the final disposition. A future authorized attempt therefore
 requires an explicit protocol/tooling revision and a new frozen candidate.
 
-If the operator cancels before provider launch, the reservation is closed only
+If the operator cancels before the committed launch marker, the reservation is closed only
 by an explicit `discarded-before-launch` event with a non-empty reason. It has no
 task receipt and cannot be represented as a completed or inconclusive provider
-run. A completed launcher cannot use this path.
+run. Once the marker exists, cancellation is forbidden; a failed transport
+remains open until an authenticated inconclusive receipt closes it.
 
 ## 9. Required evidence record
 
