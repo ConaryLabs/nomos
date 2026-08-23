@@ -83,7 +83,7 @@ assert_blocked 'packet is not a real directory' trailing-slash-packet-alias \
   "$(jq -r '.candidateCommit' "$base_checker/task-receipt.json")"
 
 cp -R "$base_checker" "$tmp_dir/obsolete-extension-record"
-sed 's/c3250d9fc3715185213c4c43de80e1397af0bbafa9140a0fea4251976ad8be41/5076b923aad8ebf6d46110ca0bd45e62911ace563bdfe58e6418b6a14b519f46/' \
+sed 's/d242e2de63e1228a32d7e890bf7cb852e71680813a7aa8f55fc500af64923043/5076b923aad8ebf6d46110ca0bd45e62911ace563bdfe58e6418b6a14b519f46/' \
   "$base_checker/pi-qualification.txt" \
   >"$tmp_dir/obsolete-extension-record/pi-qualification.txt"
 refresh_record_receipt_digests "$tmp_dir/obsolete-extension-record"

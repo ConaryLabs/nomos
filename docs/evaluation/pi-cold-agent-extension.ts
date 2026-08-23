@@ -95,7 +95,15 @@ function sandboxArguments(
 	const deviceMount =
 		boundaryKind === "source-preflight"
 			? ["--dev", "/dev"]
-			: ["--dev-bind", "/dev/null", "/dev/null"];
+			: [
+					"--tmpfs",
+					"/dev",
+					"--dev-bind",
+					"/dev/null",
+					"/dev/null",
+					"--remount-ro",
+					"/dev",
+				];
 	const processMountPolicy =
 		boundaryKind === "packet-run" ? ["--remount-ro", "/proc"] : [];
 	const writableMounts =
