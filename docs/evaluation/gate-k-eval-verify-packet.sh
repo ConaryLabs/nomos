@@ -77,6 +77,9 @@ shape=$(jq -r '.shape' "$packet/packet-manifest.json")
 writable=$(jq -r '.writablePaths[0]' "$packet/packet-manifest.json")
 [[ -d $packet/$writable && ! -L $packet/$writable ]] ||
   fail "declared writable directory is absent: $writable"
+empty_directories=$(find "$packet" -mindepth 1 -type d -empty -printf '%P\n' | sort)
+[[ -z $empty_directories || $empty_directories == "$writable" ]] ||
+  fail "packet contains an undeclared empty directory: $empty_directories"
 [[ -x $packet/bin/nomos && ! -L $packet/bin/nomos ]] || fail 'candidate binary is absent or not executable'
 [[ ! -e $packet/.git ]] || fail 'packet contains Git metadata'
 marker=$(<"$packet/.nomos-candidate-commit")

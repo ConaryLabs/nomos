@@ -140,6 +140,17 @@ assert_blocked 'credential-like file' debug-credential-input \
   --forensics "$tmp_dir/forensics-with-credentials" \
   --out "$tmp_dir/debug-credential-packet"
 
+cp -R "$tmp_dir/debug-seed/forensics" "$tmp_dir/forensics-with-empty-answer"
+mkdir -m 755 "$tmp_dir/forensics-with-empty-answer/expected-answer-is-duplicate-unlock"
+assert_blocked 'unbound empty directory' debug-empty-directory-input \
+  "$packet_builder" debug --candidate "$candidate" --commit "$commit" \
+  --brief "$rehearsals/debug-brief.txt" --prompt "$rehearsals/debug-prompt.txt" \
+  --world "$tmp_dir/debug-seed/gaol.world" \
+  --failure-input "$tmp_dir/debug-seed/failing.commands" \
+  --run-artifacts "$tmp_dir/debug-seed/failing.run" \
+  --forensics "$tmp_dir/forensics-with-empty-answer" \
+  --out "$tmp_dir/debug-empty-directory-packet"
+
 cp -R "$tmp_dir/debug-2" "$tmp_dir/declared-history-packet"
 mkdir -m 755 "$tmp_dir/declared-history-packet/input/forensics/.git"
 printf '%s\n' '[core]' >"$tmp_dir/declared-history-packet/input/forensics/.git/config"
@@ -152,6 +163,11 @@ printf '%s\n' 'unrelated' >"$tmp_dir/declared-unrelated-packet/unrelated.md"
 declare_packet_file "$tmp_dir/declared-unrelated-packet" unrelated.md
 assert_blocked 'outside the shape allowlist' declared-unrelated-packet \
   "$packet_verifier" "$tmp_dir/declared-unrelated-packet" "$commit"
+
+cp -R "$tmp_dir/debug-2" "$tmp_dir/undeclared-empty-directory-packet"
+mkdir -m 755 "$tmp_dir/undeclared-empty-directory-packet/input/forensics/expected-answer-is-duplicate-unlock"
+assert_blocked 'undeclared empty directory' declared-empty-directory-packet \
+  "$packet_verifier" "$tmp_dir/undeclared-empty-directory-packet" "$commit"
 
 cp -R "$tmp_dir/author-2" "$tmp_dir/tampered-packet"
 printf 'tampered\n' >>"$tmp_dir/tampered-packet/prompt.txt"
@@ -190,6 +206,16 @@ record_task() {
 }
 
 launch_task author-subject "$tmp_dir/author-1"
+mkdir -m 755 "$tmp_dir/author-1/workspace/expected-answer-is-watch-lamp"
+assert_blocked 'subject artifacts contain an unbound empty directory' \
+  recorder-empty-artifact-directory \
+  "$task_recorder" "$tmp_dir/author-1" \
+  "$tmp_dir/author-subject-raw/transcript.ndjson" \
+  "$tmp_dir/author-subject-raw/stderr.txt" \
+  "$tmp_dir/author-subject-raw/qualification.txt" \
+  "$tmp_dir/author-subject-raw/launcher.txt" "$commit" \
+  "$tmp_dir/empty-directory-subject-record"
+rmdir "$tmp_dir/author-1/workspace/expected-answer-is-watch-lamp"
 record_task author-subject "$tmp_dir/author-1"
 jq -e '.outcome == "eligible-for-checker" and .formalAttempt == false' \
   "$tmp_dir/author-subject-record/task-receipt.json" >/dev/null
@@ -225,6 +251,15 @@ assert_blocked 'subject artifacts differ from its task receipt' checker-injected
   --subject-record "$tmp_dir/injected-subject-record" \
   --out "$tmp_dir/injected-checker-packet"
 
+cp -R "$tmp_dir/author-subject-record" "$tmp_dir/empty-directory-subject-record"
+mkdir -m 755 "$tmp_dir/empty-directory-subject-record/artifacts/expected-answer-is-watch-lamp"
+assert_blocked 'unbound empty directory' checker-empty-directory-artifacts \
+  "$packet_builder" author-checker --candidate "$candidate" --commit "$commit" \
+  --brief "$rehearsals/author-checker-brief.txt" \
+  --prompt "$rehearsals/author-checker-prompt.txt" \
+  --subject-record "$tmp_dir/empty-directory-subject-record" \
+  --out "$tmp_dir/empty-directory-checker-packet"
+
 cp -R "$tmp_dir/author-subject-record" "$tmp_dir/substituted-command-record"
 printf '%s\n' 'SECRET_EXPECTED_ANSWER_AND_UNRECORDED_COMMANDS' \
   >"$tmp_dir/substituted-command-record/commands.json"
@@ -253,6 +288,18 @@ assert_blocked 'checker subject commands are invalid' declared-substituted-comma
 
 launch_task author-checker "$tmp_dir/author-checker-1"
 record_task author-checker "$tmp_dir/author-checker-1"
+mkdir -m 755 "$tmp_dir/author-subject-record/artifacts/unbound-empty-subject-directory"
+assert_blocked 'artifact tree contains an unbound empty directory' \
+  finalizer-empty-subject-directory \
+  "$finalizer" "$tmp_dir/author-subject-record" "$tmp_dir/author-checker-record" \
+  pass fixture-adjudicator fixture-owner "$tmp_dir/empty-subject-directory-run"
+rmdir "$tmp_dir/author-subject-record/artifacts/unbound-empty-subject-directory"
+mkdir -m 755 "$tmp_dir/author-checker-record/artifacts/unbound-empty-checker-directory"
+assert_blocked 'artifact tree contains an unbound empty directory' \
+  finalizer-empty-checker-directory \
+  "$finalizer" "$tmp_dir/author-subject-record" "$tmp_dir/author-checker-record" \
+  pass fixture-adjudicator fixture-owner "$tmp_dir/empty-checker-directory-run"
+rmdir "$tmp_dir/author-checker-record/artifacts/unbound-empty-checker-directory"
 "$finalizer" "$tmp_dir/author-subject-record" "$tmp_dir/author-checker-record" \
   pass fixture-adjudicator fixture-owner "$tmp_dir/author-run" >/dev/null
 jq -e '.verdict == "pass" and .formalAttempt == false and .shape == "author"' \

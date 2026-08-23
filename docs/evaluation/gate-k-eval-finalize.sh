@@ -29,6 +29,16 @@ for record in "$subject" "$checker"; do
   done
   [[ -d $record/artifacts && ! -L $record/artifacts ]] || fail "artifact tree is absent: $record"
   [[ -z $(find "$record" -type l -print -quit) ]] || fail "task record contains a symlink: $record"
+  [[ -z $(find "$record" ! -type f ! -type d -print -quit) ]] ||
+    fail "task record contains a special entry: $record"
+  actual_top=$(find "$record" -mindepth 1 -maxdepth 1 -printf '%f\n' | sort)
+  expected_top=$(printf '%s\n' TASK.md accounting.json artifacts boundary.json commands.json \
+    launcher.txt packet-manifest.json pi-qualification.txt pi-stderr.txt plan.json prompt.txt \
+    task-receipt.json transcript.ndjson | sort)
+  [[ $actual_top == "$expected_top" ]] || fail "task record top-level allowlist mismatch: $record"
+  empty_artifact_directory=$(find "$record/artifacts" -mindepth 1 -type d -empty -print -quit)
+  [[ -z $empty_artifact_directory ]] ||
+    fail "artifact tree contains an unbound empty directory: ${empty_artifact_directory#"$record/artifacts"/}"
 done
 [[ ! -e $out ]] || fail "output already exists: $out"
 out_parent=$(realpath -e "$(dirname "$out")")

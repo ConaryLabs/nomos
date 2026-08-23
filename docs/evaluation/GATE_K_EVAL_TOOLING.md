@@ -28,6 +28,13 @@ The task mount has two layers:
 2. exactly one declared packet directory is remounted read-write:
    `workspace/` for a cold author or `output/` for a cold debugger/checker.
 
+Every packet directory other than a currently empty declared writable root must
+be the prefix of at least one manifested regular file. Input trees, recorded
+artifact trees, checker construction, verification, and finalization reject
+empty descendant directories. This makes directory topology a consequence of
+content-addressed file paths and prevents an unmanifested directory name from
+carrying a hidden answer or unrelated context.
+
 For packet runs, the otherwise empty `/tmp`, `/dev`, and `/home/subject`
 directories are read-only, and the process filesystem is remounted read-only.
 The boundary self-test proves the device filesystem is empty and writes fail at
@@ -196,6 +203,16 @@ repaired debug runs. Durable records live at
 `docs/evaluation/runs/rehearsal/2026-08-23-claude-opus-5-debug-r5/`. These are
 issue #70 rehearsal evidence only and do not spend or satisfy either formal
 Gate K attempt.
+
+The non-author audit of evidence head
+`d317122887dbacb106c257944ee6e0a2d3237e1f` invalidated r5 despite finding its
+actual sessions and receipts clean. Copy, manifest, artifact hashing, and
+finalization preserved empty directories while binding only regular files; an
+empty directory name could therefore disclose an expected answer without
+changing a packet or receipt digest. Packet construction, verification,
+recording, and finalization now reject every empty descendant directory, and
+the offline suite reproduces the attack at each boundary. Both shapes require
+clean replacement r6 pairs.
 
 ## Invalidation
 

@@ -105,6 +105,8 @@ regular_tree() {
   [[ -z $(find "$1" -type l -print -quit) ]] || fail "tree contains a symlink: $1"
   [[ -z $(find "$1" ! -type f ! -type d -print -quit) ]] ||
     fail "tree contains a special entry: $1"
+  empty=$(find "$1" -mindepth 1 -type d -empty -print -quit)
+  [[ -z $empty ]] || fail "tree contains an unbound empty directory: ${empty#"$1"/}"
   while IFS= read -r -d '' entry; do
     relative=${entry#"$1"/}
     [[ $relative =~ ^[A-Za-z0-9.][A-Za-z0-9._/-]*$ && $relative != *..* &&
@@ -293,7 +295,10 @@ cleanup() {
 }
 trap cleanup EXIT
 
-install -d -m 755 "$stage/bin" "$stage/reference" "$stage/input" "$stage/$writable_path"
+install -d -m 755 "$stage/bin" "$stage/reference" "$stage/$writable_path"
+if [[ $shape != author-checker ]]; then
+  install -d -m 755 "$stage/input"
+fi
 install -m 755 "$binary" "$stage/bin/nomos"
 printf '%s\n' "$commit" >"$stage/.nomos-candidate-commit"
 install -m 644 "$candidate/README.md" "$stage/reference/README.md"
@@ -524,6 +529,9 @@ actual_count=$(find "$stage" -type f ! -name packet-manifest.json | wc -l)
 [[ -z $(find "$stage" -type l -print -quit) ]] || fail "packet contains a symlink"
 [[ -z $(find "$stage" ! -type f ! -type d -print -quit) ]] ||
   fail "packet contains a special entry"
+empty_directories=$(find "$stage" -mindepth 1 -type d -empty -printf '%P\n' | sort)
+[[ -z $empty_directories || $empty_directories == "$writable_path" ]] ||
+  fail "packet contains an undeclared empty directory: $empty_directories"
 
 mv -- "$stage" "$out"
 trap - EXIT

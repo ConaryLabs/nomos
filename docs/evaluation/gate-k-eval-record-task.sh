@@ -151,6 +151,9 @@ printf '%s\n' "$accounting" | jq -S -c . >"$stage/accounting.json"
 [[ -z $(find "$packet/$writable" -type l -print -quit) ]] || fail 'subject artifacts contain a symlink'
 [[ -z $(find "$packet/$writable" ! -type f ! -type d -print -quit) ]] ||
   fail 'subject artifacts contain a special entry'
+empty_artifact_directory=$(find "$packet/$writable" -mindepth 1 -type d -empty -print -quit)
+[[ -z $empty_artifact_directory ]] ||
+  fail "subject artifacts contain an unbound empty directory: ${empty_artifact_directory#"$packet/$writable"/}"
 while IFS= read -r -d '' relative; do
   relative=${relative#./}
   if [[ -d $packet/$writable/$relative ]]; then

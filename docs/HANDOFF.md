@@ -1,7 +1,8 @@
 # Handoff — state of the repository
 
-Updated 2026-08-23 for issue #70 after the clean r5 non-formal cold-agent
-rehearsals passed. Semantic implementation is complete through SW-N on `main`; issue #68
+Updated 2026-08-23 for issue #70 after the non-author audit of the r5
+non-formal cold-agent rehearsals. Semantic implementation is complete through
+SW-N on `main`; issue #68
 merged as PR #74, issue #69 is implemented in draft PR #75, and issue #70 is
 active in draft PR #76 on branch `gate-k-eval-tooling-70`. Gate K evidence
 closure remains in progress.
@@ -167,6 +168,13 @@ never accumulates history (git has that).
   records are under
   `docs/evaluation/runs/rehearsal/2026-08-23-claude-opus-5-author-r5/` and
   `docs/evaluation/runs/rehearsal/2026-08-23-claude-opus-5-debug-r5/`.
+  A non-author audit of evidence head `d317122` found the r5 sessions and
+  receipt chains internally clean but invalidated the harness: copied trees,
+  packet manifests, artifact digests, and finalization bound only regular files
+  while preserving empty directories. A directory name could therefore carry
+  an expected answer without changing a digest. Construction, verification,
+  recording, and finalization now reject empty descendant directories, with
+  adversarial coverage at every boundary. Both shapes require clean r6 pairs.
 - **CI uses `actions/checkout@v7` (#11):** PR and post-merge verification passed
   without the Node 20 compatibility annotation.
 - **The GPT Pro architecture checkpoint is owner-disposed (#25):** review of
@@ -374,9 +382,10 @@ never accumulates history (git has that).
 
 ## What is next
 
-Finish issue #70 by running exact-head repository proof and obtaining a
-replacement non-author audit of the packet allowlists, isolation composition,
-receipt binding, accounting, and r4/r5 evidence. Issue #69 is separately
+Finish issue #70 by committing the empty-directory binding repair, rerunning
+both non-formal rehearsal pairs as r6, running exact-head repository proof, and
+obtaining a replacement non-author audit of the packet allowlists, isolation
+composition, receipt binding, accounting, and r4/r5/r6 evidence. Issue #69 is separately
 implemented and green in draft PR #75; issue #70 remains active in draft PR
 #76.
 No new semantic feature slice is authorized before final Gate K disposition.
