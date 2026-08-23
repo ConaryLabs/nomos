@@ -157,13 +157,18 @@ finding taking highest precedence.
 `commands.json` is not trusted as a self-reported inventory. Recording and
 finalization both derive its exact canonical bytes from paired
 `tool_execution_start` and `tool_execution_end` events in `transcript.ndjson`.
-The derivation rejects missing, duplicate, unpaired, or end-before-start
-tool-call lifecycles. The
+Before sanitization or derivation, every NDJSON object is parsed with duplicate-
+key rejection. The transcript validator requires the exact outer lifecycle,
+paired turns and messages, one unassisted user prompt, terminal settlement,
+strict nonempty session identity, complete provider identity and integer usage,
+and correctly paired tool events. The derivation rejects missing, duplicate,
+unpaired, or end-before-start tool-call lifecycles. The
 adjudication validator then requires exact command-document and row fields,
 contiguous exact-integer ordinals, unique nonempty call IDs, completed Bash
 calls, boolean error flags, one nonempty shell-command argument, and exact
-positive-integer review counts. Its duplicate-key-rejecting parser covers every
-JSON document consumed during finalization, including the checker result. It
+positive-integer review counts. Duplicate-key-rejecting parsers cover every
+JSON document consumed during finalization, including every NDJSON event and
+the checker result. The adjudication validator
 also checks the adjudication candidate directly against both bound task
 receipts.
 
@@ -178,22 +183,29 @@ newline; that the sandbox independently matched the supplied candidate binary;
 that the candidate exists in repository history; and that the checker packet
 manifest binds the exact supplied subject receipt, commands, and every artifact.
 The qualification, launcher, stderr boundary, and accounting records must agree
-exactly with the task receipt and complete transcript. Session, agent,
+exactly with the task receipt and complete transcript. Qualification validation
+requires the complete ordered neutral-preflight header, event envelope, sandbox
+proof, and terminal disposition; new launchers bind its digest. Session, agent,
 retry, prompt, terminal assistant, and usage accounting are rederived during
 finalization; truncated launch or qualification receipts fail closed.
 Finalization reopens the recorded packet root and verifies the exact immutable
 member set plus every member's entry type, size, mode, and digest instead of
-trusting selected copied metadata. The writable task subtree is excluded because
-the subject is required to change it and its final bytes are separately bound by
-the task receipt's artifact-tree digest.
+trusting selected copied metadata. The writable task subtree is excluded from
+the prelaunch immutable-member set because the subject is required to change it,
+then its complete final tree is compared with the task receipt's artifact-tree
+digest. Post-record additions, deletions, symlinks, special entries, empty
+directories, and byte changes fail closed.
 Writable paths are exact by shape (`workspace` only for author subjects;
 `output` for the other three shapes) and must agree across the plan, manifest,
 boundary, and sandbox receipt. Output may overlap neither a task record nor its
-reopened packet. Formal records are pinned to exact `gate-k-rc1` commit
+reopened packet. Formal records are pinned to the four exact task-receipt
+SHA-256 identities from the completed #71/#72 attempts, exact `gate-k-rc1` commit
 `d8a0b85c55aa33c20f46e5dfd9e0d1f317e1f1c9` and release-binary SHA-256
 `4af70accf3d1680f6b0e78f860be5ac62c5ab11b470026a83f01eb5b95051fd1`;
 non-formal rehearsals must target the finalizer checkout and cannot satisfy Gate
-K. A future formal candidate requires an owner-authorized tooling revision.
+K. Re-finalizing those exact records is allowed; constructing any new formal
+record at the invalidated candidate is not. A future formal candidate requires
+an owner-authorized tooling revision.
 Checker command/reason arrays are validated
 element by element. The output must be outside both immutable input records. Missing
 identity, transcript, command, artifact, or result fields fail closed. Operator

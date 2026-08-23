@@ -12,7 +12,7 @@ expected_antigravity_version=0.4.0
 expected_antigravity_integrity='sha512-Trl0lWZRDM6TUhw8UjZ+si4Tx2IxCtLLdEwQ10gOS3BUJfgv/C32HY3m/v9PcLNZWYzo+LEfmamiB5+f0jciCg=='
 expected_antigravity_tree_sha=7980e6825a23f18a9d298953c0efc9f13c1231ce4c814394803b9da9bfb565ce
 expected_extension_sha=5076b923aad8ebf6d46110ca0bd45e62911ace563bdfe58e6418b6a14b519f46
-expected_fake_sha=3ad451d07f9641c14f7123160660fbab0eb9042d744b398bb0bb8fd0e8898046
+expected_fake_sha=7819608f1c597025cda295f8fa54dd0e4a9346f089df64c36a95dbf021d3cd27
 expected_fake_antigravity_sha=944ab25260d0efee3c682f0d79f84beae674e7fe8a36a585f7615944bcec4417
 expected_deepseek_catalog_sha=7954fb3ef750bed773619c9fe259a8eb923b6f4f8455442a33cf8e1fe2fa3773
 
@@ -51,6 +51,8 @@ esac
 
 script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)
 repo_root=$(cd "$script_dir/../.." && pwd -P)
+transcript_validator="$script_dir/gate-k-eval-validate-transcript.py"
+json_validator="$script_dir/gate-k-eval-validate-json.py"
 workspace_arg=${2:-$repo_root}
 [[ -d $workspace_arg ]] || fail "workspace does not exist: $workspace_arg"
 workspace=$(cd "$workspace_arg" && pwd -P)
@@ -317,6 +319,8 @@ fi
 boundary_count=$(grep -Fc 'NOMOS_PI_BOUNDARY ' "$tmp_dir/stderr.txt" || true)
 [[ $boundary_count -eq 1 ]] || fail "expected one runtime boundary record, found $boundary_count"
 boundary_json=$(sed -n 's/^NOMOS_PI_BOUNDARY //p' "$tmp_dir/stderr.txt")
+printf '%s\n' "$boundary_json" | python3 "$json_validator" - ||
+  fail 'runtime boundary contains invalid or duplicate-key JSON'
 printf '%s\n' "$boundary_json" | jq -e \
   --arg workspace "$workspace" \
   --arg target_commit "$target_commit" \
@@ -374,6 +378,8 @@ printf '%s\n' "$boundary_json" | jq -e \
 while IFS= read -r line; do
   printf '%s\n' "$line" | jq -e . >/dev/null || fail 'Pi JSON stream contains a non-JSON line'
 done <"$tmp_dir/events.ndjson"
+python3 "$transcript_validator" "$tmp_dir/events.ndjson" --syntax-only ||
+  fail 'raw qualification event stream contains invalid or duplicate-key JSON'
 jq -c 'walk(if type == "object" then del(.textSignature, .thinkingSignature) else . end)' \
   "$tmp_dir/events.ndjson" >"$tmp_dir/sanitized.ndjson"
 

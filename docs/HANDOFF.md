@@ -18,8 +18,13 @@ truncated, immutable packet members were not fully reopened, output could enter
 a packet, and formal/candidate identity remained relabelable. The current repair
 revalidates the complete Pi lifecycle and receipt chain, verifies every
 immutable packet member, forbids packet/output overlap, and pins formal evidence
-to the exact `gate-k-rc1` commit and binary. Its exact-head non-author rerun
-remains.
+to the exact `gate-k-rc1` commit and binary. A fifth audit rejected `95a5430`:
+event ordering and duplicate NDJSON keys remained open, writable packet output
+was not compared with recorded artifacts, qualification receipts could still be
+selectively truncated, and the invalidated candidate admitted fresh formal
+attempts. The current repair adds strict structured transcript and qualification
+validators, binds the final writable tree, and admits only the four exact frozen
+formal task receipts. Its exact-head non-author rerun remains.
 This file orients a fresh session; it is rewritten at each slice boundary and
 never accumulates history (git has that).
 

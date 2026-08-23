@@ -10,6 +10,9 @@ fail() {
 [[ $# -eq 1 ]] || fail 'usage: gate-k-eval-derive-commands.sh TRANSCRIPT_NDJSON'
 transcript=$1
 [[ -f $transcript && ! -L $transcript ]] || fail 'transcript is absent or not a regular file'
+script_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+python3 "$script_dir/gate-k-eval-validate-transcript.py" "$transcript" --syntax-only ||
+  fail 'transcript contains invalid or duplicate-key JSON'
 
 jq -e -S -c -s '
   to_entries as $events |

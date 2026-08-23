@@ -18,6 +18,8 @@ commit=$6
 out=$7
 script_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 command_deriver="$script_dir/gate-k-eval-derive-commands.sh"
+transcript_validator="$script_dir/gate-k-eval-validate-transcript.py"
+json_validator="$script_dir/gate-k-eval-validate-json.py"
 
 [[ $commit =~ ^[0-9a-f]{40}$ ]] || fail 'commit is not a full lowercase SHA-1'
 for path in "$packet/plan.json" "$packet/packet-manifest.json" "$packet/prompt.txt" \
@@ -45,6 +47,10 @@ accounting_count=$(grep -Fc 'NOMOS_PI_ACCOUNTING ' "$stderr_record" || true)
 [[ $accounting_count -eq 1 ]] || fail "expected one accounting record, found $accounting_count"
 boundary=$(sed -n 's/^NOMOS_PI_BOUNDARY //p' "$stderr_record")
 accounting=$(sed -n 's/^NOMOS_PI_ACCOUNTING //p' "$stderr_record")
+printf '%s\n' "$boundary" | python3 "$json_validator" - ||
+  fail 'boundary record contains invalid or duplicate-key JSON'
+printf '%s\n' "$accounting" | python3 "$json_validator" - ||
+  fail 'accounting record contains invalid or duplicate-key JSON'
 printf '%s\n' "$boundary" | jq -e . >/dev/null || fail 'boundary record is not JSON'
 printf '%s\n' "$accounting" | jq -e . >/dev/null || fail 'accounting record is not JSON'
 
@@ -70,6 +76,13 @@ host_os=$(sed -n 's/^PI_HOST_OS //p' "$qualification")
   fail 'boundary result identity is incomplete'
 [[ -n $pi_version && -n $host_os && $session_timestamp != null ]] ||
   fail 'client, environment, or session-date identity is incomplete'
+session_timestamp_text=$(jq -r . <<<"$session_timestamp")
+prompt=$(<"$packet/prompt.txt")
+derived_accounting=$(python3 "$transcript_validator" "$events" \
+  --prompt "$prompt" --provider "$provider" --model "$model" \
+  --session "$session_id" --started "$session_timestamp_text" \
+  --workspace "$(printf '%s\n' "$boundary" | jq -r '.hostWorkspace')") ||
+  fail 'task transcript is not a complete ordered Pi lifecycle'
 printf '%s\n' "$assistant_messages" | jq -e \
   --arg provider "$provider" --arg model "$model" '
   all(.[]; .message.provider == $provider and .message.model == $model)
@@ -92,20 +105,8 @@ jq -e '
     (.isError | type) == "boolean")
   ' "$tmp_dir/commands.json" >/dev/null || fail 'command record is incomplete or contains an unexpected tool'
 
-observed_turns=$(jq -s '[.[] | select(.type == "turn_start")] | length' "$events")
-observed_tools=$(jq '.commands | length' "$tmp_dir/commands.json")
-recorded_turns=$(printf '%s\n' "$accounting" | jq -r '.assistantTurns // empty')
-recorded_tools=$(printf '%s\n' "$accounting" | jq -r '.toolCalls // empty')
-[[ $recorded_turns == "$observed_turns" ]] || fail 'assistant-turn accounting differs from events'
-[[ $recorded_tools == "$observed_tools" ]] || fail 'tool-call accounting differs from events'
-
-observed_tokens=$(printf '%s\n' "$assistant_messages" | jq '
-  if all(.[]; (.message.usage.totalTokens | type) == "number")
-  then [.[].message.usage.totalTokens] | add
-  else null end
-')
-recorded_tokens=$(printf '%s\n' "$accounting" | jq '.providerReportedTokens')
-[[ $recorded_tokens == "$observed_tokens" ]] || fail 'provider-token accounting differs from events'
+[[ $(jq -S -c . <<<"$accounting") == "$(jq -S -c . <<<"$derived_accounting")" ]] ||
+  fail 'protocol accounting differs from the complete event stream'
 
 if [[ $launcher_status -ne 0 ]]; then
   outcome=inconclusive

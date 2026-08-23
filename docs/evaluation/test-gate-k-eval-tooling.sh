@@ -10,6 +10,7 @@ task_launcher="$repo_root/docs/evaluation/pi-cold-agent-task.sh"
 task_recorder="$repo_root/docs/evaluation/gate-k-eval-record-task.sh"
 finalizer="$repo_root/docs/evaluation/gate-k-eval-finalize.sh"
 command_deriver="$repo_root/docs/evaluation/gate-k-eval-derive-commands.sh"
+transcript_validator="$repo_root/docs/evaluation/gate-k-eval-validate-transcript.py"
 adjudication_validator="$repo_root/docs/evaluation/gate-k-eval-validate-adjudication.py"
 fake_pi="$repo_root/docs/evaluation/fixtures/fake-pi-cold-agent"
 fake_bwrap="$repo_root/docs/evaluation/fixtures/fake-bwrap-pi-cold-agent"
@@ -143,6 +144,14 @@ refresh_record_receipt_digests() {
     .digests.qualificationSha256 = $qualification
     ' "$record/task-receipt.json" >"$update"
   mv -- "$update" "$record/task-receipt.json"
+  update=$(mktemp "$tmp_dir/launcher-qualification.XXXXXX")
+  awk -v qualification="$qualification" '
+    $1 == "PI_TASK_QUALIFICATION_SHA256" {
+      print "PI_TASK_QUALIFICATION_SHA256 " qualification; next
+    }
+    {print}
+    ' "$record/launcher.txt" >"$update"
+  mv -- "$update" "$record/launcher.txt"
 }
 
 refresh_record_runtime_evidence() {
@@ -554,6 +563,8 @@ assert_blocked 'launcher does not bind the transcript' finalizer-truncated-launc
   "$finalizer" "$tmp_dir/author-subject-record" "$tmp_dir/truncated-launcher-record" \
   "$tmp_dir/truncated-launcher.json" "$tmp_dir/truncated-launcher-run"
 
+source "$repo_root/docs/evaluation/test-gate-k-eval-finalizer-adversarial.sh"
+
 jq -c -s '
   to_entries as $events |
   ($events | map(select(.value.type == "tool_execution_start"))[0]) as $start |
@@ -629,6 +640,8 @@ jq -S -c '.commands = [null]' \
   >"$tmp_dir/malformed-result-checker-record/artifacts/checker.update"
 mv -- "$tmp_dir/malformed-result-checker-record/artifacts/checker.update" \
   "$tmp_dir/malformed-result-checker-record/artifacts/checker.json"
+install -m 644 "$tmp_dir/malformed-result-checker-record/artifacts/checker.json" \
+  "$tmp_dir/author-checker-1/output/checker.json"
 refresh_record_receipt_digests "$tmp_dir/malformed-result-checker-record"
 write_pass_adjudication "$tmp_dir/author-subject-record" \
   "$tmp_dir/malformed-result-checker-record" "$tmp_dir/malformed-result-adjudication.json"
@@ -636,6 +649,8 @@ assert_blocked 'checker result is incomplete' finalizer-malformed-checker-result
   "$finalizer" "$tmp_dir/author-subject-record" \
   "$tmp_dir/malformed-result-checker-record" "$tmp_dir/malformed-result-adjudication.json" \
   "$tmp_dir/malformed-result-run"
+install -m 644 "$tmp_dir/author-checker-record/artifacts/checker.json" \
+  "$tmp_dir/author-checker-1/output/checker.json"
 
 cp -R "$tmp_dir/author-checker-record" "$tmp_dir/duplicate-result-checker-record"
 sed '0,/"verdict":"pass"/s//"verdict":"reject","verdict":"pass"/' \
@@ -643,6 +658,8 @@ sed '0,/"verdict":"pass"/s//"verdict":"reject","verdict":"pass"/' \
   >"$tmp_dir/duplicate-result-checker-record/artifacts/checker.update"
 mv -- "$tmp_dir/duplicate-result-checker-record/artifacts/checker.update" \
   "$tmp_dir/duplicate-result-checker-record/artifacts/checker.json"
+install -m 644 "$tmp_dir/duplicate-result-checker-record/artifacts/checker.json" \
+  "$tmp_dir/author-checker-1/output/checker.json"
 refresh_record_receipt_digests "$tmp_dir/duplicate-result-checker-record"
 write_pass_adjudication "$tmp_dir/author-subject-record" \
   "$tmp_dir/duplicate-result-checker-record" "$tmp_dir/duplicate-result-adjudication.json"
@@ -650,6 +667,8 @@ assert_blocked 'duplicate JSON key: verdict' finalizer-duplicate-checker-result 
   "$finalizer" "$tmp_dir/author-subject-record" \
   "$tmp_dir/duplicate-result-checker-record" "$tmp_dir/duplicate-result-adjudication.json" \
   "$tmp_dir/duplicate-result-run"
+install -m 644 "$tmp_dir/author-checker-record/artifacts/checker.json" \
+  "$tmp_dir/author-checker-1/output/checker.json"
 
 cp -R "$tmp_dir/author-checker-record" "$tmp_dir/changed-marker-checker-record"
 jq -S -c '
@@ -749,7 +768,7 @@ mv -- "$tmp_dir/relabeled-checker-record/pi-qualification.update" \
 refresh_record_runtime_evidence "$tmp_dir/relabeled-checker-record"
 write_pass_adjudication "$tmp_dir/author-subject-record" \
   "$tmp_dir/relabeled-checker-record" "$tmp_dir/relabeled-adjudication.json"
-assert_blocked 'recorded immutable packet manifest differs from task record' \
+assert_blocked 'qualification receipt is incomplete' \
   finalizer-relabeled-candidate \
   "$finalizer" "$tmp_dir/author-subject-record" \
   "$tmp_dir/relabeled-checker-record" "$tmp_dir/relabeled-adjudication.json" \
@@ -920,7 +939,7 @@ negative_task forbidden-tool 'task boundary record does not prove the declared p
 negative_task outside-read-succeeded 'task boundary record does not prove the declared packet isolation'
 negative_task outside-write-succeeded 'task boundary record does not prove the declared packet isolation'
 negative_task temporary-write-succeeded 'task boundary record does not prove the declared packet isolation'
-negative_task missing-session 'expected one task session header, found 0'
+negative_task missing-session 'raw task event stream contains invalid or duplicate-key JSON'
 
 cp -R "$tmp_dir/author-2" "$tmp_dir/negative-leak-packet"
 mkdir -m 755 "$tmp_dir/negative-leak-raw"

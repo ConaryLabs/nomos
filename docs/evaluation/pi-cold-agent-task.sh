@@ -26,7 +26,10 @@ esac
 script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)
 preflight="$script_dir/pi-cold-agent-preflight.sh"
 verify_packet="$script_dir/gate-k-eval-verify-packet.sh"
-[[ -x $preflight && -x $verify_packet ]] || fail 'required repository tooling is absent'
+transcript_validator="$script_dir/gate-k-eval-validate-transcript.py"
+json_validator="$script_dir/gate-k-eval-validate-json.py"
+[[ -x $preflight && -x $verify_packet && -x $transcript_validator && -x $json_validator ]] ||
+  fail 'required repository tooling is absent'
 
 for name in jq sha256sum timeout realpath git mktemp cp chmod grep sed; do
   command -v "$name" >/dev/null 2>&1 || fail "required executable not found: $name"
@@ -188,6 +191,8 @@ fi
 while IFS= read -r line; do
   printf '%s\n' "$line" | jq -e . >/dev/null || fail 'task event stream contains a non-JSON line'
 done <"$raw_events"
+python3 "$transcript_validator" "$raw_events" --syntax-only ||
+  fail 'raw task event stream contains invalid or duplicate-key JSON'
 jq -c 'walk(if type == "object" then del(.textSignature, .thinkingSignature) else . end)' \
   "$raw_events" >"$events_out"
 cp "$raw_stderr" "$stderr_out"
@@ -195,6 +200,8 @@ cp "$raw_stderr" "$stderr_out"
 boundary_count=$(grep -Fc 'NOMOS_PI_BOUNDARY ' "$stderr_out" || true)
 [[ $boundary_count -eq 1 ]] || fail "expected one task boundary record, found $boundary_count"
 boundary_json=$(sed -n 's/^NOMOS_PI_BOUNDARY //p' "$stderr_out")
+printf '%s\n' "$boundary_json" | python3 "$json_validator" - ||
+  fail 'task boundary contains invalid or duplicate-key JSON'
 printf '%s\n' "$boundary_json" | jq -e \
   --arg commit "$commit" \
   --arg packet "$packet" \
@@ -281,6 +288,11 @@ terminal_assistant=$(jq -s --arg provider "$provider" --arg model "$model" \
   )
   ' "$events_out")
 [[ $terminal_assistant == true ]] || fail 'terminal assistant result identity or completion is missing'
+session_timestamp=$(jq -sr 'map(select(.type == "session"))[0].timestamp // empty' "$events_out")
+python3 "$transcript_validator" "$events_out" \
+  --prompt "$prompt" --provider "$provider" --model "$model" \
+  --session "$session_id" --started "$session_timestamp" --workspace "$packet" >/dev/null ||
+  fail 'task transcript is not a complete ordered Pi lifecycle'
 
 # The writable subtree is expected to change. Everything else remains exactly
 # bound to the prelaunch manifest, and no new undeclared path may appear.
@@ -307,4 +319,6 @@ printf 'PI_TASK_COMMIT %s\n' "$commit"
 printf 'PI_TASK_PACKET_MANIFEST_SHA256 %s\n' "$manifest_sha"
 printf 'PI_TASK_EVENTS_SHA256 %s\n' "$(sha256sum "$events_out" | cut -d' ' -f1)"
 printf 'PI_TASK_STDERR_SHA256 %s\n' "$(sha256sum "$stderr_out" | cut -d' ' -f1)"
+printf 'PI_TASK_QUALIFICATION_SHA256 %s\n' \
+  "$(sha256sum "$qualification_out" | cut -d' ' -f1)"
 printf 'PI_COLD_AGENT_TASK RECORDED\n'

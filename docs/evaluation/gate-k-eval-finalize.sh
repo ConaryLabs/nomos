@@ -20,6 +20,9 @@ gate_k_rc1_commit=d8a0b85c55aa33c20f46e5dfd9e0d1f317e1f1c9
 gate_k_rc1_binary_sha=4af70accf3d1680f6b0e78f860be5ac62c5ab11b470026a83f01eb5b95051fd1
 adjudication_validator="$script_dir/gate-k-eval-validate-adjudication.py"
 command_deriver="$script_dir/gate-k-eval-derive-commands.sh"
+transcript_validator="$script_dir/gate-k-eval-validate-transcript.py"
+qualification_validator="$script_dir/gate-k-eval-validate-qualification.py"
+json_validator="$script_dir/gate-k-eval-validate-json.py"
 for record in "$subject" "$checker"; do
   [[ -d $record && ! -L $record ]] || fail "task record is absent: $record"
   for file in task-receipt.json plan.json packet-manifest.json prompt.txt transcript.ndjson \
@@ -38,6 +41,11 @@ for record in "$subject" "$checker"; do
   empty_artifact_directory=$(find "$record/artifacts" -mindepth 1 -type d -empty -print -quit)
   [[ -z $empty_artifact_directory ]] ||
     fail "artifact tree contains an unbound empty directory: ${empty_artifact_directory#"$record/artifacts"/}"
+  for json_file in task-receipt.json plan.json packet-manifest.json commands.json \
+    accounting.json boundary.json; do
+    python3 "$json_validator" "$record/$json_file" ||
+      fail "task record contains invalid or duplicate-key JSON: $record/$json_file"
+  done
 done
 subject=$(realpath -e "$subject")
 checker=$(realpath -e "$checker")
@@ -46,6 +54,7 @@ case "$subject/" in "$checker/"*) fail 'subject task record is nested under chec
 case "$checker/" in "$subject/"*) fail 'checker task record is nested under subject' ;; esac
 [[ -f $adjudication && ! -L $adjudication ]] || fail "adjudication is absent: $adjudication"
 adjudication=$(realpath -e "$adjudication")
+python3 "$json_validator" "$adjudication" || fail 'adjudication contains invalid or duplicate-key JSON'
 [[ ! -e $out ]] || fail "output already exists: $out"
 out_parent=$(realpath -e "$(dirname "$out")")
 out="$out_parent/$(basename "$out")"
@@ -66,7 +75,14 @@ for record in "$subject" "$checker"; do
     .schema == "nomos.gate_k.task_receipt@1" and
     .identity.freshEphemeralSession == true and
     .identity.client == "Pi" and
-    (.identity.clientVersion | type) == "string" and
+    (.identity.clientVersion | type) == "string" and (.identity.clientVersion | length) > 0 and
+    (.identity.provider | type) == "string" and (.identity.provider | length) > 0 and
+    (.identity.model | type) == "string" and (.identity.model | length) > 0 and
+    (.identity.thinking | type) == "string" and (.identity.thinking | length) > 0 and
+    (.identity.sessionId | type) == "string" and
+      (.identity.sessionId | test("^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$")) and
+    (.identity.sessionStartedAt | type) == "string" and
+      (.identity.sessionStartedAt | test("^[0-9]{4}-[0-9]{2}-[0-9]{2}T")) and
     .identity.mode == "json" and
     .operatorRetries == 0 and
     .disclosures.persistedSession == false and
@@ -88,6 +104,18 @@ for record in "$subject" "$checker"; do
   receipt_host_os=$(jq -r '.environment.hostOs' "$record/task-receipt.json")
   receipt_class=$(jq -r '.classification' "$record/task-receipt.json")
   receipt_formal=$(jq -r '.formalAttempt' "$record/task-receipt.json")
+  receipt_shape=$(jq -r '.shape' "$record/task-receipt.json")
+  if [[ $receipt_class == formal && $receipt_formal == true ]]; then
+    case $receipt_shape in
+      author) frozen_receipt_sha=732af45918ebc27c02675f6c75c32e7718407545c9fa3a39de327d3591d382a8 ;;
+      author-checker) frozen_receipt_sha=2e8c97d5a939ddd6fa9b33769f6e24b80fc242b1420c2660eef7f9742d542db3 ;;
+      debug) frozen_receipt_sha=2820d2f46b2d895abc22b6677f4f3ba908199cdb9d057aee181b477eaeb82390 ;;
+      debug-checker) frozen_receipt_sha=0053d3df610e7e31322a2cfd9dfc641e160d3e5c64582df387d34cd4ddd37d37 ;;
+      *) fail "formal task shape is invalid: $record" ;;
+    esac
+    [[ $(sha256sum "$record/task-receipt.json" | cut -d' ' -f1) == "$frozen_receipt_sha" ]] ||
+      fail "formal task receipt is not one of the four frozen gate-k-rc1 records: $record"
+  fi
   [[ $(sha256sum "$record/packet-manifest.json" | cut -d' ' -f1) == \
       $(jq -r '.digests.packetManifestSha256' "$record/task-receipt.json") ]] ||
     fail "packet-manifest digest differs from task receipt: $record"
@@ -102,36 +130,10 @@ for record in "$subject" "$checker"; do
     fail "commands do not derive exactly from transcript: $record"
   task_prompt=$(<"$record/prompt.txt")
   boundary_workspace=$(jq -r '.hostWorkspace' "$record/boundary.json")
-  jq -e -s \
-    --arg provider "$receipt_provider" \
-    --arg model "$receipt_model" \
-    --arg session "$receipt_session" \
-    --argjson started "$receipt_started" \
-    --arg workspace "$boundary_workspace" \
-    --arg prompt "$task_prompt" '
-    ([.[] | select(.type == "session")]) as $sessions |
-    ([.[] | select(.type == "agent_start")]) as $starts |
-    ([.[] | select(.type == "agent_end")]) as $ends |
-    ([.[] | select(.type == "agent_settled")]) as $settled |
-    ([.[] | select(.type == "message_end" and .message.role == "user" and
-      .message.content[0].text == $prompt)]) as $users |
-    ([.[] | select(.type == "message_end" and .message.role == "assistant")]) as $assistants |
-    ($assistants | last) as $terminal |
-    ($sessions | length) == 1 and
-    $sessions[0].id == $session and
-    $sessions[0].timestamp == $started and
-    $sessions[0].cwd == $workspace and
-    ($starts | length) == 1 and
-    ($ends | length) == 1 and $ends[0].willRetry == false and
-    ($settled | length) == 1 and
-    ($users | length) == 1 and
-    ($assistants | length) > 0 and
-    all($assistants[];
-      .message.provider == $provider and .message.model == $model) and
-    $terminal.message.stopReason == "stop" and
-    ([$terminal.message.content[] | select(.type == "text") | .text] |
-      join("") | length) > 0
-    ' "$record/transcript.ndjson" >/dev/null ||
+  transcript_accounting=$(python3 "$transcript_validator" "$record/transcript.ndjson" \
+    --prompt "$task_prompt" --provider "$receipt_provider" --model "$receipt_model" \
+    --session "$receipt_session" --started "$(jq -r . <<<"$receipt_started")" \
+    --workspace "$boundary_workspace") ||
     fail "transcript lifecycle or terminal identity is incomplete: $record"
   [[ $(tree_sha "$record/artifacts") == \
       $(jq -r '.digests.artifactsTreeSha256' "$record/task-receipt.json") ]] ||
@@ -145,23 +147,7 @@ for record in "$subject" "$checker"; do
   [[ $(jq -S -c . "$record/accounting.json") == \
       $(jq -S -c '.accounting' "$record/task-receipt.json") ]] ||
     fail "accounting file differs from task receipt: $record"
-  observed_turns=$(jq -s '[.[] | select(.type == "turn_start")] | length' \
-    "$record/transcript.ndjson")
-  observed_tools=$(jq '.commands | length' "$record/commands.json")
-  observed_tokens=$(jq -s '
-    [.[] | select(.type == "message_end" and .message.role == "assistant")] as $messages |
-    if all($messages[]; (.message.usage.totalTokens | type) == "number")
-    then [$messages[].message.usage.totalTokens] | add
-    else null end
-    ' "$record/transcript.ndjson")
-  jq -e \
-    --argjson turns "$observed_turns" \
-    --argjson tools "$observed_tools" \
-    --argjson tokens "$observed_tokens" '
-    .assistantTurns == $turns and
-    .toolCalls == $tools and
-    .providerReportedTokens == $tokens
-    ' "$record/accounting.json" >/dev/null ||
+  [[ $(jq -S -c . "$record/accounting.json") == "$(jq -S -c . <<<"$transcript_accounting")" ]] ||
     fail "accounting does not derive from the transcript: $record"
 
   for packet_file in plan.json prompt.txt; do
@@ -221,6 +207,11 @@ for record in "$subject" "$checker"; do
     formal:clean | rehearsal:clean | rehearsal:fixture-may-be-dirty) ;;
     *) fail "qualification worktree status is ineligible: $record" ;;
   esac
+  python3 "$qualification_validator" "$record/pi-qualification.txt" \
+    --commit "$receipt_commit" --version "$receipt_client_version" --host "$receipt_host_os" \
+    --provider "$receipt_provider" --model "$receipt_model" --thinking "$receipt_thinking" \
+    --lane "${qualification_lanes[0]}" --worktree "${qualification_worktree[0]}" ||
+    fail "qualification receipt is incomplete: $record"
   mapfile -t launcher_commits < <(
     awk '$1 == "PI_TASK_COMMIT" && NF == 2 {print $2}' "$record/launcher.txt"
   )
@@ -245,6 +236,17 @@ for record in "$subject" "$checker"; do
   [[ ${#launcher_events[@]} -eq 1 &&
       ${launcher_events[0]} == "$(sha256sum "$record/transcript.ndjson" | cut -d' ' -f1)" ]] ||
     fail "launcher does not bind the transcript: $record"
+  mapfile -t launcher_qualification < <(
+    awk '$1 == "PI_TASK_QUALIFICATION_SHA256" && NF == 2 {print $2}' "$record/launcher.txt"
+  )
+  if [[ $receipt_class == rehearsal ]]; then
+    [[ ${#launcher_qualification[@]} -eq 1 &&
+        ${launcher_qualification[0]} == "$(sha256sum "$record/pi-qualification.txt" | cut -d' ' -f1)" ]] ||
+      fail "launcher does not bind the qualification receipt: $record"
+  else
+    [[ ${#launcher_qualification[@]} -eq 0 ]] ||
+      fail "frozen formal launcher contains an unrecorded qualification binding: $record"
+  fi
   mapfile -t launcher_sessions < <(sed -n 's/^PI_TASK_SESSION //p' "$record/launcher.txt")
   [[ ${#launcher_sessions[@]} -eq 1 &&
       ${launcher_sessions[0]} == "$receipt_session ephemeral" ]] ||
@@ -276,12 +278,16 @@ for record in "$subject" "$checker"; do
   mapfile -t stderr_boundaries < <(sed -n 's/^NOMOS_PI_BOUNDARY //p' "$record/pi-stderr.txt")
   [[ ${#stderr_boundaries[@]} -eq 1 ]] ||
     fail "Pi stderr does not contain exactly one packet boundary: $record"
+  printf '%s\n' "${stderr_boundaries[0]}" | python3 "$json_validator" - ||
+    fail "Pi stderr boundary contains invalid or duplicate-key JSON: $record"
   stderr_boundary_json=$(jq -S -c . <<<"${stderr_boundaries[0]}")
   [[ $stderr_boundary_json == "$(jq -S -c . "$record/boundary.json")" ]] ||
     fail "Pi stderr boundary differs from task record: $record"
   mapfile -t stderr_accounting < <(sed -n 's/^NOMOS_PI_ACCOUNTING //p' "$record/pi-stderr.txt")
   [[ ${#stderr_accounting[@]} -eq 1 ]] ||
     fail "Pi stderr does not contain exactly one accounting record: $record"
+  printf '%s\n' "${stderr_accounting[0]}" | python3 "$json_validator" - ||
+    fail "Pi stderr accounting contains invalid or duplicate-key JSON: $record"
   stderr_accounting_json=$(jq -S -c . <<<"${stderr_accounting[0]}")
   [[ $stderr_accounting_json == "$(jq -S -c . "$record/accounting.json")" ]] ||
     fail "Pi stderr accounting differs from task record: $record"
@@ -318,7 +324,6 @@ for record in "$subject" "$checker"; do
       '.files[] | select(.path == $path) | [.bytes, .mode, .sha256] | @tsv' \
       "$record/packet-manifest.json") == $'41\t644\t'"$marker_sha" ]] ||
     fail "packet candidate marker differs from task receipt: $record"
-  receipt_shape=$(jq -r '.shape' "$record/task-receipt.json")
   [[ $(jq -r '.task.shape' "$record/plan.json") == "$receipt_shape" ]] ||
     fail "plan shape differs from task receipt: $record"
   [[ $(jq -r '.shape' "$record/packet-manifest.json") == "$receipt_shape" ]] ||
@@ -366,6 +371,9 @@ for record in "$subject" "$checker"; do
     fail "recorded immutable packet contains a special entry: $record"
   [[ -d $packet_root/$expected_writable && ! -L $packet_root/$expected_writable ]] ||
     fail "recorded immutable packet writable root is unavailable: $record"
+  [[ $(tree_sha "$packet_root/$expected_writable") == \
+      $(jq -r '.digests.artifactsTreeSha256' "$record/task-receipt.json") ]] ||
+    fail "recorded packet writable tree differs from task artifacts: $record"
   [[ $(sha256sum "$packet_root/packet-manifest.json" | cut -d' ' -f1) == \
       "$packet_manifest_sha" ]] ||
     fail "recorded immutable packet manifest differs from task record: $record"
