@@ -5,6 +5,7 @@ set -euo pipefail
 repo_root=$(git rev-parse --show-toplevel)
 "$repo_root/docs/evaluation/test-gate-k-attempt-ledger.sh"
 "$repo_root/docs/evaluation/test-gate-k-eval-strictness.sh"
+"$repo_root/docs/evaluation/test-gate-k-rc1-refinalization.sh"
 packet_builder="$repo_root/docs/evaluation/gate-k-eval-packet.sh"
 packet_verifier="$repo_root/docs/evaluation/gate-k-eval-verify-packet.sh"
 seed_builder="$repo_root/docs/evaluation/gate-k-eval-seed-rehearsal.sh"

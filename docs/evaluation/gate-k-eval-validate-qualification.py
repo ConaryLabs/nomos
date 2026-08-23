@@ -47,6 +47,7 @@ LEGACY_EXTENSION_SHA = "5076b923aad8ebf6d46110ca0bd45e62911ace563bdfe58e6418b6a1
 CURRENT_EXTENSION_SHA = "c3250d9fc3715185213c4c43de80e1397af0bbafa9140a0fea4251976ad8be41"
 PI_CLIENT_SHA = "840d1e8e689ed9e4937bcb00b9a810e02a8567d9afb10a47097f11ca93ea1521"
 PROVIDER_EXTENSION_SHA = "1c41a45c2820eb52f1b41955ae5fbb833470cba2203226d3b0c626c6f9dbe10b"
+LEGACY_SYSTEM_SHA = "2cec3aeebce2f8359cde337d3b1b2ec1601913711f282ab0289ab276b02dee79"
 SYSTEM_SHA = "c1c41bf11dd3fc42f47c174b9d431e36dd87afb60aa04d08062dd6e11963c333"
 FINAL_SYSTEM_SHA = "a78cae9025d8b63562a13c111e79e9f27c32ab20e726a53d2d9d8c094712e2b7"
 DEEPSEEK_CATALOG_SHA = "7954fb3ef750bed773619c9fe259a8eb923b6f4f8455442a33cf8e1fe2fa3773"
@@ -150,8 +151,18 @@ def validate_headers(values: dict[str, str], args: argparse.Namespace) -> tuple[
     if (not extension.endswith("/docs/evaluation/pi-cold-agent-extension.ts") or
             extension_sha not in (LEGACY_EXTENSION_SHA, CURRENT_EXTENSION_SHA)):
         fail("qualification boundary extension differs from the pinned source")
+    source_boundary = loads(values["PI_BOUNDARY"], "qualification boundary")
+    expected_system_sha = (
+        LEGACY_SYSTEM_SHA
+        if isinstance(source_boundary, dict)
+        and source_boundary.get("schema") == "nomos.pi_cold_agent_boundary@2"
+        else SYSTEM_SHA
+    )
     system_prompt, system_sha = parse_path_digest(values["PI_SYSTEM_PROMPT"], "Pi system prompt")
-    if not system_prompt.endswith("/docs/evaluation/pi-cold-agent-system-prompt.txt") or system_sha != SYSTEM_SHA:
+    if (
+        not system_prompt.endswith("/docs/evaluation/pi-cold-agent-system-prompt.txt")
+        or system_sha != expected_system_sha
+    ):
         fail("qualification system prompt differs from the pinned source")
     if values["PI_PROVIDER_ENV"] != "overrides-cleared prewarm-disabled":
         fail("qualification provider environment is not neutral")
@@ -197,7 +208,7 @@ def validate_headers(values: dict[str, str], args: argparse.Namespace) -> tuple[
         f"pi --provider {provider} --model {model} --thinking {thinking} --mode json --no-session "
         f"--no-approve --offline --no-extensions{provider_flag} -e {extension} --no-skills "
         f"--no-prompt-templates --no-themes --no-context-files --no-builtin-tools --tools bash "
-        f"--system-prompt <sha256:{SYSTEM_SHA}> <neutral-prompt>"
+        f"--system-prompt <sha256:{expected_system_sha}> <neutral-prompt>"
     )
     if values["PI_INVOCATION"] != expected_invocation:
         fail("qualification invocation differs from the exact neutral command")
@@ -220,6 +231,11 @@ def validate_boundary(values: dict[str, str], args: argparse.Namespace, session:
         "nomos.pi_cold_agent_boundary@4",
     ):
         fail("qualification boundary schema differs")
+    expected_system_sha = (
+        LEGACY_SYSTEM_SHA
+        if boundary["schema"] == "nomos.pi_cold_agent_boundary@2"
+        else SYSTEM_SHA
+    )
     expected = {
         "boundaryKind": "source-preflight", "mode": "json",
         "targetCommit": args.commit, "hostWorkspace": values["PI_WORKSPACE"], "guestWorkspace": "/workspace",
@@ -227,7 +243,7 @@ def validate_boundary(values: dict[str, str], args: argparse.Namespace, session:
         "sessionFile": None, "projectTrusted": False,
         "entryTypesBeforeRun": ["model_change", "thinking_level_change"], "activeTools": ["bash"],
         "configuredTools": [{"name": "bash", "source": {"path": extension, "source": "cli", "scope": "temporary", "origin": "top-level"}}],
-        "contextFiles": [], "skills": [], "systemPromptSha256": SYSTEM_SHA,
+        "contextFiles": [], "skills": [], "systemPromptSha256": expected_system_sha,
         "packetManifestSha256": None, "binarySha256": None, "taskPromptSha256": None,
         "taskShape": None, "writablePaths": [], "budgets": None,
     }
