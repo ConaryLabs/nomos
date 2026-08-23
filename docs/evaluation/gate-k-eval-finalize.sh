@@ -374,7 +374,10 @@ for record in "${records[@]}"; do
     fail "Pi stderr accounting differs from task record: $record"
 
   jq -e '
-    .schema == "nomos.gate_k.packet_manifest@1" and
+    ((.schema == "nomos.gate_k.packet_manifest@1" and
+      (has("protocolRevision") | not)) or
+     (.schema == "nomos.gate_k.packet_manifest@2" and
+      .protocolRevision == 6)) and
     .manifestExcludesSelf == true and
     (.shape == "author" or .shape == "debug" or
      .shape == "author-checker" or .shape == "debug-checker") and
