@@ -13,7 +13,8 @@ for pair in \
   2026-08-23-deepseek-v4-flash-vision-exp-debug; do
   frozen="$runs/$pair"
   rebuilt="$tmp_dir/$pair"
-  "$finalizer" "$frozen/subject-task" "$frozen/checker-task" \
+  "$finalizer" --packet-roots "$frozen/packets/subject" \
+    "$frozen/packets/checker" "$frozen/subject-task" "$frozen/checker-task" \
     "$frozen/adjudication.json" "$rebuilt" >/dev/null
   diff -r "$rebuilt/subject" "$frozen/subject" >/dev/null
   diff -r "$rebuilt/checker" "$frozen/checker" >/dev/null

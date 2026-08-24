@@ -1,0 +1,1 @@
+{"diagnostics":[{"code":"EK0814","message":"command script has the wrong or missing schema header","repairs":["fix_source_syntax"]}],"status":"rejected"}

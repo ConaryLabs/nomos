@@ -25,7 +25,17 @@ real_directory() {
 }
 
 record_only=false
-if [[ $# -eq 2 && $1 == --validate-task-record ]]; then
+subject_packet_override=
+checker_packet_override=
+if [[ $# -eq 7 && $1 == --packet-roots ]]; then
+  subject_packet_override=$2
+  checker_packet_override=$3
+  subject=$4
+  checker=$5
+  adjudication=$6
+  out=$7
+  records=("$subject" "$checker")
+elif [[ $# -eq 2 && $1 == --validate-task-record ]]; then
   record_only=true
   subject=$2
   checker=
@@ -39,7 +49,7 @@ elif [[ $# -eq 4 ]]; then
   out=$4
   records=("$subject" "$checker")
 else
-  fail 'usage: gate-k-eval-finalize.sh SUBJECT_RECORD CHECKER_RECORD ADJUDICATION_JSON OUT | --validate-task-record RECORD'
+  fail 'usage: gate-k-eval-finalize.sh [--packet-roots SUBJECT_PACKET CHECKER_PACKET] SUBJECT_RECORD CHECKER_RECORD ADJUDICATION_JSON OUT | --validate-task-record RECORD'
 fi
 script_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 repo_root=$(realpath -e "$script_dir/../..")
@@ -156,6 +166,15 @@ for record in "${records[@]}"; do
   receipt_formal=$(jq -r '.formalAttempt' "$record/task-receipt.json")
   receipt_shape=$(jq -r '.shape' "$record/task-receipt.json")
   receipt_sha=$(sha256sum "$record/task-receipt.json" | cut -d' ' -f1)
+  archived_rehearsal=false
+  case $receipt_sha in
+    b25ba1d3645b8c1defa9190d9a3be252d2c7422a8e46e8be0779c8533738750c | \
+    aad1bd14793a6daa0d9aea6f3b31282320b1709c7e20f4a247485401577b975e | \
+    44ecceb31e57b34249738d50789b6b5957da63d3e0bc48101ac1186ff0a1fef4 | \
+    18d2405d295aae26e3b25073f280b1a693c27d1f719fc2a59889e5fceda50240)
+      archived_rehearsal=true
+      ;;
+  esac
   if [[ $record_only == false && $receipt_class == formal && $receipt_formal == true ]]; then
     case $receipt_shape in
       author) frozen_receipt_sha=732af45918ebc27c02675f6c75c32e7718407545c9fa3a39de327d3591d382a8 ;;
@@ -538,7 +557,17 @@ for record in "${records[@]}"; do
     fail "boundary does not prove the authenticated packet isolation: $record"
   [[ $packet_root_claim == /* ]] ||
     fail "recorded immutable packet root is unavailable: $record"
-  packet_root=$(real_directory "$packet_root_claim" \
+  packet_root=$packet_root_claim
+  if [[ $record == "$subject" && -n $subject_packet_override ]]; then
+    packet_root=$subject_packet_override
+  elif [[ $record == "$checker" && -n $checker_packet_override ]]; then
+    packet_root=$checker_packet_override
+  fi
+  if [[ $packet_root != "$packet_root_claim" &&
+    $legacy_runtime == false && $archived_rehearsal == false ]]; then
+    fail "packet-root override is not bound to an archived exact receipt: $record"
+  fi
+  packet_root=$(real_directory "$packet_root" \
     "recorded immutable packet root is unavailable: $record")
   if [[ $record_only == false ]]; then
     case "$out/" in "$packet_root/"*) fail 'output must be outside both immutable packets' ;; esac
@@ -604,8 +633,13 @@ for record in "${records[@]}"; do
       fi
       ;;
     rehearsal:false)
-      [[ $receipt_commit == "$repo_head" ]] ||
-        fail "rehearsal candidate differs from the finalizer checkout: $record"
+      if [[ $archived_rehearsal == true ]]; then
+        [[ $receipt_commit == cbfa3f74e92c2e68f9916cff4ceac26859bd2994 ]] ||
+          fail "archived rehearsal candidate differs from its exact tooling head: $record"
+      else
+        [[ $receipt_commit == "$repo_head" ]] ||
+          fail "rehearsal candidate differs from the finalizer checkout: $record"
+      fi
       ;;
     *) fail "classification and formal-attempt status are inconsistent: $record" ;;
   esac
@@ -628,8 +662,10 @@ for record in "${records[@]}"; do
     $plan_binary_sha != "$gate_k_rc1_binary_sha" ]]; then
     fail "formal attempt binary differs from frozen gate-k-rc1: $record"
   fi
-  git -C "$repo_root" cat-file -e "$receipt_commit^{commit}" 2>/dev/null ||
-    fail "candidate commit is absent from repository history: $record"
+  if [[ $legacy_runtime == false && $archived_rehearsal == false ]]; then
+    git -C "$repo_root" cat-file -e "$receipt_commit^{commit}" 2>/dev/null ||
+      fail "candidate commit is absent from repository history: $record"
+  fi
   case $receipt_shape in
     author-checker | debug-checker)
       checker_result="$record/artifacts/checker.json"
@@ -867,6 +903,8 @@ checker_json=$(jq -S -c -n \
        then {protocolRevision: 6} else {} end)
 ')
 printf '%s\n' "$checker_json" >"$stage/checker.json"
+python3 "$document_validator" checker-receipt "$stage/checker.json" ||
+  fail 'generated checker receipt does not satisfy its exact schema'
 
 result=$(jq -S -c -n \
   --arg schema "$run_result_schema" \
@@ -899,6 +937,8 @@ result=$(jq -S -c -n \
        else {commandAdjudication: $adjudication} end)
 ')
 printf '%s\n' "$result" >"$stage/result.json"
+python3 "$document_validator" run-result "$stage/result.json" ||
+  fail 'generated run result does not satisfy its exact schema'
 
 [[ $(tree_sha "$stage/artifacts") == \
     $(jq -r '.digests.artifactsTreeSha256' "$stage/subject/task-receipt.json") ]] ||

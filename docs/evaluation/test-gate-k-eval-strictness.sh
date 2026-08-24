@@ -95,6 +95,22 @@ assert_blocked 'not bound to one of the four frozen formal task receipts' \
 printf '%s\n' '{"schema":"nomos.gate_k.checker_result@1","verdict":"pass","commands":["x"],"reasons":["x"],"extra":NaN}' \
   >"$tmp_dir/checker.json"
 assert_blocked 'non-finite JSON number' python3 "$documents" checker-result "$tmp_dir/checker.json"
+
+current_run="$script_dir/runs/rehearsal/2026-08-24-gemini-author-deepseek-checker-r6"
+python3 "$documents" checker-receipt "$current_run/checker.json"
+python3 "$documents" run-result "$current_run/result.json"
+python3 "$documents" checker-receipt \
+  "$script_dir/runs/gate-k/2026-08-23-gemini-3.7-flash-author/checker.json"
+python3 "$documents" run-result \
+  "$script_dir/runs/gate-k/2026-08-23-gemini-3.7-flash-author/result.json"
+jq -S -c '.undeclared = true' "$current_run/checker.json" \
+  >"$tmp_dir/checker-receipt-extra.json"
+assert_blocked 'checker receipt fields differ from the protocol' \
+  python3 "$documents" checker-receipt "$tmp_dir/checker-receipt-extra.json"
+jq -S -c '.undeclared = true' "$current_run/result.json" \
+  >"$tmp_dir/run-result-extra.json"
+assert_blocked 'run result fields differ from the protocol' \
+  python3 "$documents" run-result "$tmp_dir/run-result-extra.json"
 assert_blocked 'cannot be authenticated' env PYTHONPATH="$protocol_dir" \
   python3 -c 'import importlib.util; s=importlib.util.spec_from_file_location("q", "'"$qualification"'"); m=importlib.util.module_from_spec(s); s.loader.exec_module(m); m.file_sha256("/tmp/nomos-forged-provider", "provider extension")'
 

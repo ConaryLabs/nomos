@@ -188,7 +188,7 @@ artifact-tree digests after copying them into the durable run. It also proves
 that each task receipt agrees with its plan, packet manifest, and sandbox
 boundary; that the packet's candidate marker is the exact candidate plus one
 newline; that the sandbox independently matched the supplied candidate binary;
-that the candidate exists in repository history; and that the checker packet
+that a live candidate exists in repository history; and that the checker packet
 manifest binds the exact supplied subject receipt, commands, and every artifact.
 The qualification, launcher, stderr boundary, and accounting records must agree
 exactly with the task receipt and complete transcript. Qualification validation
@@ -214,6 +214,25 @@ non-formal rehearsals must target the finalizer checkout and cannot satisfy Gate
 K. Re-finalizing those exact records is allowed; constructing any new formal
 record at the invalidated candidate is not. A future formal candidate requires
 an owner-authorized tooling revision.
+
+The two frozen formal pairs and the two accepted revision-6 rehearsal pairs
+also preserve their complete post-run subject and checker packets under their
+committed run directories. `gate-k-eval-reconstruct-run-records.sh` reconstructs
+the subject/checker finalizer inputs from the durable run layout. The finalizer's
+`--packet-roots` form accepts those committed packet snapshots only when the
+task receipts match the exact archived allowlist. This permits byte-identical
+re-finalization from a shallow checkout without pretending that a packet lived
+at a different host path or requiring an old candidate Git object. Every other
+receipt still requires its recorded packet root and candidate object. The
+offline harness exercises both archived generations from the committed data.
+
+`gate-k-eval-validate-documents.py` owns standalone exact validation for the
+finalizer-generated `checker_receipt@2` and `run_result@2` documents, including
+nested allowlists, receipt bindings, dimension derivation, and overall verdict
+derivation. The compatible revision-5 forms emitted for the frozen records are
+validated as well; their historical logical summary is intentionally distinct
+from the command-adjudication reason.
+
 Checker command/reason arrays are validated
 element by element. The output must be outside both immutable input records. Missing
 identity, transcript, command, artifact, or result fields fail closed. Operator
