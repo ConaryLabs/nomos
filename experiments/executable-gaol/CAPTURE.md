@@ -7,9 +7,9 @@ experiments/executable-gaol/gaol capture
 experiments/executable-gaol/gaol verify
 ```
 
-- RenderingPlan SHA-256: `aefb915ce75794d9a385020a586b9d2bc4f3be71e9a01934d4096955171e13b5`
-- contact-sheet.svg SHA-256: `b77dc85d5d6487fbc5642e8ef5c609cd4250a3184b38be3860c2d54c9614782f`
-- contact-sheet.png SHA-256: `7b6489692f6a8ee6db9cb87ff36e8206aa6a6a624a1b92daf7ba28dec1488c0d`
+- RenderingPlan SHA-256: `19e1c797533a2568c165d7af59f2678ed1e9cf5c77cbc195cc6223dae9152054`
+- contact-sheet.svg SHA-256: `37acf9611dc738fc62b66f532287a3a1de2f47031c5122c0855edb3e5e1ef09d`
+- contact-sheet.png SHA-256: `bba0926dd18852f8a88c58bb8bb7a30afb16fd4856a41a2ee6c9d55a95a2aba8`
 - verification: `EXECUTABLE_GAOL_VERIFY PASS`
 
 Two consecutive clean captures produced all three exact hashes. The committed

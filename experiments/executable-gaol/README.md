@@ -29,6 +29,8 @@ ordinary content in `gaol.nomos` and requires no renderer change.
 
 Use WASD or the arrow keys to cross the room. Walk beside `north_gate`, press
 `E` to ignite it, press `E` again to unseal it, and cross the resulting opening.
+After unsealing, walk beside `brazier_02` and press `E` to extinguish its bounded
+amber light pool.
 Those interaction edges are derived from consecutive, state-hash-bound Nomos
 command logs rather than interpreted by the browser. Shallow water consumes the
 projected movement cost of `3`; stone costs `1`. The north edge opens only at a

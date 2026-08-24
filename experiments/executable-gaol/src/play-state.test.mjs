@@ -34,7 +34,7 @@ test("the breached and unsealed gate permits an exit", () => {
 
 test("the unchanged second door remains blocked", () => {
   const state = { ...createPlayState(), player: { x: 7, y: 0, z: 0 } };
-  const result = attemptMove(plan, "04-open-dark", state, 0, -1);
+  const result = attemptMove(plan, "05-open-dark", state, 0, -1);
   assert.equal(result.moved, false);
   assert.equal(result.state.tone, "blocked");
 });
@@ -59,4 +59,14 @@ test("interaction range does not invent remote actions", () => {
   const result = attemptInteraction(plan, "01-baseline", state);
   assert.equal(result.changed, false);
   assert.equal(result.scenarioId, "01-baseline");
+});
+
+test("the brazier interaction follows the verified extinguish receipt", () => {
+  const state = { ...createPlayState(), player: { x: 4, y: 1, z: 0 } };
+  const result = attemptInteraction(plan, "03-breached-unsealed", state);
+  assert.equal(result.changed, true);
+  assert.equal(result.interaction.action, "extinguish");
+  assert.equal(result.interaction.targetEntity, "brazier_02");
+  assert.equal(result.scenarioId, "04-breached-unsealed-dark");
+  assert.equal(result.interaction.resultingStateHash, plan.scenarios[3].stateHash);
 });

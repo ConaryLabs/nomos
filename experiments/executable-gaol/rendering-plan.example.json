@@ -344,7 +344,49 @@
       }
     },
     {
-      "id": "04-open-dark",
+      "id": "04-breached-unsealed-dark",
+      "label": "breached unsealed dark",
+      "tick": 3,
+      "stateHash": "1926c54166b123c1e564228bd2a704b94870564d3e95d54fe8f22aa659ab02f9",
+      "machineStates": {
+        "brazier_02.emission": "extinguished",
+        "north_gate.access": "locked",
+        "north_gate.combustion": "burning",
+        "north_gate.integrity": "destroyed",
+        "north_gate.ward": "unsealed",
+        "north_gate_02.access": "locked",
+        "north_gate_02.combustion": "cold",
+        "north_gate_02.integrity": "intact",
+        "north_gate_02.ward": "sealed"
+      },
+      "movement": {
+        "flooded_section": {
+          "disposition": "traversable",
+          "cost": 3,
+          "reasons": [
+            "flooded_section.region#traversal_cost_ground"
+          ]
+        },
+        "north_gate": {
+          "disposition": "traversable",
+          "cost": 1,
+          "reasons": []
+        },
+        "north_gate_02": {
+          "disposition": "blocked",
+          "cost": null,
+          "reasons": [
+            "north_gate_02.portal#blocks_ground",
+            "north_gate_02.ward#blocks_ground"
+          ]
+        }
+      },
+      "effectiveLight": {
+        "brazier_02": false
+      }
+    },
+    {
+      "id": "05-open-dark",
       "label": "open dark",
       "tick": 4,
       "stateHash": "ab650ad9d31dbc5e8daa0f7680604eab1d49df55d759868d3dee7f1d65b96b56",
@@ -404,6 +446,15 @@
       "action": "unseal",
       "inputStateHash": "bc01b2f3427a95341e89c1a0cf9d4aca2190e20a90b7d38fd4a4ed1a8a0f5150",
       "resultingStateHash": "0c0a573503282ec7b8f10dada7da267b96f04c089054936b84bece096b0ac7f2"
+    },
+    {
+      "id": "03-breached-unsealed:extinguish:brazier_02",
+      "fromScenario": "03-breached-unsealed",
+      "toScenario": "04-breached-unsealed-dark",
+      "targetEntity": "brazier_02",
+      "action": "extinguish",
+      "inputStateHash": "0c0a573503282ec7b8f10dada7da267b96f04c089054936b84bece096b0ac7f2",
+      "resultingStateHash": "1926c54166b123c1e564228bd2a704b94870564d3e95d54fe8f22aa659ab02f9"
     }
   ]
 }

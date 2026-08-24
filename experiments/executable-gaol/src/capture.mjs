@@ -15,9 +15,10 @@ const frames = plan.scenarios.map((scenario) => {
 
 writeFileSync(join(outputDir, "forensic.svg"), `${renderSvg(plan, "03-breached-unsealed", true)}\n`);
 
+const sheetFrames = frames.slice(0, 4);
 const sheetWidth = plan.camera.width * 2;
 const sheetHeight = plan.camera.height * 2;
-const nested = frames.map(({ svg }, index) => {
+const nested = sheetFrames.map(({ svg }, index) => {
   const x = (index % 2) * plan.camera.width;
   const y = Math.floor(index / 2) * plan.camera.height;
   return `<svg x="${x}" y="${y}" width="${plan.camera.width}" height="${plan.camera.height}" viewBox="0 0 ${plan.camera.width} ${plan.camera.height}">${svg}</svg>`;
