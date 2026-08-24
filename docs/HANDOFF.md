@@ -2,23 +2,29 @@
 
 ## Current state
 
-Gate K is closed as **failed**. Peter Permenter's owner disposition is
-`docs/decisions/0013-gate-k-disposition.md`.
+Gate K remains **failed** under Peter Permenter's owner disposition in
+`docs/decisions/0013-gate-k-disposition.md` while decision 0015's separately
+governed round two proceeds.
 
-- semantic candidate: annotated tag `gate-k-rc1`;
-- commit: `d8a0b85c55aa33c20f46e5dfd9e0d1f317e1f1c9`;
-- tree: `4013e6629ea274c6f2e2e2570306cb35b6d41505`;
+- round-one candidate: annotated tag `gate-k-rc1`, commit
+  `d8a0b85c55aa33c20f46e5dfd9e0d1f317e1f1c9`, tree
+  `4013e6629ea274c6f2e2e2570306cb35b6d41505`;
+- round-two candidate: annotated tag `gate-k-rc2`, commit
+  `53db236d397b3db0779f0d2aab23180d926e55a5`, tree
+  `4c2d102a01a5dfe6700755e0cb7c26d3c0db7491`;
 - contract: `KERNEL.md` revision 7;
-- formal launch protocol: revision 3;
 - current cold-agent protocol: revision 6, owner-authorized in decision 0015;
 - revision-6 tooling: issue #88 merged in PR #89 at `7744610`; both live
   rehearsal pairs passed at exact tooling commit `cbfa3f7`, the complete
   repository proof plus zero-finding non-author audit passed at `da19239`, and
   exact-head verify run `32682824045` plus evidence run `32682823912` passed;
 - implementation: complete through SW-N;
-- acceptance: criteria 1–16 and 19 pass; criteria 17 and 18 fail;
-- round-one retries: none authorized; a distinct round two is conditionally
-  authorized after tooling, rehearsal, candidate freeze, and mechanical proof;
+- round-one acceptance: criteria 1–16 and 19 pass; criteria 17 and 18 fail;
+- round-one retries: none authorized; a distinct round two is prospectively
+  authorized, and its tooling, rehearsal, candidate freeze, and mechanical
+  proof prerequisites are complete;
+- round-two formal status: no reservation or launch has occurred; issue #93 is
+  the next authorized operation;
 - renderer, executable Gate 0 work, and semantic development: not authorized;
 - one static, quarantined gaol target-pack study: authorized by decision 0014,
   assembled under issue #83, and owner-disposed as
@@ -31,7 +37,8 @@ are in decision 0013. The machine-readable content-addressed inventory is
 Decision 0015 changes no historical verdict. It prospectively separates
 semantic merit, independence integrity, and operational compliance, permits
 exactly `/dev/null` as a non-information-bearing device, and fixes the order for
-a fresh `gate-k-rc2` round. No provider task or candidate tag exists yet.
+a fresh `gate-k-rc2` round. The candidate exists and is mechanically green; no
+provider task has been reserved or launched.
 
 ## Why Gate K failed
 
@@ -76,7 +83,8 @@ After the formal records merged, final evidence-main workflows also passed:
 
 ## Evidence boundary
 
-Issues #68–#73, #79, #82, #83, #86, and #88 are closed. Their PRs are merged:
+Issues #68–#73, #79, #82, #83, #86, #88, and #90 are closed. Their PRs are
+merged:
 
 | Issue | PR | Disposition |
 | ---: | ---: | --- |
@@ -91,13 +99,14 @@ Issues #68–#73, #79, #82, #83, #86, and #88 are closed. Their PRs are merged:
 | #83 | #85 | assemble and owner-dispose the static visual target pack |
 | #86 | #87 | authorize protocol revision 6 and conditional round two |
 | #88 | #89 | implement and independently prove revision-6 tooling |
+| #90 | #91 | freeze and mechanically prove `gate-k-rc2` |
 
 Issue #79 changed evidence tooling and protocol documentation after the
 candidate was frozen. It changed no kernel crate, fixture, Cargo input, CLI,
 semantic documentation, raw formal packet, or raw task record. Decisions 0011
 and 0012 preserve and admit exactly the four frozen legacy task receipts. The
-final records remain bound to `gate-k-rc1`; there is no `gate-k-rc2` and no
-acceptance tag.
+round-one final records remain bound to `gate-k-rc1`. `gate-k-rc2` is a distinct
+frozen candidate with no formal task result and no acceptance disposition yet.
 
 Historical failed/superseded audits, Opus rehearsals, qualification probes, and
 architecture reviews remain preserved and labelled. None counts as a formal
@@ -116,11 +125,17 @@ docs/evaluation/test-pi-cold-agent-preflight.sh
 docs/evaluation/test-gate-k-eval-tooling.sh
 ```
 
-For the exact semantic candidate, check out `gate-k-rc1` and use workflow run
+For the exact round-one candidate, check out `gate-k-rc1` and use workflow run
 `32618725710` plus the hashes in
 `docs/evaluation/final/gate-k-rc1-mechanical-evidence.md`. The final non-author
 receipt records its independent recomputation of those artifacts and formal
 record hashes.
+
+For the round-two candidate, check out `gate-k-rc2`. Its tag annotation binds
+commit `53db236d397b3db0779f0d2aab23180d926e55a5` to successful verify run
+`32689876814` and gate-k-evidence run `32689876846`. The candidate-lineage proof
+and its non-author audit are under
+`docs/evaluation/runs/tooling/2026-08-24-issue-90-*`.
 
 ## What is next
 
@@ -156,19 +171,33 @@ zero findings at `da19239`. Four rejected predecessor audits, three CI
 portability failures, and every repair remain disclosed under
 `docs/evaluation/runs/tooling/2026-08-24-*`.
 
-Issue #90 is the active candidate-freeze slice. It must prove every protected
-semantic, build, fixture, workflow, and public-document input byte-identical to
-`gate-k-rc1`; admit only the exact decision-0013 disposition edit in
-`KERNEL.md`; classify every other changed path; and obtain a zero-finding
-non-author audit. After that slice merges, both complete workflows must pass
-against its exact merge commit before an annotated `gate-k-rc2` tag may name
-that commit. The tag annotation and issue closure are the live freeze receipt,
-so recording them does not require a post-tag candidate mutation. Formal
-reservations and launches remain forbidden until the exact candidate is frozen
-and the complete mechanical matrix is green.
+Issue #90 / PR #91 completed the candidate-lineage proof and zero-finding
+non-author audit. Both complete workflows passed against exact merge commit
+`53db236d397b3db0779f0d2aab23180d926e55a5`, and annotated tag `gate-k-rc2`
+names that commit. The tag annotation and closed issue are the live freeze
+receipt; this post-tag housekeeping does not mutate the candidate.
 
-Renderer architecture and project adoption remain out of scope until a new
-owner disposition passes Gate K.
+The remaining decision-0015 work is filed in strict operating order:
+
+1. issue #93 — reserve and run the one fresh Gemini-family author subject;
+2. issue #94 — after #93, reserve and run the one fresh DeepSeek-family
+   debugger subject;
+3. issue #95 — after both subjects, run the fresh DeepSeek-family author
+   checker;
+4. issue #96 — run the fresh Gemini-family debugger checker;
+5. issue #97 — assemble and re-finalize all evidence, obtain the non-author
+   rerun/audit, derive criteria 1–19, and record Peter's explicit owner verdict.
+
+Each formal operation pins its exact provider, model, client, thinking level,
+prompt, packet, hashes, and rubric before reservation; uses a fresh session and
+one launch; and permits no operator retry after model failure. A correct
+declared boundary does not turn ordinary agent behavior into a harness defect.
+No round three or retrospective rubric revision is authorized.
+
+Renderer architecture, executable visual work, semantic expansion, and project
+adoption remain out of scope until a new owner disposition passes Gate K. The
+external recommendation to pivot to one executable gaol is therefore deferred,
+not silently adopted ahead of the gate.
 
 Decision 0005's temporary zero-third-party-dependency policy ended with the
 Gate K disposition. That does not admit any dependency automatically; a future
