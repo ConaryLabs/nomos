@@ -11,8 +11,8 @@ expected_pi_tree_sha=63a9dd14b0ae82cee2db30c56822682af19145d145febb58b613d5de4db
 expected_antigravity_version=0.4.0
 expected_antigravity_integrity='sha512-Trl0lWZRDM6TUhw8UjZ+si4Tx2IxCtLLdEwQ10gOS3BUJfgv/C32HY3m/v9PcLNZWYzo+LEfmamiB5+f0jciCg=='
 expected_antigravity_tree_sha=7980e6825a23f18a9d298953c0efc9f13c1231ce4c814394803b9da9bfb565ce
-expected_extension_sha=3205bdd3bae1eadba56337379a797a4900fcbe31a200db31f4f6faa2ed775a36
-expected_fake_sha=1325f5ee7081408f4e238c9e7774d6e41f48423bf82d3d031bc72266263598a7
+expected_extension_sha=d242e2de63e1228a32d7e890bf7cb852e71680813a7aa8f55fc500af64923043
+expected_fake_sha=4706a625a527a48caa1f619c3617cd1144934e8e739e9ed8d1062d165eb45205
 expected_fake_antigravity_sha=944ab25260d0efee3c682f0d79f84beae674e7fe8a36a585f7615944bcec4417
 expected_deepseek_catalog_sha=7954fb3ef750bed773619c9fe259a8eb923b6f4f8455442a33cf8e1fe2fa3773
 
@@ -345,7 +345,7 @@ printf '%s\n' "$boundary_json" | jq -e \
   --arg provider_extension "$provider_extension" \
   --arg provider_extension_sha "$provider_extension_sha" \
   --arg system_prompt_sha "$system_prompt_sha" '
-    .schema == "nomos.pi_cold_agent_boundary@3" and
+    .schema == "nomos.pi_cold_agent_boundary@4" and
     .boundaryKind == "source-preflight" and
     .mode == "json" and
     .targetCommit == $target_commit and

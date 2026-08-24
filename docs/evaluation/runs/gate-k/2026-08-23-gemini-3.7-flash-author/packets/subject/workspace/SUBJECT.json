@@ -1,0 +1,18 @@
+{
+  "schema": "nomos.gate_k.subject_result@1",
+  "result": "completed",
+  "entityId": "outer_gate",
+  "primitive": "primitive/iron_barred_door",
+  "anchor": {
+    "kind": "face",
+    "x": 6,
+    "y": 0,
+    "z": 0,
+    "direction": "north"
+  },
+  "explanation": "Added a second primitive/iron_barred_door instance named outer_gate at anchor face 6 0 0 north with credential credential/gaoler_key. The compiler accepted the addition because it conforms to the approved three-primitive catalog, provides all required fields (face anchor and credential from the declared catalog), uses a distinct symbolic ID, and expands into independent access, integrity, ward, and combustion machines and ground-blocking claims without causal cycles or missing references.",
+  "reproductionCommands": [
+    "/workspace/bin/nomos validate workspace/gaol.nomos",
+    "/workspace/bin/nomos compile workspace/gaol.nomos --out workspace/gaol.world"
+  ]
+}

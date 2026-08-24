@@ -156,6 +156,9 @@ sandbox_target_commit=true
 sandbox_workspace_read=true
 sandbox_workspace_write=true
 sandbox_temporary_storage_read_only=true
+sandbox_device_filesystem_exact=true
+sandbox_device_null_readable=true
+sandbox_device_null_writable=true
 sandbox_outside_read_denied=true
 sandbox_outside_write_denied=true
 sandbox_credentials_absent=true
@@ -179,6 +182,9 @@ case $mode_name in
   outside-read-succeeded) sandbox_outside_read_denied=false ;;
   outside-write-succeeded) sandbox_outside_write_denied=false ;;
   temporary-write-succeeded) sandbox_temporary_storage_read_only=false ;;
+  extra-device-exposed) sandbox_device_filesystem_exact=false ;;
+  null-read-denied) sandbox_device_null_readable=false ;;
+  null-write-denied) sandbox_device_null_writable=false ;;
   network-succeeded) sandbox_network_denied=false ;;
   *) exit 74 ;;
 esac
@@ -205,7 +211,7 @@ if [[ $boundary_kind == packet-run ]]; then
     packet_manifest_sha=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
   fi
   if [[ $mode_name != missing-boundary ]]; then
-    printf 'NOMOS_PI_BOUNDARY {"schema":"nomos.pi_cold_agent_boundary@3","boundaryKind":"packet-run","mode":"json","targetCommit":"%s","hostWorkspace":"%s","guestWorkspace":"/workspace","provider":"%s","model":"%s","thinking":"%s","sessionId":"%s","sessionFile":%s,"projectTrusted":false,"entryTypesBeforeRun":%s,"activeTools":%s,"configuredTools":[{"name":"bash","source":{"path":"%s","source":"cli","scope":"temporary","origin":"top-level"}}],"contextFiles":%s,"skills":%s,"systemPromptSha256":"%s","finalSystemPromptSha256":"a78cae9025d8b63562a13c111e79e9f27c32ab20e726a53d2d9d8c094712e2b7","packetManifestSha256":"%s","binarySha256":"%s","taskPromptSha256":"%s","taskShape":"%s","writablePaths":["%s"],"budgets":null,"runtimeIdentity":%s,"sandbox":{"backend":"bubblewrap","binary":"%s","root":"read-only","workspace":"read-only-packet-with-declared-writable-paths","network":"%s","environment":"cleared-and-allowlisted","checks":{"targetCommitResolved":%s,"workspaceRead":%s,"packetManifestMatched":true,"candidateBinaryMatched":true,"packetRootReadOnly":true,"temporaryStorageReadOnly":%s,"deviceFilesystemEmpty":true,"processFilesystemReadOnly":true,"declaredWritablePaths":["%s"],"gitMetadataAbsent":true,"outsideReadDenied":%s,"outsideWriteDenied":%s,"credentialEnvironmentAbsent":%s,"networkDenied":%s},"selfTest":"%s"}}\n' \
+    printf 'NOMOS_PI_BOUNDARY {"schema":"nomos.pi_cold_agent_boundary@4","boundaryKind":"packet-run","mode":"json","targetCommit":"%s","hostWorkspace":"%s","guestWorkspace":"/workspace","provider":"%s","model":"%s","thinking":"%s","sessionId":"%s","sessionFile":%s,"projectTrusted":false,"entryTypesBeforeRun":%s,"activeTools":%s,"configuredTools":[{"name":"bash","source":{"path":"%s","source":"cli","scope":"temporary","origin":"top-level"}}],"contextFiles":%s,"skills":%s,"systemPromptSha256":"%s","finalSystemPromptSha256":"fixture","packetManifestSha256":"%s","binarySha256":"%s","taskPromptSha256":"%s","taskShape":"%s","writablePaths":["%s"],"budgets":null,"runtimeIdentity":%s,"sandbox":{"backend":"bubblewrap","binary":"%s","root":"read-only","workspace":"read-only-packet-with-declared-writable-paths","network":"%s","environment":"cleared-and-allowlisted","checks":{"targetCommitResolved":%s,"workspaceRead":%s,"packetManifestMatched":true,"candidateBinaryMatched":true,"packetRootReadOnly":true,"temporaryStorageReadOnly":%s,"deviceFilesystemExact":%s,"deviceNullReadable":%s,"deviceNullWritable":%s,"processFilesystemReadOnly":true,"declaredWritablePaths":["%s"],"gitMetadataAbsent":true,"outsideReadDenied":%s,"outsideWriteDenied":%s,"credentialEnvironmentAbsent":%s,"networkDenied":%s},"selfTest":"%s"}}\n' \
       "${NOMOS_PI_TARGET_COMMIT:?}" \
       "$boundary_workspace" "$boundary_provider" "$boundary_model" "$boundary_thinking" \
       "$session_id" "$session_file" "$entry_types" "$active_tools" "$extension" \
@@ -214,6 +220,8 @@ if [[ $boundary_kind == packet-run ]]; then
       "${NOMOS_PI_TASK_SHAPE:?}" "${NOMOS_PI_WRITABLE_PATHS:?}" "$runtime_identity" \
       "${NOMOS_PI_BWRAP:?}" "$sandbox_network" "$sandbox_target_commit" \
       "$sandbox_workspace_read" "$sandbox_temporary_storage_read_only" \
+      "$sandbox_device_filesystem_exact" "$sandbox_device_null_readable" \
+      "$sandbox_device_null_writable" \
       "${NOMOS_PI_WRITABLE_PATHS:?}" \
       "$sandbox_outside_read_denied" "$sandbox_outside_write_denied" \
       "$sandbox_credentials_absent" "$sandbox_network_denied" "$sandbox_self_test" >&2
@@ -223,7 +231,7 @@ if [[ $boundary_kind == packet-run ]]; then
     exit 0
   fi
   if [[ ${NOMOS_PI_TASK_SHAPE:?} == *-checker ]]; then
-    printf '%s\n' '{"commands":["bin/nomos --help"],"reasons":["offline fixture checker"],"schema":"nomos.gate_k.checker_result@1","verdict":"pass"}' \
+    printf '%s\n' '{"commands":["bin/nomos --help"],"protocolRevision":6,"reasons":["offline fixture checker"],"schema":"nomos.gate_k.checker_result@2","verdict":"pass"}' \
       >"$workspace/${NOMOS_PI_WRITABLE_PATHS:?}/checker.json"
     printf '%s\n' 'offline fixture checker reproduction artifact' \
       >"$workspace/${NOMOS_PI_WRITABLE_PATHS:?}/reproduction.txt"
@@ -287,7 +295,7 @@ if [[ $boundary_kind == packet-run ]]; then
 fi
 
 if [[ $mode_name != missing-boundary ]]; then
-  printf 'NOMOS_PI_BOUNDARY {"schema":"nomos.pi_cold_agent_boundary@3","boundaryKind":"source-preflight","mode":"json","targetCommit":"%s","hostWorkspace":"%s","guestWorkspace":"/workspace","provider":"%s","model":"%s","thinking":"%s","sessionId":"%s","sessionFile":%s,"projectTrusted":false,"entryTypesBeforeRun":%s,"activeTools":%s,"configuredTools":[{"name":"bash","source":{"path":"%s","source":"cli","scope":"temporary","origin":"top-level"}}],"contextFiles":%s,"skills":%s,"systemPromptSha256":"%s","finalSystemPromptSha256":"fixture","packetManifestSha256":null,"binarySha256":null,"taskPromptSha256":null,"taskShape":null,"writablePaths":[],"budgets":null,"runtimeIdentity":%s,"sandbox":{"backend":"bubblewrap","binary":"%s","root":"read-only","workspace":"read-write-only-host-mount","network":"%s","environment":"cleared-and-allowlisted","checks":{"targetCommitResolved":%s,"workspaceRead":%s,"workspaceWrite":%s,"outsideReadDenied":%s,"outsideWriteDenied":%s,"credentialEnvironmentAbsent":%s,"networkDenied":%s,"cargoAvailable":%s},"selfTest":"%s"}}\n' \
+  printf 'NOMOS_PI_BOUNDARY {"schema":"nomos.pi_cold_agent_boundary@4","boundaryKind":"source-preflight","mode":"json","targetCommit":"%s","hostWorkspace":"%s","guestWorkspace":"/workspace","provider":"%s","model":"%s","thinking":"%s","sessionId":"%s","sessionFile":%s,"projectTrusted":false,"entryTypesBeforeRun":%s,"activeTools":%s,"configuredTools":[{"name":"bash","source":{"path":"%s","source":"cli","scope":"temporary","origin":"top-level"}}],"contextFiles":%s,"skills":%s,"systemPromptSha256":"%s","finalSystemPromptSha256":"fixture","packetManifestSha256":null,"binarySha256":null,"taskPromptSha256":null,"taskShape":null,"writablePaths":[],"budgets":null,"runtimeIdentity":%s,"sandbox":{"backend":"bubblewrap","binary":"%s","root":"read-only","workspace":"read-write-only-host-mount","network":"%s","environment":"cleared-and-allowlisted","checks":{"targetCommitResolved":%s,"workspaceRead":%s,"workspaceWrite":%s,"outsideReadDenied":%s,"outsideWriteDenied":%s,"credentialEnvironmentAbsent":%s,"networkDenied":%s,"cargoAvailable":%s},"selfTest":"%s"}}\n' \
     "${NOMOS_PI_TARGET_COMMIT:?}" \
     "$boundary_workspace" "$boundary_provider" "$boundary_model" "$boundary_thinking" \
     "$session_id" "$session_file" "$entry_types" "$active_tools" "$extension" \

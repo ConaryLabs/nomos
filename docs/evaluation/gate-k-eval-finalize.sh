@@ -25,7 +25,17 @@ real_directory() {
 }
 
 record_only=false
-if [[ $# -eq 2 && $1 == --validate-task-record ]]; then
+subject_packet_override=
+checker_packet_override=
+if [[ $# -eq 7 && $1 == --packet-roots ]]; then
+  subject_packet_override=$2
+  checker_packet_override=$3
+  subject=$4
+  checker=$5
+  adjudication=$6
+  out=$7
+  records=("$subject" "$checker")
+elif [[ $# -eq 2 && $1 == --validate-task-record ]]; then
   record_only=true
   subject=$2
   checker=
@@ -39,7 +49,7 @@ elif [[ $# -eq 4 ]]; then
   out=$4
   records=("$subject" "$checker")
 else
-  fail 'usage: gate-k-eval-finalize.sh SUBJECT_RECORD CHECKER_RECORD ADJUDICATION_JSON OUT | --validate-task-record RECORD'
+  fail 'usage: gate-k-eval-finalize.sh [--packet-roots SUBJECT_PACKET CHECKER_PACKET] SUBJECT_RECORD CHECKER_RECORD ADJUDICATION_JSON OUT | --validate-task-record RECORD'
 fi
 script_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 repo_root=$(realpath -e "$script_dir/../..")
@@ -117,8 +127,11 @@ tree_sha() {
 }
 
 for record in "${records[@]}"; do
-  jq -e '
-    .schema == "nomos.gate_k.task_receipt@1" and
+  jq -e --arg plan_schema "$(jq -r '.schema' "$record/plan.json")" '
+    ((.schema == "nomos.gate_k.task_receipt@1" and
+      $plan_schema == "nomos.gate_k.eval_plan@1") or
+     (.schema == "nomos.gate_k.task_receipt@2" and .protocolRevision == 6 and
+      $plan_schema == "nomos.gate_k.eval_plan@2")) and
     .identity.freshEphemeralSession == true and
     .identity.client == "Pi" and
     (.identity.clientVersion | type) == "string" and (.identity.clientVersion | length) > 0 and
@@ -130,7 +143,8 @@ for record in "${records[@]}"; do
     (.identity.sessionStartedAt | type) == "string" and
       (.identity.sessionStartedAt | test("^[0-9]{4}-[0-9]{2}-[0-9]{2}T")) and
     .identity.mode == "json" and
-    .operatorRetries == 0 and
+    (.operatorRetries | type) == "number" and .operatorRetries >= 0 and
+    .operatorRetries == (.operatorRetries | floor) and
     .disclosures.persistedSession == false and
     .disclosures.projectMemory == false and
     .disclosures.personalContext == false and
@@ -152,6 +166,15 @@ for record in "${records[@]}"; do
   receipt_formal=$(jq -r '.formalAttempt' "$record/task-receipt.json")
   receipt_shape=$(jq -r '.shape' "$record/task-receipt.json")
   receipt_sha=$(sha256sum "$record/task-receipt.json" | cut -d' ' -f1)
+  archived_rehearsal=false
+  case $receipt_sha in
+    b25ba1d3645b8c1defa9190d9a3be252d2c7422a8e46e8be0779c8533738750c | \
+    aad1bd14793a6daa0d9aea6f3b31282320b1709c7e20f4a247485401577b975e | \
+    44ecceb31e57b34249738d50789b6b5957da63d3e0bc48101ac1186ff0a1fef4 | \
+    18d2405d295aae26e3b25073f280b1a693c27d1f719fc2a59889e5fceda50240)
+      archived_rehearsal=true
+      ;;
+  esac
   if [[ $record_only == false && $receipt_class == formal && $receipt_formal == true ]]; then
     case $receipt_shape in
       author) frozen_receipt_sha=732af45918ebc27c02675f6c75c32e7718407545c9fa3a39de327d3591d382a8 ;;
@@ -370,8 +393,14 @@ for record in "${records[@]}"; do
   [[ $stderr_accounting_json == "$(jq -S -c . "$record/accounting.json")" ]] ||
     fail "Pi stderr accounting differs from task record: $record"
 
-  jq -e '
-    .schema == "nomos.gate_k.packet_manifest@1" and
+  plan_schema=$(jq -r '.schema' "$record/plan.json")
+  jq -e --arg plan_schema "$plan_schema" '
+    ((.schema == "nomos.gate_k.packet_manifest@1" and
+      (has("protocolRevision") | not) and
+      $plan_schema == "nomos.gate_k.eval_plan@1") or
+     (.schema == "nomos.gate_k.packet_manifest@2" and
+      .protocolRevision == 6 and
+      $plan_schema == "nomos.gate_k.eval_plan@2")) and
     .manifestExcludesSelf == true and
     (.shape == "author" or .shape == "debug" or
      .shape == "author-checker" or .shape == "debug-checker") and
@@ -390,7 +419,7 @@ for record in "${records[@]}"; do
       (.sha256 | type) == "string" and (.sha256 | test("^[0-9a-f]{64}$")) and
       (.schemaIdentity == null or (.schemaIdentity | type) == "string"))
     ' "$record/packet-manifest.json" >/dev/null ||
-    fail "packet manifest structure is invalid: $record"
+    fail "packet manifest generation or structure is invalid: $record"
   [[ $(jq -r '.candidate.commit' "$record/plan.json") == "$receipt_commit" ]] ||
     fail "plan candidate differs from task receipt: $record"
   [[ $(jq -r '.candidateCommit' "$record/packet-manifest.json") == "$receipt_commit" ]] ||
@@ -430,6 +459,7 @@ for record in "${records[@]}"; do
   qualified_extension=${qualified_extension_line% *}
   qualified_boundary=$(sed -n 's/^PI_BOUNDARY //p' "$record/pi-qualification.txt")
   qualified_bwrap=$(jq -r '.sandbox.binary' <<<"$qualified_boundary")
+  qualified_final_system_prompt=$(jq -r '.finalSystemPromptSha256' <<<"$qualified_boundary")
   receipt_execution=$(jq -c '.execution // null' "$record/task-receipt.json")
   qualified_execution=$(jq -S -c '.runtimeIdentity // null' <<<"$qualified_boundary")
   receipt_sha=$(sha256sum "$record/task-receipt.json" | cut -d' ' -f1)
@@ -454,6 +484,7 @@ for record in "${records[@]}"; do
     --arg session "$receipt_session" \
     --arg extension "$qualified_extension" \
     --arg bwrap "$qualified_bwrap" \
+    --arg qualified_final_system_prompt "$qualified_final_system_prompt" \
     --arg manifest "$packet_manifest_sha" \
     --arg binary "$plan_binary_sha" \
     --arg prompt "$prompt_sha" \
@@ -475,7 +506,9 @@ for record in "${records[@]}"; do
       "writablePaths", "budgets", "runtimeIdentity", "sandbox"] | sort)) and
     ((.schema == "nomos.pi_cold_agent_boundary@2" and $legacy_runtime and $execution == null and
       (has("runtimeIdentity") | not)) or
-     (.schema == "nomos.pi_cold_agent_boundary@3" and .runtimeIdentity == $execution)) and
+     (.schema == "nomos.pi_cold_agent_boundary@4" and
+      ($legacy_runtime | not) and
+      .runtimeIdentity == $execution)) and
     .boundaryKind == "packet-run" and
     .mode == "json" and .targetCommit == $commit and .hostWorkspace == $packet and
     .guestWorkspace == "/workspace" and .provider == $provider and .model == $model and
@@ -486,8 +519,14 @@ for record in "${records[@]}"; do
     .configuredTools == [{"name":"bash","source":{"path":$extension,"source":"cli",
       "scope":"temporary","origin":"top-level"}}] and
     .contextFiles == [] and .skills == [] and
-    .systemPromptSha256 == "2cec3aeebce2f8359cde337d3b1b2ec1601913711f282ab0289ab276b02dee79" and
-    .finalSystemPromptSha256 == "a78cae9025d8b63562a13c111e79e9f27c32ab20e726a53d2d9d8c094712e2b7" and
+    .systemPromptSha256 ==
+      (if .schema == "nomos.pi_cold_agent_boundary@4"
+       then "c1c41bf11dd3fc42f47c174b9d431e36dd87afb60aa04d08062dd6e11963c333"
+       else "2cec3aeebce2f8359cde337d3b1b2ec1601913711f282ab0289ab276b02dee79" end) and
+    .finalSystemPromptSha256 ==
+      (if .schema == "nomos.pi_cold_agent_boundary@4"
+       then $qualified_final_system_prompt
+       else "a78cae9025d8b63562a13c111e79e9f27c32ab20e726a53d2d9d8c094712e2b7" end) and
     .packetManifestSha256 == $manifest and .binarySha256 == $binary and
     .taskPromptSha256 == $prompt and .taskShape == $shape and
     .writablePaths == [$writable] and .budgets == null and
@@ -498,11 +537,19 @@ for record in "${records[@]}"; do
     .sandbox.workspace == "read-only-packet-with-declared-writable-paths" and
     .sandbox.network == "unshared" and .sandbox.environment == "cleared-and-allowlisted" and
     .sandbox.selfTest == "pass" and
-    (.sandbox.checks | keys) == (["targetCommitResolved", "workspaceRead",
-      "packetManifestMatched", "candidateBinaryMatched", "packetRootReadOnly",
-      "temporaryStorageReadOnly", "deviceFilesystemEmpty", "processFilesystemReadOnly",
-      "declaredWritablePaths", "gitMetadataAbsent", "outsideReadDenied",
-      "outsideWriteDenied", "credentialEnvironmentAbsent", "networkDenied"] | sort) and
+    (.schema == "nomos.pi_cold_agent_boundary@2" and
+     (.sandbox.checks | keys) == (["targetCommitResolved", "workspaceRead",
+       "packetManifestMatched", "candidateBinaryMatched", "packetRootReadOnly",
+       "temporaryStorageReadOnly", "deviceFilesystemEmpty", "processFilesystemReadOnly",
+       "declaredWritablePaths", "gitMetadataAbsent", "outsideReadDenied",
+       "outsideWriteDenied", "credentialEnvironmentAbsent", "networkDenied"] | sort) or
+     .schema == "nomos.pi_cold_agent_boundary@4" and
+     (.sandbox.checks | keys) == (["targetCommitResolved", "workspaceRead",
+       "packetManifestMatched", "candidateBinaryMatched", "packetRootReadOnly",
+       "temporaryStorageReadOnly", "deviceFilesystemExact", "deviceNullReadable",
+       "deviceNullWritable", "processFilesystemReadOnly", "declaredWritablePaths",
+       "gitMetadataAbsent", "outsideReadDenied", "outsideWriteDenied",
+       "credentialEnvironmentAbsent", "networkDenied"] | sort)) and
     .sandbox.checks.declaredWritablePaths == [$writable] and
     all(.sandbox.checks | to_entries[] | select(.key != "declaredWritablePaths");
       .value == true)
@@ -510,7 +557,17 @@ for record in "${records[@]}"; do
     fail "boundary does not prove the authenticated packet isolation: $record"
   [[ $packet_root_claim == /* ]] ||
     fail "recorded immutable packet root is unavailable: $record"
-  packet_root=$(real_directory "$packet_root_claim" \
+  packet_root=$packet_root_claim
+  if [[ $record == "$subject" && -n $subject_packet_override ]]; then
+    packet_root=$subject_packet_override
+  elif [[ $record == "$checker" && -n $checker_packet_override ]]; then
+    packet_root=$checker_packet_override
+  fi
+  if [[ $packet_root != "$packet_root_claim" &&
+    $legacy_runtime == false && $archived_rehearsal == false ]]; then
+    fail "packet-root override is not bound to an archived exact receipt: $record"
+  fi
+  packet_root=$(real_directory "$packet_root" \
     "recorded immutable packet root is unavailable: $record")
   if [[ $record_only == false ]]; then
     case "$out/" in "$packet_root/"*) fail 'output must be outside both immutable packets' ;; esac
@@ -576,14 +633,22 @@ for record in "${records[@]}"; do
       fi
       ;;
     rehearsal:false)
-      [[ $receipt_commit == "$repo_head" ]] ||
-        fail "rehearsal candidate differs from the finalizer checkout: $record"
+      if [[ $archived_rehearsal == true ]]; then
+        [[ $receipt_commit == cbfa3f74e92c2e68f9916cff4ceac26859bd2994 ]] ||
+          fail "archived rehearsal candidate differs from its exact tooling head: $record"
+      else
+        [[ $receipt_commit == "$repo_head" ]] ||
+          fail "rehearsal candidate differs from the finalizer checkout: $record"
+      fi
       ;;
     *) fail "classification and formal-attempt status are inconsistent: $record" ;;
   esac
-  [[ $(jq -r '.operatorIntervention' "$record/plan.json") == \
-      $(jq -r '.operatorIntervention' "$record/task-receipt.json") ]] ||
-    fail "plan intervention differs from task receipt: $record"
+  if [[ $(jq -r '.schema' "$record/task-receipt.json") == \
+        nomos.gate_k.task_receipt@1 ]]; then
+    [[ $(jq -r '.operatorIntervention' "$record/plan.json") == \
+        $(jq -r '.operatorIntervention' "$record/task-receipt.json") ]] ||
+      fail "plan intervention differs from task receipt: $record"
+  fi
   [[ $plan_binary_sha == $(jq -r '.binarySha256' "$record/boundary.json") ]] ||
     fail "boundary binary differs from plan: $record"
   [[ $(jq -r '.sandbox.checks.candidateBinaryMatched' "$record/boundary.json") == true ]] ||
@@ -597,8 +662,10 @@ for record in "${records[@]}"; do
     $plan_binary_sha != "$gate_k_rc1_binary_sha" ]]; then
     fail "formal attempt binary differs from frozen gate-k-rc1: $record"
   fi
-  git -C "$repo_root" cat-file -e "$receipt_commit^{commit}" 2>/dev/null ||
-    fail "candidate commit is absent from repository history: $record"
+  if [[ $legacy_runtime == false && $archived_rehearsal == false ]]; then
+    git -C "$repo_root" cat-file -e "$receipt_commit^{commit}" 2>/dev/null ||
+      fail "candidate commit is absent from repository history: $record"
+  fi
   case $receipt_shape in
     author-checker | debug-checker)
       checker_result="$record/artifacts/checker.json"
@@ -627,8 +694,21 @@ subject_commit=$(jq -r '.candidateCommit' "$subject/task-receipt.json")
 checker_commit=$(jq -r '.candidateCommit' "$checker/task-receipt.json")
 [[ $subject_commit =~ ^[0-9a-f]{40}$ && $subject_commit == "$checker_commit" ]] ||
   fail 'subject and checker candidate commits differ'
-git -C "$repo_root" cat-file -e "$subject_commit^{commit}" 2>/dev/null ||
-  fail 'candidate commit is absent from repository history'
+subject_receipt_sha=$(sha256sum "$subject/task-receipt.json" | cut -d' ' -f1)
+checker_task_receipt_sha=$(sha256sum "$checker/task-receipt.json" | cut -d' ' -f1)
+archived_pair=false
+case "$subject_receipt_sha:$checker_task_receipt_sha" in
+  732af45918ebc27c02675f6c75c32e7718407545c9fa3a39de327d3591d382a8:2e8c97d5a939ddd6fa9b33769f6e24b80fc242b1420c2660eef7f9742d542db3 | \
+  2820d2f46b2d895abc22b6677f4f3ba908199cdb9d057aee181b477eaeb82390:0053d3df610e7e31322a2cfd9dfc641e160d3e5c64582df387d34cd4ddd37d37 | \
+  b25ba1d3645b8c1defa9190d9a3be252d2c7422a8e46e8be0779c8533738750c:aad1bd14793a6daa0d9aea6f3b31282320b1709c7e20f4a247485401577b975e | \
+  44ecceb31e57b34249738d50789b6b5957da63d3e0bc48101ac1186ff0a1fef4:18d2405d295aae26e3b25073f280b1a693c27d1f719fc2a59889e5fceda50240)
+    archived_pair=true
+    ;;
+esac
+if [[ $archived_pair == false ]]; then
+  git -C "$repo_root" cat-file -e "$subject_commit^{commit}" 2>/dev/null ||
+    fail 'candidate commit is absent from repository history'
+fi
 subject_class=$(jq -r '.classification' "$subject/task-receipt.json")
 checker_class=$(jq -r '.classification' "$checker/task-receipt.json")
 subject_formal=$(jq -r '.formalAttempt' "$subject/task-receipt.json")
@@ -639,7 +719,6 @@ subject_session=$(jq -r '.identity.sessionId' "$subject/task-receipt.json")
 checker_session=$(jq -r '.identity.sessionId' "$checker/task-receipt.json")
 [[ $subject_session != "$checker_session" ]] || fail 'checker reused the subject session'
 
-subject_receipt_sha=$(sha256sum "$subject/task-receipt.json" | cut -d' ' -f1)
 subject_commands_sha=$(sha256sum "$subject/commands.json" | cut -d' ' -f1)
 checker_manifest="$checker/packet-manifest.json"
 [[ $(jq -r --arg path subject/task-receipt.json \
@@ -669,8 +748,13 @@ python3 "$json_validator" "$checker_result" ||
   fail 'checker result contains invalid or duplicate-key JSON'
 python3 "$document_validator" checker-result "$checker_result" ||
   fail 'checker result does not satisfy a declared exact schema'
-jq -e '
-  .schema == "nomos.gate_k.checker_result@1" and
+checker_receipt_schema=$(jq -r '.schema' "$checker/task-receipt.json")
+jq -e --arg receipt_schema "$checker_receipt_schema" '
+  ((.schema == "nomos.gate_k.checker_result@1" and
+    (has("protocolRevision") | not) and
+    $receipt_schema == "nomos.gate_k.task_receipt@1") or
+   (.schema == "nomos.gate_k.checker_result@2" and .protocolRevision == 6 and
+    $receipt_schema == "nomos.gate_k.task_receipt@2")) and
   (.verdict == "pass" or .verdict == "reject") and
   (.commands | type) == "array" and (.commands | length) > 0 and
   all(.commands[];
@@ -679,47 +763,66 @@ jq -e '
       (.command | type) == "string" and (.command | length) > 0)) and
   (.reasons | type) == "array" and (.reasons | length) > 0 and
   all(.reasons[]; type == "string" and length > 0)
-  ' "$checker_result" >/dev/null || fail 'checker result is incomplete'
+  ' "$checker_result" >/dev/null || fail 'checker result generation or content is invalid'
 checker_verdict=$(jq -r '.verdict' "$checker_result")
 adjudication_json=$(python3 "$adjudication_validator" "$subject" "$checker" "$adjudication") ||
   fail 'command adjudication validation failed'
 [[ $(jq -r '.candidateCommit' <<<"$adjudication_json") == "$subject_commit" ]] ||
   fail 'command adjudication candidate differs from task records'
 command_adjudication_verdict=$(jq -r '.verdict' <<<"$adjudication_json")
+adjudication_schema=$(jq -r '.schema' <<<"$adjudication_json")
 verdict=$(jq -r '.verdict' <<<"$adjudication_json")
 adjudicator=$(jq -r '.adjudicator' <<<"$adjudication_json")
 owner=$(jq -r '.ownerDisposition' <<<"$adjudication_json")
 
-logical_verdict=pass
-logical_reason='subject completed within protocol and the independent checker passed'
-if [[ $command_adjudication_verdict == fail ]]; then
-  logical_verdict=fail
-  logical_reason='independent review found an outside-workspace path request in recorded commands'
-elif [[ $subject_outcome == inconclusive || $checker_outcome == inconclusive ]]; then
-  logical_verdict=inconclusive
-  logical_reason='a subject or checker transport/harness failure prevented fair completion'
-elif [[ $(jq -r '.operatorIntervention' "$subject/task-receipt.json") != none ||
-        $(jq -r '.operatorIntervention' "$checker/task-receipt.json") != none ]]; then
-  logical_verdict=assisted
-  logical_reason='substantive operator intervention was recorded'
-elif [[ $subject_outcome != eligible-for-checker || $checker_outcome != completed-checker ||
-        $checker_verdict != pass ]]; then
-  logical_verdict=fail
-  logical_reason='the subject, checker transport, protocol, or checker result failed'
-fi
-if [[ $command_adjudication_verdict == pass ]]; then
-  verdict=$logical_verdict
+if [[ $adjudication_schema == nomos.gate_k.command_adjudication@2 ]]; then
+  [[ $(jq -r '.schema' "$subject/task-receipt.json") == nomos.gate_k.task_receipt@2 &&
+    $(jq -r '.schema' "$checker/task-receipt.json") == nomos.gate_k.task_receipt@2 ]] ||
+    fail 'revision-6 adjudication requires revision-6 task receipts'
+  logical_verdict=$verdict
+  logical_reason=$(jq -r '.reason' <<<"$adjudication_json")
 else
-  [[ $logical_verdict == fail ]] || fail 'command finding did not derive fail'
+  [[ $(jq -r '.schema' "$subject/task-receipt.json") == nomos.gate_k.task_receipt@1 &&
+    $(jq -r '.schema' "$checker/task-receipt.json") == nomos.gate_k.task_receipt@1 ]] ||
+    fail 'legacy adjudication requires legacy task receipts'
+  logical_verdict=pass
+  logical_reason='subject completed within protocol and the independent checker passed'
+  if [[ $command_adjudication_verdict == fail ]]; then
+    logical_verdict=fail
+    logical_reason='independent review found an outside-workspace path request in recorded commands'
+  elif [[ $subject_outcome == inconclusive || $checker_outcome == inconclusive ]]; then
+    logical_verdict=inconclusive
+    logical_reason='a subject or checker transport/harness failure prevented fair completion'
+  elif [[ $(jq -r '.operatorIntervention' "$subject/task-receipt.json") != none ||
+          $(jq -r '.operatorIntervention' "$checker/task-receipt.json") != none ]]; then
+    logical_verdict=assisted
+    logical_reason='substantive operator intervention was recorded'
+  elif [[ $subject_outcome != eligible-for-checker || $checker_outcome != completed-checker ||
+          $checker_verdict != pass ]]; then
+    logical_verdict=fail
+    logical_reason='the subject, checker transport, protocol, or checker result failed'
+  fi
+  if [[ $command_adjudication_verdict == pass ]]; then
+    verdict=$logical_verdict
+  else
+    [[ $logical_verdict == fail ]] || fail 'command finding did not derive fail'
+  fi
 fi
 
 if [[ $subject_class == rehearsal ]]; then
-  [[ $(jq -r '.identity.provider + "/" + .identity.model + "/" + .identity.thinking' \
-      "$subject/task-receipt.json") == anthropic/claude-opus-5/high ]] ||
-    fail 'rehearsal subject is not the supplemental Claude Opus 5 high route'
-  [[ $(jq -r '.identity.provider + "/" + .identity.model + "/" + .identity.thinking' \
-      "$checker/task-receipt.json") == anthropic/claude-opus-5/high ]] ||
-    fail 'rehearsal checker is not the supplemental Claude Opus 5 high route'
+  subject_route=$(jq -r \
+    '.identity.provider + "/" + .identity.model + "/" + .identity.thinking' \
+    "$subject/task-receipt.json")
+  checker_route=$(jq -r \
+    '.identity.provider + "/" + .identity.model + "/" + .identity.thinking' \
+    "$checker/task-receipt.json")
+  case "$subject_shape:$subject_route:$checker_route" in
+    author:anthropic/claude-opus-5/high:anthropic/claude-opus-5/high | \
+      debug:anthropic/claude-opus-5/high:anthropic/claude-opus-5/high | \
+      author:antigravity/gemini-3.7-flash/high:deepseek/deepseek-v4-flash-vision-exp/max | \
+      debug:deepseek/deepseek-v4-flash-vision-exp/max:antigravity/gemini-3.7-flash/high) ;;
+    *) fail 'rehearsal subject/checker identities differ from the approved routes' ;;
+  esac
   [[ $subject_formal == false && $checker_formal == false ]] ||
     fail 'rehearsal was marked as a formal attempt'
 else
@@ -784,15 +887,22 @@ done < <(cd "$checker/artifacts" && find . -mindepth 1 -print0 | sort -z)
 
 checker_receipt_sha=$(sha256sum "$checker/task-receipt.json" | cut -d' ' -f1)
 checker_result_sha=$(sha256sum "$checker_result" | cut -d' ' -f1)
+checker_receipt_schema=nomos.gate_k.checker_receipt@1
+run_result_schema=nomos.gate_k.run_result@1
+if [[ $adjudication_schema == nomos.gate_k.command_adjudication@2 ]]; then
+  checker_receipt_schema=nomos.gate_k.checker_receipt@2
+  run_result_schema=nomos.gate_k.run_result@2
+fi
 checker_json=$(jq -S -c -n \
+  --arg schema "$checker_receipt_schema" \
   --arg verdict "$checker_verdict" \
   --arg subject_receipt_sha "$subject_receipt_sha" \
   --arg checker_receipt_sha "$checker_receipt_sha" \
   --arg checker_result_sha "$checker_result_sha" \
   --slurpfile receipt "$checker/task-receipt.json" \
   --slurpfile result "$checker_result" '
-  {
-    schema: "nomos.gate_k.checker_receipt@1",
+  ({
+    schema: $schema,
     verdict: $verdict,
     identity: $receipt[0].identity,
     operatorIntervention: $receipt[0].operatorIntervention,
@@ -801,11 +911,15 @@ checker_json=$(jq -S -c -n \
     checkerTaskReceiptSha256: $checker_receipt_sha,
     checkerResultSha256: $checker_result_sha,
     result: $result[0]
-  }
+  } + if $schema == "nomos.gate_k.checker_receipt@2"
+       then {protocolRevision: 6} else {} end)
 ')
 printf '%s\n' "$checker_json" >"$stage/checker.json"
+python3 "$document_validator" checker-receipt "$stage/checker.json" ||
+  fail 'generated checker receipt does not satisfy its exact schema'
 
 result=$(jq -S -c -n \
+  --arg schema "$run_result_schema" \
   --arg verdict "$verdict" \
   --arg reason "$logical_reason" \
   --arg adjudicator "$adjudicator" \
@@ -817,8 +931,8 @@ result=$(jq -S -c -n \
   --argjson adjudication "$adjudication_json" \
   --slurpfile subject "$subject/task-receipt.json" \
   --slurpfile checker "$checker/task-receipt.json" '
-  {
-    schema: "nomos.gate_k.run_result@1",
+  ({
+    schema: $schema,
     verdict: $verdict,
     reason: $reason,
     adjudicator: $adjudicator,
@@ -827,12 +941,16 @@ result=$(jq -S -c -n \
     shape: $shape,
     classification: $classification,
     formalAttempt: $formal,
-    commandAdjudication: $adjudication,
     subject: $subject[0],
     checker: $checker[0]
-  }
+  } + if $schema == "nomos.gate_k.run_result@2"
+       then {protocolRevision: 6, adjudication: $adjudication,
+             records: $adjudication.records}
+       else {commandAdjudication: $adjudication} end)
 ')
 printf '%s\n' "$result" >"$stage/result.json"
+python3 "$document_validator" run-result "$stage/result.json" ||
+  fail 'generated run result does not satisfy its exact schema'
 
 [[ $(tree_sha "$stage/artifacts") == \
     $(jq -r '.digests.artifactsTreeSha256' "$stage/subject/task-receipt.json") ]] ||
@@ -843,6 +961,13 @@ printf '%s\n' "$result" >"$stage/result.json"
 
 subject_intervention=$(jq -r '.operatorIntervention' "$subject/task-receipt.json")
 checker_intervention=$(jq -r '.operatorIntervention' "$checker/task-receipt.json")
+subject_retries=$(jq -r '.operatorRetries' "$subject/task-receipt.json")
+checker_retries=$(jq -r '.operatorRetries' "$checker/task-receipt.json")
+if [[ $subject_retries -eq 0 && $checker_retries -eq 0 ]]; then
+  retry_summary='- Operator retries: `0` for subject and checker'
+else
+  retry_summary="- Operator retries: \`$subject_retries\` subject, \`$checker_retries\` checker"
+fi
 printf '%s\n' \
   "# Gate K $subject_shape $subject_class run" \
   '' \
@@ -854,7 +979,7 @@ printf '%s\n' \
   "- Checker: \`$(jq -r '.identity.provider + "/" + .identity.model' "$checker/task-receipt.json")\`, session \`$checker_session\`" \
   "- Subject operator intervention: \`$subject_intervention\`" \
   "- Checker operator intervention: \`$checker_intervention\`" \
-  '- Operator retries: `0` for subject and checker' \
+  "$retry_summary" \
   "- Adjudicator: $adjudicator" \
   "- Owner disposition: $owner" \
   "- Command adjudication: \`$command_adjudication_verdict\`" \

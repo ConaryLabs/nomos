@@ -75,6 +75,10 @@ jq -S -c '
   .digests.rawTranscriptSha256 = ("3"*64)
 ' "$base/subject/task-receipt.json" >"$tmp_dir/current-receipt.json"
 python3 "$documents" task-receipt "$tmp_dir/current-receipt.json"
+jq -S -c '.identity.freshEphemeralSession = false' \
+  "$tmp_dir/current-receipt.json" >"$tmp_dir/nonfresh-receipt.json"
+assert_blocked 'task receipt identity is not a fresh ephemeral session' \
+  python3 "$documents" task-receipt "$tmp_dir/nonfresh-receipt.json"
 jq -S -c 'del(.execution, .digests.rawTranscriptSha256)' \
   "$tmp_dir/current-receipt.json" >"$tmp_dir/relabeled-legacy-receipt.json"
 assert_blocked 'fields differ from the protocol' \
@@ -88,9 +92,41 @@ assert_blocked 'not bound to one of the four frozen formal task receipts' \
   --provider anthropic --model claude-opus-5 --thinking high --lane claude --worktree clean \
   --task-receipt "$tmp_dir/current-receipt.json"
 
+archived_current="$script_dir/runs/rehearsal/2026-08-24-gemini-author-deepseek-checker-r6/subject"
+sed 's#/work/signed-dev#/definitely-absent/nomos-issue88-archive#g' \
+  "$archived_current/pi-qualification.txt" >"$tmp_dir/archived-absent-paths.txt"
+python3 "$qualification" "$tmp_dir/archived-absent-paths.txt" \
+  --commit cbfa3f74e92c2e68f9916cff4ceac26859bd2994 \
+  --version 0.84.2 --host 'Linux 7.1.8-arch1-3 x86_64' \
+  --provider antigravity --model gemini-3.7-flash --thinking high \
+  --lane gemini --worktree clean \
+  --task-receipt "$archived_current/task-receipt.json"
+assert_blocked 'cannot be authenticated' \
+  python3 "$qualification" "$tmp_dir/archived-absent-paths.txt" \
+  --commit cbfa3f74e92c2e68f9916cff4ceac26859bd2994 \
+  --version 0.84.2 --host 'Linux 7.1.8-arch1-3 x86_64' \
+  --provider antigravity --model gemini-3.7-flash --thinking high \
+  --lane gemini --worktree clean --task-receipt "$tmp_dir/current-receipt.json"
+
 printf '%s\n' '{"schema":"nomos.gate_k.checker_result@1","verdict":"pass","commands":["x"],"reasons":["x"],"extra":NaN}' \
   >"$tmp_dir/checker.json"
 assert_blocked 'non-finite JSON number' python3 "$documents" checker-result "$tmp_dir/checker.json"
+
+current_run="$script_dir/runs/rehearsal/2026-08-24-gemini-author-deepseek-checker-r6"
+python3 "$documents" checker-receipt "$current_run/checker.json"
+python3 "$documents" run-result "$current_run/result.json"
+python3 "$documents" checker-receipt \
+  "$script_dir/runs/gate-k/2026-08-23-gemini-3.7-flash-author/checker.json"
+python3 "$documents" run-result \
+  "$script_dir/runs/gate-k/2026-08-23-gemini-3.7-flash-author/result.json"
+jq -S -c '.undeclared = true' "$current_run/checker.json" \
+  >"$tmp_dir/checker-receipt-extra.json"
+assert_blocked 'checker receipt fields differ from the protocol' \
+  python3 "$documents" checker-receipt "$tmp_dir/checker-receipt-extra.json"
+jq -S -c '.undeclared = true' "$current_run/result.json" \
+  >"$tmp_dir/run-result-extra.json"
+assert_blocked 'run result fields differ from the protocol' \
+  python3 "$documents" run-result "$tmp_dir/run-result-extra.json"
 assert_blocked 'cannot be authenticated' env PYTHONPATH="$protocol_dir" \
   python3 -c 'import importlib.util; s=importlib.util.spec_from_file_location("q", "'"$qualification"'"); m=importlib.util.module_from_spec(s); s.loader.exec_module(m); m.file_sha256("/tmp/nomos-forged-provider", "provider extension")'
 

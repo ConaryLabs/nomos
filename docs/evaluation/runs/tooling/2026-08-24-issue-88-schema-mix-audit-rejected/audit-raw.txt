@@ -1,0 +1,80 @@
+{
+  "schema": "nomos.issue88.non_author_audit@1",
+  "reviewedCommit": "a1cc26cd41157352a714860bb39c50e3324ddeb1",
+  "reviewer": {
+    "provider": "deepseek",
+    "model": "deepseek-v4-flash-vision-exp",
+    "freshSession": true,
+    "nonAuthor": true
+  },
+  "status": "fail",
+  "findings": [
+    {
+      "severity": "minor",
+      "location": "docs/evaluation/gate-k-eval-finalize.sh:702-706 (and 378-381)",
+      "summary": "Revision-6 finalization does not enforce the strict revision-6 @2 generation for checker results or packet manifests; a stale @1 checker result is accepted inside a revision-6 composite and finalized as a passing revision-6 result.",
+      "evidence": "The checker-result jq gate accepts `.schema == \"nomos.gate_k.checker_result@1\" and (has(\"protocolRevision\") | not)` unconditionally, and the packet-manifest jq at lines 378-381 likewise accepts @1 regardless of the revision-6 path; unlike the task-receipt pairing (rev-6 branch requires task_receipt@2), no generation pairing is checked for checker_result or packet_manifest. Demonstrated with the offline harness: a checker record whose artifacts/checker.json was relabeled to `nomos.gate_k.checker_result@1` (protocolRevision removed) with all digests rebound passed `gate-k-eval-finalize.sh` and produced `result.json` verdict `pass` with `checker_receipt@2`/`protocolRevision: 6` embedding the @1 checker result (embedded `.result.schema == \"nomos.gate_k.checker_result@1\"`, `.result.protocolRevision` absent). COLD_AGENT_PROTOCOL.md states revision-6 checker results use strict @2 generations and carry protocolRevision 6, and no adversarial test covers this stale-generation mix (only adjudication staleness is tested)."
+    },
+    {
+      "severity": "minor",
+      "location": "docs/evaluation/gate-k-eval-finalize.sh:918",
+      "summary": "The generated RUN.md hardcodes `Operator retries: 0` regardless of the recorded receipts, so any revision-6 run finalized with a recorded retry carries a false statement in its evidence record.",
+      "evidence": "The finalizer validates rev-6 receipts with `.operatorRetries >= 0` (line 138) and `validate_v2` only requires independence_integrity = fail when retries differ from 0, so a retried run finalizes as `fail` (preserved evidence). Demonstrated with the offline harness: a checker record with `operatorRetries: 1` (independence_integrity set to fail, overall verdict fail) finalized successfully, and the emitted RUN.md contained `- Operator retries: \`0\` for subject and checker` while `task-receipt.json` reported `operatorRetries: 1`."
+    }
+  ],
+  "verification": [
+    {
+      "command": "git status --short",
+      "status": "pass",
+      "details": "Empty output before and after review; checkout remained clean (exit 0)."
+    },
+    {
+      "command": "git diff --check origin/main...HEAD",
+      "status": "pass",
+      "details": "Exit 0; no whitespace errors in the branch (the previously reported trailing-blank-line defect is repaired at a1cc26c)."
+    },
+    {
+      "command": "cargo fmt --all -- --check",
+      "status": "pass",
+      "details": "Exit 0; formatting is clean."
+    },
+    {
+      "command": "cargo clippy --workspace --all-targets --locked -- -D warnings",
+      "status": "pass",
+      "details": "Exit 0; all seven workspace members checked with warnings denied."
+    },
+    {
+      "command": "cargo test --workspace --locked",
+      "status": "pass",
+      "details": "Exit 0; unit, integration, compile-fail, and doc tests all green (no FAILED/failure lines in the log)."
+    },
+    {
+      "command": "cargo xtask boundary",
+      "status": "pass",
+      "details": "Exit 0; 'boundary: clean' for membership, permitted-edges, cycles, forbidden-dependency, and tooling-isolation rules."
+    },
+    {
+      "command": "docs/evaluation/test-pi-cold-agent-preflight.sh",
+      "status": "pass",
+      "details": "Exit 0; 'pi cold-agent boundary harness: PASS' including all negative device/outside modes (extra-device-exposed, null-read-denied, null-write-denied, outside reads/writes, network, leak)."
+    },
+    {
+      "command": "docs/evaluation/test-gate-k-eval-tooling.sh",
+      "status": "pass",
+      "details": "Exit 0; attempt-ledger, strictness, rc1 byte-identical re-finalization, revision-6 adjudication regressions, and the full offline harness all PASS."
+    }
+  ],
+  "protectedSurfaceUnchanged": true,
+  "checkoutCleanBeforeAndAfter": true,
+  "notes": [
+    "Diff from origin/main (256784b) to HEAD touches only README.md, docs/HANDOFF.md, docs/evaluation/* (including new rehearsal/tooling run records). KERNEL.md, THESIS.md, Cargo.toml/Cargo.lock/rust-toolchain.toml/.cargo, crates/, fixtures/, xtask/, .github/ (CI), gate-k-rc1 records under docs/evaluation/runs/gate-k/, and historical verdicts are untouched (git diff --name-only confirmed no protected path).",
+    "Boundary generation 4 verified empirically against real Bubblewrap 0.11.2 with the exact extension mount arguments: /dev is a fresh tmpfs containing exactly /dev/null (char device 1:3, mode 666); read and write to /dev/null succeed; /dev/zero absent; creating /dev/other fails (EROFS); mknod in the writable mount fails; /proc remounted read-only and /proc/1/root/dev exposes only null; inherited fd 0 is /dev/null and fd 1 is a pipe. The sole device exception is thus the real /dev/null with no other device; alias/fd paths remain outside-workspace and are treated as forbidden by the adjudication validator (tests cover /dev/fd/1, /proc/self/fd/1, /workspace/output/null-alias).",
+    "Adjudication/finalizer derivation is mechanically fail-closed and precedence-correct (assisted > fail > inconclusive > pass; per-record fail > inconclusive > pass; outside_workspace_path finding forces operational_compliance fail; undeclared_information_ingress additionally forces independence_integrity fail; eligibility/hint/retry breaches force independence fail; checker reject forbids passing subject semantic merit; pass requires eligible-for-checker + completed-checker + checker pass), and findings on the exact token /dev/null are rejected.",
+    "Both live rehearsal pairs are internally consistent and verified: schema run_result@2 with protocolRevision 6, classification rehearsal, formalAttempt false, zero operator intervention, zero retries, distinct fresh sessions, all three dimensions pass for subject and checker with hash-bound evidence, and result SHA-256s exactly 847a03198affb8ab896b541ff2f7f04ed9635a7877cbec960fc33bbad5627f2e and 6458c901ca637f6cdab796af28e89a21b3d831a6cdd29644d7438a9d7dac2ba4 as documented in GATE_K_COLD_AGENT_PLAN.md; every adjudication evidence digest was independently recomputed and matched.",
+    "Both frozen gate-k-rc1 pairs re-finalize byte-for-byte (subject/checker trees, checker.json, result.json, RUN.md) with the historical final hashes preserved: e6990dacde903f527d1cb46784a54d938a7e130f1193e51bb830a4a2284f07dc (author fail) and f09c9214329f7f8bd7d4d4b31476a0f24c825add2f5bb434b7bf780f64d8089c (debug fail).",
+    "Resource accounting is uncapped (assistantTurns, toolCalls, providerReportedTokens integer-or-null, ordered commands) with no usage-based termination; zero-coaching and zero-retry are mechanically enforced by the transcript validator (exactly one user message equal to the exact prompt, willRetry=false, exact command derivation and accounting derivation).",
+    "The test harness is decomposed into a shared lib (test-gate-k-eval-tooling-lib.sh), finalizer-adversarial, revision-6-adjudication, strictness, ledgers, and preflight suites with extensive negative coverage for omissions, invalid values, mismatches, identity/hash disagreements, undeclared ingress, boundary exposure, and adjudication-level stale generations.",
+    "Two additional observations are noted but not separately reported: (1) the legacy @1 task-receipt path in gate-k-eval-finalize.sh:125 and gate-k-eval-validate-documents.py now accepts any boolean for freshEphemeralSession instead of requiring true (only reachable via hand-built legacy records; frozen rc1 receipts are digest-pinned and unaffected); (2) docs/evaluation/GATE_K_EVAL_TOOLING.md remains a labeled revision-5/'current through issue 79' historical snapshot and was not updated for revision 6.",
+    "Reviewer model identifier is recorded as the repository-pinned DeepSeek-family route identifier (deepseek-v4-flash-vision-exp) used for DeepSeek-family evaluation roles in this repository; the session did not self-disclose an independent upstream model string."
+  ]
+}

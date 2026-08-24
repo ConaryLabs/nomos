@@ -10,6 +10,7 @@ import sys
 from pathlib import Path
 
 from gate_k_eval_pi_protocol import (
+    ARCHIVED_TASK_RECEIPT_SHA256S,
     LEGACY_TASK_RECEIPT_SHA256S,
     fail,
     loads,
@@ -44,10 +45,11 @@ PI_TREE = "63a9dd14b0ae82cee2db30c56822682af19145d145febb58b613d5de4dbb27af"
 BWRAP_SHA = "6ad2138a73d592acb43525432965e3c66f6fad8a2f3d610c6ca0b6855e993cbe"
 RUST = "1.98.0-x86_64-unknown-linux-gnu"
 LEGACY_EXTENSION_SHA = "5076b923aad8ebf6d46110ca0bd45e62911ace563bdfe58e6418b6a14b519f46"
-CURRENT_EXTENSION_SHA = "3205bdd3bae1eadba56337379a797a4900fcbe31a200db31f4f6faa2ed775a36"
+CURRENT_EXTENSION_SHA = "d242e2de63e1228a32d7e890bf7cb852e71680813a7aa8f55fc500af64923043"
 PI_CLIENT_SHA = "840d1e8e689ed9e4937bcb00b9a810e02a8567d9afb10a47097f11ca93ea1521"
 PROVIDER_EXTENSION_SHA = "1c41a45c2820eb52f1b41955ae5fbb833470cba2203226d3b0c626c6f9dbe10b"
-SYSTEM_SHA = "2cec3aeebce2f8359cde337d3b1b2ec1601913711f282ab0289ab276b02dee79"
+LEGACY_SYSTEM_SHA = "2cec3aeebce2f8359cde337d3b1b2ec1601913711f282ab0289ab276b02dee79"
+SYSTEM_SHA = "c1c41bf11dd3fc42f47c174b9d431e36dd87afb60aa04d08062dd6e11963c333"
 FINAL_SYSTEM_SHA = "a78cae9025d8b63562a13c111e79e9f27c32ab20e726a53d2d9d8c094712e2b7"
 DEEPSEEK_CATALOG_SHA = "7954fb3ef750bed773619c9fe259a8eb923b6f4f8455442a33cf8e1fe2fa3773"
 ANTIGRAVITY_INTEGRITY = "sha512-Trl0lWZRDM6TUhw8UjZ+si4Tx2IxCtLLdEwQ10gOS3BUJfgv/C32HY3m/v9PcLNZWYzo+LEfmamiB5+f0jciCg=="
@@ -77,7 +79,7 @@ def file_sha256(path: str, name: str) -> str:
         fail(f"{name} cannot be authenticated: {error}")
 
 
-def legacy_task_receipt_digest(args: argparse.Namespace) -> str | None:
+def task_receipt_digest(args: argparse.Namespace) -> str | None:
     if args.task_receipt is None:
         return None
     try:
@@ -117,6 +119,9 @@ def parse_receipt(path: Path) -> tuple[dict[str, str], list[dict[str, object]]]:
 
 
 def validate_headers(values: dict[str, str], args: argparse.Namespace) -> tuple[str, str, str]:
+    archived_receipt = (
+        task_receipt_digest(args) in ARCHIVED_TASK_RECEIPT_SHA256S
+    )
     if values["PI_VERSION"] != args.version or values["PI_VERSION"] != "0.84.2":
         fail("qualification Pi version is not the pinned client")
     if values["PI_INSTALL"] != f"npm install -g --ignore-scripts @earendil-works/pi-coding-agent@{args.version}":
@@ -150,8 +155,18 @@ def validate_headers(values: dict[str, str], args: argparse.Namespace) -> tuple[
     if (not extension.endswith("/docs/evaluation/pi-cold-agent-extension.ts") or
             extension_sha not in (LEGACY_EXTENSION_SHA, CURRENT_EXTENSION_SHA)):
         fail("qualification boundary extension differs from the pinned source")
+    source_boundary = loads(values["PI_BOUNDARY"], "qualification boundary")
+    expected_system_sha = (
+        LEGACY_SYSTEM_SHA
+        if isinstance(source_boundary, dict)
+        and source_boundary.get("schema") == "nomos.pi_cold_agent_boundary@2"
+        else SYSTEM_SHA
+    )
     system_prompt, system_sha = parse_path_digest(values["PI_SYSTEM_PROMPT"], "Pi system prompt")
-    if not system_prompt.endswith("/docs/evaluation/pi-cold-agent-system-prompt.txt") or system_sha != SYSTEM_SHA:
+    if (
+        not system_prompt.endswith("/docs/evaluation/pi-cold-agent-system-prompt.txt")
+        or system_sha != expected_system_sha
+    ):
         fail("qualification system prompt differs from the pinned source")
     if values["PI_PROVIDER_ENV"] != "overrides-cleared prewarm-disabled":
         fail("qualification provider environment is not neutral")
@@ -179,8 +194,14 @@ def validate_headers(values: dict[str, str], args: argparse.Namespace) -> tuple[
             not values["PI_PROVIDER_EXTENSION"].endswith(
                 "/lib/node_modules/pi-antigravity/src/index.ts"
             )
-            or file_sha256(values["PI_PROVIDER_EXTENSION"], "Gemini provider extension")
-            != PROVIDER_EXTENSION_SHA
+            or (
+                not archived_receipt
+                and file_sha256(
+                    values["PI_PROVIDER_EXTENSION"],
+                    "Gemini provider extension",
+                )
+                != PROVIDER_EXTENSION_SHA
+            )
         ):
             fail("qualification Gemini provider extension differs from the pinned package entry point")
     elif any(values[field] != "none" for field in ("PI_PROVIDER_EXTENSION", "PI_PROVIDER_PACKAGE", "PI_PROVIDER_INSTALL")):
@@ -197,7 +218,7 @@ def validate_headers(values: dict[str, str], args: argparse.Namespace) -> tuple[
         f"pi --provider {provider} --model {model} --thinking {thinking} --mode json --no-session "
         f"--no-approve --offline --no-extensions{provider_flag} -e {extension} --no-skills "
         f"--no-prompt-templates --no-themes --no-context-files --no-builtin-tools --tools bash "
-        f"--system-prompt <sha256:{SYSTEM_SHA}> <neutral-prompt>"
+        f"--system-prompt <sha256:{expected_system_sha}> <neutral-prompt>"
     )
     if values["PI_INVOCATION"] != expected_invocation:
         fail("qualification invocation differs from the exact neutral command")
@@ -205,6 +226,12 @@ def validate_headers(values: dict[str, str], args: argparse.Namespace) -> tuple[
 
 
 def validate_boundary(values: dict[str, str], args: argparse.Namespace, session: str, extension: str) -> None:
+    frozen_legacy_receipt = (
+        task_receipt_digest(args) in LEGACY_TASK_RECEIPT_SHA256S
+    )
+    archived_receipt = (
+        task_receipt_digest(args) in ARCHIVED_TASK_RECEIPT_SHA256S
+    )
     _, extension_sha = parse_path_digest(values["PI_EXTENSION"], "Pi extension")
     boundary = loads(values["PI_BOUNDARY"], "qualification boundary")
     boundary = require_keys(boundary, {
@@ -214,8 +241,17 @@ def validate_boundary(values: dict[str, str], args: argparse.Namespace, session:
         "systemPromptSha256", "finalSystemPromptSha256", "packetManifestSha256", "binarySha256",
         "taskPromptSha256", "taskShape", "writablePaths", "budgets", "sandbox",
     }, {"runtimeIdentity"}, "qualification boundary")
-    if boundary["schema"] not in ("nomos.pi_cold_agent_boundary@2", "nomos.pi_cold_agent_boundary@3"):
+    if boundary["schema"] not in (
+        "nomos.pi_cold_agent_boundary@2",
+        "nomos.pi_cold_agent_boundary@3",
+        "nomos.pi_cold_agent_boundary@4",
+    ):
         fail("qualification boundary schema differs")
+    expected_system_sha = (
+        LEGACY_SYSTEM_SHA
+        if boundary["schema"] == "nomos.pi_cold_agent_boundary@2"
+        else SYSTEM_SHA
+    )
     expected = {
         "boundaryKind": "source-preflight", "mode": "json",
         "targetCommit": args.commit, "hostWorkspace": values["PI_WORKSPACE"], "guestWorkspace": "/workspace",
@@ -223,7 +259,7 @@ def validate_boundary(values: dict[str, str], args: argparse.Namespace, session:
         "sessionFile": None, "projectTrusted": False,
         "entryTypesBeforeRun": ["model_change", "thinking_level_change"], "activeTools": ["bash"],
         "configuredTools": [{"name": "bash", "source": {"path": extension, "source": "cli", "scope": "temporary", "origin": "top-level"}}],
-        "contextFiles": [], "skills": [], "systemPromptSha256": SYSTEM_SHA,
+        "contextFiles": [], "skills": [], "systemPromptSha256": expected_system_sha,
         "packetManifestSha256": None, "binarySha256": None, "taskPromptSha256": None,
         "taskShape": None, "writablePaths": [], "budgets": None,
     }
@@ -231,7 +267,15 @@ def validate_boundary(values: dict[str, str], args: argparse.Namespace, session:
         if boundary[key] != expected_value:
             fail(f"qualification boundary field {key} differs")
     fixture = args.worktree == "fixture-may-be-dirty"
-    if boundary["finalSystemPromptSha256"] != ("fixture" if fixture else FINAL_SYSTEM_SHA):
+    if fixture:
+        if boundary["finalSystemPromptSha256"] != "fixture":
+            fail("qualification fixture final system prompt identity differs")
+    elif boundary["schema"] == "nomos.pi_cold_agent_boundary@4":
+        require_sha256(
+            boundary["finalSystemPromptSha256"],
+            "qualification final system prompt identity",
+        )
+    elif boundary["finalSystemPromptSha256"] != FINAL_SYSTEM_SHA:
         fail("qualification final system prompt identity differs")
     sandbox = require_keys(boundary["sandbox"], {"backend", "binary", "root", "workspace", "network", "environment", "checks", "selfTest"}, set(), "qualification sandbox")
     if sandbox["backend"] != "bubblewrap" or not os.path.isabs(require_string(sandbox["binary"], "qualification bwrap path")) or sandbox["root"] != "read-only" or sandbox["workspace"] != "read-write-only-host-mount" or sandbox["network"] != "unshared" or sandbox["environment"] != "cleared-and-allowlisted" or sandbox["selfTest"] != "pass":
@@ -240,15 +284,29 @@ def validate_boundary(values: dict[str, str], args: argparse.Namespace, session:
     actual_checks = require_keys(sandbox["checks"], checks, set(), "qualification sandbox checks")
     if any(actual_checks[key] is not True for key in checks):
         fail("qualification sandbox checks are incomplete")
-    if not fixture and (sandbox["binary"] != "/usr/bin/bwrap" or
-                        file_sha256(sandbox["binary"], "Bubblewrap") != values["PI_BWRAP_SHA256"]):
+    if not fixture and (
+        sandbox["binary"] != "/usr/bin/bwrap"
+        or (
+            not archived_receipt
+            and file_sha256(sandbox["binary"], "Bubblewrap")
+            != values["PI_BWRAP_SHA256"]
+        )
+    ):
         fail("qualification Bubblewrap path does not name the pinned binary")
-    if boundary["schema"] == "nomos.pi_cold_agent_boundary@3":
+    if boundary["schema"] in (
+        "nomos.pi_cold_agent_boundary@3",
+        "nomos.pi_cold_agent_boundary@4",
+    ):
         if "PI_RAW_EVENTS_SHA256" not in values:
             fail("current qualification omits the raw event-stream digest")
         if extension_sha != CURRENT_EXTENSION_SHA:
             fail("current qualification names an obsolete boundary extension")
-        if not fixture and file_sha256(extension, "Pi boundary extension") != CURRENT_EXTENSION_SHA:
+        if (
+            not fixture
+            and not archived_receipt
+            and file_sha256(extension, "Pi boundary extension")
+            != CURRENT_EXTENSION_SHA
+        ):
             fail("qualification boundary extension bytes differ")
         runtime = require_keys(
             boundary.get("runtimeIdentity"),
@@ -263,7 +321,11 @@ def validate_boundary(values: dict[str, str], args: argparse.Namespace, session:
                     "/lib/node_modules/@earendil-works/pi-coding-agent/dist/cli.js"
                 )
                 or pi["sha256"] != PI_CLIENT_SHA
-                or file_sha256(pi["path"], "Pi executable") != PI_CLIENT_SHA
+                or (
+                    not archived_receipt
+                    and file_sha256(pi["path"], "Pi executable")
+                    != PI_CLIENT_SHA
+                )
             ):
                 fail("qualification Pi executable differs from the pinned package entry point")
             bubblewrap = require_keys(
@@ -285,7 +347,7 @@ def validate_boundary(values: dict[str, str], args: argparse.Namespace, session:
     else:
         if extension_sha != LEGACY_EXTENSION_SHA:
             fail("legacy qualification boundary extension differs")
-        if legacy_task_receipt_digest(args) not in LEGACY_TASK_RECEIPT_SHA256S:
+        if not frozen_legacy_receipt:
             fail("legacy qualification boundary is not bound to one of the four frozen formal task receipts")
         if "runtimeIdentity" in boundary:
             fail("legacy qualification boundary unexpectedly declares runtime identity")
@@ -295,7 +357,7 @@ def validate(args: argparse.Namespace) -> None:
     values, events = parse_receipt(args.qualification)
     boundary = loads(values["PI_BOUNDARY"], "qualification boundary")
     if (type(boundary) is dict and boundary.get("schema") == "nomos.pi_cold_agent_boundary@2" and
-            legacy_task_receipt_digest(args) not in LEGACY_TASK_RECEIPT_SHA256S):
+            task_receipt_digest(args) not in LEGACY_TASK_RECEIPT_SHA256S):
         fail("legacy qualification boundary is not bound to one of the four frozen formal task receipts")
     session, extension, _ = validate_headers(values, args)
     validate_boundary(values, args, session, extension)

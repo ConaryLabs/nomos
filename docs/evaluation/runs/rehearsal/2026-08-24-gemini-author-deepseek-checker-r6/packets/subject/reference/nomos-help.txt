@@ -1,0 +1,13 @@
+Nomos Gate K semantic runtime
+
+Usage:
+  nomos validate <source.nomos>
+  nomos compile <source.nomos> --out <new.world/>
+  nomos inspect <world/>
+  nomos migrate <v1-world/> --to 2 --out <new-v2-world/>
+  nomos run <world/> --commands <commands> --out <new-run/>
+  nomos command <world/> --state <state.json> "<command>" --out <new-run/>
+  nomos replay <world/> --log <replay> --out <new-run/>
+  nomos explain-entity <world/> <entity>
+  nomos explain-transition <run/> <entity> --tick <tick> --world <world/>
+  nomos --help

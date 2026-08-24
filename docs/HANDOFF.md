@@ -11,7 +11,9 @@ Gate K is closed as **failed**. Peter Permenter's owner disposition is
 - contract: `KERNEL.md` revision 7;
 - formal launch protocol: revision 3;
 - current cold-agent protocol: revision 6, owner-authorized in decision 0015;
-- revision-6 tooling: not yet implemented;
+- revision-6 tooling: implemented under issue #88; both live rehearsal pairs
+  passed at exact tooling commit `cbfa3f7`, and the complete repository proof
+  plus zero-finding non-author audit passed at `da19239`;
 - implementation: complete through SW-N;
 - acceptance: criteria 1–16 and 19 pass; criteria 17 and 18 fail;
 - round-one retries: none authorized; a distinct round two is conditionally
@@ -73,7 +75,7 @@ After the formal records merged, final evidence-main workflows also passed:
 
 ## Evidence boundary
 
-Issues #68–#73, #79, #82, and #83 are closed. Their PRs are merged:
+Issues #68–#73, #79, #82, #83, and #86 are closed. Their PRs are merged:
 
 | Issue | PR | Disposition |
 | ---: | ---: | --- |
@@ -86,6 +88,7 @@ Issues #68–#73, #79, #82, and #83 are closed. Their PRs are merged:
 | #73 | #81 | final owner verdict |
 | #82 | #84 | authorize the quarantined gaol visual-target experiment |
 | #83 | #85 | assemble and owner-dispose the static visual target pack |
+| #86 | #87 | authorize protocol revision 6 and conditional round two |
 
 Issue #79 changed evidence tooling and protocol documentation after the
 candidate was frozen. It changed no kernel crate, fixture, Cargo input, CLI,
@@ -134,17 +137,26 @@ The pack is the preserved desired target. A fresh, prospectively governed Gate K
 attempt remains required before renderer architecture or adoption; neither is
 authorized by the visual verdict.
 
-Issue #86 is the active decision slice. It establishes protocol revision 6 and
-authorizes a fresh round only after its prerequisites pass. It changes no
-kernel code, fixture, Cargo input, semantic behavior, or historical evidence.
+Issue #88 is the active tooling slice. It implements separately evidenced
+dimension results and a mechanically derived verdict; exact revision-6 packet,
+task, checker, adjudication, and final-result generations; and boundary
+generation 4, which exposes exactly `/dev/null` while failing every other
+device or outside path closed. The offline proof also re-finalizes both frozen
+round-one pairs byte-for-byte without changing their verdicts.
 
-After #86 merges, the next slice is revision-6 evaluation tooling: add the three
-dimension results and derived verdict, implement the exact `/dev/null`
-exception while failing every other outside path closed, update schemas and
-finalization, run non-formal author/debug rehearsals, and obtain an exact-head
-non-author audit. Only then may a separate slice prove and freeze
-`gate-k-rc2`. Formal reservations and launches wait until the complete
-mechanical matrix passes against that exact candidate.
+The fresh non-formal Gemini-author/DeepSeek-checker and
+DeepSeek-debugger/Gemini-checker pairs both passed at exact tooling commit
+`cbfa3f7`. Their complete revision-6 records are under
+`docs/evaluation/runs/rehearsal/2026-08-24-*-r6/`; both results explicitly have
+`formalAttempt: false` and no Gate K acceptance value. The complete repository
+and evaluation proof and a fresh DeepSeek-family non-author audit passed with
+zero findings at `da19239`. Four rejected predecessor audits, three CI
+portability failures, and every repair remain disclosed under
+`docs/evaluation/runs/tooling/2026-08-24-*`. Issue #88 is locally complete in
+draft PR #89 pending final CI and merge. Only after it merges may a separate
+slice prove the unchanged semantic inputs and freeze `gate-k-rc2`. Formal
+reservations and launches wait until the complete mechanical matrix passes
+against that exact candidate.
 
 Renderer architecture and project adoption remain out of scope until a new
 owner disposition passes Gate K.

@@ -70,10 +70,21 @@ def require_bool(value: object, name: str) -> bool:
 
 
 def validate_plan(value: object) -> None:
-    plan = require_keys(value, {"schema", "task", "candidate", "packet", "budgets", "rubric",
-                                "recording", "operatorIntervention", "verdicts"}, set(), "plan")
-    if plan["schema"] != "nomos.gate_k.eval_plan@1":
+    if type(value) is not dict:
+        fail("plan is not an object")
+    current = value.get("schema") == "nomos.gate_k.eval_plan@2"
+    required = {"schema", "task", "candidate", "packet", "budgets", "rubric",
+                "recording", "operatorIntervention", "verdicts"}
+    if current:
+        required |= {"protocolRevision", "dimensionCriteria", "gateCriteria"}
+    plan = require_keys(value, required, set(), "plan")
+    if plan["schema"] not in (
+        "nomos.gate_k.eval_plan@1",
+        "nomos.gate_k.eval_plan@2",
+    ):
         fail("plan schema differs")
+    if current and plan["protocolRevision"] != 6:
+        fail("plan protocol revision differs")
     task = require_keys(plan["task"], {"shape", "classification", "formalAttempt"}, set(), "plan.task")
     if task["shape"] not in SHAPES or task["classification"] not in CLASSES:
         fail("plan task identity is invalid")
@@ -116,15 +127,51 @@ def validate_plan(value: object) -> None:
         fail("plan recording contract differs")
     if type(plan["rubric"]) is not list or len(plan["rubric"]) < 3 or any(type(x) is not str or not x for x in plan["rubric"]):
         fail("plan rubric is invalid")
+    if current:
+        dimensions = require_keys(
+            plan["dimensionCriteria"],
+            {"semantic_merit", "independence_integrity", "operational_compliance"},
+            set(),
+            "plan.dimensionCriteria",
+        )
+        flattened: list[str] = []
+        for name in (
+            "semantic_merit",
+            "independence_integrity",
+            "operational_compliance",
+        ):
+            criteria = dimensions[name]
+            if type(criteria) is not list or not criteria or any(
+                type(item) is not str or not item for item in criteria
+            ):
+                fail(f"plan.dimensionCriteria.{name} is invalid")
+            flattened.extend(criteria)
+        if len(flattened) != len(set(flattened)) or flattened != plan["rubric"]:
+            fail("plan dimension criteria do not partition the declared run rubric")
+        if type(plan["gateCriteria"]) is not list or any(
+            type(item) is not str or not item for item in plan["gateCriteria"]
+        ):
+            fail("plan gate criteria are invalid")
     if plan["operatorIntervention"] != "none" or plan["verdicts"] != ["pass", "fail", "assisted", "inconclusive"]:
         fail("plan intervention or verdict vocabulary differs")
 
 
 def validate_manifest(value: object) -> None:
-    manifest = require_keys(value, {"schema", "candidateCommit", "shape", "manifestExcludesSelf",
-                                    "writablePaths", "files"}, set(), "packet manifest")
-    if manifest["schema"] != "nomos.gate_k.packet_manifest@1" or type(manifest["candidateCommit"]) is not str or SHA1.fullmatch(manifest["candidateCommit"]) is None:
+    if type(value) is not dict:
+        fail("packet manifest is not an object")
+    current = value.get("schema") == "nomos.gate_k.packet_manifest@2"
+    required = {"schema", "candidateCommit", "shape", "manifestExcludesSelf",
+                "writablePaths", "files"}
+    if current:
+        required.add("protocolRevision")
+    manifest = require_keys(value, required, set(), "packet manifest")
+    if manifest["schema"] not in (
+        "nomos.gate_k.packet_manifest@1",
+        "nomos.gate_k.packet_manifest@2",
+    ) or type(manifest["candidateCommit"]) is not str or SHA1.fullmatch(manifest["candidateCommit"]) is None:
         fail("packet manifest identity is invalid")
+    if current and manifest["protocolRevision"] != 6:
+        fail("packet manifest protocol revision differs")
     if manifest["shape"] not in SHAPES or manifest["manifestExcludesSelf"] is not True:
         fail("packet manifest shape or self policy differs")
     if manifest["writablePaths"] not in (["workspace"], ["output"]):
@@ -150,15 +197,25 @@ def validate_manifest(value: object) -> None:
 
 def validate_task_receipt(value: object, digest: str) -> None:
     legacy = digest in LEGACY_TASK_RECEIPT_SHA256S
+    if type(value) is not dict:
+        fail("task receipt is not an object")
+    current = value.get("schema") == "nomos.gate_k.task_receipt@2"
     required = {"schema", "shape", "classification", "formalAttempt", "candidateCommit", "identity",
                 "environment", "disclosures", "operatorIntervention", "operatorRetries", "accounting",
                 "outcome", "outcomeReason", "digests"}
+    if current:
+        required.add("protocolRevision")
     optional = {"attemptReservation", "execution"} if legacy else set()
     if not legacy:
         required |= {"attemptReservation", "execution"}
     receipt = require_keys(value, required, optional, "task receipt")
-    if receipt["schema"] != "nomos.gate_k.task_receipt@1" or receipt["shape"] not in SHAPES or receipt["classification"] not in CLASSES:
+    if receipt["schema"] not in (
+        "nomos.gate_k.task_receipt@1",
+        "nomos.gate_k.task_receipt@2",
+    ) or receipt["shape"] not in SHAPES or receipt["classification"] not in CLASSES:
         fail("task receipt identity is invalid")
+    if current and receipt["protocolRevision"] != 6:
+        fail("task receipt protocol revision differs")
     require_bool(receipt["formalAttempt"], "task receipt formalAttempt")
     if receipt["formalAttempt"] != (receipt["classification"] == "formal"):
         fail("task receipt formal classification is inconsistent")
@@ -170,7 +227,13 @@ def validate_task_receipt(value: object, digest: str) -> None:
         require_string(identity[field], f"task receipt identity {field}")
     require_uuid(identity["sessionId"], "task receipt session")
     require_rfc3339_utc(identity["sessionStartedAt"], "task receipt session start")
-    if identity["client"] != "Pi" or identity["mode"] != "json" or identity["freshEphemeralSession"] is not True:
+    require_bool(
+        identity["freshEphemeralSession"],
+        "task receipt identity freshEphemeralSession",
+    )
+    if identity["freshEphemeralSession"] is not True:
+        fail("task receipt identity is not a fresh ephemeral session")
+    if identity["client"] != "Pi" or identity["mode"] != "json":
         fail("task receipt client lifecycle differs")
     environment = require_keys(receipt["environment"], {"hostOs"}, set(), "task receipt environment")
     require_string(environment["hostOs"], "task receipt host OS")
@@ -186,7 +249,10 @@ def validate_task_receipt(value: object, digest: str) -> None:
     if disclosures != expected_disclosures:
         fail("task receipt disclosures differ")
     require_int(receipt["operatorRetries"], "task receipt operator retries")
-    if receipt["operatorIntervention"] != "none" or receipt["operatorRetries"] != 0:
+    if current:
+        if receipt["operatorIntervention"] not in ("none", "substantive-help"):
+            fail("task receipt operator intervention differs")
+    elif receipt["operatorIntervention"] != "none" or receipt["operatorRetries"] != 0:
         fail("task receipt operator accounting differs")
     accounting = require_keys(receipt["accounting"], {"assistantTurns", "providerReportedTokens", "toolCalls"}, set(), "task receipt accounting")
     for field in accounting:
@@ -237,12 +303,20 @@ def validate_checker(value: object, digest: str) -> None:
     if type(value) is not dict:
         fail("checker result is not an object")
     keys = set(value)
+    current = value.get("schema") == "nomos.gate_k.checker_result@2"
     base = {"schema", "verdict", "commands", "reasons"}
+    if current:
+        base.add("protocolRevision")
     legacy = digest in LEGACY_CHECKER_SHA256S
-    if keys not in (base, base | {"evidence"}) and not legacy:
+    if (current and keys != base) or (not current and keys != base and not legacy):
         fail("checker result top-level fields differ from a declared protocol shape")
-    if value["schema"] != "nomos.gate_k.checker_result@1" or value["verdict"] not in ("pass", "reject"):
+    if value["schema"] not in (
+        "nomos.gate_k.checker_result@1",
+        "nomos.gate_k.checker_result@2",
+    ) or value["verdict"] not in ("pass", "reject"):
         fail("checker result identity or verdict is invalid")
+    if current and value["protocolRevision"] != 6:
+        fail("checker result protocol revision differs")
     if type(value["commands"]) is not list or not value["commands"] or type(value["reasons"]) is not list or not value["reasons"]:
         fail("checker result commands or reasons are empty")
     for index, command in enumerate(value["commands"]):
@@ -259,15 +333,324 @@ def validate_checker(value: object, digest: str) -> None:
         require_string(reason, f"checker reason {index}")
 
 
+def validate_identity(value: object, name: str) -> None:
+    identity = require_keys(
+        value,
+        {"provider", "model", "thinking", "sessionId", "sessionStartedAt",
+         "client", "clientVersion", "mode", "freshEphemeralSession"},
+        set(),
+        name,
+    )
+    for field in ("provider", "model", "thinking", "clientVersion"):
+        require_string(identity[field], f"{name}.{field}")
+    require_uuid(identity["sessionId"], f"{name}.sessionId")
+    require_rfc3339_utc(identity["sessionStartedAt"], f"{name}.sessionStartedAt")
+    if identity["client"] != "Pi" or identity["mode"] != "json" or \
+            identity["freshEphemeralSession"] is not True:
+        fail(f"{name} lifecycle differs")
+
+
+def validate_accounting(value: object, name: str) -> None:
+    accounting = require_keys(
+        value,
+        {"assistantTurns", "providerReportedTokens", "toolCalls"},
+        set(),
+        name,
+    )
+    for field in accounting:
+        require_int(accounting[field], f"{name}.{field}")
+    for field in ("assistantTurns", "toolCalls"):
+        if accounting[field] == 0:
+            fail(f"{name}.{field} is not a positive integer")
+
+
+def validate_checker_receipt(value: object) -> None:
+    if type(value) is not dict:
+        fail("checker receipt is not an object")
+    current = value.get("schema") == "nomos.gate_k.checker_receipt@2"
+    required = {
+        "schema", "verdict", "subjectTaskReceiptSha256",
+        "checkerTaskReceiptSha256", "checkerResultSha256", "identity",
+        "accounting", "operatorIntervention", "result",
+    }
+    if current:
+        required.add("protocolRevision")
+    receipt = require_keys(value, required, set(), "checker receipt")
+    if receipt["schema"] not in (
+        "nomos.gate_k.checker_receipt@1",
+        "nomos.gate_k.checker_receipt@2",
+    ):
+        fail("checker receipt schema differs")
+    if current and receipt["protocolRevision"] != 6:
+        fail("checker receipt protocol revision differs")
+    if receipt["verdict"] not in ("pass", "reject"):
+        fail("checker receipt verdict is invalid")
+    for field in (
+        "subjectTaskReceiptSha256", "checkerTaskReceiptSha256",
+        "checkerResultSha256",
+    ):
+        require_sha256(receipt[field], f"checker receipt {field}")
+    validate_identity(receipt["identity"], "checker receipt identity")
+    validate_accounting(receipt["accounting"], "checker receipt accounting")
+    if receipt["operatorIntervention"] not in (
+        ("none", "substantive-help") if current else ("none",)
+    ):
+        fail("checker receipt operator intervention differs")
+    validate_checker(receipt["result"], receipt["checkerResultSha256"])
+    if receipt["result"]["verdict"] != receipt["verdict"]:
+        fail("checker receipt verdict differs from checker result")
+
+
+def validate_dimension_records(value: object) -> dict[str, object]:
+    records = require_keys(value, {"subject", "checker"}, set(), "run records")
+    for role, record_value in records.items():
+        record = require_keys(
+            record_value, {"dimensions", "verdict", "reason"}, set(),
+            f"run records.{role}",
+        )
+        if record["verdict"] not in ("pass", "fail", "inconclusive"):
+            fail(f"run records.{role} verdict is invalid")
+        require_string(record["reason"], f"run records.{role} reason")
+        dimensions = require_keys(
+            record["dimensions"],
+            {"semantic_merit", "independence_integrity", "operational_compliance"},
+            set(),
+            f"run records.{role}.dimensions",
+        )
+        derived_verdicts: list[str] = []
+        for name, dimension_value in dimensions.items():
+            dimension = require_keys(
+                dimension_value, {"verdict", "reason", "evidence"}, set(),
+                f"run records.{role}.dimensions.{name}",
+            )
+            if dimension["verdict"] not in ("pass", "fail", "inconclusive"):
+                fail(f"run records.{role}.dimensions.{name} verdict is invalid")
+            derived_verdicts.append(dimension["verdict"])
+            require_string(dimension["reason"], f"run records.{role}.dimensions.{name} reason")
+            if type(dimension["evidence"]) is not list or not dimension["evidence"]:
+                fail(f"run records.{role}.dimensions.{name} evidence is empty")
+            paths: set[str] = set()
+            for index, evidence_value in enumerate(dimension["evidence"]):
+                evidence = require_keys(
+                    evidence_value, {"path", "sha256"}, set(),
+                    f"run records.{role}.dimensions.{name}.evidence[{index}]",
+                )
+                path = require_string(
+                    evidence["path"], "run dimension evidence path"
+                )
+                if (
+                    SAFE_PATH.fullmatch(path) is None
+                    or path.startswith("/")
+                    or ".." in path
+                    or "//" in path
+                    or path in paths
+                ):
+                    fail("run dimension evidence path is unsafe or duplicated")
+                paths.add(path)
+                require_sha256(evidence["sha256"], "run dimension evidence digest")
+        derived = (
+            "fail"
+            if "fail" in derived_verdicts
+            else "inconclusive"
+            if "inconclusive" in derived_verdicts
+            else "pass"
+        )
+        if record["verdict"] != derived:
+            fail(f"run records.{role} verdict does not derive from its dimensions")
+    return records
+
+
+def validate_adjudication_shape(value: object, current: bool) -> None:
+    required = {
+        "schema", "candidateCommit", "subjectTaskReceiptSha256",
+        "checkerTaskReceiptSha256", "subjectCommandsSha256",
+        "checkerCommandsSha256", "reviewedAllCommands", "reviewedCommandCounts",
+        "findings", "verdict", "reason", "adjudicator", "ownerDisposition",
+    }
+    if current:
+        required |= {"protocolRevision", "records"}
+    adjudication = require_keys(value, required, set(), "run adjudication")
+    expected_schema = (
+        "nomos.gate_k.command_adjudication@2"
+        if current else "nomos.gate_k.command_adjudication@1"
+    )
+    if adjudication["schema"] != expected_schema or \
+            (current and adjudication["protocolRevision"] != 6):
+        fail("run adjudication generation differs")
+    if type(adjudication["candidateCommit"]) is not str or \
+            SHA1.fullmatch(adjudication["candidateCommit"]) is None:
+        fail("run adjudication candidate is invalid")
+    for field in (
+        "subjectTaskReceiptSha256", "checkerTaskReceiptSha256",
+        "subjectCommandsSha256", "checkerCommandsSha256",
+    ):
+        require_sha256(adjudication[field], f"run adjudication {field}")
+    if adjudication["reviewedAllCommands"] is not True:
+        fail("run adjudication command review is incomplete")
+    counts = require_keys(
+        adjudication["reviewedCommandCounts"], {"subject", "checker"}, set(),
+        "run adjudication command counts",
+    )
+    for field in counts:
+        require_int(counts[field], f"run adjudication command counts.{field}")
+    if type(adjudication["findings"]) is not list:
+        fail("run adjudication findings are not an array")
+    seen_findings: set[tuple[object, ...]] = set()
+    for index, finding_value in enumerate(adjudication["findings"]):
+        finding = require_keys(
+            finding_value,
+            {
+                "commandOrdinal", "commandSha256", "kind", "pathToken",
+                "reason", "record",
+            },
+            set(),
+            f"run adjudication findings[{index}]",
+        )
+        if finding["record"] not in ("subject", "checker"):
+            fail(f"run adjudication findings[{index}] record is invalid")
+        require_int(
+            finding["commandOrdinal"],
+            f"run adjudication findings[{index}].commandOrdinal",
+        )
+        require_sha256(
+            finding["commandSha256"],
+            f"run adjudication findings[{index}].commandSha256",
+        )
+        if finding["kind"] not in (
+            "outside_workspace_path", "undeclared_information_ingress"
+        ):
+            fail(f"run adjudication findings[{index}] kind is invalid")
+        for field in ("pathToken", "reason"):
+            require_string(
+                finding[field], f"run adjudication findings[{index}].{field}"
+            )
+        identity = (
+            finding["record"], finding["commandOrdinal"], finding["kind"],
+            finding["pathToken"],
+        )
+        if identity in seen_findings:
+            fail(f"run adjudication findings[{index}] is duplicated")
+        seen_findings.add(identity)
+    if adjudication["verdict"] not in ("pass", "fail", "assisted", "inconclusive"):
+        fail("run adjudication verdict is invalid")
+    for field in ("reason", "adjudicator", "ownerDisposition"):
+        require_string(adjudication[field], f"run adjudication {field}")
+    if current:
+        records = validate_dimension_records(adjudication["records"])
+        record_verdicts = [records[role]["verdict"] for role in ("subject", "checker")]
+        derived = (
+            "fail"
+            if "fail" in record_verdicts
+            else "inconclusive"
+            if "inconclusive" in record_verdicts
+            else "pass"
+        )
+        if adjudication["verdict"] not in (derived, "assisted"):
+            fail("run adjudication verdict does not derive from its records")
+
+
+def validate_run_result(value: object) -> None:
+    if type(value) is not dict:
+        fail("run result is not an object")
+    current = value.get("schema") == "nomos.gate_k.run_result@2"
+    required = {
+        "schema", "verdict", "reason", "adjudicator", "ownerDisposition",
+        "candidateCommit", "shape", "classification", "formalAttempt",
+        "subject", "checker",
+    }
+    required.add("adjudication" if current else "commandAdjudication")
+    if current:
+        required |= {"protocolRevision", "records"}
+    result = require_keys(value, required, set(), "run result")
+    if result["schema"] not in (
+        "nomos.gate_k.run_result@1", "nomos.gate_k.run_result@2"
+    ) or (current and result["protocolRevision"] != 6):
+        fail("run result generation differs")
+    if result["verdict"] not in ("pass", "fail", "assisted", "inconclusive"):
+        fail("run result verdict is invalid")
+    for field in ("reason", "adjudicator", "ownerDisposition"):
+        require_string(result[field], f"run result {field}")
+    if type(result["candidateCommit"]) is not str or \
+            SHA1.fullmatch(result["candidateCommit"]) is None:
+        fail("run result candidate is invalid")
+    if result["shape"] not in ("author", "debug") or \
+            result["classification"] not in CLASSES:
+        fail("run result task identity is invalid")
+    require_bool(result["formalAttempt"], "run result formalAttempt")
+    if result["formalAttempt"] != (result["classification"] == "formal"):
+        fail("run result formal classification is inconsistent")
+    receipts: dict[str, object] = {}
+    receipt_digests: dict[str, str] = {}
+    for role in ("subject", "checker"):
+        digest = hashlib.sha256(canonical(result[role]).encode()).hexdigest()
+        validate_task_receipt(result[role], digest)
+        receipts[role] = result[role]
+        receipt_digests[role] = digest
+        if result[role]["candidateCommit"] != result["candidateCommit"] or \
+                result[role]["classification"] != result["classification"] or \
+                result[role]["formalAttempt"] != result["formalAttempt"]:
+            fail(f"run result {role} identity differs")
+    if result["subject"]["shape"] != result["shape"] or \
+            result["checker"]["shape"] != f"{result['shape']}-checker":
+        fail("run result role shapes differ")
+    adjudication_name = "adjudication" if current else "commandAdjudication"
+    adjudication = result[adjudication_name]
+    validate_adjudication_shape(adjudication, current)
+    for role, field in (
+        ("subject", "subjectTaskReceiptSha256"),
+        ("checker", "checkerTaskReceiptSha256"),
+    ):
+        if adjudication[field] != receipt_digests[role]:
+            fail(f"run result {role} receipt digest differs from adjudication")
+    shared_fields = (
+        ("verdict", "reason", "adjudicator", "ownerDisposition")
+        if current
+        else ("adjudicator", "ownerDisposition")
+    )
+    for field in shared_fields:
+        if result[field] != adjudication[field]:
+            fail(f"run result {field} differs from adjudication")
+    if result["candidateCommit"] != adjudication["candidateCommit"]:
+        fail("run result candidate differs from adjudication")
+    if current:
+        records = validate_dimension_records(result["records"])
+        if result["records"] != adjudication["records"]:
+            fail("run result dimension records differ from adjudication")
+        assisted = any(
+            receipts[role]["operatorIntervention"] != "none"
+            for role in ("subject", "checker")
+        )
+        record_verdicts = [records[role]["verdict"] for role in ("subject", "checker")]
+        derived = (
+            "assisted"
+            if assisted
+            else "fail"
+            if "fail" in record_verdicts
+            else "inconclusive"
+            if "inconclusive" in record_verdicts
+            else "pass"
+        )
+        if result["verdict"] != derived:
+            fail("run result verdict does not derive from its records")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("kind", choices=("plan", "manifest", "task-receipt", "checker-result"))
+    parser.add_argument(
+        "kind",
+        choices=("plan", "manifest", "task-receipt", "checker-result",
+                 "checker-receipt", "run-result"),
+    )
     parser.add_argument("path", type=Path)
     args = parser.parse_args()
     try:
         value = load(args.path, enforce_canonical=args.kind != "checker-result")
         if args.kind == "checker-result":
             validate_checker(value, hashlib.sha256(args.path.read_bytes()).hexdigest())
+        elif args.kind == "checker-receipt":
+            validate_checker_receipt(value)
+        elif args.kind == "run-result":
+            validate_run_result(value)
         else:
             if args.kind == "task-receipt":
                 validate_task_receipt(value, hashlib.sha256(args.path.read_bytes()).hexdigest())

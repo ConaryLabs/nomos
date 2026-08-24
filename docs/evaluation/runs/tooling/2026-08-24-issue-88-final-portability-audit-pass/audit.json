@@ -1,0 +1,67 @@
+{
+  "schema": "nomos.issue88.non_author_audit@1",
+  "reviewedCommit": "da19239c60894478589be6517f39b8627271d627",
+  "reviewer": {
+    "provider": "deepseek",
+    "model": "deepseek-v4-flash-vision-exp",
+    "freshSession": true,
+    "nonAuthor": true
+  },
+  "status": "pass",
+  "findings": [],
+  "verification": [
+    {
+      "command": "git status --short",
+      "status": "pass",
+      "details": "Zero output before and after review; detached HEAD da19239; no tracked file modified, created, or deleted during the audit."
+    },
+    {
+      "command": "git diff --check origin/main...HEAD",
+      "status": "pass",
+      "details": "No whitespace errors across the 703-file issue #88 diff (new .gitattributes suppresses packet-dir whitespace checks; binaries are packets)."
+    },
+    {
+      "command": "cargo fmt --all -- --check",
+      "status": "pass",
+      "details": "rustfmt clean under pinned toolchain; no changes required."
+    },
+    {
+      "command": "cargo clippy --workspace --all-targets --locked -- -D warnings",
+      "status": "pass",
+      "details": "All 7 workspace members checked clean; zero warnings; exited 0."
+    },
+    {
+      "command": "cargo test --workspace --locked",
+      "status": "pass",
+      "details": "All unit, integration, and doc/compile-fail suites passed (every 'test result: ok', 0 failures)."
+    },
+    {
+      "command": "cargo xtask boundary",
+      "status": "pass",
+      "details": "boundary: clean; 6 kernel crates + xtask; membership, permitted-edges, cycles, forbidden-dependency, tooling-isolation all verified."
+    },
+    {
+      "command": "docs/evaluation/test-pi-cold-agent-preflight.sh",
+      "status": "pass",
+      "details": "All three lanes (deepseek/gemini/claude) pass; boundary@4 source-preflight record and 17 negative modes blocked."
+    },
+    {
+      "command": "docs/evaluation/test-gate-k-eval-tooling.sh",
+      "status": "pass",
+      "details": "Full offline harness PASS: attempt-ledger, strictness, rc1 byte-identical re-finalization, revision-6 rehearsal byte-identical re-finalization, command/packet/recorder/finalizer adversarial suite, revision-6 adjudication regressions, and 17 negative task-launcher modes."
+    }
+  ],
+  "protectedSurfaceUnchanged": true,
+  "checkoutCleanBeforeAndAfter": true,
+  "notes": [
+    "Diff from origin/main touches only README.md, docs/HANDOFF.md, docs/evaluation protocol/tooling/tests, new rehearsal/tooling evidence under docs/evaluation/runs/, and .gitattributes; zero changes to KERNEL.md, THESIS.md, Cargo.toml/Cargo.lock, rust-toolchain.toml, crates/, fixtures/, xtask/, or .github/. gate-k-rc1 tag still resolves to d8a0b85c55aa33c20f46e5dfd9e0d1f317e1f1c9 (tree 4013e6629ea274c6f2e2e2570306cb35b6d41505); the four frozen rc1 task records, checker.json, result.json, RUN.md, adjudication.json are byte-identical to origin/main (only new archived packet snapshots added).",
+    "Boundary generation 4 independently probed with real bubblewrap 0.11.2 using the extension's exact mount argument sequence (--tmpfs /dev, --dev-bind /dev/null /dev/null, --remount-ro /dev, /proc remount-ro, ro root): /dev contains exactly /dev/null (character device), cat /dev/null succeeds, write to /dev/null succeeds, /dev/zero absent, /workspace, /tmp, /home/subject read-only, /etc absent, /proc read-only. Rendered boundary records for all four accepted rehearsal sessions carry nomos.pi_cold_agent_boundary@4 with deviceFilesystemExact/deviceNullReadable/deviceNullWritable true; adjudication validator rejects any finding whose pathToken is /dev/null and accepts /dev/fd/1, /proc/self/fd/1, and workspace null-alias as outside-path findings (no alias exception).",
+    "Revision-6 records verified strictly versioned/canonical/allowlisted: eval_plan@2, packet_manifest@2, task_receipt@2, checker_result@2, command_adjudication@2, checker_receipt@2 and run_result@2 all carry protocolRevision 6 and are sorted compact canonical JSON for both accepted rehearsal pairs; stale @1 generations, stale boundary@3, mixed plan/receipt/checker/adjudication generations all rejected by finalizer, verify-packet, validate-documents, validate-adjudication, and validate-qualification (regressions in test-gate-k-eval-strictness.sh, test-gate-k-eval-revision6-adjudication.sh).",
+    "Dimension results are separately hash-bound for every subject and checker in both accepted pairs: semantic_merit/independence_integrity/operational_compliance each carry verdict, reason, and nonempty evidence with SHA-256 that re-hashes to the actual record files (adjudication validator re-verifies digests; verified manually, e.g. subject SUBJECT.md f281dbd2..., subject commands bb715c56..., checker artifacts/checker.json 18293b24..., task-receipt b25ba1d3.../aad1bd14...). Mechanical verdict precedence is enforced exactly once: assisted from substantive help, else fail on any failed dimension/record, else inconclusive, else pass; plan@2 dimensionCriteria partition its rubric exactly (flattened == rubric).",
+    "Rehearsal acceptance evidence verified: four distinct fresh ephemeral Pi sessions (Gemini author high, DeepSeek checker max; DeepSeek debugger max, Gemini checker high) at exact tooling head cbfa3f74e92c2e68f9916cff4ceac26859bd2994; operatorIntervention none, operatorRetries 0, agent_end willRetry=false in every transcript, exactly one user message equal to the exact task prompt (mechanically precluding coaching), all three dimensions pass for subject and checker, mechanical overall pass, formalAttempt false and explicit non-formal/no Gate K value; result hashes 847a0319... and 6458c901... match GATE_K_COLD_AGENT_PLAN.md. Rejected predecessor pair (checkerReproduction extra field) disclosed and not counted; no retry.",
+    "Byte-identical re-finalization proven from committed data for both frozen gate-k-rc1 pairs (subject/checker trees, checker.json, result.json, RUN.md cmp-identical) with historical final hashes preserved (e6990dac... author fail, f09c9214... debug fail) and both verdicts still fail for outside-workspace /dev/null requests; the two accepted revision-6 rehearsal pairs likewise re-finalize byte-identically through gate-k-eval-reconstruct-run-records.sh plus --packet-roots.",
+    "Resource accounting is complete and uncapped: assistantTurns/providerReportedTokens/toolCalls are positive integers with no ceiling, re-derived from the stderr NOMOS_PI_ACCOUNTING record and transcript, and bound in task-receipt accounting; plans carry only freshSessions=1 and zero hint/retry maxima, no token/turn/tool ceilings.",
+    "Observation (no acceptance effect): gate-k-eval-record-task.sh hardcodes operatorIntervention 'none', so the assisted verdict path is reachable only through a modified record (covered by the revision-6 adjudication regression, which forces independence fail and overall assisted); the rehearsals recorded none, so no evidence-integrity impact. Also, run_result@2 embeds adjudication.records rather than an adjudication digest pointer, which is acceptable because the finalizer validates the adjudication and regenerates the result in one pass.",
+    "Independent non-author audit records exist at d8a43eb, 1338ed4, and 378392c; HEAD da19239 adds a portability relaxation for archived rehearsal qualification receipts that is allowlisted to the eight exact frozen/archived receipt digests, and my own fresh review exercised it (archived fixture qualification with absent paths passes only for the archived receipt, blocked for a non-archived receipt)."
+  ]
+}

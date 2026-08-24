@@ -1,10 +1,10 @@
 ---
 title: Gate K cold-agent eligibility and roster plan
 status: Owner-authorized routing; effective on merge
-date: 2026-08-22
+date: 2026-08-24
 issue: 7
-protocol: docs/evaluation/COLD_AGENT_PROTOCOL.md revision 5
-protocol_decision: docs/decisions/0012-cold-agent-evidence-authentication.md
+protocol: docs/evaluation/COLD_AGENT_PROTOCOL.md revision 6
+protocol_decision: docs/decisions/0015-gate-k-round-two.md
 ---
 
 # Gate K cold-agent eligibility and roster plan
@@ -212,9 +212,11 @@ catalog, and the isolated command boundary. If either lane cannot prove that
 state at run time, that subject is ineligible until the owner approves a new
 plan.
 
-The protocol's fresh-session, zero-substantive-hint, and resource-accounting
-rules apply. No model fallback or cross-model rescue is allowed inside a formal
-attempt. A transport restart follows the protocol exactly and remains disclosed.
+The protocol's fresh-session, zero-substantive-hint, zero-retry, and
+resource-accounting rules apply. The exact `/dev/null` device is the sole
+outside-workspace path exception; it conveys no information and remains in the
+ordered command record. No model fallback or cross-model rescue is allowed
+inside a formal attempt.
 
 ## Eligibility invalidation
 
@@ -230,6 +232,21 @@ This roster must be reconsidered before launch if any of these occurs:
 An invalidated plan blocks the formal run. It does not permit substituting a
 same-family subject or inventing slice boundaries after results are known.
 
+## Revision-6 non-formal rehearsal evidence
+
+Issue #88 ran fresh cross-family rehearsals at exact tooling commit
+`cbfa3f74e92c2e68f9916cff4ceac26859bd2994`:
+
+- Gemini author with independent DeepSeek checker: revision-6 result `pass`,
+  SHA-256 `847a03198affb8ab896b541ff2f7f04ed9635a7877cbec960fc33bbad5627f2e`;
+- DeepSeek debugger with independent Gemini checker: revision-6 result `pass`,
+  SHA-256 `6458c901ca637f6cdab796af28e89a21b3d831a6cdd29644d7438a9d7dac2ba4`.
+
+Every subject and checker used a fresh session with zero operator coaching and
+zero retries. All three dimensions passed separately and the finalizer derived
+each overall pass. Both runs are explicitly non-formal and spend no formal
+attempt; they prove the revision-6 tooling prerequisite, not Gate K.
+
 ## Owner disposition
 
 Peter authorized direct `agy` with Gemini 3.7 Flash High and the original
@@ -240,4 +257,6 @@ the exact DeepSeek-family route to that model at maximum effort and Claude Opus
 5 to high effort. Issue #49 does not change family or role: Gemini remains the
 cold author, DeepSeek remains the cold debugger, and each remains the other's
 independent checker. Claude through Pi is supplemental only. The updated
-routing becomes effective when the owner merges the issue #49 change.
+routing became effective when the owner merged the issue #49 change. Decision
+0015 retains those formal roles for a prospectively governed round two; no
+round-two provider attempt has been reserved or launched.
