@@ -3,6 +3,7 @@
 set -euo pipefail
 
 repo_root=$(git rev-parse --show-toplevel)
+"$repo_root/docs/evaluation/test-gate-k-candidate-lineage.sh"
 "$repo_root/docs/evaluation/test-gate-k-attempt-ledger.sh"
 "$repo_root/docs/evaluation/test-gate-k-eval-strictness.sh"
 "$repo_root/docs/evaluation/test-gate-k-rc1-refinalization.sh"

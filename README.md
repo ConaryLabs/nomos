@@ -45,10 +45,13 @@ any renderer is built.
 - **Contract revision:** 7, owner-authorized in decision 0009
 - **Cold-agent protocol revision:** 6, owner-authorized in decision 0015;
   revision-6 packet, boundary, record, adjudication, and finalization tooling is
-  implemented under issue #88. Fresh cross-family author/checker and
+  implemented under issue #88 and merged in PR #89 at `7744610`. Fresh
+  cross-family author/checker and
   debugger/checker rehearsals passed at exact tooling commit `cbfa3f7`, and the
-  complete proof plus zero-finding non-author audit passed at `da19239`; no
-  round-two candidate is frozen and no formal reservation or launch is ready
+  complete proof plus zero-finding non-author audit passed at `da19239`. Issue
+  #90 owns the exact semantic-lineage proof, post-merge mechanical workflows,
+  and conditional `gate-k-rc2` freeze; no formal reservation or launch is ready
+  before all three complete
 - **Scope:** greenfield / vacuum architecture exercise
 - **Effect on other projects:** none unless separately adopted by an explicit
   decision in that project's own authority records
