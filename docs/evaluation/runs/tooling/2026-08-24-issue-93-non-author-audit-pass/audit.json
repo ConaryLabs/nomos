@@ -1,0 +1,108 @@
+{
+  "schema": "nomos.issue93.non_author_audit@1",
+  "reviewedCommit": "b714403ad6cd0339c17f6f7bd8da84d6396e2ab8",
+  "reviewer": {
+    "provider": "deepseek",
+    "model": "deepseek-v4-flash-vision-exp",
+    "freshSession": true,
+    "nonAuthor": true,
+    "formalChecker": false
+  },
+  "status": "pass",
+  "findings": [],
+  "dimensions": {
+    "semanticMerit": "satisfied-in-subject-record-pending-independent-checker",
+    "independenceIntegrity": "pass",
+    "operationalCompliance": "pass"
+  },
+  "subjectOutcome": "eligible-for-checker",
+  "verification": [
+    {
+      "command": "git status --short",
+      "status": "pass",
+      "details": "empty output; worktree clean before and after review"
+    },
+    {
+      "command": "git diff --check origin/main...HEAD",
+      "status": "pass",
+      "details": "no whitespace errors; exit 0"
+    },
+    {
+      "command": "git tag -n99 gate-k-rc2",
+      "status": "pass",
+      "details": "annotated tag names exact candidate 53db236d397b3db0779f0d2aab23180d926e55a5 with verify run 32689876814 and gate-k-evidence run 32689876846 (success) recorded"
+    },
+    {
+      "command": "git rev-parse gate-k-rc2^{}",
+      "status": "pass",
+      "details": "53db236d397b3db0779f0d2aab23180d926e55a5; unique tag for that commit (only gate-k-rc1 and gate-k-rc2 tags exist)"
+    },
+    {
+      "command": "git log --format='%H %s' --reverse origin/main..HEAD",
+      "status": "pass",
+      "details": "9 commits: pin inputs, declare, reserve (f4c629c), qualify route, launch (2fe4b73), record subject (4ac9833), document status, frozen-ledger tooling repair, audit routing"
+    },
+    {
+      "command": "python3 docs/evaluation/gate-k-eval-attempt-ledger.py validate docs/evaluation/gate-k-formal-attempt-ledger.jsonl",
+      "status": "pass",
+      "details": "7 canonical hash-chained events, no open attempt; frozen events 1-4 byte-exact (first-4 prefix sha 69162588b5a43b0456e739d49a34a2d329f4f53d8d6527a45997ec064ecba794)"
+    },
+    {
+      "command": "docs/evaluation/gate-k-eval-finalize.sh --validate-task-record docs/evaluation/runs/gate-k/2026-08-24-gemini-3.7-flash-author-rc2/subject-task",
+      "status": "pass",
+      "details": "GATE_K_TASK_RECORD_VALIDATED; all receipt/plan/manifest/transcript/commands/boundary/artifacts bindings hold; same script also revalidates frozen rc1 subject record"
+    },
+    {
+      "command": "docs/evaluation/test-gate-k-attempt-ledger.sh",
+      "status": "pass",
+      "details": "gate-k formal-attempt ledger harness: PASS; frozen-inventory assertion preserved via exact 4-event prefix"
+    },
+    {
+      "command": "cargo fmt --all -- --check",
+      "status": "pass",
+      "details": "exit 0"
+    },
+    {
+      "command": "cargo clippy --workspace --all-targets --locked -- -D warnings",
+      "status": "pass",
+      "details": "exit 0; no warnings"
+    },
+    {
+      "command": "cargo test --workspace --locked",
+      "status": "pass",
+      "details": "44 test-result groups ok, 0 failed, including doctests"
+    },
+    {
+      "command": "cargo xtask boundary",
+      "status": "pass",
+      "details": "boundary: clean; kernel crates, permitted edges, cycles, forbidden deps, tooling isolation all checked"
+    },
+    {
+      "command": "docs/evaluation/test-pi-cold-agent-preflight.sh",
+      "status": "pass",
+      "details": "pi cold-agent boundary harness: PASS (offline)"
+    },
+    {
+      "command": "docs/evaluation/test-gate-k-eval-tooling.sh",
+      "status": "pass",
+      "details": "gate-k revision-6 adjudication regressions: PASS; gate-k evaluation tooling offline harness: PASS"
+    }
+  ],
+  "formalLedgerClosed": true,
+  "checkerNotLaunched": true,
+  "protectedSurfaceUnchanged": true,
+  "checkoutCleanBeforeAndAfter": true,
+  "notes": [
+    "Ledger events 5-7 are canonical and chain-validated: reserve (sequence 5, nonce 0ba045901a767cdf5b062c7a5498141bc019f7263d84361449e076fd005be831, promptSha256 5911b3ed82f73ee383acad897a2472fd413643cc11ada7ea7c6b00b40185d38b) at f4c629c, launch at 2fe4b73, close at 4ac9833; close binds taskReceiptSha256 98f68e53e4b0ceddaee54d049e0c0050bd39d43ed4e86043952cf6af50b876c5 which equals sha256 of the committed task-receipt.json",
+    "Reservation and launch are distinct prior commits and the launcher-bound ledger state (e546e229b9d496d1d687f66c110cd005bed1972c63698835ae7ed213f7676cb7) matches sha256 of the 6-event ledger exactly at the launch commit 2fe4b73, and the neutral launcher preflight session and subject session are distinct ephemeral sessions inside a standalone clean clone at 53db236",
+    "Both blocked prelaunch probes are preserved (prelaunch/blocked-wrong-cwd.txt + exit file, blocked-linked-worktree.txt + exit file) with evidence hashes matching prelaunch-declaration.json; errors are header/cwd mismatch (Pi exited 78) and sandbox self-test git failure respectively, i.e. caller/checkout boundary failures, and both precede the launch marker commit",
+    "Qualified neutral probe (prelaunch/qualified.txt, sha 28ce2bd23e7af24b41b309ece64e6c23d3d82b4dc1b66e2fc719837ae81fda4f) resolved antigravity/gemini-3.7-flash at high, ephemeral session, bash-only tools, clean worktree; the launcher's own mandatory preflight also passed at 06:11:12Z before subject session 01a03265 at 06:11:15Z",
+    "All 43 commanded tool calls stay under /workspace (writes only in /workspace/workspace; immutable packet members input/gaol.nomos a69582e and bin/nomos 4af70acc verified unchanged by recorded sha256sums); /dev/null was never used; no network, no hidden context (contextFiles [], skills [], sessionFile null, projectTrusted false), no repository mount (gitMetadataAbsent true), tool catalog exactly bash",
+    "Subject artifacts contain north_gate_02 primitive/iron_barred_door at face 6 0 0 north with credential credential/gaoler_key; world-ir keeps exactly the three primitive kinds and catalog_values ['credential/gaoler_key']; compiler-receipts list all ten passes including validate_semantics, and the final compile transcript reports manifest_digest 6f50ff4aa7cf8d5755b1b325e0b38f1ec67772eca7db3e36f3d0ebbb6f5ed069 matching the committed artifacts/world/manifest.json package_digest",
+    "Task recorder outcome is mechanically derived (PI_TASK_STATUS 0 + shape author -> eligible-for-checker) with exact mandated outcomeReason; receipt, status, and plan all keep semantic merit pending issue #95's independent checker; no cold-author pass or Gate K verdict is claimed anywhere in this issue",
+    "The launched prompt bytes (5911b3ed82f73ee383acad897a2472fd413643cc11ada7ea7c6b00b40185d38b) differ from docs/evaluation/formal/round-two/author-prompt.txt (bff1909ee8a16e57e5aa7203e48c90ff4e329159b5e7015cace13f097536e3e6) only by the missing trailing newline; both hashes are recorded in prelaunch-declaration.json and the reservation/plan/packet bind the exact launched digest, so this is disclosed and does not affect consistency",
+    "README.md:39 and docs/HANDOFF.md:26 still state that no round-two reservation or launch has occurred; this matches the repository pattern where top-level status is updated at the final evidence/disposition issue (#97) rather than per-run, with per-run STATUS.md and the ledger carrying the authoritative attempt record",
+    "The finalize/ledger-test repair (commit 197f3bc) preserves all round-one semantics: frozen rc1 paper revalidation passes (test-gate-k-rc1-refinalization.sh and test-gate-k-revision6-rehearsal-refinalization.sh both PASS, byte-identical outputs), and the frozen 4-event inventory check is retained against the exact prefix",
+    "Diff surface is confined to docs/evaluation round-two inputs, ledger, evaluation tooling, audit prompt, and the rc2 run record: no kernel crate, fixture, protocol doc, rubric, renderer, Gate 1, checker code, or unrelated project file changed"
+  ]
+}
