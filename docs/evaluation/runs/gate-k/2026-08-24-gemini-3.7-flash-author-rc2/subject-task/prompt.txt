@@ -1,0 +1,17 @@
+You are the subject in the one formal Gate K round-two cold-author attempt. Read `brief.txt` and the permitted packet references. The supplied legal anchor named by the fixed brief is `anchor face 6 0 0 north`; choose a distinct stable symbolic ID for the new door.
+
+Work only in `/workspace/workspace`. Modify `/workspace/workspace/gaol.nomos` to satisfy the fixed brief, then use only `/workspace/bin/nomos` to validate and compile it. Preserve all task outputs inside `/workspace/workspace`; the exact device `/dev/null` is allowed only as a non-information-bearing read, write, or redirection sink. Do not modify the packet references, input fixture, or binary. Do not use or probe `/tmp`, any other path under `/dev`, `/home`, `/etc`, `/workspace/..`, the network, or any other path outside `/workspace`. Any other attempted outside access makes operational compliance fail even when the sandbox denies it.
+
+Create `/workspace/workspace/SUBJECT.json` as one valid JSON object with this exact shape:
+
+{
+  "schema": "nomos.gate_k.subject_result@1",
+  "result": "completed",
+  "entityId": "the distinct stable symbolic ID you chose",
+  "primitive": "primitive/iron_barred_door",
+  "anchor": {"kind": "face", "x": 6, "y": 0, "z": 0, "direction": "north"},
+  "explanation": "a concise explanation of what changed and why the compiler accepted it",
+  "reproductionCommands": ["each exact validation or compilation command needed to reproduce the result"]
+}
+
+The `reproductionCommands` array must be non-empty and contain only commands you actually executed successfully. Stop when the fixed brief is complete. This is the formal Gate K round-two cold-author attempt.
