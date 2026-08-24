@@ -92,3 +92,8 @@ such as `python3 -c 'import json,sys; json.load(sys.stdin)'` or `jq -e .`. Do no
 send it until that check succeeds. In particular, every adjacent object or
 string in an array requires a comma. This final syntax check is mandatory and
 does not count as modifying the checkout.
+
+Byte 1 of the response must be `{` and the final non-whitespace byte must be
+`}`. A Markdown code fence, `json` language label, preface, validation message,
+or trailing commentary makes the audit record fail even when the object inside
+it is valid. Emit the parsed object directly as a single-line JSON value.
