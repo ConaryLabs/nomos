@@ -16,6 +16,8 @@
     "commit": "53db236d397b3db0779f0d2aab23180d926e55a5",
     "tree": "4c2d102a01a5dfe6700755e0cb7c26d3c0db7491",
     "clean": true,
+    "executionCheckout": "/work/signed-dev/gate-k-rc2-formal-candidate-93",
+    "executionCheckoutKind": "clean-standalone-local-clone",
     "verifyWorkflow": "https://github.com/ConaryLabs/nomos/actions/runs/32689876814",
     "evidenceWorkflow": "https://github.com/ConaryLabs/nomos/actions/runs/32689876846"
   },
@@ -48,12 +50,38 @@
     "providerPackageTreeSha256": "7980e6825a23f18a9d298953c0efc9f13c1231ce4c814394803b9da9bfb565ce",
     "providerExtensionSha256": "1c41a45c2820eb52f1b41955ae5fbb833470cba2203226d3b0c626c6f9dbe10b",
     "boundaryExtensionSha256": "d242e2de63e1228a32d7e890bf7cb852e71680813a7aa8f55fc500af64923043",
+    "systemPromptSha256": "c1c41bf11dd3fc42f47c174b9d431e36dd87afb60aa04d08062dd6e11963c333",
     "bubblewrapSha256": "6ad2138a73d592acb43525432965e3c66f6fad8a2f3d610c6ca0b6855e993cbe"
   },
   "neutralPreflight": {
     "requiredAfterCommittedReservation": true,
     "requiredBeforeLaunchMarker": true,
-    "result": "pending"
+    "reservationCommit": "f4c629c1e34c9115be4aa3d2d4fef9a3d3280222",
+    "result": "pass",
+    "sessionId": "01a03262-ad8e-7fd9-a291-95136e020d04",
+    "providerReportedModel": "gemini-3.7-flash",
+    "providerReportedThinking": "high",
+    "freshEphemeralSession": true,
+    "activeTools": [
+      "bash"
+    ],
+    "networkPermitted": false,
+    "evidencePath": "prelaunch/qualified.txt",
+    "evidenceSha256": "28ce2bd23e7af24b41b309ece64e6c23d3d82b4dc1b66e2fc719837ae81fda4f",
+    "blockedProbes": [
+      {
+        "reason": "caller working directory differed from the declared target checkout",
+        "providerTaskLaunched": false,
+        "evidencePath": "prelaunch/blocked-wrong-cwd.txt",
+        "evidenceSha256": "91ff53ebc365ed43d7acb5df68df9471d87d2c95bb2819a94936d7ed6253047c"
+      },
+      {
+        "reason": "linked-worktree Git metadata resolved outside the sandbox",
+        "providerTaskLaunched": false,
+        "evidencePath": "prelaunch/blocked-linked-worktree.txt",
+        "evidenceSha256": "aaa844ee56425d136ecb1e56fe296947ad548aa9c3762dcb7c13c8a4066d507a"
+      }
+    ]
   },
   "packet": {
     "shape": "author",
@@ -76,10 +104,11 @@
     "resultSchema": "nomos.gate_k.subject_result@1"
   },
   "launch": {
+    "workingDirectory": "/work/signed-dev/gate-k-rc2-formal-candidate-93",
     "environment": {
       "NOMOS_FORMAL_ATTEMPT_ID": "gate-k-rc2-author-subject"
     },
-    "invocation": "docs/evaluation/pi-cold-agent-task.sh gemini /work/signed-dev/gate-k-rc2-worktree 53db236d397b3db0779f0d2aab23180d926e55a5 /work/signed-dev/gate-k-rc2-author-93-20260824/packet /work/signed-dev/gate-k-rc2-author-93-20260824/events.ndjson /work/signed-dev/gate-k-rc2-author-93-20260824/pi-stderr.txt /work/signed-dev/gate-k-rc2-author-93-20260824/pi-qualification.txt",
+    "invocation": "/work/signed-dev/src/signed-world/docs/evaluation/pi-cold-agent-task.sh gemini /work/signed-dev/gate-k-rc2-formal-candidate-93 53db236d397b3db0779f0d2aab23180d926e55a5 /work/signed-dev/gate-k-rc2-author-93-20260824/packet /work/signed-dev/gate-k-rc2-author-93-20260824/events.ndjson /work/signed-dev/gate-k-rc2-author-93-20260824/pi-stderr.txt /work/signed-dev/gate-k-rc2-author-93-20260824/pi-qualification.txt",
     "launcherRecord": "/work/signed-dev/gate-k-rc2-author-93-20260824/launcher.txt",
     "freshSessions": 1,
     "operatorSubstantiveHintsMaximum": 0,
