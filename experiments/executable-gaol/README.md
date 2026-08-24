@@ -4,6 +4,8 @@ This is the deliberately quarantined answer to issue #101: one room, one
 camera, one small rendering plan, and visible semantic state. It is not Gate K
 or Gate 1 evidence and it does not change the accepted workspace.
 
+**Play online:** <https://conarylabs.github.io/nomos/>
+
 Run:
 
 ```sh
