@@ -1,0 +1,2 @@
+NOMOS_PI_BOUNDARY_BLOCKED {"error":"fresh session header is missing, parented, or in the wrong worktree"}
+pi cold-agent preflight: FAIL: Pi exited 78

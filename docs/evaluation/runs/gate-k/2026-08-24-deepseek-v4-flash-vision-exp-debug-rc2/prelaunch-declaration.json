@@ -64,7 +64,20 @@
   "neutralPreflight": {
     "requiredAfterCommittedReservation": true,
     "requiredBeforeLaunchMarker": true,
-    "result": "pending"
+    "attempts": 2,
+    "blockedAttempts": 1,
+    "blockedReason": "the first probe was invoked from the tooling checkout, so Pi's session header did not match the declared standalone candidate workspace",
+    "blockedBeforeProviderTask": true,
+    "result": "pass",
+    "passingSessionId": "01a033e9-50d5-7cd9-9e32-bf93cd7d43a0",
+    "qualificationSha256": "e28ac38813c6298cc0d4b759262e9d1d7bda30452312bdbea47df41160a85367",
+    "rawEventsSha256": "642c65daa9aa50db131b847eff817260d504380a380a205fee2722b74142647f",
+    "freshEphemeralSession": true,
+    "activeTools": [
+      "bash"
+    ],
+    "networkPermitted": false,
+    "candidateClean": true
   },
   "packet": {
     "shape": "debug",
@@ -111,6 +124,16 @@
         "path": "prelaunch/blocked-absolute-repair-input.json",
         "sha256": "b1c5e3994ed96202ebce6ff9fda2431dca05b121c951d28f1dbf6242db175658",
         "reason": "operator supplied an absolute Nomos command-file path; EK0002 rejected it before any packet or provider launch"
+      }
+    ],
+    "failuresBeforeLaunchMarker": [
+      {
+        "path": "prelaunch/blocked-wrong-cwd.stderr.txt",
+        "sha256": "91ff53ebc365ed43d7acb5df68df9471d87d2c95bb2819a94936d7ed6253047c",
+        "exitPath": "prelaunch/blocked-wrong-cwd.exit.txt",
+        "exitSha256": "b03c70ff0d641a363f1a021413a098dce02e4c68b75f3a47aa10044f42ee1784",
+        "stdoutSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "reason": "caller working directory made the fresh session header disagree with the declared standalone candidate; the boundary blocked before task launch"
       }
     ],
     "relativePathSeedPassed": true,
