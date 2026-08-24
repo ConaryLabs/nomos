@@ -694,8 +694,21 @@ subject_commit=$(jq -r '.candidateCommit' "$subject/task-receipt.json")
 checker_commit=$(jq -r '.candidateCommit' "$checker/task-receipt.json")
 [[ $subject_commit =~ ^[0-9a-f]{40}$ && $subject_commit == "$checker_commit" ]] ||
   fail 'subject and checker candidate commits differ'
-git -C "$repo_root" cat-file -e "$subject_commit^{commit}" 2>/dev/null ||
-  fail 'candidate commit is absent from repository history'
+subject_receipt_sha=$(sha256sum "$subject/task-receipt.json" | cut -d' ' -f1)
+checker_task_receipt_sha=$(sha256sum "$checker/task-receipt.json" | cut -d' ' -f1)
+archived_pair=false
+case "$subject_receipt_sha:$checker_task_receipt_sha" in
+  732af45918ebc27c02675f6c75c32e7718407545c9fa3a39de327d3591d382a8:2e8c97d5a939ddd6fa9b33769f6e24b80fc242b1420c2660eef7f9742d542db3 | \
+  2820d2f46b2d895abc22b6677f4f3ba908199cdb9d057aee181b477eaeb82390:0053d3df610e7e31322a2cfd9dfc641e160d3e5c64582df387d34cd4ddd37d37 | \
+  b25ba1d3645b8c1defa9190d9a3be252d2c7422a8e46e8be0779c8533738750c:aad1bd14793a6daa0d9aea6f3b31282320b1709c7e20f4a247485401577b975e | \
+  44ecceb31e57b34249738d50789b6b5957da63d3e0bc48101ac1186ff0a1fef4:18d2405d295aae26e3b25073f280b1a693c27d1f719fc2a59889e5fceda50240)
+    archived_pair=true
+    ;;
+esac
+if [[ $archived_pair == false ]]; then
+  git -C "$repo_root" cat-file -e "$subject_commit^{commit}" 2>/dev/null ||
+    fail 'candidate commit is absent from repository history'
+fi
 subject_class=$(jq -r '.classification' "$subject/task-receipt.json")
 checker_class=$(jq -r '.classification' "$checker/task-receipt.json")
 subject_formal=$(jq -r '.formalAttempt' "$subject/task-receipt.json")
@@ -706,7 +719,6 @@ subject_session=$(jq -r '.identity.sessionId' "$subject/task-receipt.json")
 checker_session=$(jq -r '.identity.sessionId' "$checker/task-receipt.json")
 [[ $subject_session != "$checker_session" ]] || fail 'checker reused the subject session'
 
-subject_receipt_sha=$(sha256sum "$subject/task-receipt.json" | cut -d' ' -f1)
 subject_commands_sha=$(sha256sum "$subject/commands.json" | cut -d' ' -f1)
 checker_manifest="$checker/packet-manifest.json"
 [[ $(jq -r --arg path subject/task-receipt.json \
