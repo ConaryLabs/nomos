@@ -1,0 +1,512 @@
+{
+  "schema": "nomos.experiment.rendering_plan@1",
+  "deterministic": true,
+  "area": {
+    "id": "ember-vault",
+    "label": "Ember Vault"
+  },
+  "projectionSchemas": [
+    {
+      "name": "nomos.projection.simulation",
+      "version": 3
+    },
+    {
+      "name": "nomos.projection.navigation",
+      "version": 1
+    },
+    {
+      "name": "nomos.projection.persistence",
+      "version": 1
+    },
+    {
+      "name": "nomos.projection.diagnostics",
+      "version": 1
+    }
+  ],
+  "projectionDigests": {
+    "simulation.json": "88434f45c4741f5396e4a33c56f16085b655a14d2edb78274cf3a4c07d05fd42",
+    "navigation.json": "56d59485bddbe2ac137dbf738eda43000bdd7a877d6008fb1a47e87c5798f94d",
+    "persistence.json": "732b198fe87813b6468809045c85be3ceea287244b616b705201f228b7d94dec",
+    "diagnostics.json": "146c17c5170eb6f2d1f1a9b072a6665ca503f263d9399196b631bc77a9188624"
+  },
+  "camera": {
+    "identity": "gaol_oblique_01",
+    "projection": "fixed_oblique",
+    "width": 1200,
+    "height": 540,
+    "tileWidth": 96,
+    "tileHeight": 50
+  },
+  "palette": "gaol_bounded_01",
+  "architecture": {
+    "bounds": {
+      "width": 9,
+      "height": 6
+    },
+    "wallHeight": 5,
+    "style": {
+      "assembly": "visual/beveled_masonry",
+      "materialFamily": "stone_bounded",
+      "trimFamily": "broad_mortar"
+    },
+    "masses": [
+      {
+        "id": "west_vault_pier",
+        "min": {
+          "x": 2,
+          "y": 1
+        },
+        "max": {
+          "x": 3,
+          "y": 2
+        },
+        "height": 3.2
+      },
+      {
+        "id": "east_vault_pier",
+        "min": {
+          "x": 6,
+          "y": 1
+        },
+        "max": {
+          "x": 7,
+          "y": 2
+        },
+        "height": 3.2
+      }
+    ]
+  },
+  "entities": [
+    {
+      "id": "cooling_pool",
+      "kind": "water",
+      "visualAssembly": "visual/shallow_water",
+      "materialFamily": "water_cold",
+      "anchor": {
+        "kind": "region",
+        "max": {
+          "x": 5,
+          "y": 4,
+          "z": 0
+        },
+        "min": {
+          "x": 3,
+          "y": 2,
+          "z": 0
+        }
+      },
+      "machineNamespaces": [],
+      "provenance": [
+        {
+          "claim": "cooling_pool.region#traversal_cost_ground",
+          "source": {
+            "byte_end": 356,
+            "byte_start": 274,
+            "column": 1,
+            "line": 14,
+            "path": "experiments/executable-gaol/areas/ember-vault/world.nomos"
+          }
+        }
+      ]
+    },
+    {
+      "id": "ember_brazier",
+      "kind": "light",
+      "visualAssembly": "visual/brazier",
+      "materialFamily": "iron_brazier",
+      "anchor": {
+        "cell": {
+          "x": 1,
+          "y": 1,
+          "z": 0
+        },
+        "kind": "cell"
+      },
+      "machineNamespaces": [
+        "ember_brazier.emission"
+      ],
+      "provenance": []
+    },
+    {
+      "id": "ossuary_gate",
+      "kind": "door",
+      "visualAssembly": "visual/iron_barred_door",
+      "materialFamily": "iron_oxidized",
+      "anchor": {
+        "cell": {
+          "x": 8,
+          "y": 0,
+          "z": 0
+        },
+        "direction": "north",
+        "kind": "face"
+      },
+      "machineNamespaces": [
+        "ossuary_gate.access",
+        "ossuary_gate.combustion",
+        "ossuary_gate.integrity",
+        "ossuary_gate.ward"
+      ],
+      "provenance": [
+        {
+          "claim": "ossuary_gate.portal#blocks_ground",
+          "source": {
+            "byte_end": 272,
+            "byte_start": 162,
+            "column": 1,
+            "line": 9,
+            "path": "experiments/executable-gaol/areas/ember-vault/world.nomos"
+          }
+        },
+        {
+          "claim": "ossuary_gate.ward#blocks_ground",
+          "source": {
+            "byte_end": 272,
+            "byte_start": 162,
+            "column": 1,
+            "line": 9,
+            "path": "experiments/executable-gaol/areas/ember-vault/world.nomos"
+          }
+        }
+      ]
+    },
+    {
+      "id": "vault_gate",
+      "kind": "door",
+      "visualAssembly": "visual/iron_barred_door",
+      "materialFamily": "iron_oxidized",
+      "anchor": {
+        "cell": {
+          "x": 4,
+          "y": 0,
+          "z": 0
+        },
+        "direction": "north",
+        "kind": "face"
+      },
+      "machineNamespaces": [
+        "vault_gate.access",
+        "vault_gate.combustion",
+        "vault_gate.integrity",
+        "vault_gate.ward"
+      ],
+      "provenance": [
+        {
+          "claim": "vault_gate.portal#blocks_ground",
+          "source": {
+            "byte_end": 160,
+            "byte_start": 52,
+            "column": 1,
+            "line": 4,
+            "path": "experiments/executable-gaol/areas/ember-vault/world.nomos"
+          }
+        },
+        {
+          "claim": "vault_gate.ward#blocks_ground",
+          "source": {
+            "byte_end": 160,
+            "byte_start": 52,
+            "column": 1,
+            "line": 4,
+            "path": "experiments/executable-gaol/areas/ember-vault/world.nomos"
+          }
+        }
+      ]
+    }
+  ],
+  "actors": [
+    {
+      "id": "player",
+      "assembly": "visual/player_silhouette",
+      "anchor": {
+        "kind": "cell",
+        "cell": {
+          "x": 7,
+          "y": 5,
+          "z": 0
+        }
+      }
+    },
+    {
+      "id": "gaoler",
+      "assembly": "visual/gaoler_silhouette",
+      "anchor": {
+        "kind": "cell",
+        "cell": {
+          "x": 1,
+          "y": 3,
+          "z": 0
+        }
+      }
+    }
+  ],
+  "effects": [
+    {
+      "id": "vault_ward_crescent",
+      "assembly": "visual/cyan_crescent",
+      "anchorEntity": "vault_gate",
+      "presentationAnchor": {
+        "x": 4,
+        "y": 3.8,
+        "z": 0
+      }
+    }
+  ],
+  "presentation": {
+    "primaryGate": "vault_gate",
+    "pursuitLight": "ember_brazier",
+    "forensicScenario": "03-breached-unsealed"
+  },
+  "uiAnchors": [
+    "vitals",
+    "abilities",
+    "gate_state",
+    "water_cost"
+  ],
+  "scenarios": [
+    {
+      "id": "01-baseline",
+      "label": "baseline",
+      "tick": 0,
+      "stateHash": "e12398c10530bbf54011e66c668f371f8ffb043f20a4d1fe66bcb151269c5249",
+      "machineStates": {
+        "ember_brazier.emission": "lit",
+        "ossuary_gate.access": "locked",
+        "ossuary_gate.combustion": "cold",
+        "ossuary_gate.integrity": "intact",
+        "ossuary_gate.ward": "sealed",
+        "vault_gate.access": "locked",
+        "vault_gate.combustion": "cold",
+        "vault_gate.integrity": "intact",
+        "vault_gate.ward": "sealed"
+      },
+      "movement": {
+        "cooling_pool": {
+          "disposition": "traversable",
+          "cost": 3,
+          "reasons": [
+            "cooling_pool.region#traversal_cost_ground"
+          ]
+        },
+        "ossuary_gate": {
+          "disposition": "blocked",
+          "cost": null,
+          "reasons": [
+            "ossuary_gate.portal#blocks_ground",
+            "ossuary_gate.ward#blocks_ground"
+          ]
+        },
+        "vault_gate": {
+          "disposition": "blocked",
+          "cost": null,
+          "reasons": [
+            "vault_gate.portal#blocks_ground",
+            "vault_gate.ward#blocks_ground"
+          ]
+        }
+      },
+      "effectiveLight": {
+        "ember_brazier": true
+      }
+    },
+    {
+      "id": "02-breached-warded",
+      "label": "breached warded",
+      "tick": 1,
+      "stateHash": "101e8b4cb153e8338d10e04d87084d9281decc925c1a5a0efb2c0dfd44321af6",
+      "machineStates": {
+        "ember_brazier.emission": "lit",
+        "ossuary_gate.access": "locked",
+        "ossuary_gate.combustion": "cold",
+        "ossuary_gate.integrity": "intact",
+        "ossuary_gate.ward": "sealed",
+        "vault_gate.access": "locked",
+        "vault_gate.combustion": "burning",
+        "vault_gate.integrity": "destroyed",
+        "vault_gate.ward": "sealed"
+      },
+      "movement": {
+        "cooling_pool": {
+          "disposition": "traversable",
+          "cost": 3,
+          "reasons": [
+            "cooling_pool.region#traversal_cost_ground"
+          ]
+        },
+        "ossuary_gate": {
+          "disposition": "blocked",
+          "cost": null,
+          "reasons": [
+            "ossuary_gate.portal#blocks_ground",
+            "ossuary_gate.ward#blocks_ground"
+          ]
+        },
+        "vault_gate": {
+          "disposition": "blocked",
+          "cost": null,
+          "reasons": [
+            "vault_gate.ward#blocks_ground"
+          ]
+        }
+      },
+      "effectiveLight": {
+        "ember_brazier": true
+      }
+    },
+    {
+      "id": "03-breached-unsealed",
+      "label": "breached unsealed",
+      "tick": 2,
+      "stateHash": "9aabb2403a1d2bce2faa055b6b2944bd6495dcad3ba585bdac6fb63c931354ea",
+      "machineStates": {
+        "ember_brazier.emission": "lit",
+        "ossuary_gate.access": "locked",
+        "ossuary_gate.combustion": "cold",
+        "ossuary_gate.integrity": "intact",
+        "ossuary_gate.ward": "sealed",
+        "vault_gate.access": "locked",
+        "vault_gate.combustion": "burning",
+        "vault_gate.integrity": "destroyed",
+        "vault_gate.ward": "unsealed"
+      },
+      "movement": {
+        "cooling_pool": {
+          "disposition": "traversable",
+          "cost": 3,
+          "reasons": [
+            "cooling_pool.region#traversal_cost_ground"
+          ]
+        },
+        "ossuary_gate": {
+          "disposition": "blocked",
+          "cost": null,
+          "reasons": [
+            "ossuary_gate.portal#blocks_ground",
+            "ossuary_gate.ward#blocks_ground"
+          ]
+        },
+        "vault_gate": {
+          "disposition": "traversable",
+          "cost": 1,
+          "reasons": []
+        }
+      },
+      "effectiveLight": {
+        "ember_brazier": true
+      }
+    },
+    {
+      "id": "04-breached-unsealed-dark",
+      "label": "breached unsealed dark",
+      "tick": 3,
+      "stateHash": "ab451042d0671530000f4cdb0b8741575ac4ad57a434a59d2ebe1b37ba0d6f90",
+      "machineStates": {
+        "ember_brazier.emission": "extinguished",
+        "ossuary_gate.access": "locked",
+        "ossuary_gate.combustion": "cold",
+        "ossuary_gate.integrity": "intact",
+        "ossuary_gate.ward": "sealed",
+        "vault_gate.access": "locked",
+        "vault_gate.combustion": "burning",
+        "vault_gate.integrity": "destroyed",
+        "vault_gate.ward": "unsealed"
+      },
+      "movement": {
+        "cooling_pool": {
+          "disposition": "traversable",
+          "cost": 3,
+          "reasons": [
+            "cooling_pool.region#traversal_cost_ground"
+          ]
+        },
+        "ossuary_gate": {
+          "disposition": "blocked",
+          "cost": null,
+          "reasons": [
+            "ossuary_gate.portal#blocks_ground",
+            "ossuary_gate.ward#blocks_ground"
+          ]
+        },
+        "vault_gate": {
+          "disposition": "traversable",
+          "cost": 1,
+          "reasons": []
+        }
+      },
+      "effectiveLight": {
+        "ember_brazier": false
+      }
+    },
+    {
+      "id": "05-open-dark",
+      "label": "open dark",
+      "tick": 4,
+      "stateHash": "14d8d0bc2b0fd68765ba1e4bdc07cede13abcd760ca172efd6064c3d0ca51052",
+      "machineStates": {
+        "ember_brazier.emission": "extinguished",
+        "ossuary_gate.access": "locked",
+        "ossuary_gate.combustion": "cold",
+        "ossuary_gate.integrity": "intact",
+        "ossuary_gate.ward": "sealed",
+        "vault_gate.access": "open",
+        "vault_gate.combustion": "cold",
+        "vault_gate.integrity": "intact",
+        "vault_gate.ward": "unsealed"
+      },
+      "movement": {
+        "cooling_pool": {
+          "disposition": "traversable",
+          "cost": 3,
+          "reasons": [
+            "cooling_pool.region#traversal_cost_ground"
+          ]
+        },
+        "ossuary_gate": {
+          "disposition": "blocked",
+          "cost": null,
+          "reasons": [
+            "ossuary_gate.portal#blocks_ground",
+            "ossuary_gate.ward#blocks_ground"
+          ]
+        },
+        "vault_gate": {
+          "disposition": "traversable",
+          "cost": 1,
+          "reasons": []
+        }
+      },
+      "effectiveLight": {
+        "ember_brazier": false
+      }
+    }
+  ],
+  "interactions": [
+    {
+      "id": "01-baseline:ignite:vault_gate",
+      "fromScenario": "01-baseline",
+      "toScenario": "02-breached-warded",
+      "targetEntity": "vault_gate",
+      "action": "ignite",
+      "inputStateHash": "e12398c10530bbf54011e66c668f371f8ffb043f20a4d1fe66bcb151269c5249",
+      "resultingStateHash": "101e8b4cb153e8338d10e04d87084d9281decc925c1a5a0efb2c0dfd44321af6"
+    },
+    {
+      "id": "02-breached-warded:unseal:vault_gate",
+      "fromScenario": "02-breached-warded",
+      "toScenario": "03-breached-unsealed",
+      "targetEntity": "vault_gate",
+      "action": "unseal",
+      "inputStateHash": "101e8b4cb153e8338d10e04d87084d9281decc925c1a5a0efb2c0dfd44321af6",
+      "resultingStateHash": "9aabb2403a1d2bce2faa055b6b2944bd6495dcad3ba585bdac6fb63c931354ea"
+    },
+    {
+      "id": "03-breached-unsealed:extinguish:ember_brazier",
+      "fromScenario": "03-breached-unsealed",
+      "toScenario": "04-breached-unsealed-dark",
+      "targetEntity": "ember_brazier",
+      "action": "extinguish",
+      "inputStateHash": "9aabb2403a1d2bce2faa055b6b2944bd6495dcad3ba585bdac6fb63c931354ea",
+      "resultingStateHash": "ab451042d0671530000f4cdb0b8741575ac4ad57a434a59d2ebe1b37ba0d6f90"
+    }
+  ]
+}
