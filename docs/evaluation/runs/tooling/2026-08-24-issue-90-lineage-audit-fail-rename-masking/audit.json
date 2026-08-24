@@ -1,0 +1,41 @@
+{
+  "schema": "nomos.issue90.non_author_audit@1",
+  "reviewedCommit": "156c24c0f146cf263252d9275a91f462d4806cc1",
+  "reviewer": {
+    "provider": "deepseek",
+    "model": "deepseek-v4-flash-vision-exp",
+    "freshSession": true,
+    "nonAuthor": true
+  },
+  "status": "fail",
+  "findings": [
+    {
+      "severity": "blocking",
+      "location": "docs/evaluation/gate-k-candidate-lineage.py:120-124 (changed_paths) and :242-243 (protected-prefix enforcement); negative coverage missing in docs/evaluation/test-gate-k-candidate-lineage.sh",
+      "summary": "The candidate-lineage proof can emit status \"pass\" and protected status \"byte-identical\" while a protected path under crates/, fixtures/, xtask/, or .github/workflows/ is deleted or renamed, because git's default rename detection makes `git diff --name-only` omit the protected source path whenever its blob matches a file added under an allowed classification prefix; docs/evaluation already contains byte-identical copies of protected fixtures. Recommended fix: use `git diff --no-renames --name-only -z` in changed_paths and add deletion/rename negative fixtures to the harness.",
+      "evidence": "Synthetic commit 621bcc4baa024fac9e4b9824e978c19f98470ecf (parent HEAD, tree 5a934666e246cc88e99dced4f3f77f9eb5152c03) deletes fixtures/gaol.commands. `git diff --name-status d8a0b85c55aa33c20f46e5dfd9e0d1f317e1f1c9 621bcc4b...` reports `R100 fixtures/gaol.commands docs/evaluation/runs/rehearsal/2026-08-24-deepseek-debug-gemini-checker-r6/artifacts/repaired.commands`, and `git diff --name-only -z` lists only the docs/evaluation destination, so neither the protected-prefix check nor classify() sees the deleted fixture. `python3 docs/evaluation/gate-k-candidate-lineage.py gate-k-rc1 621bcc4b...` exits 0 with status \"pass\", changedPaths.count 994 and changedPaths.sha256 789fc728572bb00cd52b7ccef83bebf0454d34275147279e14d0ae2230e11940 (identical to the clean HEAD run), protected.status \"byte-identical\" — a false pass. Control: deleting fixtures/gaol.replay (no identical twin) is correctly blocked with \"protected path changed since gate-k-rc1: fixtures/gaol.replay\". `git ls-tree -r HEAD` shows 10 byte-identical copies of fixtures/gaol.nomos (9 under docs/evaluation packet trees), so the base fixture is exposed to the same masking; root-protected files (Cargo.toml etc.) remain covered by the blob comparison."
+    }
+  ],
+  "verification": [
+    {"command":"git status --short","status":"pass","details":"Empty output; exit 0 before and after the review"},
+    {"command":"git diff --check origin/main...HEAD","status":"pass","details":"No whitespace errors; exit 0"},
+    {"command":"docs/evaluation/test-gate-k-candidate-lineage.sh","status":"pass","details":"PASS; positive receipt assertions plus all four negative fixtures blocked for the expected reasons"},
+    {"command":"python3 docs/evaluation/gate-k-candidate-lineage.py gate-k-rc1 HEAD","status":"pass","details":"status pass; base d8a0b85c55aa33c20f46e5dfd9e0d1f317e1f1c9 (annotated tag gate-k-rc1, tree 4013e6629ea274c6f2e2e2570306cb35b6d41505) is an ancestor of HEAD; candidate 156c24c0f146cf263252d9275a91f462d4806cc1 tree 1d24ffb17b23e54f8644a40a0adc228f1977d80a; 8 frozen records exact; KERNEL delta exact; 994 changed paths classified"},
+    {"command":"cargo fmt --all -- --check","status":"pass","details":"exit 0, no formatting changes required"},
+    {"command":"cargo clippy --workspace --all-targets --locked -- -D warnings","status":"pass","details":"exit 0 with -D warnings; no warnings emitted"},
+    {"command":"cargo test --workspace --locked","status":"pass","details":"44 test-result groups ok, 0 failed across unit, integration, and doctests"},
+    {"command":"cargo xtask boundary","status":"pass","details":"boundary: clean; membership, permitted-edges, cycles, forbidden-dependency, and tooling-isolation rules checked"},
+    {"command":"docs/evaluation/test-pi-cold-agent-preflight.sh","status":"pass","details":"PI_COLD_AGENT_BOUNDARY PASS for deepseek/gemini/claude lanes plus all 16 negative modes blocked"},
+    {"command":"docs/evaluation/test-gate-k-eval-tooling.sh","status":"pass","details":"candidate-lineage, attempt-ledger, strictness, rc1 refinalization, revision-6 rehearsal refinalization, revision-6 adjudication, and offline harness all PASS"}
+  ],
+  "protectedSurfaceUnchanged": true,
+  "roundOneEvidencePreserved": true,
+  "formalLedgerUnchanged": true,
+  "checkoutCleanBeforeAndAfter": true,
+  "notes": [
+    "Reviewed commit origin/main..HEAD (7744610..156c24c0) is exactly 7 files; no Rust, workflow, fixture, KERNEL, THESIS, protocol, or renderer change, and no new tag.",
+    "Independent verification found the KERNEL disposition delta exact and the intended protected surface byte-identical at the reviewed commit.",
+    "The formal ledger remains the exact four frozen import-close events with no reservation or launch.",
+    "Only the rename-paired protected deletion case is unsound; see the blocking finding."
+  ]
+}

@@ -75,4 +75,27 @@ unclassified_commit=$(synthetic_commit unclassified UNCLASSIFIED.txt 'unexpected
 assert_blocked 'unclassified path changed since gate-k-rc1: UNCLASSIFIED.txt' \
   unclassified "$unclassified_commit"
 
+delete_index="$tmp_dir/delete-protected.index"
+GIT_INDEX_FILE="$delete_index" git -C "$repo_root" read-tree "$candidate"
+GIT_INDEX_FILE="$delete_index" git -C "$repo_root" update-index --force-remove \
+  fixtures/gaol.commands
+delete_tree=$(GIT_INDEX_FILE="$delete_index" git -C "$repo_root" write-tree)
+delete_commit=$(printf 'candidate lineage negative fixture: protected deletion\n' |
+  git -C "$repo_root" commit-tree "$delete_tree" -p "$candidate")
+assert_blocked 'protected path changed since gate-k-rc1: fixtures/gaol.commands' \
+  delete-protected "$delete_commit"
+
+rename_index="$tmp_dir/rename-protected.index"
+GIT_INDEX_FILE="$rename_index" git -C "$repo_root" read-tree "$candidate"
+rename_blob=$(git -C "$repo_root" rev-parse "$candidate:fixtures/gaol.replay")
+GIT_INDEX_FILE="$rename_index" git -C "$repo_root" update-index --force-remove \
+  fixtures/gaol.replay
+GIT_INDEX_FILE="$rename_index" git -C "$repo_root" update-index --add \
+  --cacheinfo "100644,$rename_blob,docs/evaluation/renamed-gaol.replay"
+rename_tree=$(GIT_INDEX_FILE="$rename_index" git -C "$repo_root" write-tree)
+rename_commit=$(printf 'candidate lineage negative fixture: protected rename\n' |
+  git -C "$repo_root" commit-tree "$rename_tree" -p "$candidate")
+assert_blocked 'protected path changed since gate-k-rc1: fixtures/gaol.replay' \
+  rename-protected "$rename_commit"
+
 printf 'gate-k candidate lineage harness: PASS\n'

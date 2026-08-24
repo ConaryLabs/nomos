@@ -23,6 +23,7 @@ ROOT_PROTECTED = (
 )
 
 PREFIX_PROTECTED = (
+    ".cargo/",
     ".github/workflows/",
     "crates/",
     "fixtures/",
@@ -118,7 +119,20 @@ def read_blob(root: Path, commit: str, path: str) -> bytes:
 
 
 def changed_paths(root: Path, base: str, candidate: str) -> list[str]:
-    raw = run_git(root, "diff", "--name-only", "-z", base, candidate, binary=True)
+    # Rename detection is presentation logic, not a safe basis for a protected
+    # path decision. Without --no-renames, Git can pair a deleted protected
+    # fixture with an identical evidence copy and report only the allowed
+    # destination path.
+    raw = run_git(
+        root,
+        "diff",
+        "--no-renames",
+        "--name-only",
+        "-z",
+        base,
+        candidate,
+        binary=True,
+    )
     assert isinstance(raw, bytes)
     paths = [part.decode("utf-8") for part in raw.split(b"\0") if part]
     if paths != sorted(paths):
