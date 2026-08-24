@@ -10,6 +10,7 @@ import sys
 from pathlib import Path
 
 from gate_k_eval_pi_protocol import (
+    ARCHIVED_TASK_RECEIPT_SHA256S,
     LEGACY_TASK_RECEIPT_SHA256S,
     fail,
     loads,
@@ -78,7 +79,7 @@ def file_sha256(path: str, name: str) -> str:
         fail(f"{name} cannot be authenticated: {error}")
 
 
-def legacy_task_receipt_digest(args: argparse.Namespace) -> str | None:
+def task_receipt_digest(args: argparse.Namespace) -> str | None:
     if args.task_receipt is None:
         return None
     try:
@@ -118,8 +119,8 @@ def parse_receipt(path: Path) -> tuple[dict[str, str], list[dict[str, object]]]:
 
 
 def validate_headers(values: dict[str, str], args: argparse.Namespace) -> tuple[str, str, str]:
-    frozen_legacy_receipt = (
-        legacy_task_receipt_digest(args) in LEGACY_TASK_RECEIPT_SHA256S
+    archived_receipt = (
+        task_receipt_digest(args) in ARCHIVED_TASK_RECEIPT_SHA256S
     )
     if values["PI_VERSION"] != args.version or values["PI_VERSION"] != "0.84.2":
         fail("qualification Pi version is not the pinned client")
@@ -194,7 +195,7 @@ def validate_headers(values: dict[str, str], args: argparse.Namespace) -> tuple[
                 "/lib/node_modules/pi-antigravity/src/index.ts"
             )
             or (
-                not frozen_legacy_receipt
+                not archived_receipt
                 and file_sha256(
                     values["PI_PROVIDER_EXTENSION"],
                     "Gemini provider extension",
@@ -226,7 +227,10 @@ def validate_headers(values: dict[str, str], args: argparse.Namespace) -> tuple[
 
 def validate_boundary(values: dict[str, str], args: argparse.Namespace, session: str, extension: str) -> None:
     frozen_legacy_receipt = (
-        legacy_task_receipt_digest(args) in LEGACY_TASK_RECEIPT_SHA256S
+        task_receipt_digest(args) in LEGACY_TASK_RECEIPT_SHA256S
+    )
+    archived_receipt = (
+        task_receipt_digest(args) in ARCHIVED_TASK_RECEIPT_SHA256S
     )
     _, extension_sha = parse_path_digest(values["PI_EXTENSION"], "Pi extension")
     boundary = loads(values["PI_BOUNDARY"], "qualification boundary")
@@ -283,7 +287,7 @@ def validate_boundary(values: dict[str, str], args: argparse.Namespace, session:
     if not fixture and (
         sandbox["binary"] != "/usr/bin/bwrap"
         or (
-            not frozen_legacy_receipt
+            not archived_receipt
             and file_sha256(sandbox["binary"], "Bubblewrap")
             != values["PI_BWRAP_SHA256"]
         )
@@ -297,7 +301,12 @@ def validate_boundary(values: dict[str, str], args: argparse.Namespace, session:
             fail("current qualification omits the raw event-stream digest")
         if extension_sha != CURRENT_EXTENSION_SHA:
             fail("current qualification names an obsolete boundary extension")
-        if not fixture and file_sha256(extension, "Pi boundary extension") != CURRENT_EXTENSION_SHA:
+        if (
+            not fixture
+            and not archived_receipt
+            and file_sha256(extension, "Pi boundary extension")
+            != CURRENT_EXTENSION_SHA
+        ):
             fail("qualification boundary extension bytes differ")
         runtime = require_keys(
             boundary.get("runtimeIdentity"),
@@ -312,7 +321,11 @@ def validate_boundary(values: dict[str, str], args: argparse.Namespace, session:
                     "/lib/node_modules/@earendil-works/pi-coding-agent/dist/cli.js"
                 )
                 or pi["sha256"] != PI_CLIENT_SHA
-                or file_sha256(pi["path"], "Pi executable") != PI_CLIENT_SHA
+                or (
+                    not archived_receipt
+                    and file_sha256(pi["path"], "Pi executable")
+                    != PI_CLIENT_SHA
+                )
             ):
                 fail("qualification Pi executable differs from the pinned package entry point")
             bubblewrap = require_keys(
@@ -344,7 +357,7 @@ def validate(args: argparse.Namespace) -> None:
     values, events = parse_receipt(args.qualification)
     boundary = loads(values["PI_BOUNDARY"], "qualification boundary")
     if (type(boundary) is dict and boundary.get("schema") == "nomos.pi_cold_agent_boundary@2" and
-            legacy_task_receipt_digest(args) not in LEGACY_TASK_RECEIPT_SHA256S):
+            task_receipt_digest(args) not in LEGACY_TASK_RECEIPT_SHA256S):
         fail("legacy qualification boundary is not bound to one of the four frozen formal task receipts")
     session, extension, _ = validate_headers(values, args)
     validate_boundary(values, args, session, extension)

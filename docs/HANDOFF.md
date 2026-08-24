@@ -150,7 +150,7 @@ DeepSeek-debugger/Gemini-checker pairs both passed at exact tooling commit
 `docs/evaluation/runs/rehearsal/2026-08-24-*-r6/`; both results explicitly have
 `formalAttempt: false` and no Gate K acceptance value. The complete repository
 and evaluation proof and a fresh DeepSeek-family non-author audit passed with
-zero findings at `378392c`. Four rejected predecessor audits, both CI
+zero findings at `378392c`. Four rejected predecessor audits, three CI
 portability failures, and every repair remain disclosed under
 `docs/evaluation/runs/tooling/2026-08-24-*`. Issue #88 is locally complete in
 draft PR #89 pending final CI and merge. Only after it merges may a separate

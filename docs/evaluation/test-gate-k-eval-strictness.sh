@@ -92,6 +92,22 @@ assert_blocked 'not bound to one of the four frozen formal task receipts' \
   --provider anthropic --model claude-opus-5 --thinking high --lane claude --worktree clean \
   --task-receipt "$tmp_dir/current-receipt.json"
 
+archived_current="$script_dir/runs/rehearsal/2026-08-24-gemini-author-deepseek-checker-r6/subject"
+sed 's#/work/signed-dev#/definitely-absent/nomos-issue88-archive#g' \
+  "$archived_current/pi-qualification.txt" >"$tmp_dir/archived-absent-paths.txt"
+python3 "$qualification" "$tmp_dir/archived-absent-paths.txt" \
+  --commit cbfa3f74e92c2e68f9916cff4ceac26859bd2994 \
+  --version 0.84.2 --host 'Linux 7.1.8-arch1-3 x86_64' \
+  --provider antigravity --model gemini-3.7-flash --thinking high \
+  --lane gemini --worktree clean \
+  --task-receipt "$archived_current/task-receipt.json"
+assert_blocked 'cannot be authenticated' \
+  python3 "$qualification" "$tmp_dir/archived-absent-paths.txt" \
+  --commit cbfa3f74e92c2e68f9916cff4ceac26859bd2994 \
+  --version 0.84.2 --host 'Linux 7.1.8-arch1-3 x86_64' \
+  --provider antigravity --model gemini-3.7-flash --thinking high \
+  --lane gemini --worktree clean --task-receipt "$tmp_dir/current-receipt.json"
+
 printf '%s\n' '{"schema":"nomos.gate_k.checker_result@1","verdict":"pass","commands":["x"],"reasons":["x"],"extra":NaN}' \
   >"$tmp_dir/checker.json"
 assert_blocked 'non-finite JSON number' python3 "$documents" checker-result "$tmp_dir/checker.json"

@@ -41,3 +41,22 @@ SHA-256, and task-receipt digest. The compatibility rule now skips that live
 file read for the same four exact receipts while continuing to require all
 recorded identities. Current and constructed records still authenticate the
 live Bubblewrap binary.
+
+After the complete packet snapshots and revision-6 reconstruction test were
+added, CI at head `74a8f0cccbc9349e96201df86928832b2fee8b32` exposed the
+corresponding assumption in the archived revision-6 Gemini qualification.
+Verify run `32681551678` passed rc1 re-finalization, then failed because the
+original `pi-antigravity` entry point was absent from the GitHub runner.
+
+The compatibility set is now named explicitly as the four frozen legacy task
+receipts plus the four accepted revision-6 rehearsal task receipts. For only
+those eight exact hashes, qualification validation trusts the recorded absolute
+path suffixes and already-bound executable digests without reopening the
+original host paths. Live or constructed receipts still authenticate the
+current Pi executable, provider extension, boundary extension, and Bubblewrap
+bytes. A regression rewrites every original-host path in an archived
+qualification to a known-absent prefix and proves that exact receipt passes,
+then proves the same qualification with a non-archived receipt fails.
+
+This third portability repair changes no archived byte, task result, verdict,
+semantic input, formal-attempt state, or live-record rule.
