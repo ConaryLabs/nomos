@@ -1,0 +1,159 @@
+{
+  "schema": "nomos.gate_k.prelaunch_declaration@1",
+  "declaredAt": "2026-08-24T13:12:22Z",
+  "issue": 94,
+  "attempt": {
+    "id": "gate-k-rc2-debug-subject",
+    "classification": "formal",
+    "role": "cold-debug-subject",
+    "numberAgainstSeededTask": 2,
+    "priorFormalAttemptsAgainstSeededTask": 1,
+    "roundTwoOrderedPosition": 2,
+    "reservationNonce": "d1289142146cbae4550bb2b6260e5a1493fb1e0bf396b9693dd58603516e7d73"
+  },
+  "predecessor": {
+    "issue": 93,
+    "mergeCommit": "378d149defeefe75e88ce3999879637897837dd0",
+    "attemptId": "gate-k-rc2-author-subject",
+    "taskReceiptSha256": "98f68e53e4b0ceddaee54d049e0c0050bd39d43ed4e86043952cf6af50b876c5",
+    "outcome": "eligible-for-checker",
+    "ledgerClosed": true
+  },
+  "candidate": {
+    "tag": "gate-k-rc2",
+    "commit": "53db236d397b3db0779f0d2aab23180d926e55a5",
+    "tree": "4c2d102a01a5dfe6700755e0cb7c26d3c0db7491",
+    "clean": true,
+    "verifyWorkflow": "https://github.com/ConaryLabs/nomos/actions/runs/32689876814",
+    "evidenceWorkflow": "https://github.com/ConaryLabs/nomos/actions/runs/32689876846"
+  },
+  "protocol": {
+    "path": "docs/evaluation/COLD_AGENT_PROTOCOL.md",
+    "revision": 6,
+    "sha256": "938bac94d9998c5cc111cb18601e9afa6922b07b8ab1d61aeab070aadcb8f284",
+    "rosterPlanPath": "docs/evaluation/GATE_K_COLD_AGENT_PLAN.md",
+    "rosterPlanSha256": "6f4b8bf2a60a2ef5f8c0360798289c0a428f4aa1d35eef143319f0f607741520",
+    "decisionPath": "docs/decisions/0015-gate-k-round-two.md",
+    "decisionSha256": "8bef8f21a611b7684e157c68fb0934b507df4f794fd26ed54922cc77fbfca064",
+    "resourceAccounting": "recorded-without-ceilings"
+  },
+  "people": {
+    "operator": "Mira/Codex",
+    "owner": "Peter Permenter",
+    "adjudicator": "Peter Permenter"
+  },
+  "subject": {
+    "provider": "deepseek",
+    "model": "deepseek-v4-flash-vision-exp",
+    "providerReportedModelExpected": "deepseek-v4-flash-vision-exp",
+    "label": "DeepSeek V4 Flash Vision Exp",
+    "thinking": "max",
+    "client": "Pi",
+    "clientVersion": "0.84.2",
+    "clientExecutableSha256": "840d1e8e689ed9e4937bcb00b9a810e02a8567d9afb10a47097f11ca93ea1521",
+    "clientPackageTreeSha256": "63a9dd14b0ae82cee2db30c56822682af19145d145febb58b613d5de4dbb27af",
+    "modelCatalogPath": "docs/evaluation/pi-deepseek-models.json",
+    "modelCatalogSha256": "7954fb3ef750bed773619c9fe259a8eb923b6f4f8455442a33cf8e1fe2fa3773",
+    "providerExtension": null,
+    "boundaryExtensionSha256": "d242e2de63e1228a32d7e890bf7cb852e71680813a7aa8f55fc500af64923043",
+    "systemPromptLaunchSha256": "c1c41bf11dd3fc42f47c174b9d431e36dd87afb60aa04d08062dd6e11963c333",
+    "bubblewrapSha256": "6ad2138a73d592acb43525432965e3c66f6fad8a2f3d610c6ca0b6855e993cbe",
+    "authType": "api_key",
+    "authStatus": "ready"
+  },
+  "neutralPreflight": {
+    "requiredAfterCommittedReservation": true,
+    "requiredBeforeLaunchMarker": true,
+    "result": "pending"
+  },
+  "packet": {
+    "shape": "debug",
+    "classification": "formal",
+    "externalPath": "/work/signed-dev/gate-k-rc2-debug-94-20260824/packet",
+    "manifestSha256": "0d8bf1b23ee4a1e3e8d86715b78ed9aa2a6052d09f26ed6daa836f83fe517f4e",
+    "planSha256": "c086ccfc32b89d63986cf26aadb5c9ac30c37526c9c15db3e423a0c574955073",
+    "briefSourcePath": "docs/evaluation/formal/round-two/debug-brief.txt",
+    "briefSha256": "4a089a3f0f35ae4b4cb8bd36e70054f9109fa98f1bdb1e6e40386d16ca0c607b",
+    "promptSourcePath": "docs/evaluation/formal/round-two/debug-prompt.txt",
+    "promptSourceSha256": "1505ca30e767ae1e34da5c9cbd253927fa05f81d4e7a1c1266c49fb12d1a70cd",
+    "launchPromptSha256": "e5b8f54dc1bfd11cb09f418c5258488011941145621bfbe6658be35e2e10acb7",
+    "binarySha256": "4af70accf3d1680f6b0e78f860be5ac62c5ab11b470026a83f01eb5b95051fd1",
+    "inputTreeSha256": "df1211c718e146b93f21ba8327a2bd3686b701b09356ff724adc2ec59cbab680",
+    "failingCommandsSha256": "a65215c4e327c59d119fc0e4123b3e77741e22b6db92e0dceb40acc167bac86b",
+    "worldPackageDigest": "fd2dca0e9cf8b352a474c414291d9a96c19758f518c1cf70fd4fa46293710440",
+    "failingRunResultSha256": "30a0860a70e6f78e6d4843da4e05882883a20793c5d7e5f597b2a91143ad8d78",
+    "tickOneExplanationSha256": "bbdeff3d9eb73467678e2757172f345dc969cf9021d7f90d7751c0da0ff8fd43",
+    "writablePaths": [
+      "/workspace/output"
+    ],
+    "soleOutsideWorkspaceException": "/dev/null",
+    "resultSchema": "nomos.gate_k.debug_result@1"
+  },
+  "sealedMutation": {
+    "sourcePath": "docs/evaluation/formal/round-two/debug-hidden-mutation.json",
+    "sha256": "786f25e7cec8481aaf541ddb40f28e3852fd7b99f79bc6ba74389f28015c9fc4",
+    "subjectPacketContainsMutation": false,
+    "checkerOnlyUntilSubjectCompletion": true,
+    "sameSemanticMutationAsRoundOne": true,
+    "preflightRepairCommandsSha256": "12e77333008a286d63deb19f76a93cfddba85cdde0b8884379af071066d75a14",
+    "preflightRepairResultSha256": "daf2751c422113e8281dedaddc3db881e78d81cccc9f54b14f6c6d3ee066b0d1",
+    "preflightRepairTreeSha256": "6cc87eb2f6f5d9853c6810b6a05c3c1b7aea46a70de00b12fe6c3f8eb9e0e07b"
+  },
+  "prelaunchGeneration": {
+    "result": "pass",
+    "failuresBeforePacketConstruction": [
+      {
+        "path": "prelaunch/blocked-absolute-seed-path.json",
+        "sha256": "227f77117fe26efcc2f9ceca71ffe9edac293f5aff001af954a68fee0d0f738c",
+        "reason": "operator supplied an absolute Nomos output path; EK0002 rejected it before any packet or provider launch"
+      },
+      {
+        "path": "prelaunch/blocked-absolute-repair-input.json",
+        "sha256": "b1c5e3994ed96202ebce6ff9fda2431dca05b121c951d28f1dbf6242db175658",
+        "reason": "operator supplied an absolute Nomos command-file path; EK0002 rejected it before any packet or provider launch"
+      }
+    ],
+    "relativePathSeedPassed": true,
+    "relativePathRepairPassed": true
+  },
+  "launch": {
+    "environment": {
+      "NOMOS_FORMAL_ATTEMPT_ID": "gate-k-rc2-debug-subject"
+    },
+    "invocation": "docs/evaluation/pi-cold-agent-task.sh deepseek /work/signed-dev/gate-k-rc2-formal-candidate-94 53db236d397b3db0779f0d2aab23180d926e55a5 /work/signed-dev/gate-k-rc2-debug-94-20260824/packet /work/signed-dev/gate-k-rc2-debug-94-20260824/events.ndjson /work/signed-dev/gate-k-rc2-debug-94-20260824/pi-stderr.txt /work/signed-dev/gate-k-rc2-debug-94-20260824/pi-qualification.txt",
+    "launcherRecord": "/work/signed-dev/gate-k-rc2-debug-94-20260824/launcher.txt",
+    "freshSessions": 1,
+    "operatorSubstantiveHintsMaximum": 0,
+    "operatorRetriesAfterModelFailureMaximum": 0
+  },
+  "rubric": {
+    "semanticMerit": [
+      "actual_semantic_cause_identified",
+      "forensic_evidence_cited",
+      "plausible_alternatives_excluded",
+      "repair_targets_the_owning_boundary",
+      "content_repair_verified_when_possible"
+    ],
+    "independenceIntegrity": [
+      "exact_model_eligibility",
+      "fresh_ephemeral_session",
+      "declared_packet_information_only",
+      "zero_substantive_hints",
+      "zero_operator_retries"
+    ],
+    "operationalCompliance": [
+      "declared_tool_path_and_execution_boundaries",
+      "permitted_changes_only",
+      "complete_transcript_command_and_resource_accounting",
+      "complete_hash_bound_record"
+    ],
+    "gateCriterionDeferredToIssue96": "independent_checker_confirms_hidden_mutation"
+  },
+  "crossRunOrder": [
+    "issue-93-gemini-author-subject-completed",
+    "issue-94-deepseek-debug-subject",
+    "issue-95-deepseek-author-checker",
+    "issue-96-gemini-debug-checker",
+    "issue-97-evidence-and-owner-disposition"
+  ]
+}

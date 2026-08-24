@@ -1,0 +1,1 @@
+{"diagnostics":[{"code":"EK0002","message":"filesystem path `/work/signed-dev/gate-k-rc2-debug-94-20260824/seed/world` is not a safe relative spelling","repairs":["use_supported_identifier_shape"]}],"status":"rejected"}
