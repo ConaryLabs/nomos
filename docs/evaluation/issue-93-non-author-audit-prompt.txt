@@ -83,7 +83,7 @@ shape:
   "schema": "nomos.issue93.non_author_audit@1",
   "reviewedCommit": "full 40-character HEAD commit",
   "reviewer": {
-    "provider": "anthropic",
+    "provider": "deepseek",
     "model": "exact model ID",
     "freshSession": true,
     "nonAuthor": true,
