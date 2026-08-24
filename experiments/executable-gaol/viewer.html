@@ -8,7 +8,9 @@
   body { margin:0; min-height:100vh; display:grid; grid-template-rows:auto 1fr auto; background:radial-gradient(circle at 50% 10%,#24323d,#0d1218 60%) }
   header { display:flex; flex-wrap:wrap; gap:12px; align-items:center; padding:12px 18px; background:#0a1016dd; border-bottom:1px solid #33424a }
   h1 { margin:0 auto 0 0; font-size:15px; letter-spacing:.12em; text-transform:uppercase }
-  #states { display:flex; gap:6px }
+  #areas, #states { display:flex; gap:6px }
+  #areas { padding-right:12px; border-right:1px solid #33424a }
+  #look { color:#4d9f9f; font:11px ui-monospace,monospace }
   button { color:#d7ddd9; background:#202d35; border:1px solid #4c6068; border-radius:5px; padding:7px 11px; cursor:pointer }
   button[aria-pressed="true"] { color:#10161d; background:#8ee6e3; border-color:#bfffff }
   main { display:grid; place-items:center; padding:18px }
@@ -17,18 +19,26 @@
   footer { display:flex; justify-content:center; gap:24px; padding:11px 18px 15px; color:#8e9b9c; background:#0a1016dd; border-top:1px solid #26343b }
   #message[data-tone="blocked"], #message[data-tone="danger"] { color:#d47158 } #message[data-tone="success"] { color:#8ee6e3 } #message[data-tone="water"] { color:#70909a }
 </style>
-<header><h1>Nomos // executable gaol</h1><span id="states"></span><button id="forensic" aria-pressed="false">Forensics</button></header>
+<header><h1>Nomos // executable gaol</h1><span id="look"></span><span id="areas"></span><span id="states"></span><button id="forensic" aria-pressed="false">Forensics</button></header>
 <main><div id="frame"></div></main>
-<footer><span>Move: WASD / arrows · Interact: E · States: 1–5 · Reset: R</span><span id="message"></span><span id="meter"></span></footer>
+<footer><span>Move: WASD / arrows · Interact: E · Areas: [ ] · States: 1–5 · Reset: R</span><span id="message"></span><span id="meter"></span></footer>
 <script type="module">
   import { renderSvg } from "./render-core.mjs";
   import { attemptInteraction, attemptMove, createPlayState, movementKeys } from "./play-state.mjs";
-  const plan = await fetch("./rendering-plan.json").then((response) => response.json());
+  const collection = await fetch("./areas.json").then((response) => response.json());
+  const plans = new Map(await Promise.all(collection.areas.map(async (area) => [
+    area.id,
+    await fetch(`./${area.plan}`).then((response) => response.json()),
+  ])));
+  const areas = document.querySelector("#areas");
   const states = document.querySelector("#states");
   const frame = document.querySelector("#frame");
   const forensic = document.querySelector("#forensic");
+  const look = document.querySelector("#look");
   const message = document.querySelector("#message");
   const meter = document.querySelector("#meter");
+  let areaId = collection.areas[0].id;
+  let plan = plans.get(areaId);
   let selected = plan.scenarios[0].id;
   let play = createPlayState(plan);
   let visualPlayer = { ...play.player };
@@ -37,6 +47,17 @@
   const selectScenario = (scenarioId) => {
     selected = scenarioId;
     for (const child of states.children) child.ariaPressed = String(child.dataset.scenario === selected);
+  };
+  const buildScenarioButtons = () => {
+    states.replaceChildren();
+    for (const scenario of plan.scenarios) {
+      const button = document.createElement("button");
+      button.textContent = scenario.label;
+      button.dataset.scenario = scenario.id;
+      button.ariaPressed = String(scenario.id === selected);
+      button.onclick = () => { selectScenario(scenario.id); play = { ...play, message: `Loaded ${scenario.label}`, tone: "neutral" }; draw(); };
+      states.append(button);
+    }
   };
   const draw = () => {
     frame.innerHTML = renderSvg(plan, selected, forensic.ariaPressed === "true", { actorPositions: { player: visualPlayer, gaoler: visualGaoler } });
@@ -47,6 +68,18 @@
     meter.textContent = `moves ${play.moves} · cost ${play.movementCost} · gaoler ${pursuit}`;
   };
   const reset = () => { selectScenario(plan.scenarios[0].id); play = createPlayState(plan); visualPlayer = { ...play.player }; visualGaoler = { ...play.gaoler }; animating = false; draw(); };
+  const selectArea = (nextAreaId) => {
+    areaId = nextAreaId;
+    plan = plans.get(areaId);
+    selected = plan.scenarios[0].id;
+    play = createPlayState(plan);
+    visualPlayer = { ...play.player };
+    visualGaoler = { ...play.gaoler };
+    animating = false;
+    for (const child of areas.children) child.ariaPressed = String(child.dataset.area === areaId);
+    buildScenarioButtons();
+    draw();
+  };
   const animateMove = (from, to, gaolerFrom, gaolerTo, cost) => {
     const started = performance.now();
     const duration = 105 * cost;
@@ -62,17 +95,26 @@
     };
     requestAnimationFrame(step);
   };
-  for (const scenario of plan.scenarios) {
+  look.textContent = `LOOK ${collection.lookProfile.digest.slice(0, 8)}`;
+  for (const area of collection.areas) {
     const button = document.createElement("button");
-    button.textContent = scenario.label;
-    button.dataset.scenario = scenario.id;
-    button.ariaPressed = String(scenario.id === selected);
-    button.onclick = () => { selectScenario(scenario.id); play = { ...play, message: `Loaded ${scenario.label}`, tone: "neutral" }; draw(); };
-    states.append(button);
+    button.textContent = area.label;
+    button.dataset.area = area.id;
+    button.ariaPressed = String(area.id === areaId);
+    button.onclick = () => selectArea(area.id);
+    areas.append(button);
   }
+  buildScenarioButtons();
   forensic.onclick = () => { forensic.ariaPressed = String(forensic.ariaPressed !== "true"); draw(); };
   addEventListener("keydown", (event) => {
     if (event.code === "KeyR") { event.preventDefault(); reset(); return; }
+    if ((event.code === "BracketLeft" || event.code === "BracketRight") && !animating) {
+      event.preventDefault();
+      const direction = event.code === "BracketLeft" ? -1 : 1;
+      const index = collection.areas.findIndex((area) => area.id === areaId);
+      selectArea(collection.areas[(index + direction + collection.areas.length) % collection.areas.length].id);
+      return;
+    }
     if (event.code === "KeyE" && !animating) {
       event.preventDefault();
       const result = attemptInteraction(plan, selected, play);

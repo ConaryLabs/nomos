@@ -1,0 +1,5 @@
+schema nomos.command_script@1
+unlock sluice_gate with credential/cistern_key
+open sluice_gate
+unseal sluice_gate
+extinguish watch_brazier

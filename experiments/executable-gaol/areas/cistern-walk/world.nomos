@@ -1,0 +1,20 @@
+schema nomos.source@1
+catalog credential/cistern_key
+
+entity sluice_gate primitive/iron_barred_door
+  anchor face 2 0 0 north
+  credential credential/cistern_key
+end
+
+entity service_gate primitive/iron_barred_door
+  anchor face 6 0 0 north
+  credential credential/cistern_key
+end
+
+entity runoff_channel primitive/shallow_water_region
+  anchor region 1 1 0 2 5 0
+end
+
+entity watch_brazier primitive/extinguishable_light
+  anchor cell 6 2 0
+end

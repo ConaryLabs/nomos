@@ -1,0 +1,474 @@
+{
+  "schema": "nomos.experiment.rendering_plan@1",
+  "deterministic": true,
+  "area": {
+    "id": "cistern-walk",
+    "label": "Cistern Walk"
+  },
+  "projectionSchemas": [
+    {
+      "name": "nomos.projection.simulation",
+      "version": 3
+    },
+    {
+      "name": "nomos.projection.navigation",
+      "version": 1
+    },
+    {
+      "name": "nomos.projection.persistence",
+      "version": 1
+    },
+    {
+      "name": "nomos.projection.diagnostics",
+      "version": 1
+    }
+  ],
+  "projectionDigests": {
+    "simulation.json": "c5e35bd3b05a73cbd1234383b909a8f25604dd095642af7e4d94e8daa8c751d2",
+    "navigation.json": "2c8cf1a9d600a02d73dfcf4d06f08ee72cd5cc056a5b9189a7a5e4b5486d3a53",
+    "persistence.json": "e31939ce44299e83e489eec93f9fa0a4a923ea5366f4091a6bfccd9251e33ba3",
+    "diagnostics.json": "4e220f0205da5502748a7de66d507e2241b7db568fa499b3d3547a8584e2db5f"
+  },
+  "camera": {
+    "identity": "gaol_oblique_01",
+    "projection": "fixed_oblique",
+    "width": 1200,
+    "height": 540,
+    "tileWidth": 96,
+    "tileHeight": 50
+  },
+  "palette": "gaol_bounded_01",
+  "entities": [
+    {
+      "id": "runoff_channel",
+      "kind": "water",
+      "visualAssembly": "visual/shallow_water",
+      "materialFamily": "water_cold",
+      "anchor": {
+        "kind": "region",
+        "max": {
+          "x": 2,
+          "y": 5,
+          "z": 0
+        },
+        "min": {
+          "x": 1,
+          "y": 1,
+          "z": 0
+        }
+      },
+      "machineNamespaces": [],
+      "provenance": [
+        {
+          "claim": "runoff_channel.region#traversal_cost_ground",
+          "source": {
+            "byte_end": 365,
+            "byte_start": 281,
+            "column": 1,
+            "line": 14,
+            "path": "experiments/executable-gaol/areas/cistern-walk/world.nomos"
+          }
+        }
+      ]
+    },
+    {
+      "id": "service_gate",
+      "kind": "door",
+      "visualAssembly": "visual/iron_barred_door",
+      "materialFamily": "iron_oxidized",
+      "anchor": {
+        "cell": {
+          "x": 6,
+          "y": 0,
+          "z": 0
+        },
+        "direction": "north",
+        "kind": "face"
+      },
+      "machineNamespaces": [
+        "service_gate.access",
+        "service_gate.combustion",
+        "service_gate.integrity",
+        "service_gate.ward"
+      ],
+      "provenance": [
+        {
+          "claim": "service_gate.portal#blocks_ground",
+          "source": {
+            "byte_end": 279,
+            "byte_start": 167,
+            "column": 1,
+            "line": 9,
+            "path": "experiments/executable-gaol/areas/cistern-walk/world.nomos"
+          }
+        },
+        {
+          "claim": "service_gate.ward#blocks_ground",
+          "source": {
+            "byte_end": 279,
+            "byte_start": 167,
+            "column": 1,
+            "line": 9,
+            "path": "experiments/executable-gaol/areas/cistern-walk/world.nomos"
+          }
+        }
+      ]
+    },
+    {
+      "id": "sluice_gate",
+      "kind": "door",
+      "visualAssembly": "visual/iron_barred_door",
+      "materialFamily": "iron_oxidized",
+      "anchor": {
+        "cell": {
+          "x": 2,
+          "y": 0,
+          "z": 0
+        },
+        "direction": "north",
+        "kind": "face"
+      },
+      "machineNamespaces": [
+        "sluice_gate.access",
+        "sluice_gate.combustion",
+        "sluice_gate.integrity",
+        "sluice_gate.ward"
+      ],
+      "provenance": [
+        {
+          "claim": "sluice_gate.portal#blocks_ground",
+          "source": {
+            "byte_end": 165,
+            "byte_start": 54,
+            "column": 1,
+            "line": 4,
+            "path": "experiments/executable-gaol/areas/cistern-walk/world.nomos"
+          }
+        },
+        {
+          "claim": "sluice_gate.ward#blocks_ground",
+          "source": {
+            "byte_end": 165,
+            "byte_start": 54,
+            "column": 1,
+            "line": 4,
+            "path": "experiments/executable-gaol/areas/cistern-walk/world.nomos"
+          }
+        }
+      ]
+    },
+    {
+      "id": "watch_brazier",
+      "kind": "light",
+      "visualAssembly": "visual/brazier",
+      "materialFamily": "iron_brazier",
+      "anchor": {
+        "cell": {
+          "x": 6,
+          "y": 2,
+          "z": 0
+        },
+        "kind": "cell"
+      },
+      "machineNamespaces": [
+        "watch_brazier.emission"
+      ],
+      "provenance": []
+    }
+  ],
+  "actors": [
+    {
+      "id": "player",
+      "assembly": "visual/player_silhouette",
+      "anchor": {
+        "kind": "cell",
+        "cell": {
+          "x": 7,
+          "y": 4,
+          "z": 0
+        }
+      }
+    },
+    {
+      "id": "gaoler",
+      "assembly": "visual/gaoler_silhouette",
+      "anchor": {
+        "kind": "cell",
+        "cell": {
+          "x": 4,
+          "y": 3,
+          "z": 0
+        }
+      }
+    }
+  ],
+  "effects": [
+    {
+      "id": "sluice_ward_crescent",
+      "assembly": "visual/cyan_crescent",
+      "anchorEntity": "sluice_gate",
+      "presentationAnchor": {
+        "x": 4.9,
+        "y": 3.8,
+        "z": 0
+      }
+    }
+  ],
+  "presentation": {
+    "primaryGate": "sluice_gate",
+    "pursuitLight": "watch_brazier",
+    "forensicScenario": "03-breached-unsealed"
+  },
+  "uiAnchors": [
+    "vitals",
+    "abilities",
+    "gate_state",
+    "water_cost"
+  ],
+  "scenarios": [
+    {
+      "id": "01-baseline",
+      "label": "baseline",
+      "tick": 0,
+      "stateHash": "183de5c962e468828cae0a9f2c2e99cdda1d6add8db208806c178d1e5decaf87",
+      "machineStates": {
+        "service_gate.access": "locked",
+        "service_gate.combustion": "cold",
+        "service_gate.integrity": "intact",
+        "service_gate.ward": "sealed",
+        "sluice_gate.access": "locked",
+        "sluice_gate.combustion": "cold",
+        "sluice_gate.integrity": "intact",
+        "sluice_gate.ward": "sealed",
+        "watch_brazier.emission": "lit"
+      },
+      "movement": {
+        "runoff_channel": {
+          "disposition": "traversable",
+          "cost": 3,
+          "reasons": [
+            "runoff_channel.region#traversal_cost_ground"
+          ]
+        },
+        "service_gate": {
+          "disposition": "blocked",
+          "cost": null,
+          "reasons": [
+            "service_gate.portal#blocks_ground",
+            "service_gate.ward#blocks_ground"
+          ]
+        },
+        "sluice_gate": {
+          "disposition": "blocked",
+          "cost": null,
+          "reasons": [
+            "sluice_gate.portal#blocks_ground",
+            "sluice_gate.ward#blocks_ground"
+          ]
+        }
+      },
+      "effectiveLight": {
+        "watch_brazier": true
+      }
+    },
+    {
+      "id": "02-breached-warded",
+      "label": "breached warded",
+      "tick": 1,
+      "stateHash": "399b9f956a7700ae9ef7dc3911039d3f20ee949d8d14b0f2a07bb2d0c3d9befb",
+      "machineStates": {
+        "service_gate.access": "locked",
+        "service_gate.combustion": "cold",
+        "service_gate.integrity": "intact",
+        "service_gate.ward": "sealed",
+        "sluice_gate.access": "locked",
+        "sluice_gate.combustion": "burning",
+        "sluice_gate.integrity": "destroyed",
+        "sluice_gate.ward": "sealed",
+        "watch_brazier.emission": "lit"
+      },
+      "movement": {
+        "runoff_channel": {
+          "disposition": "traversable",
+          "cost": 3,
+          "reasons": [
+            "runoff_channel.region#traversal_cost_ground"
+          ]
+        },
+        "service_gate": {
+          "disposition": "blocked",
+          "cost": null,
+          "reasons": [
+            "service_gate.portal#blocks_ground",
+            "service_gate.ward#blocks_ground"
+          ]
+        },
+        "sluice_gate": {
+          "disposition": "blocked",
+          "cost": null,
+          "reasons": [
+            "sluice_gate.ward#blocks_ground"
+          ]
+        }
+      },
+      "effectiveLight": {
+        "watch_brazier": true
+      }
+    },
+    {
+      "id": "03-breached-unsealed",
+      "label": "breached unsealed",
+      "tick": 2,
+      "stateHash": "4b700bb422c3882b7bceacdfc95caef42b3e20962b8fc983c3294be3b86a8473",
+      "machineStates": {
+        "service_gate.access": "locked",
+        "service_gate.combustion": "cold",
+        "service_gate.integrity": "intact",
+        "service_gate.ward": "sealed",
+        "sluice_gate.access": "locked",
+        "sluice_gate.combustion": "burning",
+        "sluice_gate.integrity": "destroyed",
+        "sluice_gate.ward": "unsealed",
+        "watch_brazier.emission": "lit"
+      },
+      "movement": {
+        "runoff_channel": {
+          "disposition": "traversable",
+          "cost": 3,
+          "reasons": [
+            "runoff_channel.region#traversal_cost_ground"
+          ]
+        },
+        "service_gate": {
+          "disposition": "blocked",
+          "cost": null,
+          "reasons": [
+            "service_gate.portal#blocks_ground",
+            "service_gate.ward#blocks_ground"
+          ]
+        },
+        "sluice_gate": {
+          "disposition": "traversable",
+          "cost": 1,
+          "reasons": []
+        }
+      },
+      "effectiveLight": {
+        "watch_brazier": true
+      }
+    },
+    {
+      "id": "04-breached-unsealed-dark",
+      "label": "breached unsealed dark",
+      "tick": 3,
+      "stateHash": "8eafa81e2a47ac852548af804acb880d99aad5084b03cb19f1ebe993d174152e",
+      "machineStates": {
+        "service_gate.access": "locked",
+        "service_gate.combustion": "cold",
+        "service_gate.integrity": "intact",
+        "service_gate.ward": "sealed",
+        "sluice_gate.access": "locked",
+        "sluice_gate.combustion": "burning",
+        "sluice_gate.integrity": "destroyed",
+        "sluice_gate.ward": "unsealed",
+        "watch_brazier.emission": "extinguished"
+      },
+      "movement": {
+        "runoff_channel": {
+          "disposition": "traversable",
+          "cost": 3,
+          "reasons": [
+            "runoff_channel.region#traversal_cost_ground"
+          ]
+        },
+        "service_gate": {
+          "disposition": "blocked",
+          "cost": null,
+          "reasons": [
+            "service_gate.portal#blocks_ground",
+            "service_gate.ward#blocks_ground"
+          ]
+        },
+        "sluice_gate": {
+          "disposition": "traversable",
+          "cost": 1,
+          "reasons": []
+        }
+      },
+      "effectiveLight": {
+        "watch_brazier": false
+      }
+    },
+    {
+      "id": "05-open-dark",
+      "label": "open dark",
+      "tick": 4,
+      "stateHash": "2ba2afb01cbe663014a8eff7adc3b760b2a270088f84693ef55364f02fd5a1aa",
+      "machineStates": {
+        "service_gate.access": "locked",
+        "service_gate.combustion": "cold",
+        "service_gate.integrity": "intact",
+        "service_gate.ward": "sealed",
+        "sluice_gate.access": "open",
+        "sluice_gate.combustion": "cold",
+        "sluice_gate.integrity": "intact",
+        "sluice_gate.ward": "unsealed",
+        "watch_brazier.emission": "extinguished"
+      },
+      "movement": {
+        "runoff_channel": {
+          "disposition": "traversable",
+          "cost": 3,
+          "reasons": [
+            "runoff_channel.region#traversal_cost_ground"
+          ]
+        },
+        "service_gate": {
+          "disposition": "blocked",
+          "cost": null,
+          "reasons": [
+            "service_gate.portal#blocks_ground",
+            "service_gate.ward#blocks_ground"
+          ]
+        },
+        "sluice_gate": {
+          "disposition": "traversable",
+          "cost": 1,
+          "reasons": []
+        }
+      },
+      "effectiveLight": {
+        "watch_brazier": false
+      }
+    }
+  ],
+  "interactions": [
+    {
+      "id": "01-baseline:ignite:sluice_gate",
+      "fromScenario": "01-baseline",
+      "toScenario": "02-breached-warded",
+      "targetEntity": "sluice_gate",
+      "action": "ignite",
+      "inputStateHash": "183de5c962e468828cae0a9f2c2e99cdda1d6add8db208806c178d1e5decaf87",
+      "resultingStateHash": "399b9f956a7700ae9ef7dc3911039d3f20ee949d8d14b0f2a07bb2d0c3d9befb"
+    },
+    {
+      "id": "02-breached-warded:unseal:sluice_gate",
+      "fromScenario": "02-breached-warded",
+      "toScenario": "03-breached-unsealed",
+      "targetEntity": "sluice_gate",
+      "action": "unseal",
+      "inputStateHash": "399b9f956a7700ae9ef7dc3911039d3f20ee949d8d14b0f2a07bb2d0c3d9befb",
+      "resultingStateHash": "4b700bb422c3882b7bceacdfc95caef42b3e20962b8fc983c3294be3b86a8473"
+    },
+    {
+      "id": "03-breached-unsealed:extinguish:watch_brazier",
+      "fromScenario": "03-breached-unsealed",
+      "toScenario": "04-breached-unsealed-dark",
+      "targetEntity": "watch_brazier",
+      "action": "extinguish",
+      "inputStateHash": "4b700bb422c3882b7bceacdfc95caef42b3e20962b8fc983c3294be3b86a8473",
+      "resultingStateHash": "8eafa81e2a47ac852548af804acb880d99aad5084b03cb19f1ebe993d174152e"
+    }
+  ]
+}

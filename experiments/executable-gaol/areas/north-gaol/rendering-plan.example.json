@@ -24,10 +24,10 @@
     }
   ],
   "projectionDigests": {
-    "simulation.json": "aa5282dadb6db1e6fcd91cecba935b895be0f0eeea13abc2a938f47e3cc1fe39",
-    "navigation.json": "db542c1f9ab86cd09c90c9217d5660f2161ec53aa8f675224f34e3baa588b3ea",
-    "persistence.json": "d434bc77a83a6d43d7a8da96676a0dab0a078b97434416bb8b06ff4933fc31f4",
-    "diagnostics.json": "39e1c6ba299db0a9f26d3439762f9ca1e3bf3ab968c99d86be45520b85062135"
+    "simulation.json": "ed4eab528fbb6a289f883f3dd80fdb98e4ee9e16e3735efa5cea6863be75eb04",
+    "navigation.json": "7154e9239a531ca7a5c9dda12ac4c555313117aebf60e7b28c47264a20e34b31",
+    "persistence.json": "c1fe65a5b92fbb9357c45e45f5aba05724bf01ab50ccadc82026bb6f49288fa7",
+    "diagnostics.json": "0fd0e6899d21632ed1c54d5128b3563b4e0ab021de0ec7f76adc1df62a1e4e92"
   },
   "camera": {
     "identity": "gaol_oblique_01",
@@ -84,7 +84,7 @@
             "byte_start": 278,
             "column": 1,
             "line": 14,
-            "path": "experiments/executable-gaol/gaol.nomos"
+            "path": "experiments/executable-gaol/areas/north-gaol/world.nomos"
           }
         }
       ]
@@ -117,7 +117,7 @@
             "byte_start": 53,
             "column": 1,
             "line": 4,
-            "path": "experiments/executable-gaol/gaol.nomos"
+            "path": "experiments/executable-gaol/areas/north-gaol/world.nomos"
           }
         },
         {
@@ -127,7 +127,7 @@
             "byte_start": 53,
             "column": 1,
             "line": 4,
-            "path": "experiments/executable-gaol/gaol.nomos"
+            "path": "experiments/executable-gaol/areas/north-gaol/world.nomos"
           }
         }
       ]
@@ -160,7 +160,7 @@
             "byte_start": 164,
             "column": 1,
             "line": 9,
-            "path": "experiments/executable-gaol/gaol.nomos"
+            "path": "experiments/executable-gaol/areas/north-gaol/world.nomos"
           }
         },
         {
@@ -170,7 +170,7 @@
             "byte_start": 164,
             "column": 1,
             "line": 9,
-            "path": "experiments/executable-gaol/gaol.nomos"
+            "path": "experiments/executable-gaol/areas/north-gaol/world.nomos"
           }
         }
       ]
