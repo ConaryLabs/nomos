@@ -225,6 +225,9 @@ def validate_headers(values: dict[str, str], args: argparse.Namespace) -> tuple[
 
 
 def validate_boundary(values: dict[str, str], args: argparse.Namespace, session: str, extension: str) -> None:
+    frozen_legacy_receipt = (
+        legacy_task_receipt_digest(args) in LEGACY_TASK_RECEIPT_SHA256S
+    )
     _, extension_sha = parse_path_digest(values["PI_EXTENSION"], "Pi extension")
     boundary = loads(values["PI_BOUNDARY"], "qualification boundary")
     boundary = require_keys(boundary, {
@@ -277,8 +280,14 @@ def validate_boundary(values: dict[str, str], args: argparse.Namespace, session:
     actual_checks = require_keys(sandbox["checks"], checks, set(), "qualification sandbox checks")
     if any(actual_checks[key] is not True for key in checks):
         fail("qualification sandbox checks are incomplete")
-    if not fixture and (sandbox["binary"] != "/usr/bin/bwrap" or
-                        file_sha256(sandbox["binary"], "Bubblewrap") != values["PI_BWRAP_SHA256"]):
+    if not fixture and (
+        sandbox["binary"] != "/usr/bin/bwrap"
+        or (
+            not frozen_legacy_receipt
+            and file_sha256(sandbox["binary"], "Bubblewrap")
+            != values["PI_BWRAP_SHA256"]
+        )
+    ):
         fail("qualification Bubblewrap path does not name the pinned binary")
     if boundary["schema"] in (
         "nomos.pi_cold_agent_boundary@3",
@@ -325,7 +334,7 @@ def validate_boundary(values: dict[str, str], args: argparse.Namespace, session:
     else:
         if extension_sha != LEGACY_EXTENSION_SHA:
             fail("legacy qualification boundary extension differs")
-        if legacy_task_receipt_digest(args) not in LEGACY_TASK_RECEIPT_SHA256S:
+        if not frozen_legacy_receipt:
             fail("legacy qualification boundary is not bound to one of the four frozen formal task receipts")
         if "runtimeIdentity" in boundary:
             fail("legacy qualification boundary unexpectedly declares runtime identity")

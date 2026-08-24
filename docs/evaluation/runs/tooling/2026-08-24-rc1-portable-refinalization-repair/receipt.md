@@ -31,3 +31,13 @@ four exact frozen receipts.
 
 This changes no frozen byte, verdict, semantic input, kernel source, or current
 revision-6 record rule.
+
+The next CI attempt at head `75a08b513d2bab94eefa7b93df1d905b5907dcd2`
+passed the provider-extension check and exposed the same machine-local
+assumption for the historical `/usr/bin/bwrap` path. Verify run `32677239613`
+failed because the GitHub image does not install Bubblewrap. The frozen
+qualification already binds the exact `/usr/bin/bwrap` path, Bubblewrap version,
+SHA-256, and task-receipt digest. The compatibility rule now skips that live
+file read for the same four exact receipts while continuing to require all
+recorded identities. Current and constructed records still authenticate the
+live Bubblewrap binary.
