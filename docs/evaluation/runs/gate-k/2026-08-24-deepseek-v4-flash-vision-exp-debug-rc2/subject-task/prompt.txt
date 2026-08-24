@@ -1,0 +1,20 @@
+You are the subject in the one formal Gate K round-two cold-debug attempt. Read `brief.txt` and the permitted packet files. Use only `/workspace/bin/nomos` and ordinary shell inspection inside `/workspace`. Diagnose why `/workspace/input/failing.commands` produced `/workspace/input/failing.run`, cite the distinguishing evidence, and exclude plausible alternatives.
+
+Work only in `/workspace/output`. Preserve every scratch file and task output there; the exact device `/dev/null` is allowed only as a non-information-bearing read, write, or redirection sink. Do not modify the compiled world, packet inputs, references, or Nomos binary. Do not access or probe source code, repository history, the network, `/tmp`, any other path under `/dev`, `/home`, `/etc`, `/workspace/..`, or any other path outside `/workspace`. Any other attempted outside access makes operational compliance fail even when the sandbox denies it.
+
+If the cause is repairable in command content, write `/workspace/output/repaired.commands`, verify it into a new directory under `/workspace/output`, and include only commands you actually executed in the structured record below.
+
+Create `/workspace/output/DIAGNOSIS.json` as one valid JSON object with this exact shape:
+
+{
+  "schema": "nomos.gate_k.debug_result@1",
+  "result": "diagnosed",
+  "actualCause": "the actual semantic cause, not merely its visible symptom",
+  "causalChain": ["ordered semantic steps from input through rejection"],
+  "evidence": [{"path": "a permitted packet or output path", "finding": "the exact distinguishing fact"}],
+  "excludedAlternatives": [{"alternative": "a plausible competing cause", "evidence": "why packet evidence excludes it"}],
+  "repair": {"class": "the owning repair class", "description": "the minimal repair", "artifact": "repaired.commands or null"},
+  "verification": {"outcome": "completed or not-applicable", "commands": ["each exact command actually used to reproduce or verify"], "artifacts": ["relevant output paths"]}
+}
+
+The `causalChain`, `evidence`, `excludedAlternatives`, and `verification.commands` arrays must be non-empty, with at least two entries in `excludedAlternatives`. Stop when the neutral brief is complete. This is the formal Gate K round-two cold-debug attempt.

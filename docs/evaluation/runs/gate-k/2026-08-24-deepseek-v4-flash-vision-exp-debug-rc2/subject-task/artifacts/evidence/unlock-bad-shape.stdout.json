@@ -1,0 +1,1 @@
+{"diagnostics":[{"code":"EK0814","message":"`gaoler_key` does not match the required shape `<catalog>/<name>`","repairs":["fix_source_syntax"]}],"status":"rejected"}

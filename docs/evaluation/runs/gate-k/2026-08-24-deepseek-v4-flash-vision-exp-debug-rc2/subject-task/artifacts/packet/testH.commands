@@ -1,0 +1,5 @@
+schema nomos.command_script@1
+ignite north_gate
+unseal north_gate
+open north_gate
+extinguish brazier_02
