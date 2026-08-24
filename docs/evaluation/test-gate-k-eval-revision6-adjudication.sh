@@ -175,6 +175,25 @@ assert_blocked 'packet manifest generation or structure is invalid' \
   "$tmp_dir/revision6-stale-packet-manifest-run"
 cp -R "$tmp_dir/revision6-checker-record-backup/." "$checker_record/"
 cp -R "$tmp_dir/revision6-checker-packet-backup/." "$checker_packet/"
+
+jq -S -c '
+  .schema = "nomos.pi_cold_agent_boundary@3" |
+  .systemPromptSha256 = "2cec3aeebce2f8359cde337d3b1b2ec1601913711f282ab0289ab276b02dee79" |
+  .finalSystemPromptSha256 = "a78cae9025d8b63562a13c111e79e9f27c32ab20e726a53d2d9d8c094712e2b7" |
+  .sandbox.checks.deviceFilesystemEmpty = .sandbox.checks.deviceFilesystemExact |
+  del(.sandbox.checks.deviceFilesystemExact, .sandbox.checks.deviceNullReadable,
+    .sandbox.checks.deviceNullWritable)
+  ' "$tmp_dir/revision6-checker-record-backup/boundary.json" \
+  >"$checker_record/boundary.json"
+refresh_record_runtime_evidence "$checker_record"
+write_pass_adjudication "$tmp_dir/author-subject-record" "$checker_record" \
+  "$tmp_dir/revision6-stale-boundary.json"
+assert_blocked 'boundary does not prove the authenticated packet isolation' \
+  revision6-stale-boundary "$finalizer" "$tmp_dir/author-subject-record" \
+  "$checker_record" "$tmp_dir/revision6-stale-boundary.json" \
+  "$tmp_dir/revision6-stale-boundary-run"
+cp -R "$tmp_dir/revision6-checker-record-backup/." "$checker_record/"
+cp -R "$tmp_dir/revision6-checker-packet-backup/." "$checker_packet/"
 [[ $(tree_sha "$checker_record") == "$checker_record_tree_before" ]]
 [[ $(tree_sha "$checker_packet") == "$checker_packet_tree_before" ]]
 

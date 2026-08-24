@@ -1,0 +1,73 @@
+{
+  "schema": "nomos.issue88.non_author_audit@1",
+  "reviewedCommit": "73a3820450b899c1b01387883d925ff63b2777f8",
+  "reviewer": {
+    "provider": "deepseek",
+    "model": "deepseek-v4-flash-vision-exp",
+    "freshSession": true,
+    "nonAuthor": true
+  },
+  "status": "fail",
+  "findings": [
+    {
+      "severity": "major",
+      "location": "docs/evaluation/gate-k-eval-finalize.sh:490-491 and 522-526",
+      "summary": "The finalizer accepts the retired pi_cold_agent_boundary@3 generation for revision-6 records, so the final-result proof does not mechanically enforce boundary generation 4 (exact readable/writable /dev/null, no other device or alias exception).",
+      "evidence": "Reproduced on the offline fixture: I built a valid revision-6 author subject/checker pair, then downgraded only the checker boundary.json from nomos.pi_cold_agent_boundary@4 to nomos.pi_cold_agent_boundary@3 (rename deviceFilesystemExact to the old deviceFilesystemEmpty check, drop deviceNullReadable/deviceNullWritable, set legacy systemPromptSha256 2cec3a... and finalSystemPromptSha256 a78cae...), refreshed all bound digests via the shipped helpers, and gate-k-eval-finalize.sh succeeded: `GATE_K_RUN_FINALIZED verdict=pass` with result.json `.records.checker.dimensions.operational_compliance.verdict == \"pass\"`. The finalizer jq at line 490-491 allows `.schema == \"nomos.pi_cold_agent_boundary@3\"` for any runtimeIdentity-bearing record, and line 522-526 accepts the old check allowlist containing only `deviceFilesystemEmpty`; there is no rule forcing non-legacy revision-6 records to be @4. COLD_AGENT_PROTOCOL.md revision 6 prescribes boundary schema nomos.pi_cold_agent_boundary@4 and COLD_AGENT_PROTOCOL's /dev/null exactness guarantee (deviceFilesystemExact/deviceNullReadable/deviceNullWritable) was closed in the e2e0cfb/66c96f4 repair, so @3 is exactly the earlier falsified guarantee ('deviceFilesystemEmpty'). pi-cold-agent-task.sh does require @4 at generation time, but the finalizer is the final assembly gate and it does not fail closed on a stale @3 boundary."
+    }
+  ],
+  "verification": [
+    {
+      "command": "git status --short",
+      "status": "pass",
+      "details": "Empty output before the review, after every proof run, and at the close (untracked-file count 0), with no tracked file modified."
+    },
+    {
+      "command": "git diff --check origin/main...HEAD",
+      "status": "pass",
+      "details": "Exit 0; no whitespace or patch errors across the 234-file branch diff."
+    },
+    {
+      "command": "cargo fmt --all -- --check",
+      "status": "pass",
+      "details": "Exit 0; workspace formatting clean on pinned rustfmt 1.98.0."
+    },
+    {
+      "command": "cargo clippy --workspace --all-targets --locked -- -D warnings",
+      "status": "pass",
+      "details": "Exit 0; all seven workspace members (six kernel crates plus xtask) checked with warnings denied."
+    },
+    {
+      "command": "cargo test --workspace --locked",
+      "status": "pass",
+      "details": "Exit 0; 207 tests passed, 0 failed, including unit, integration, doctest, and compile-fail boundary tests."
+    },
+    {
+      "command": "cargo xtask boundary",
+      "status": "pass",
+      "details": "Exit 0; membership, permitted edges, cycles, forbidden-dependency, and tooling-isolation rules all clean."
+    },
+    {
+      "command": "docs/evaluation/test-pi-cold-agent-preflight.sh",
+      "status": "pass",
+      "details": "Exit 0; 'pi cold-agent boundary harness: PASS' for deepseek/gemini/claude lanes plus all negative preflight modes."
+    },
+    {
+      "command": "docs/evaluation/test-gate-k-eval-tooling.sh",
+      "status": "pass",
+      "details": "Exit 0; attempt-ledger harness, strictness regressions, rc1 byte-identical re-finalization, revision-6 adjudication regressions, and the complete offline tooling harness all PASS."
+    }
+  ],
+  "protectedSurfaceUnchanged": true,
+  "checkoutCleanBeforeAndAfter": true,
+  "notes": [
+    "Diff touches only README.md, docs/HANDOFF.md, and docs/evaluation/*; KERNEL.md, THESIS.md, Cargo.toml/Cargo.lock, rust-toolchain.toml, crates/, fixtures/, xtask/, .github/ (CI), docs/decisions/, docs/evaluation/final/, GATE_K_FINAL_EVIDENCE_INDEX.json, and docs/evaluation/runs/gate-k/* are byte-for-byte untouched; gate-k-rc1 annotated tag still resolves to d8a0b85c55aa33c20f46e5dfd9e0d1f317e1f1c9.",
+    "Both frozen gate-k-rc1 pairs re-finalize byte-for-byte with the shipped test-gate-k-rc1-refinalization.sh, preserving historical final hashes e6990dacde903f527d1cb46784a54d938a7e130f1193e51bb830a4a2284f07dc (author fail) and f09c9214329f7f8bd7d4d4b31476a0f24c825add2f5bb434b7bf780f64d8089c (debug fail) and the historical verdicts.",
+    "Both revision-6 rehearsal pairs independently re-finalize byte-for-byte at the exact tooling head cbfa3f74e92c2e68f9916cff4ceac26859bd2994 (I created a detached worktree at cbfa3f7, ran the shipped finalizer on the retained live records under /work/signed-dev/nomos-issue88-live, and diffed against the committed runs): subject/checker trees, checker.json, RUN.md, and result.json all identical, with result hashes exactly 847a03198affb8ab896b541ff2f7f04ed9635a7877cbec960fc33bbad5627f2e (author) and 6458c901ca637f6cdab796af28e89a21b3d831a6cdd29644d7438a9d7dac2ba4 (debugger), matching GATE_K_COLD_AGENT_PLAN.md.",
+    "Rehearsal records are task_receipt@2/eval_plan@2/packet_manifest@2/command_adjudication@2/run_result@2 with protocolRevision 6, classification rehearsal, formalAttempt false, fresh distinct subject/checker sessions (no session reuse), operatorRetries 0, operatorIntervention none, agent_end willRetry false, exactly one user message equal to the exact task prompt, and all three dimensions (semantic_merit, independence_integrity, operational_compliance) recorded as pass with hash-bound evidence for both subject and checker; the adjudication validator mechanically derives each overall pass, and no adjudication finding or command references a path outside /workspace other than allowed /dev/null usage.",
+    "Real Bubblewrap 0.11.2 manual verification of the exact generation-4 mount sequence: a fresh --tmpfs /dev with --dev-bind /dev/null /dev/null and --remount-ro /dev contains exactly /dev/null (char device c 1 3), reads 0 bytes, accepts writes, /dev/zero is absent, mknod of a device alias inside the sandbox is denied (Operation not permitted on the writable bind mount), and /tmp and the read-only packet root reject writes; the extension self-test additionally proves network denial, cleared allowlisted environment, credential absence, and outside-read/write denial.",
+    "No operator message, coaching, retry, repair, or follow-up occurred during this review; only the pinned read/bash tooling was used and the checkout was left clean (zero untracked files after cleanup of the temporary cbfa3f7 worktree and scratch dirs).",
+    "Reviewer model field uses the repository-pinned DeepSeek-family evaluation-route identifier (deepseek-v4-flash-vision-exp) as in the repository's own non-author audit convention; the session did not self-disclose an independent upstream model string.",
+    "Minor observation (not counted as a finding): nomos.gate_k.run_result@2 and nomos.gate_k.checker_receipt@2 are produced only by the fixed jq templates in gate-k-eval-finalize.sh and spot-checked by tests; there is no standalone schema validator for those two final-record generations, though their shape is asserted in the offline harness and all committed instances parse as canonical @2 documents."
+  ]
+}

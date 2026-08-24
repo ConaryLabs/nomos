@@ -487,8 +487,8 @@ for record in "${records[@]}"; do
       "writablePaths", "budgets", "runtimeIdentity", "sandbox"] | sort)) and
     ((.schema == "nomos.pi_cold_agent_boundary@2" and $legacy_runtime and $execution == null and
       (has("runtimeIdentity") | not)) or
-     ((.schema == "nomos.pi_cold_agent_boundary@3" or
-       .schema == "nomos.pi_cold_agent_boundary@4") and
+     (.schema == "nomos.pi_cold_agent_boundary@4" and
+      ($legacy_runtime | not) and
       .runtimeIdentity == $execution)) and
     .boundaryKind == "packet-run" and
     .mode == "json" and .targetCommit == $commit and .hostWorkspace == $packet and
@@ -518,8 +518,7 @@ for record in "${records[@]}"; do
     .sandbox.workspace == "read-only-packet-with-declared-writable-paths" and
     .sandbox.network == "unshared" and .sandbox.environment == "cleared-and-allowlisted" and
     .sandbox.selfTest == "pass" and
-    ((.schema == "nomos.pi_cold_agent_boundary@2" or
-      .schema == "nomos.pi_cold_agent_boundary@3") and
+    (.schema == "nomos.pi_cold_agent_boundary@2" and
      (.sandbox.checks | keys) == (["targetCommitResolved", "workspaceRead",
        "packetManifestMatched", "candidateBinaryMatched", "packetRootReadOnly",
        "temporaryStorageReadOnly", "deviceFilesystemEmpty", "processFilesystemReadOnly",
