@@ -21,6 +21,7 @@ const visualGrammar = (plan) => ({
   projectionSchemas: plan.projectionSchemas,
   camera: plan.camera,
   palette: plan.palette,
+  architectureStyle: plan.architecture.style,
   entityAssemblies: uniqueRows(plan.entities.map((entity) => [entity.kind, entity.visualAssembly, entity.materialFamily])),
   actorAssemblies: uniqueRows(plan.actors.map((actor) => actor.assembly)),
   effectAssemblies: uniqueRows(plan.effects.map((effect) => effect.assembly)),

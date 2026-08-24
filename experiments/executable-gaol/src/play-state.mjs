@@ -36,6 +36,11 @@ export function terrainAt(plan, scenario, point) {
   };
 }
 
+export function masonryAt(plan, point) {
+  return plan.architecture.masses.find((mass) => point.x >= mass.min.x && point.x < mass.max.x
+    && point.y >= mass.min.y && point.y < mass.max.y) ?? null;
+}
+
 export function attemptMove(plan, scenarioId, state, dx, dy) {
   const scenario = plan.scenarios.find((candidate) => candidate.id === scenarioId);
   if (!scenario) throw new Error(`unknown scenario ${scenarioId}`);
@@ -70,8 +75,14 @@ export function attemptMove(plan, scenarioId, state, dx, dy) {
     };
   }
 
-  if (target.x < 0 || target.x > 8 || target.y > 5) {
+  const { width, height } = plan.architecture.bounds;
+  if (target.x < 0 || target.x >= width || target.y >= height) {
     return { state: { ...state, message: "Blocked by masonry", tone: "blocked" }, moved: false, cost: 0 };
+  }
+
+  const masonry = masonryAt(plan, target);
+  if (masonry) {
+    return { state: { ...state, message: `Blocked by ${masonry.id}`, tone: "blocked" }, moved: false, cost: 0 };
   }
 
   const terrain = terrainAt(plan, scenario, target);

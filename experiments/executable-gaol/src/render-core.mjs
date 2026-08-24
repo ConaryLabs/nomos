@@ -54,6 +54,9 @@ export function renderSvg(plan, scenarioId, forensic = false, presentation = {})
   const height = plan.camera.height;
   const tw = plan.camera.tileWidth;
   const th = plan.camera.tileHeight;
+  const roomWidth = plan.architecture.bounds.width;
+  const roomHeight = plan.architecture.bounds.height;
+  const wallHeight = plan.architecture.wallHeight;
   const origin = { x: 470, y: 125 };
   const iso = (x, y, z = 0) => ({ x: origin.x + (x - y) * tw / 2, y: origin.y + (x + y) * th / 2 - z * 38 });
   const cell = (x, y) => {
@@ -76,21 +79,21 @@ export function renderSvg(plan, scenarioId, forensic = false, presentation = {})
   chunks.push(`<path d="M0 440 C220 360 395 415 620 350 S980 310 1200 390 V675 H0Z" fill="#111920" opacity=".85"/>`);
 
   // North and west masonry masses.
-  const n0 = iso(0, 0), n1 = iso(9, 0), n0t = iso(0, 0, 4.5), n1t = iso(9, 0, 4.5);
-  const w1 = iso(0, 6), w1t = iso(0, 6, 4.5);
+  const n0 = iso(0, 0), n1 = iso(roomWidth, 0), n0t = iso(0, 0, wallHeight), n1t = iso(roomWidth, 0, wallHeight);
+  const w1 = iso(0, roomHeight), w1t = iso(0, roomHeight, wallHeight);
   chunks.push(`<polygon points="${points([[n0t.x,n0t.y],[n1t.x,n1t.y],[n1.x,n1.y],[n0.x,n0.y]])}" fill="${palette.stone1}" stroke="${palette.mortar}" stroke-width="4"/>`);
   chunks.push(`<polygon points="${points([[n0t.x,n0t.y],[n0.x,n0.y],[w1.x,w1.y],[w1t.x,w1t.y]])}" fill="${palette.stone0}" stroke="${palette.mortar}" stroke-width="4"/>`);
-  for (let z = 1; z < 5; z += 1) {
-    const a = iso(0, 0, z), b = iso(9, 0, z), c = iso(0, 6, z);
+  for (let z = 1; z < wallHeight; z += 1) {
+    const a = iso(0, 0, z), b = iso(roomWidth, 0, z), c = iso(0, roomHeight, z);
     chunks.push(`<path d="M${a.x} ${a.y} L${b.x} ${b.y} M${a.x} ${a.y} L${c.x} ${c.y}" stroke="${palette.mortar}" stroke-width="2" opacity=".7"/>`);
   }
-  for (let x = 0; x <= 9; x += 1) {
-    const a = iso(x, 0), b = iso(x, 0, 4.5);
+  for (let x = 0; x <= roomWidth; x += 1) {
+    const a = iso(x, 0), b = iso(x, 0, wallHeight);
     chunks.push(`<path d="M${a.x} ${a.y} L${b.x} ${b.y}" stroke="${palette.mortar}" stroke-width="1.5" opacity="${x % 2 ? .45 : .7}"/>`);
   }
 
   // Floor first, then bounded water cells.
-  for (let y = 0; y < 6; y += 1) for (let x = 0; x < 9; x += 1) {
+  for (let y = 0; y < roomHeight; y += 1) for (let x = 0; x < roomWidth; x += 1) {
     chunks.push(`<polygon points="${cell(x,y)}" fill="${(x+y)%2 ? palette.stone1 : palette.stone0}" stroke="${palette.mortar}" stroke-width="1"/>`);
   }
   for (const entity of plan.entities.filter((entry) => entry.kind === "water")) {
@@ -104,6 +107,27 @@ export function renderSvg(plan, scenarioId, forensic = false, presentation = {})
       const p = iso((min.x + max.x + 1) / 2, (min.y + max.y + 1) / 2);
       const movement = scenario.movement[entity.id];
       chunks.push(`<g><rect x="${p.x-88}" y="${p.y+24}" width="176" height="38" rx="4" fill="#091016" opacity=".9"/>${pixelText(entity.id.replaceAll("_", " "), p.x-78, p.y+32, 1, palette.text)}${pixelText(`COST ${movement?.cost ?? "-"} X${min.x}Y${min.y} X${max.x}Y${max.y}`, p.x-78, p.y+47, 1, palette.waterHi)}</g>`);
+    }
+  }
+
+  // Bounded lattice-authored masonry masses use one shared beveled grammar.
+  for (const mass of plan.architecture.masses) {
+    const top = [
+      iso(mass.min.x, mass.min.y, mass.height),
+      iso(mass.max.x, mass.min.y, mass.height),
+      iso(mass.max.x, mass.max.y, mass.height),
+      iso(mass.min.x, mass.max.y, mass.height),
+    ];
+    const base = [
+      iso(mass.min.x, mass.min.y),
+      iso(mass.max.x, mass.min.y),
+      iso(mass.max.x, mass.max.y),
+      iso(mass.min.x, mass.max.y),
+    ];
+    chunks.push(`<g filter="url(#${prefix}-shadow)"><polygon points="${points([[top[1].x,top[1].y],[top[2].x,top[2].y],[base[2].x,base[2].y],[base[1].x,base[1].y]])}" fill="${palette.stone0}" stroke="${palette.mortar}" stroke-width="3"/><polygon points="${points([[top[2].x,top[2].y],[top[3].x,top[3].y],[base[3].x,base[3].y],[base[2].x,base[2].y]])}" fill="${palette.stone1}" stroke="${palette.mortar}" stroke-width="3"/><polygon points="${points(top.map((p) => [p.x,p.y]))}" fill="${palette.stone2}" stroke="${palette.edge}" stroke-width="4"/><polyline points="${points([[top[1].x,top[1].y+7],[top[2].x,top[2].y+7],[top[3].x,top[3].y+7]])}" fill="none" stroke="${palette.edge}" stroke-width="3"/></g>`);
+    if (forensic) {
+      const p = iso((mass.min.x + mass.max.x) / 2, (mass.min.y + mass.max.y) / 2, mass.height);
+      chunks.push(`<text x="${p.x}" y="${p.y-10}" text-anchor="middle" fill="${palette.text}" font-family="DejaVu Sans Mono, monospace" font-size="11">masonry/${esc(mass.id)} h=${mass.height}</text>`);
     }
   }
 

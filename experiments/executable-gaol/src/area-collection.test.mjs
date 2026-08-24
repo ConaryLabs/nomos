@@ -10,6 +10,7 @@ const cistern = readPlan("cistern-walk");
 const grammar = (plan) => ({
   camera: plan.camera,
   palette: plan.palette,
+  architectureStyle: plan.architecture.style,
   entities: [...new Set(plan.entities.map((entity) => `${entity.kind}:${entity.visualAssembly}:${entity.materialFamily}`))].sort(),
   actors: [...new Set(plan.actors.map((actor) => actor.assembly))].sort(),
   effects: [...new Set(plan.effects.map((effect) => effect.assembly))].sort(),
@@ -26,6 +27,13 @@ test("the second area is a distinct composition", () => {
   assert.notDeepEqual(anchors(cistern), anchors(north));
   assert.deepEqual(cistern.actors.find((actor) => actor.id === "player").anchor.cell, { x: 7, y: 4, z: 0 });
   assert.equal(cistern.entities.find((entity) => entity.kind === "water").id, "runoff_channel");
+});
+
+test("declared masonry masses block presentation movement", () => {
+  const state = { ...createPlayState(cistern), player: { x: 3, y: 0, z: 0 } };
+  const result = attemptMove(cistern, "01-baseline", state, 1, 0);
+  assert.equal(result.moved, false);
+  assert.equal(result.state.message, "Blocked by channel_buttress");
 });
 
 test("the cistern interactions remain projection-bound", () => {
