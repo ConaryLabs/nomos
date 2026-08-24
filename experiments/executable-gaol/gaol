@@ -1,0 +1,60 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+experiment_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+repo_root=$(git -C "$experiment_dir" rev-parse --show-toplevel)
+output_rel=target/executable-gaol
+output_dir="$repo_root/$output_rel"
+mode=${1:-capture}
+
+build() {
+  if [[ -d $output_dir ]]; then
+    find "$output_dir" -mindepth 1 -delete
+  fi
+  mkdir -p "$output_dir/runs" "$output_dir/frames"
+
+  cd "$repo_root"
+  cargo build --quiet --locked -p nomos-cli --bin nomos
+  target/debug/nomos compile experiments/executable-gaol/gaol.nomos \
+    --out "$output_rel/world"
+
+  local scenario
+  for scenario in "$experiment_dir"/scenarios/*.commands; do
+    local name
+    name=$(basename "$scenario" .commands)
+    if ! target/debug/nomos run "$output_rel/world" \
+      --commands "experiments/executable-gaol/scenarios/$name.commands" \
+      --out "$output_rel/runs/$name"; then
+      [[ $name == 01-baseline ]] || return 1
+    fi
+  done
+
+  node "$experiment_dir/src/build-plan.mjs" \
+    "$output_dir/world" "$output_dir/runs" "$output_dir/rendering-plan.json"
+  node "$experiment_dir/src/capture.mjs" \
+    "$output_dir/rendering-plan.json" "$output_dir/frames"
+}
+
+case "$mode" in
+  capture)
+    build
+    if command -v rsvg-convert >/dev/null 2>&1; then
+      rsvg-convert "$output_dir/frames/contact-sheet.svg" \
+        --output "$output_dir/frames/contact-sheet.png"
+    fi
+    printf 'Executable gaol captured at %s\n' "$output_dir/frames/contact-sheet.svg"
+    ;;
+  serve)
+    build
+    node "$experiment_dir/src/serve.mjs" "$experiment_dir" "$output_dir"
+    ;;
+  verify)
+    build
+    node "$experiment_dir/src/verify.mjs" "$output_dir/rendering-plan.json" \
+      "$output_dir/frames/contact-sheet.svg"
+    ;;
+  *)
+    printf 'usage: %s [capture|serve|verify]\n' "$0" >&2
+    exit 64
+    ;;
+esac

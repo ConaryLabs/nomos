@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Nomos — Executable Gaol</title>
+<style>
+  :root { color-scheme: dark; background:#0d1218; color:#d7ddd9; font:14px system-ui,sans-serif }
+  body { margin:0; min-height:100vh; display:grid; grid-template-rows:auto 1fr; background:radial-gradient(circle at 50% 10%,#24323d,#0d1218 60%) }
+  header { display:flex; gap:12px; align-items:center; padding:12px 18px; background:#0a1016dd; border-bottom:1px solid #33424a }
+  h1 { margin:0 auto 0 0; font-size:15px; letter-spacing:.12em; text-transform:uppercase }
+  button { color:#d7ddd9; background:#202d35; border:1px solid #4c6068; border-radius:5px; padding:7px 11px; cursor:pointer }
+  button[aria-pressed="true"] { color:#10161d; background:#8ee6e3; border-color:#bfffff }
+  main { display:grid; place-items:center; padding:18px }
+  #frame { width:min(100%,1200px); box-shadow:0 28px 80px #0009; border:1px solid #3c4a51; line-height:0 }
+  #frame svg { width:100%; height:auto }
+</style>
+<header><h1>Nomos // executable gaol</h1><span id="states"></span><button id="forensic" aria-pressed="false">Forensics</button></header>
+<main><div id="frame"></div></main>
+<script type="module">
+  import { renderSvg } from "./render-core.mjs";
+  const plan = await fetch("./rendering-plan.json").then((response) => response.json());
+  const states = document.querySelector("#states");
+  const frame = document.querySelector("#frame");
+  const forensic = document.querySelector("#forensic");
+  let selected = plan.scenarios[0].id;
+  const draw = () => { frame.innerHTML = renderSvg(plan, selected, forensic.ariaPressed === "true"); };
+  for (const scenario of plan.scenarios) {
+    const button = document.createElement("button");
+    button.textContent = scenario.label;
+    button.ariaPressed = String(scenario.id === selected);
+    button.onclick = () => { selected = scenario.id; for (const child of states.children) child.ariaPressed = String(child === button); draw(); };
+    states.append(button);
+  }
+  forensic.onclick = () => { forensic.ariaPressed = String(forensic.ariaPressed !== "true"); draw(); };
+  draw();
+</script>
+</html>

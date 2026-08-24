@@ -1,0 +1,389 @@
+{
+  "schema": "nomos.experiment.rendering_plan@1",
+  "deterministic": true,
+  "projectionSchemas": [
+    {
+      "name": "nomos.projection.simulation",
+      "version": 3
+    },
+    {
+      "name": "nomos.projection.navigation",
+      "version": 1
+    },
+    {
+      "name": "nomos.projection.persistence",
+      "version": 1
+    },
+    {
+      "name": "nomos.projection.diagnostics",
+      "version": 1
+    }
+  ],
+  "projectionDigests": {
+    "simulation.json": "aa5282dadb6db1e6fcd91cecba935b895be0f0eeea13abc2a938f47e3cc1fe39",
+    "navigation.json": "db542c1f9ab86cd09c90c9217d5660f2161ec53aa8f675224f34e3baa588b3ea",
+    "persistence.json": "d434bc77a83a6d43d7a8da96676a0dab0a078b97434416bb8b06ff4933fc31f4",
+    "diagnostics.json": "39e1c6ba299db0a9f26d3439762f9ca1e3bf3ab968c99d86be45520b85062135"
+  },
+  "camera": {
+    "identity": "gaol_oblique_01",
+    "projection": "fixed_oblique",
+    "width": 1200,
+    "height": 540,
+    "tileWidth": 96,
+    "tileHeight": 50
+  },
+  "palette": "gaol_bounded_01",
+  "entities": [
+    {
+      "id": "brazier_02",
+      "kind": "light",
+      "visualAssembly": "visual/brazier",
+      "materialFamily": "iron_brazier",
+      "anchor": {
+        "cell": {
+          "x": 3,
+          "y": 1,
+          "z": 0
+        },
+        "kind": "cell"
+      },
+      "machineNamespaces": [
+        "brazier_02.emission"
+      ],
+      "provenance": []
+    },
+    {
+      "id": "flooded_section",
+      "kind": "water",
+      "visualAssembly": "visual/shallow_water",
+      "materialFamily": "water_cold",
+      "anchor": {
+        "kind": "region",
+        "max": {
+          "x": 4,
+          "y": 3,
+          "z": 0
+        },
+        "min": {
+          "x": 2,
+          "y": 2,
+          "z": 0
+        }
+      },
+      "machineNamespaces": [],
+      "provenance": [
+        {
+          "claim": "flooded_section.region#traversal_cost_ground",
+          "source": {
+            "byte_end": 363,
+            "byte_start": 278,
+            "column": 1,
+            "line": 14,
+            "path": "experiments/executable-gaol/gaol.nomos"
+          }
+        }
+      ]
+    },
+    {
+      "id": "north_gate",
+      "kind": "door",
+      "visualAssembly": "visual/iron_barred_door",
+      "materialFamily": "iron_oxidized",
+      "anchor": {
+        "cell": {
+          "x": 5,
+          "y": 0,
+          "z": 0
+        },
+        "direction": "north",
+        "kind": "face"
+      },
+      "machineNamespaces": [
+        "north_gate.access",
+        "north_gate.combustion",
+        "north_gate.integrity",
+        "north_gate.ward"
+      ],
+      "provenance": [
+        {
+          "claim": "north_gate.portal#blocks_ground",
+          "source": {
+            "byte_end": 162,
+            "byte_start": 53,
+            "column": 1,
+            "line": 4,
+            "path": "experiments/executable-gaol/gaol.nomos"
+          }
+        },
+        {
+          "claim": "north_gate.ward#blocks_ground",
+          "source": {
+            "byte_end": 162,
+            "byte_start": 53,
+            "column": 1,
+            "line": 4,
+            "path": "experiments/executable-gaol/gaol.nomos"
+          }
+        }
+      ]
+    },
+    {
+      "id": "north_gate_02",
+      "kind": "door",
+      "visualAssembly": "visual/iron_barred_door",
+      "materialFamily": "iron_oxidized",
+      "anchor": {
+        "cell": {
+          "x": 7,
+          "y": 0,
+          "z": 0
+        },
+        "direction": "north",
+        "kind": "face"
+      },
+      "machineNamespaces": [
+        "north_gate_02.access",
+        "north_gate_02.combustion",
+        "north_gate_02.integrity",
+        "north_gate_02.ward"
+      ],
+      "provenance": [
+        {
+          "claim": "north_gate_02.portal#blocks_ground",
+          "source": {
+            "byte_end": 276,
+            "byte_start": 164,
+            "column": 1,
+            "line": 9,
+            "path": "experiments/executable-gaol/gaol.nomos"
+          }
+        },
+        {
+          "claim": "north_gate_02.ward#blocks_ground",
+          "source": {
+            "byte_end": 276,
+            "byte_start": 164,
+            "column": 1,
+            "line": 9,
+            "path": "experiments/executable-gaol/gaol.nomos"
+          }
+        }
+      ]
+    }
+  ],
+  "actors": [
+    {
+      "id": "player",
+      "assembly": "visual/player_silhouette",
+      "anchor": {
+        "kind": "cell",
+        "cell": {
+          "x": 2,
+          "y": 4,
+          "z": 0
+        }
+      }
+    },
+    {
+      "id": "gaoler",
+      "assembly": "visual/gaoler_silhouette",
+      "anchor": {
+        "kind": "cell",
+        "cell": {
+          "x": 5,
+          "y": 3,
+          "z": 0
+        }
+      }
+    }
+  ],
+  "effects": [
+    {
+      "id": "ward_crescent",
+      "assembly": "visual/cyan_crescent",
+      "anchorEntity": "north_gate"
+    }
+  ],
+  "uiAnchors": [
+    "vitals",
+    "abilities",
+    "gate_state",
+    "water_cost"
+  ],
+  "scenarios": [
+    {
+      "id": "01-baseline",
+      "label": "baseline",
+      "tick": 0,
+      "stateHash": "9d81ddaf8c3310a10399ce1c727d117f5385426f5e3fc0b1575d7ec042d3e49d",
+      "machineStates": {
+        "brazier_02.emission": "lit",
+        "north_gate.access": "locked",
+        "north_gate.combustion": "cold",
+        "north_gate.integrity": "intact",
+        "north_gate.ward": "sealed",
+        "north_gate_02.access": "locked",
+        "north_gate_02.combustion": "cold",
+        "north_gate_02.integrity": "intact",
+        "north_gate_02.ward": "sealed"
+      },
+      "movement": {
+        "flooded_section": {
+          "disposition": "traversable",
+          "cost": 3,
+          "reasons": [
+            "flooded_section.region#traversal_cost_ground"
+          ]
+        },
+        "north_gate": {
+          "disposition": "blocked",
+          "cost": null,
+          "reasons": [
+            "north_gate.portal#blocks_ground",
+            "north_gate.ward#blocks_ground"
+          ]
+        },
+        "north_gate_02": {
+          "disposition": "blocked",
+          "cost": null,
+          "reasons": [
+            "north_gate_02.portal#blocks_ground",
+            "north_gate_02.ward#blocks_ground"
+          ]
+        }
+      },
+      "effectiveLight": {
+        "brazier_02": true
+      }
+    },
+    {
+      "id": "02-breached-warded",
+      "label": "breached warded",
+      "tick": 1,
+      "stateHash": "bc01b2f3427a95341e89c1a0cf9d4aca2190e20a90b7d38fd4a4ed1a8a0f5150",
+      "machineStates": {
+        "brazier_02.emission": "lit",
+        "north_gate.access": "locked",
+        "north_gate.combustion": "burning",
+        "north_gate.integrity": "destroyed",
+        "north_gate.ward": "sealed",
+        "north_gate_02.access": "locked",
+        "north_gate_02.combustion": "cold",
+        "north_gate_02.integrity": "intact",
+        "north_gate_02.ward": "sealed"
+      },
+      "movement": {
+        "flooded_section": {
+          "disposition": "traversable",
+          "cost": 3,
+          "reasons": [
+            "flooded_section.region#traversal_cost_ground"
+          ]
+        },
+        "north_gate": {
+          "disposition": "blocked",
+          "cost": null,
+          "reasons": [
+            "north_gate.ward#blocks_ground"
+          ]
+        },
+        "north_gate_02": {
+          "disposition": "blocked",
+          "cost": null,
+          "reasons": [
+            "north_gate_02.portal#blocks_ground",
+            "north_gate_02.ward#blocks_ground"
+          ]
+        }
+      },
+      "effectiveLight": {
+        "brazier_02": true
+      }
+    },
+    {
+      "id": "03-breached-unsealed",
+      "label": "breached unsealed",
+      "tick": 2,
+      "stateHash": "0c0a573503282ec7b8f10dada7da267b96f04c089054936b84bece096b0ac7f2",
+      "machineStates": {
+        "brazier_02.emission": "lit",
+        "north_gate.access": "locked",
+        "north_gate.combustion": "burning",
+        "north_gate.integrity": "destroyed",
+        "north_gate.ward": "unsealed",
+        "north_gate_02.access": "locked",
+        "north_gate_02.combustion": "cold",
+        "north_gate_02.integrity": "intact",
+        "north_gate_02.ward": "sealed"
+      },
+      "movement": {
+        "flooded_section": {
+          "disposition": "traversable",
+          "cost": 3,
+          "reasons": [
+            "flooded_section.region#traversal_cost_ground"
+          ]
+        },
+        "north_gate": {
+          "disposition": "traversable",
+          "cost": 1,
+          "reasons": []
+        },
+        "north_gate_02": {
+          "disposition": "blocked",
+          "cost": null,
+          "reasons": [
+            "north_gate_02.portal#blocks_ground",
+            "north_gate_02.ward#blocks_ground"
+          ]
+        }
+      },
+      "effectiveLight": {
+        "brazier_02": true
+      }
+    },
+    {
+      "id": "04-open-dark",
+      "label": "open dark",
+      "tick": 4,
+      "stateHash": "ab650ad9d31dbc5e8daa0f7680604eab1d49df55d759868d3dee7f1d65b96b56",
+      "machineStates": {
+        "brazier_02.emission": "extinguished",
+        "north_gate.access": "open",
+        "north_gate.combustion": "cold",
+        "north_gate.integrity": "intact",
+        "north_gate.ward": "unsealed",
+        "north_gate_02.access": "locked",
+        "north_gate_02.combustion": "cold",
+        "north_gate_02.integrity": "intact",
+        "north_gate_02.ward": "sealed"
+      },
+      "movement": {
+        "flooded_section": {
+          "disposition": "traversable",
+          "cost": 3,
+          "reasons": [
+            "flooded_section.region#traversal_cost_ground"
+          ]
+        },
+        "north_gate": {
+          "disposition": "traversable",
+          "cost": 1,
+          "reasons": []
+        },
+        "north_gate_02": {
+          "disposition": "blocked",
+          "cost": null,
+          "reasons": [
+            "north_gate_02.portal#blocks_ground",
+            "north_gate_02.ward#blocks_ground"
+          ]
+        }
+      },
+      "effectiveLight": {
+        "brazier_02": false
+      }
+    }
+  ]
+}
