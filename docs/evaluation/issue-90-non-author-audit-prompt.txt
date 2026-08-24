@@ -86,3 +86,9 @@ shape:
   "checkoutCleanBeforeAndAfter": true,
   "notes": ["concise evidence-backed note"]
 }
+
+Before sending the response, pass its exact bytes through a strict JSON parser
+such as `python3 -c 'import json,sys; json.load(sys.stdin)'` or `jq -e .`. Do not
+send it until that check succeeds. In particular, every adjacent object or
+string in an array requires a comma. This final syntax check is mandatory and
+does not count as modifying the checkout.
