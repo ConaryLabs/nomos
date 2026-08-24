@@ -1,12 +1,13 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { attemptInteraction, attemptMove, createPlayState } from "./play-state.mjs";
+import { attemptInteraction, attemptMove, completeRun, createPlayState, enterArea } from "./play-state.mjs";
 
 const readPlan = (id) => JSON.parse(readFileSync(new URL(`../areas/${id}/rendering-plan.example.json`, import.meta.url)));
 const north = readPlan("north-gaol");
 const cistern = readPlan("cistern-walk");
 const ember = readPlan("ember-vault");
+const collection = JSON.parse(readFileSync(new URL("../area-collection.example.json", import.meta.url)));
 
 const grammar = (plan) => ({
   camera: plan.camera,
@@ -97,4 +98,70 @@ test("the ember vault dark route is winnable", () => {
   }
   assert.equal(state.escaped, true);
   assert.equal(state.caught, false);
+});
+
+const solveArea = (plan, initialState, toGate, toLight, toExit) => {
+  let scenarioId = "01-baseline";
+  let state = initialState;
+  for (const [dx, dy] of toGate) state = attemptMove(plan, scenarioId, state, dx, dy).state;
+  for (let count = 0; count < 2; count += 1) {
+    const interaction = attemptInteraction(plan, scenarioId, state);
+    state = interaction.state;
+    scenarioId = interaction.scenarioId;
+  }
+  for (const [dx, dy] of toLight) state = attemptMove(plan, scenarioId, state, dx, dy).state;
+  const extinguish = attemptInteraction(plan, scenarioId, state);
+  state = extinguish.state;
+  scenarioId = extinguish.scenarioId;
+  let result;
+  for (const [dx, dy] of toExit) {
+    result = attemptMove(plan, scenarioId, state, dx, dy);
+    state = result.state;
+  }
+  assert.equal(state.caught, false);
+  assert.equal(state.escaped, true);
+  return { state, exitGate: result.exitGate };
+};
+
+test("one run traverses all declared area connections", () => {
+  assert.equal(collection.startArea, "cistern-walk");
+  let solved = solveArea(
+    cistern,
+    createPlayState(cistern),
+    [[0, -1], [0, -1], [0, -1], [-1, 0], [-1, 0], [-1, 0], [-1, 0], [-1, 0]],
+    [[1, 0], [1, 0], [1, 0], [0, 1]],
+    [[0, -1], [-1, 0], [-1, 0], [-1, 0], [0, -1], [0, -1]],
+  );
+  let edge = collection.route.find((candidate) => candidate.fromArea === "cistern-walk" && candidate.gate === solved.exitGate);
+  let state = enterArea(ember, solved.state, edge.entry);
+  const cisternMoves = state.moves;
+  const cisternCost = state.movementCost;
+  assert.equal(state.areasCleared, 1);
+
+  solved = solveArea(
+    ember,
+    state,
+    [[0, -1], [0, -1], [0, -1], [-1, 0], [-1, 0], [-1, 0], [0, -1]],
+    [[-1, 0], [0, 1], [-1, 0], [-1, 0]],
+    [[1, 0], [1, 0], [0, -1], [1, 0], [0, -1], [0, -1]],
+  );
+  edge = collection.route.find((candidate) => candidate.fromArea === "ember-vault" && candidate.gate === solved.exitGate);
+  state = enterArea(north, solved.state, edge.entry);
+  assert.equal(state.areasCleared, 2);
+  assert.ok(state.moves > cisternMoves);
+  assert.ok(state.movementCost > cisternCost);
+
+  solved = solveArea(
+    north,
+    state,
+    [[0, -1], [0, -1], [0, -1], [1, 0], [1, 0], [1, 0]],
+    [[-1, 0]],
+    [[1, 0], [0, -1], [0, -1]],
+  );
+  edge = collection.route.find((candidate) => candidate.fromArea === "north-gaol" && candidate.gate === solved.exitGate);
+  assert.equal(edge.toArea, null);
+  state = completeRun(solved.state);
+  assert.equal(state.completed, true);
+  assert.equal(state.areasCleared, 3);
+  assert.equal(state.message, "Escaped the gaol");
 });

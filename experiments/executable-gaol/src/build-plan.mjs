@@ -54,6 +54,7 @@ const entityIds = new Set(entities.map((entity) => entity.id));
 if (!area.id || !area.label) throw new Error("area identity is required");
 if (!entityIds.has(area.primaryGate)) throw new Error(`primary gate ${area.primaryGate} is not a compiled entity`);
 if (!entityIds.has(area.pursuitLight)) throw new Error(`pursuit light ${area.pursuitLight} is not a compiled entity`);
+if (area.exit.gate !== area.primaryGate) throw new Error("declared exit must use the primary gate");
 if (!area.actors.some((actor) => actor.id === "player") || !area.actors.some((actor) => actor.id === "gaoler")) {
   throw new Error("area requires player and gaoler presentation anchors");
 }
@@ -162,7 +163,7 @@ const projectionDigests = Object.fromEntries(
 const plan = {
   schema: "nomos.experiment.rendering_plan@1",
   deterministic: true,
-  area: { id: area.id, label: area.label },
+  area: { id: area.id, label: area.label, start: area.start },
   projectionSchemas: [simulation.schema, navigation.schema, persistence.schema, diagnostics.schema],
   projectionDigests,
   camera: { identity: "gaol_oblique_01", projection: "fixed_oblique", width: 1200, height: 540, tileWidth: 96, tileHeight: 50 },
@@ -175,6 +176,7 @@ const plan = {
     primaryGate: area.primaryGate,
     pursuitLight: area.pursuitLight,
     forensicScenario: area.forensicScenario,
+    exit: area.exit,
   },
   uiAnchors: ["vitals", "abilities", "gate_state", "water_cost"],
   scenarios,

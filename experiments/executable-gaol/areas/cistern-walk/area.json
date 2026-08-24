@@ -1,9 +1,15 @@
 {
   "id": "cistern-walk",
   "label": "Cistern Walk",
+  "start": true,
   "primaryGate": "sluice_gate",
   "pursuitLight": "watch_brazier",
   "forensicScenario": "03-breached-unsealed",
+  "exit": {
+    "gate": "sluice_gate",
+    "toArea": "ember-vault",
+    "entry": { "x": 7, "y": 5, "z": 0 }
+  },
   "architecture": {
     "bounds": { "width": 9, "height": 6 },
     "wallHeight": 4.5,

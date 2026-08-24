@@ -3,7 +3,8 @@
   "deterministic": true,
   "area": {
     "id": "north-gaol",
-    "label": "North Gaol"
+    "label": "North Gaol",
+    "start": false
   },
   "projectionSchemas": [
     {
@@ -230,7 +231,11 @@
   "presentation": {
     "primaryGate": "north_gate",
     "pursuitLight": "brazier_02",
-    "forensicScenario": "03-breached-unsealed"
+    "forensicScenario": "03-breached-unsealed",
+    "exit": {
+      "gate": "north_gate",
+      "toArea": null
+    }
   },
   "uiAnchors": [
     "vitals",

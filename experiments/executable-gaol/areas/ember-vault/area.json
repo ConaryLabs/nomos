@@ -1,9 +1,15 @@
 {
   "id": "ember-vault",
   "label": "Ember Vault",
+  "start": false,
   "primaryGate": "vault_gate",
   "pursuitLight": "ember_brazier",
   "forensicScenario": "03-breached-unsealed",
+  "exit": {
+    "gate": "vault_gate",
+    "toArea": "north-gaol",
+    "entry": { "x": 2, "y": 4, "z": 0 }
+  },
   "architecture": {
     "bounds": { "width": 9, "height": 6 },
     "wallHeight": 5,

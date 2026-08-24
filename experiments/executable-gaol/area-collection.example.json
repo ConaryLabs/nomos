@@ -1,0 +1,118 @@
+{
+  "schema": "nomos.experiment.area_collection@1",
+  "deterministic": true,
+  "lookProfile": {
+    "id": "gaol_bounded_01",
+    "digest": "084832d5d8861a8473ef608a86a563d7ab7e9d9a09a0ab8246946dc2704f125a",
+    "grammar": {
+      "renderingPlanSchema": "nomos.experiment.rendering_plan@1",
+      "projectionSchemas": [
+        {
+          "name": "nomos.projection.simulation",
+          "version": 3
+        },
+        {
+          "name": "nomos.projection.navigation",
+          "version": 1
+        },
+        {
+          "name": "nomos.projection.persistence",
+          "version": 1
+        },
+        {
+          "name": "nomos.projection.diagnostics",
+          "version": 1
+        }
+      ],
+      "camera": {
+        "identity": "gaol_oblique_01",
+        "projection": "fixed_oblique",
+        "width": 1200,
+        "height": 540,
+        "tileWidth": 96,
+        "tileHeight": 50
+      },
+      "palette": "gaol_bounded_01",
+      "architectureStyle": {
+        "assembly": "visual/beveled_masonry",
+        "materialFamily": "stone_bounded",
+        "trimFamily": "broad_mortar"
+      },
+      "entityAssemblies": [
+        [
+          "door",
+          "visual/iron_barred_door",
+          "iron_oxidized"
+        ],
+        [
+          "light",
+          "visual/brazier",
+          "iron_brazier"
+        ],
+        [
+          "water",
+          "visual/shallow_water",
+          "water_cold"
+        ]
+      ],
+      "actorAssemblies": [
+        "visual/gaoler_silhouette",
+        "visual/player_silhouette"
+      ],
+      "effectAssemblies": [
+        "visual/cyan_crescent"
+      ],
+      "uiAnchors": [
+        "vitals",
+        "abilities",
+        "gate_state",
+        "water_cost"
+      ]
+    }
+  },
+  "startArea": "cistern-walk",
+  "route": [
+    {
+      "fromArea": "cistern-walk",
+      "gate": "sluice_gate",
+      "toArea": "ember-vault",
+      "entry": {
+        "x": 7,
+        "y": 5,
+        "z": 0
+      }
+    },
+    {
+      "fromArea": "ember-vault",
+      "gate": "vault_gate",
+      "toArea": "north-gaol",
+      "entry": {
+        "x": 2,
+        "y": 4,
+        "z": 0
+      }
+    },
+    {
+      "fromArea": "north-gaol",
+      "gate": "north_gate",
+      "toArea": null
+    }
+  ],
+  "areas": [
+    {
+      "id": "cistern-walk",
+      "label": "Cistern Walk",
+      "plan": "areas/cistern-walk.json"
+    },
+    {
+      "id": "ember-vault",
+      "label": "Ember Vault",
+      "plan": "areas/ember-vault.json"
+    },
+    {
+      "id": "north-gaol",
+      "label": "North Gaol",
+      "plan": "areas/north-gaol.json"
+    }
+  ]
+}

@@ -15,11 +15,35 @@ export function createPlayState(plan) {
     gaoler: actorPosition(plan, "gaoler", { x: 5, y: 3, z: 0 }),
     movementCost: 0,
     moves: 0,
+    areasCleared: 0,
     pursuitClock: 0,
     escaped: false,
     caught: false,
+    completed: false,
     message: "Reach the north gate",
     tone: "neutral",
+  };
+}
+
+export function enterArea(plan, state, entry) {
+  return {
+    ...createPlayState(plan),
+    player: { ...entry },
+    movementCost: state.movementCost,
+    moves: state.moves,
+    areasCleared: state.areasCleared + 1,
+    message: `Entered ${plan.area.label}`,
+    tone: "success",
+  };
+}
+
+export function completeRun(state) {
+  return {
+    ...state,
+    areasCleared: state.areasCleared + 1,
+    completed: true,
+    message: "Escaped the gaol",
+    tone: "success",
   };
 }
 
@@ -72,6 +96,7 @@ export function attemptMove(plan, scenarioId, state, dx, dy) {
       },
       moved: true,
       cost,
+      exitGate: door.id,
     };
   }
 

@@ -1,9 +1,14 @@
 {
   "id": "north-gaol",
   "label": "North Gaol",
+  "start": false,
   "primaryGate": "north_gate",
   "pursuitLight": "brazier_02",
   "forensicScenario": "03-breached-unsealed",
+  "exit": {
+    "gate": "north_gate",
+    "toArea": null
+  },
   "architecture": {
     "bounds": { "width": 9, "height": 6 },
     "wallHeight": 4.5,
