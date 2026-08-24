@@ -34,8 +34,10 @@ any renderer is built.
   request. Both did the semantic task correctly, but the frozen rubric does not
   permit self-waiver. Those attempts remain failed, no acceptance tag exists,
   and Gate K is not green. Decision 0015 prospectively authorizes a separately
-  governed round two after its tooling, rehearsal, fresh candidate, and full
-  mechanical proof pass; no new formal launch has occurred
+  governed round two. Its tooling, rehearsal, candidate-lineage proof, and full
+  mechanical proof prerequisites have passed; annotated candidate
+  `gate-k-rc2` / `53db236` is frozen, but no round-two formal reservation or
+  launch has occurred
 - **Visual-study status:** decision 0014 authorizes one quarantined, static
   Gate 0-format study of the Gate K gaol under `experiments/`. Issue #83 has
   assembled the coherent static target pack; Peter's owner disposition is
@@ -49,9 +51,10 @@ any renderer is built.
   cross-family author/checker and
   debugger/checker rehearsals passed at exact tooling commit `cbfa3f7`, and the
   complete proof plus zero-finding non-author audit passed at `da19239`. Issue
-  #90 owns the exact semantic-lineage proof, post-merge mechanical workflows,
-  and conditional `gate-k-rc2` freeze; no formal reservation or launch is ready
-  before all three complete
+  #90 / PR #91 froze exact candidate `53db236`, whose verify run `32689876814`
+  and gate-k-evidence run `32689876846` passed before the annotated
+  `gate-k-rc2` tag was created. Issue #93 is the next authorized operation: the
+  single fresh Gemini-family cold-author subject
 - **Scope:** greenfield / vacuum architecture exercise
 - **Effect on other projects:** none unless separately adopted by an explicit
   decision in that project's own authority records
@@ -65,9 +68,10 @@ it.
 That falsification happened at the round-one cold-agent boundary. Nomos remains
 a useful semantic experiment. The decision-0014 static visual study produced a
 compelling owner-approved target from its ordinary gameplay frame and
-supporting tests. Decision 0015 authorizes the prerequisites for a fresh,
-prospectively governed Gate K round. It must pass before renderer architecture
-or adoption.
+supporting tests. Decision 0015's prerequisites for a fresh, prospectively
+governed Gate K round are complete. The subjects, checkers, evidence assembly,
+and explicit owner disposition remain; Gate K must pass before renderer
+architecture or adoption.
 
 ## Read in this order
 

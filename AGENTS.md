@@ -71,7 +71,7 @@ here is authority for any other project.
 ```text
 README.md          status and reading order
 THESIS.md          exploratory design thesis, currently revision 2
-KERNEL.md          Gate K acceptance contract, currently revision 4
+KERNEL.md          Gate K acceptance contract, currently revision 7
 docs/decisions/    owner-authorized contract and architecture decisions
 docs/evaluation/   reproducible evaluation protocols
 docs/review/       review syntheses, provenance notes, and cold-review records
