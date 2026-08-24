@@ -5,12 +5,19 @@ export const movementKeys = {
   ArrowRight: [1, 0], KeyD: [1, 0],
 };
 
-export function createPlayState() {
+const actorPosition = (plan, id, fallback) => ({
+  ...(plan?.actors.find((actor) => actor.id === id)?.anchor?.cell ?? fallback),
+});
+
+export function createPlayState(plan) {
   return {
-    player: { x: 2, y: 4, z: 0 },
+    player: actorPosition(plan, "player", { x: 2, y: 4, z: 0 }),
+    gaoler: actorPosition(plan, "gaoler", { x: 5, y: 3, z: 0 }),
     movementCost: 0,
     moves: 0,
+    pursuitClock: 0,
     escaped: false,
+    caught: false,
     message: "Reach the north gate",
     tone: "neutral",
   };
@@ -32,7 +39,7 @@ export function terrainAt(plan, scenario, point) {
 export function attemptMove(plan, scenarioId, state, dx, dy) {
   const scenario = plan.scenarios.find((candidate) => candidate.id === scenarioId);
   if (!scenario) throw new Error(`unknown scenario ${scenarioId}`);
-  if (state.escaped) return { state, moved: false, cost: 0 };
+  if (state.escaped || state.caught) return { state, moved: false, cost: 0 };
 
   const target = { x: state.player.x + dx, y: state.player.y + dy, z: 0 };
   if (target.y < 0) {
@@ -68,17 +75,42 @@ export function attemptMove(plan, scenarioId, state, dx, dy) {
   }
 
   const terrain = terrainAt(plan, scenario, target);
-  return {
-    state: {
+  const movedState = {
       ...state,
       player: target,
       movementCost: state.movementCost + terrain.cost,
       moves: state.moves + 1,
       message: terrain.kind === "water" ? `Shallow water costs ${terrain.cost}` : "Stone costs 1",
       tone: terrain.kind === "water" ? "water" : "neutral",
-    },
+  };
+  return {
+    state: advanceGaoler(scenario, movedState),
     moved: true,
     cost: terrain.cost,
+  };
+}
+
+export function advanceGaoler(scenario, state) {
+  if (state.escaped || state.caught || scenario.effectiveLight.brazier_02 !== false) return state;
+
+  const pursuitClock = state.pursuitClock + 1;
+  if (pursuitClock < 2) return { ...state, pursuitClock };
+
+  const dx = state.player.x - state.gaoler.x;
+  const dy = state.player.y - state.gaoler.y;
+  const gaoler = { ...state.gaoler };
+  if (Math.abs(dx) > Math.abs(dy)) gaoler.x += Math.sign(dx);
+  else if (dy !== 0) gaoler.y += Math.sign(dy);
+  else gaoler.x += Math.sign(dx);
+
+  const caught = gaoler.x === state.player.x && gaoler.y === state.player.y;
+  return {
+    ...state,
+    gaoler,
+    pursuitClock: 0,
+    caught,
+    message: caught ? "The gaoler caught you — press R to reset" : "The gaoler advances in the dark",
+    tone: caught ? "blocked" : "danger",
   };
 }
 
@@ -95,6 +127,13 @@ export function interactionAt(plan, scenarioId, state) {
 }
 
 export function attemptInteraction(plan, scenarioId, state) {
+  if (state.caught) {
+    return {
+      state: { ...state, message: "The gaoler caught you — press R to reset", tone: "blocked" },
+      scenarioId,
+      changed: false,
+    };
+  }
   const interaction = interactionAt(plan, scenarioId, state);
   if (!interaction) {
     return {
