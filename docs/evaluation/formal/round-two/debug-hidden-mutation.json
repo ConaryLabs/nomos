@@ -1,0 +1,16 @@
+{
+  "schema": "nomos.gate_k.hidden_debug_mutation@1",
+  "classification": "formal",
+  "formal_attempt": true,
+  "issue": 94,
+  "candidate_commit": "53db236d397b3db0779f0d2aab23180d926e55a5",
+  "mutation": "insert `open north_gate` immediately after `ignite north_gate` in the otherwise valid three-command sequence `ignite north_gate`, `unseal north_gate`, `extinguish brazier_02`",
+  "expected_cause": "the committed ignite transition enters north_gate.combustion=burning and causally destroys north_gate.integrity, which opens the effective portal claim, but it does not change the independent north_gate.access machine from locked; the inserted open command is therefore illegal while north_gate.access remains locked",
+  "expected_repair_class": "command content: remove the inserted `open north_gate`; preserve ignite, unseal, and extinguish so the repaired run demonstrates integrity-derived portal openness and independent ward removal without pretending the access machine changed",
+  "distinguishing_evidence": [
+    "the failing run commits exactly the ignite prefix and rejects open with the stable state-legality diagnostic for north_gate.access while locked",
+    "the tick-1 transition explanation records combustion cold-to-burning followed by causal integrity intact-to-destroyed while access remains locked",
+    "effective movement after tick 1 retains only the ward blocker, proving the portal is already open by integrity destruction even though access is locked",
+    "the verified repaired command script completes after deleting only the inserted open command"
+  ]
+}
