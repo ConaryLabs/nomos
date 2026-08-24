@@ -1,0 +1,80 @@
+{
+  "schema": "nomos.issue90.non_author_audit@1",
+  "reviewedCommit": "cea2c12e7d8730889a0b6752a7ef52b0c5395428",
+  "reviewer": {
+    "provider": "deepseek",
+    "model": "deepseek-v4-flash-vision-exp",
+    "freshSession": true,
+    "nonAuthor": true
+  },
+  "status": "pass",
+  "findings": [],
+  "verification": [
+    {
+      "command": "git status --short",
+      "status": "pass",
+      "details": "Empty output and exit 0 both before and after the review; working tree clean"
+    },
+    {
+      "command": "git diff --check origin/main...HEAD",
+      "status": "pass",
+      "details": "Exit 0, no whitespace errors"
+    },
+    {
+      "command": "docs/evaluation/test-gate-k-candidate-lineage.sh",
+      "status": "pass",
+      "details": "PASS: positive receipt assertions plus all negative fixtures (protected Cargo.toml, non-disposition KERNEL edit, frozen decision-0013 mutation, unclassified path, protected deletion, rename-masked protected fixture) blocked for the expected reasons"
+    },
+    {
+      "command": "python3 docs/evaluation/gate-k-candidate-lineage.py gate-k-rc1 HEAD",
+      "status": "pass",
+      "details": "status pass; base d8a0b85c55aa33c20f46e5dfd9e0d1f317e1f1c9 (annotated tag gate-k-rc1, tree 4013e6629ea274c6f2e2e2570306cb35b6d41505) is an ancestor of candidate cea2c12e7d8730889a0b6752a7ef52b0c5395428 (tree c646d79001a641e7cd1c2f2956d7f618f60d5d0c); 999 changed paths classified exhaustively; 8 frozen records exact; KERNEL delta exact-disposition-only"
+    },
+    {
+      "command": "cargo fmt --all -- --check",
+      "status": "pass",
+      "details": "Exit 0, no formatting changes required"
+    },
+    {
+      "command": "cargo clippy --workspace --all-targets --locked -- -D warnings",
+      "status": "pass",
+      "details": "Exit 0 with -D warnings; no warnings emitted"
+    },
+    {
+      "command": "cargo test --workspace --locked",
+      "status": "pass",
+      "details": "Exit 0; 44 test-result groups ok, 0 failed across unit, integration, and doctests"
+    },
+    {
+      "command": "cargo xtask boundary",
+      "status": "pass",
+      "details": "boundary: clean; membership, permitted-edges, cycles, forbidden-dependency, and tooling-isolation rules checked"
+    },
+    {
+      "command": "docs/evaluation/test-pi-cold-agent-preflight.sh",
+      "status": "pass",
+      "details": "pi cold-agent boundary harness: PASS"
+    },
+    {
+      "command": "docs/evaluation/test-gate-k-eval-tooling.sh",
+      "status": "pass",
+      "details": "gate-k evaluation tooling offline harness: PASS (attempt-ledger, strictness, rc1 refinalization, revision-6 rehearsal refinalization, packet/recorder/finalizer/adjudication regressions)"
+    }
+  ],
+  "protectedSurfaceUnchanged": true,
+  "roundOneEvidencePreserved": true,
+  "formalLedgerUnchanged": true,
+  "checkoutCleanBeforeAndAfter": true,
+  "notes": [
+    "Independent blob comparison confirmed byte-identity between gate-k-rc1 (d8a0b85) and HEAD for AGENTS.md, Cargo.toml, Cargo.lock, rust-toolchain.toml, LICENSE, THESIS.md, .cargo/, .github/workflows/, crates/, fixtures/, xtask/, and all 12 root-level public semantic docs under docs/ (docs/*.md except docs/HANDOFF.md).",
+    "KERNEL.md differs from gate-k-rc1 by exactly three decision-0013 disposition edits (status line replacement, added disposition_record line, inserted disposition paragraph); contract_revision 7 preserved and all 19 acceptance criteria byte-for-byte unchanged (rc1 KERNEL SHA-256 9c9bc478bb710666aec6572505d7a504630cfdafc652d1830c7ef6f555110a9e matches decision 0013).",
+    "Frozen round-one records verified byte-identical to origin/main and hash-matched: decision 0013 ee254d17..., ledger 69162588..., author result e6990dac..., author subject receipt 732af459..., author checker receipt 2e8c97d5..., debug result f09c9214..., debug subject receipt 2820d2f4..., debug checker receipt 0053d3df....",
+    "Formal attempt ledger contains exactly four import-close events (gate-k-rc1-author-subject, gate-k-rc1-debug-subject, gate-k-rc1-author-checker, gate-k-rc1-debug-checker) all bound to candidate d8a0b85; no reservation or launch event present, so no formal launch has been added.",
+    "Extra adversarial probes with synthetic commits all fail closed: KERNEL.md status set to 'Gate K passed' blocked; crates/ content tamper blocked; new root-level docs/*.md blocked; docs/runtime.md tamper blocked; workflow tamper blocked; ledger tamper blocked.",
+    "999 paths changed since gate-k-rc1 classified exhaustively and deterministically: 978 evaluation_tooling_or_evidence, 5 owner_authorized_decision, 11 quarantined_static_experiment, 4 repository_status_or_hygiene, 1 kernel_disposition_only; unchanged-paths sha256 c86cf72ad3d5365e328b599da60e83b170b21bbd0a8d94bea7b275def9da5184.",
+    "No gate-k-rc2 tag or any new tag exists (git tag -l shows only gate-k-rc1); origin/main..HEAD changes only README.md, docs/HANDOFF.md, the lineage proof/harness, the audit prompt, and four disclosed issue-90 audit records (two fails, two rejected malformed returns); no semantic code, protocol/rubric, renderer, workflow, or Gate K pass claim.",
+    "README.md and docs/HANDOFF.md accurately record issue #88 merged in PR #89 at 7744610 (verified single-parent squash commit), identify issue #90 as the candidate-freeze slice, and forbid formal reservations/launches until the exact merged candidate passes both workflows and receives its annotated gate-k-rc2 tag.",
+    "The lineage proof keeps test-gate-k-candidate-lineage.sh out of test-gate-k-eval-tooling.sh (and thus out of the shallow depth-1 verify.yml checkout), fixing the shallow-CI regression recorded in the disclosed fail-shallow-ci audit; the proof remains an explicit full-history run.",
+    "Independent re-check confirmed the harness and eval-tooling/preflight runs leave the checkout clean (git status --short empty) and only gitignored build caches (target/, __pycache__/) plus dangling synthetic fixture objects in the object database, which do not affect the working tree."
+  ]
+}

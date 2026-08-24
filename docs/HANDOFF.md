@@ -11,9 +11,10 @@ Gate K is closed as **failed**. Peter Permenter's owner disposition is
 - contract: `KERNEL.md` revision 7;
 - formal launch protocol: revision 3;
 - current cold-agent protocol: revision 6, owner-authorized in decision 0015;
-- revision-6 tooling: implemented under issue #88; both live rehearsal pairs
-  passed at exact tooling commit `cbfa3f7`, and the complete repository proof
-  plus zero-finding non-author audit passed at `da19239`;
+- revision-6 tooling: issue #88 merged in PR #89 at `7744610`; both live
+  rehearsal pairs passed at exact tooling commit `cbfa3f7`, the complete
+  repository proof plus zero-finding non-author audit passed at `da19239`, and
+  exact-head verify run `32682824045` plus evidence run `32682823912` passed;
 - implementation: complete through SW-N;
 - acceptance: criteria 1–16 and 19 pass; criteria 17 and 18 fail;
 - round-one retries: none authorized; a distinct round two is conditionally
@@ -75,7 +76,7 @@ After the formal records merged, final evidence-main workflows also passed:
 
 ## Evidence boundary
 
-Issues #68–#73, #79, #82, #83, and #86 are closed. Their PRs are merged:
+Issues #68–#73, #79, #82, #83, #86, and #88 are closed. Their PRs are merged:
 
 | Issue | PR | Disposition |
 | ---: | ---: | --- |
@@ -89,6 +90,7 @@ Issues #68–#73, #79, #82, #83, and #86 are closed. Their PRs are merged:
 | #82 | #84 | authorize the quarantined gaol visual-target experiment |
 | #83 | #85 | assemble and owner-dispose the static visual target pack |
 | #86 | #87 | authorize protocol revision 6 and conditional round two |
+| #88 | #89 | implement and independently prove revision-6 tooling |
 
 Issue #79 changed evidence tooling and protocol documentation after the
 candidate was frozen. It changed no kernel crate, fixture, Cargo input, CLI,
@@ -137,12 +139,12 @@ The pack is the preserved desired target. A fresh, prospectively governed Gate K
 attempt remains required before renderer architecture or adoption; neither is
 authorized by the visual verdict.
 
-Issue #88 is the active tooling slice. It implements separately evidenced
-dimension results and a mechanically derived verdict; exact revision-6 packet,
-task, checker, adjudication, and final-result generations; and boundary
-generation 4, which exposes exactly `/dev/null` while failing every other
-device or outside path closed. The offline proof also re-finalizes both frozen
-round-one pairs byte-for-byte without changing their verdicts.
+Issue #88 is complete and merged. It implements separately evidenced dimension
+results and a mechanically derived verdict; exact revision-6 packet, task,
+checker, adjudication, and final-result generations; and boundary generation 4,
+which exposes exactly `/dev/null` while failing every other device or outside
+path closed. The offline proof also re-finalizes both frozen round-one pairs
+byte-for-byte without changing their verdicts.
 
 The fresh non-formal Gemini-author/DeepSeek-checker and
 DeepSeek-debugger/Gemini-checker pairs both passed at exact tooling commit
@@ -152,11 +154,18 @@ DeepSeek-debugger/Gemini-checker pairs both passed at exact tooling commit
 and evaluation proof and a fresh DeepSeek-family non-author audit passed with
 zero findings at `da19239`. Four rejected predecessor audits, three CI
 portability failures, and every repair remain disclosed under
-`docs/evaluation/runs/tooling/2026-08-24-*`. Issue #88 is locally complete in
-draft PR #89 pending final CI and merge. Only after it merges may a separate
-slice prove the unchanged semantic inputs and freeze `gate-k-rc2`. Formal
-reservations and launches wait until the complete mechanical matrix passes
-against that exact candidate.
+`docs/evaluation/runs/tooling/2026-08-24-*`.
+
+Issue #90 is the active candidate-freeze slice. It must prove every protected
+semantic, build, fixture, workflow, and public-document input byte-identical to
+`gate-k-rc1`; admit only the exact decision-0013 disposition edit in
+`KERNEL.md`; classify every other changed path; and obtain a zero-finding
+non-author audit. After that slice merges, both complete workflows must pass
+against its exact merge commit before an annotated `gate-k-rc2` tag may name
+that commit. The tag annotation and issue closure are the live freeze receipt,
+so recording them does not require a post-tag candidate mutation. Formal
+reservations and launches remain forbidden until the exact candidate is frozen
+and the complete mechanical matrix is green.
 
 Renderer architecture and project adoption remain out of scope until a new
 owner disposition passes Gate K.
