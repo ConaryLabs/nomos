@@ -25,6 +25,15 @@ test("independent areas retain one exact visual grammar", () => {
   assert.deepEqual(grammar(ember), grammar(north));
 });
 
+test("every area exposes one exact compiled-door objective", () => {
+  for (const plan of [cistern, ember, north]) {
+    assert.deepEqual(Object.keys(plan.presentation.objective).sort(), ["kind", "target"]);
+    assert.equal(plan.presentation.objective.kind, "exit_via");
+    assert.equal(plan.presentation.objective.target, plan.presentation.primaryGate);
+    assert.equal(plan.entities.find((entity) => entity.id === plan.presentation.objective.target)?.kind, "door");
+  }
+});
+
 test("the second area is a distinct composition", () => {
   const anchors = (plan) => plan.entities.map((entity) => entity.anchor);
   assert.notDeepEqual(anchors(cistern), anchors(north));

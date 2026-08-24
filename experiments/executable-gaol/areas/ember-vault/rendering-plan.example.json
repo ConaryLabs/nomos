@@ -255,6 +255,10 @@
   ],
   "presentation": {
     "primaryGate": "vault_gate",
+    "objective": {
+      "kind": "exit_via",
+      "target": "vault_gate"
+    },
     "pursuitLight": "ember_brazier",
     "forensicScenario": "03-breached-unsealed",
     "exit": {

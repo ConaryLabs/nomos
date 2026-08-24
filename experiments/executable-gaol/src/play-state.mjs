@@ -9,6 +9,10 @@ const actorPosition = (plan, id, fallback) => ({
   ...(plan?.actors.find((actor) => actor.id === id)?.anchor?.cell ?? fallback),
 });
 
+export const displayName = (id) => id.replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
+
+const objectiveTarget = (plan) => plan.presentation.objective.target;
+
 export function createPlayState(plan) {
   return {
     player: actorPosition(plan, "player", { x: 2, y: 4, z: 0 }),
@@ -20,7 +24,7 @@ export function createPlayState(plan) {
     escaped: false,
     caught: false,
     completed: false,
-    message: "Reach the north gate",
+    message: `Reach ${displayName(objectiveTarget(plan))}`,
     tone: "neutral",
   };
 }
@@ -45,6 +49,10 @@ export function completeRun(state) {
     message: "Escaped the gaol",
     tone: "success",
   };
+}
+
+export function completionSummary(state, totalAreas) {
+  return `${totalAreas} areas · ${state.moves} moves · ${state.movementCost} traversal cost`;
 }
 
 const contains = (region, point) => point.x >= region.min.x && point.x <= region.max.x
@@ -161,6 +169,39 @@ export function interactionAt(plan, scenarioId, state) {
     .filter(({ entity }) => entity?.anchor?.cell)
     .find(({ entity }) => Math.abs(entity.anchor.cell.x - state.player.x)
       + Math.abs(entity.anchor.cell.y - state.player.y) <= 1)?.interaction ?? null;
+}
+
+export function guidanceFor(plan, scenarioId, state) {
+  const target = objectiveTarget(plan);
+  const targetLabel = displayName(target);
+  if (state.completed) {
+    return { objective: "Escape complete", prompt: "R · Begin a new run", tone: "success" };
+  }
+  if (state.caught) {
+    return { objective: `Exit via ${targetLabel}`, prompt: "R · Restart the run", tone: "danger" };
+  }
+  if (state.escaped) {
+    return { objective: `Exited via ${targetLabel}`, prompt: "Entering the next area", tone: "success" };
+  }
+
+  const interaction = interactionAt(plan, scenarioId, state);
+  if (interaction) {
+    return {
+      objective: `Exit via ${targetLabel}`,
+      prompt: `E · ${displayName(interaction.action)} ${displayName(interaction.targetEntity)}`,
+      tone: "action",
+    };
+  }
+
+  const scenario = plan.scenarios.find((candidate) => candidate.id === scenarioId);
+  const movement = scenario?.movement[target];
+  return {
+    objective: `Exit via ${targetLabel}`,
+    prompt: movement?.disposition === "traversable"
+      ? `The way through ${targetLabel} is open`
+      : `Reach ${targetLabel}`,
+    tone: movement?.disposition === "traversable" ? "success" : "neutral",
+  };
 }
 
 export function attemptInteraction(plan, scenarioId, state) {

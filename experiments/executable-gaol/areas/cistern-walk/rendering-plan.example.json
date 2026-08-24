@@ -243,6 +243,10 @@
   ],
   "presentation": {
     "primaryGate": "sluice_gate",
+    "objective": {
+      "kind": "exit_via",
+      "target": "sluice_gate"
+    },
     "pursuitLight": "watch_brazier",
     "forensicScenario": "03-breached-unsealed",
     "exit": {

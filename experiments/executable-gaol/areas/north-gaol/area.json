@@ -3,6 +3,7 @@
   "label": "North Gaol",
   "start": false,
   "primaryGate": "north_gate",
+  "objective": { "kind": "exit_via", "target": "north_gate" },
   "pursuitLight": "brazier_02",
   "forensicScenario": "03-breached-unsealed",
   "exit": {
