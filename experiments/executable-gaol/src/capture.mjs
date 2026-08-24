@@ -13,7 +13,7 @@ const frames = plan.scenarios.map((scenario) => {
   return { scenario, svg };
 });
 
-writeFileSync(join(outputDir, "forensic.svg"), `${renderSvg(plan, "03-breached-unsealed", true)}\n`);
+writeFileSync(join(outputDir, "forensic.svg"), `${renderSvg(plan, plan.presentation.forensicScenario, true)}\n`);
 
 const sheetFrames = frames.slice(0, 4);
 const sheetWidth = plan.camera.width * 2;

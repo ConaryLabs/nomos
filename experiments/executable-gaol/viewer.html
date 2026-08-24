@@ -42,7 +42,8 @@
     frame.innerHTML = renderSvg(plan, selected, forensic.ariaPressed === "true", { actorPositions: { player: visualPlayer, gaoler: visualGaoler } });
     message.textContent = play.message;
     message.dataset.tone = play.tone;
-    const pursuit = play.caught ? "caught" : plan.scenarios.find((scenario) => scenario.id === selected)?.effectiveLight.brazier_02 === false ? "hunting" : "dormant";
+    const pursuitLight = plan.presentation.pursuitLight;
+    const pursuit = play.caught ? "caught" : plan.scenarios.find((scenario) => scenario.id === selected)?.effectiveLight[pursuitLight] === false ? "hunting" : "dormant";
     meter.textContent = `moves ${play.moves} · cost ${play.movementCost} · gaoler ${pursuit}`;
   };
   const reset = () => { selectScenario(plan.scenarios[0].id); play = createPlayState(plan); visualPlayer = { ...play.player }; visualGaoler = { ...play.gaoler }; animating = false; draw(); };

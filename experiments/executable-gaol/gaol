@@ -31,7 +31,8 @@ build() {
   done
 
   node "$experiment_dir/src/build-plan.mjs" \
-    "$output_dir/world" "$output_dir/runs" "$output_dir/rendering-plan.json"
+    "$output_dir/world" "$output_dir/runs" "$experiment_dir/area.json" \
+    "$output_dir/rendering-plan.json"
   node "$experiment_dir/src/capture.mjs" \
     "$output_dir/rendering-plan.json" "$output_dir/frames"
 }

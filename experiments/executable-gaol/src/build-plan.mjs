@@ -2,12 +2,13 @@ import { createHash } from "node:crypto";
 import { readFileSync, writeFileSync, readdirSync } from "node:fs";
 import { basename, join } from "node:path";
 
-const [worldDir, runsDir, outputPath] = process.argv.slice(2);
-if (!worldDir || !runsDir || !outputPath) {
-  throw new Error("usage: build-plan.mjs <world> <runs> <output>");
+const [worldDir, runsDir, areaPath, outputPath] = process.argv.slice(2);
+if (!worldDir || !runsDir || !areaPath || !outputPath) {
+  throw new Error("usage: build-plan.mjs <world> <runs> <area> <output>");
 }
 
 const readJson = (path) => JSON.parse(readFileSync(path, "utf8"));
+const area = readJson(areaPath);
 const simulation = readJson(join(worldDir, "simulation.json"));
 const navigation = readJson(join(worldDir, "navigation.json"));
 const persistence = readJson(join(worldDir, "persistence.json"));
@@ -48,6 +49,17 @@ const entities = simulation.entities.map((entity) => {
     })),
   };
 });
+
+const entityIds = new Set(entities.map((entity) => entity.id));
+if (!area.id || !area.label) throw new Error("area identity is required");
+if (!entityIds.has(area.primaryGate)) throw new Error(`primary gate ${area.primaryGate} is not a compiled entity`);
+if (!entityIds.has(area.pursuitLight)) throw new Error(`pursuit light ${area.pursuitLight} is not a compiled entity`);
+if (!area.actors.some((actor) => actor.id === "player") || !area.actors.some((actor) => actor.id === "gaoler")) {
+  throw new Error("area requires player and gaoler presentation anchors");
+}
+if (area.effects.some((effect) => !entityIds.has(effect.anchorEntity))) {
+  throw new Error("effect anchor must reference a compiled entity");
+}
 
 const activationIsActive = (activation, states) => {
   switch (activation.kind) {
@@ -137,16 +149,19 @@ const projectionDigests = Object.fromEntries(
 const plan = {
   schema: "nomos.experiment.rendering_plan@1",
   deterministic: true,
+  area: { id: area.id, label: area.label },
   projectionSchemas: [simulation.schema, navigation.schema, persistence.schema, diagnostics.schema],
   projectionDigests,
   camera: { identity: "gaol_oblique_01", projection: "fixed_oblique", width: 1200, height: 540, tileWidth: 96, tileHeight: 50 },
   palette: "gaol_bounded_01",
   entities,
-  actors: [
-    { id: "player", assembly: "visual/player_silhouette", anchor: { kind: "cell", cell: { x: 2, y: 4, z: 0 } } },
-    { id: "gaoler", assembly: "visual/gaoler_silhouette", anchor: { kind: "cell", cell: { x: 5, y: 3, z: 0 } } },
-  ],
-  effects: [{ id: "ward_crescent", assembly: "visual/cyan_crescent", anchorEntity: "north_gate" }],
+  actors: area.actors,
+  effects: area.effects,
+  presentation: {
+    primaryGate: area.primaryGate,
+    pursuitLight: area.pursuitLight,
+    forensicScenario: area.forensicScenario,
+  },
   uiAnchors: ["vitals", "abilities", "gate_state", "water_cost"],
   scenarios,
   interactions,

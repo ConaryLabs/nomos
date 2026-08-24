@@ -84,14 +84,15 @@ export function attemptMove(plan, scenarioId, state, dx, dy) {
       tone: terrain.kind === "water" ? "water" : "neutral",
   };
   return {
-    state: advanceGaoler(scenario, movedState),
+    state: advanceGaoler(plan, scenario, movedState),
     moved: true,
     cost: terrain.cost,
   };
 }
 
-export function advanceGaoler(scenario, state) {
-  if (state.escaped || state.caught || scenario.effectiveLight.brazier_02 !== false) return state;
+export function advanceGaoler(plan, scenario, state) {
+  const pursuitLight = plan.presentation.pursuitLight;
+  if (state.escaped || state.caught || scenario.effectiveLight[pursuitLight] !== false) return state;
 
   const pursuitClock = state.pursuitClock + 1;
   if (pursuitClock < 2) return { ...state, pursuitClock };

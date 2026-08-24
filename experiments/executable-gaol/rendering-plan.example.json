@@ -1,6 +1,10 @@
 {
   "schema": "nomos.experiment.rendering_plan@1",
   "deterministic": true,
+  "area": {
+    "id": "north-gaol",
+    "label": "North Gaol"
+  },
   "projectionSchemas": [
     {
       "name": "nomos.projection.simulation",
@@ -202,9 +206,19 @@
     {
       "id": "ward_crescent",
       "assembly": "visual/cyan_crescent",
-      "anchorEntity": "north_gate"
+      "anchorEntity": "north_gate",
+      "presentationAnchor": {
+        "x": 3.6,
+        "y": 3.4,
+        "z": 0
+      }
     }
   ],
+  "presentation": {
+    "primaryGate": "north_gate",
+    "pursuitLight": "brazier_02",
+    "forensicScenario": "03-breached-unsealed"
+  },
   "uiAnchors": [
     "vitals",
     "abilities",
