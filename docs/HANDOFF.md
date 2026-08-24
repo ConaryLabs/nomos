@@ -13,7 +13,7 @@ Gate K is closed as **failed**. Peter Permenter's owner disposition is
 - current cold-agent protocol: revision 6, owner-authorized in decision 0015;
 - revision-6 tooling: implemented under issue #88; both live rehearsal pairs
   passed at exact tooling commit `cbfa3f7`, and the complete repository proof
-  plus zero-finding non-author audit passed at `d8a43eb`;
+  plus zero-finding non-author audit passed at `1338ed4`;
 - implementation: complete through SW-N;
 - acceptance: criteria 1–16 and 19 pass; criteria 17 and 18 fail;
 - round-one retries: none authorized; a distinct round two is conditionally
@@ -150,12 +150,13 @@ DeepSeek-debugger/Gemini-checker pairs both passed at exact tooling commit
 `docs/evaluation/runs/rehearsal/2026-08-24-*-r6/`; both results explicitly have
 `formalAttempt: false` and no Gate K acceptance value. The complete repository
 and evaluation proof and a fresh DeepSeek-family non-author audit passed with
-zero findings at `d8a43eb`. Two rejected predecessor audits and their repairs
-remain disclosed under `docs/evaluation/runs/tooling/2026-08-24-issue-88-*`.
-Issue #88 is locally complete pending PR/CI and merge. Only after it merges may
-a separate slice prove the unchanged semantic inputs and freeze `gate-k-rc2`.
-Formal reservations and launches wait until the complete mechanical matrix
-passes against that exact candidate.
+zero findings at `1338ed4`. Three rejected predecessor audits, the first CI
+portability failure, and every repair remain disclosed under
+`docs/evaluation/runs/tooling/2026-08-24-*`. Issue #88 is locally complete in
+draft PR #89 pending final CI and merge. Only after it merges may a separate
+slice prove the unchanged semantic inputs and freeze `gate-k-rc2`. Formal
+reservations and launches wait until the complete mechanical matrix passes
+against that exact candidate.
 
 Renderer architecture and project adoption remain out of scope until a new
 owner disposition passes Gate K.
