@@ -6,6 +6,7 @@ repo_root=$(git -C "$experiment_dir" rev-parse --show-toplevel)
 output_rel=target/executable-gaol
 output_dir="$repo_root/$output_rel"
 mode=${1:-capture}
+site_dir=${2:-$repo_root/target/executable-gaol-site}
 
 build() {
   if [[ -d $output_dir ]]; then
@@ -55,8 +56,21 @@ case "$mode" in
     node "$experiment_dir/src/verify.mjs" "$output_dir/rendering-plan.json" \
       "$output_dir/frames/contact-sheet.svg"
     ;;
+  site)
+    build
+    if [[ -d $site_dir ]]; then
+      find "$site_dir" -mindepth 1 -delete
+    fi
+    mkdir -p "$site_dir"
+    install -m 644 "$experiment_dir/viewer.html" "$site_dir/index.html"
+    install -m 644 "$experiment_dir/src/render-core.mjs" "$site_dir/render-core.mjs"
+    install -m 644 "$experiment_dir/src/play-state.mjs" "$site_dir/play-state.mjs"
+    install -m 644 "$output_dir/rendering-plan.json" "$site_dir/rendering-plan.json"
+    install -m 644 "$experiment_dir/contact-sheet.png" "$site_dir/contact-sheet.png"
+    printf 'Executable gaol site staged at %s\n' "$site_dir"
+    ;;
   *)
-    printf 'usage: %s [capture|serve|verify]\n' "$0" >&2
+    printf 'usage: %s [capture|serve|verify|site [destination]]\n' "$0" >&2
     exit 64
     ;;
 esac

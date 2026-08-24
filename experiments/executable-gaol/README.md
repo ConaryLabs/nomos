@@ -32,6 +32,16 @@ switch the real runtime scenarios, `R` resets the presentation actor, and the
 viewer interpolates movement without placing fractional positions into Nomos
 authoritative state.
 
+The internet build is the same static viewer staged without a running process:
+
+```sh
+experiments/executable-gaol/gaol site
+```
+
+The GitHub Pages workflow publishes that directory. No dev-machine port,
+repository checkout, `.nomos` source, World IR, or credential enters the public
+artifact.
+
 Known limits: this is stylized deterministic SVG rather than a GPU renderer;
 actor position is presentation-only because Gate K has no dynamic actor state;
 audio, combat, networking, and persistence beyond the existing Gate K state are
