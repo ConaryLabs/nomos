@@ -1,0 +1,66 @@
+{
+  "schema": "nomos.issue88.non_author_audit@1",
+  "reviewedCommit": "378392c01a6dc343066b37e4b2a857ea224a2fef",
+  "reviewer": {
+    "provider": "deepseek",
+    "model": "deepseek-v4-flash-vision-exp",
+    "freshSession": true,
+    "nonAuthor": true
+  },
+  "status": "pass",
+  "findings": [],
+  "verification": [
+    {
+      "command": "git status --short",
+      "status": "pass",
+      "details": "Empty output before and after review; exit 0 both times."
+    },
+    {
+      "command": "git diff --check origin/main...HEAD",
+      "status": "pass",
+      "details": "No whitespace errors across the full 700-file diff; exit 0."
+    },
+    {
+      "command": "cargo fmt --all -- --check",
+      "status": "pass",
+      "details": "rustfmt check succeeded under the pinned toolchain; exit 0."
+    },
+    {
+      "command": "cargo clippy --workspace --all-targets --locked -- -D warnings",
+      "status": "pass",
+      "details": "All 7 workspace members checked clean with -D warnings; exit 0."
+    },
+    {
+      "command": "cargo test --workspace --locked",
+      "status": "pass",
+      "details": "All unit, integration, doc, and compile-fail tests passed with no failures; exit 0."
+    },
+    {
+      "command": "cargo xtask boundary",
+      "status": "pass",
+      "details": "boundary: clean; 6 kernel crates plus xtask; membership, permitted-edges, cycles, forbidden-dependency (64 exact names, 8 prefixes), and tooling-isolation rules pass."
+    },
+    {
+      "command": "docs/evaluation/test-pi-cold-agent-preflight.sh",
+      "status": "pass",
+      "details": "deepseek, gemini, and claude offline fixture lanes pass; negative modes (missing boundary/session, wrong provider/model/thinking/worktree, reused session, forbidden tool, enabled resource/skill, outside read/write, network, leak) all blocked."
+    },
+    {
+      "command": "docs/evaluation/test-gate-k-eval-tooling.sh",
+      "status": "pass",
+      "details": "Full offline harness passed: attempt-ledger, strictness, rc1 byte-identical re-finalization, revision-6 rehearsal re-finalization, packet/recorder/finalizer adversarial suite, revision-6 adjudication regressions (missing dimensions, evidence digest mismatch, retry/assisted mapping, stale generations, ingress mapping, alias-exception tokens), and negative task-launcher boundary modes."
+    }
+  ],
+  "protectedSurfaceUnchanged": true,
+  "checkoutCleanBeforeAndAfter": true,
+  "notes": [
+    "Diff from origin/main touches only README.md, docs/HANDOFF.md, docs/evaluation/COLD_AGENT_PROTOCOL.md, docs/evaluation/GATE_K_COLD_AGENT_PLAN.md, Gate K evaluation tooling/tests, new evaluation records, and .gitattributes; no change to KERNEL.md, THESIS.md, Cargo.toml/Cargo.lock, rust-toolchain.toml, crates/, fixtures/, xtask/, .github/, docs/evaluation/final/, or docs/evaluation/GATE_K_FINAL_EVIDENCE_INDEX.json; gate-k-rc1 tag unchanged at d8a0b85c55aa33c20f46e5dfd9e0d1f317e1f1c9 (tree 4013e6629ea274c6f2e2e2570306cb35b6d41505).",
+    "Boundary generation 4 independently verified with real bubblewrap 0.11.2: /dev contains exactly /dev/null (crw-rw-rw-), cat and printf to /dev/null succeed, /dev/zero absent, /workspace (outside writable subtree), /tmp, /proc, and /dev are read-only; extension mounts --tmpfs /dev + --dev-bind /dev/null /dev/null + --remount-ro /dev and self-tests deviceFilesystemExact, deviceNullReadable, deviceNullWritable; adjudication validator rejects findings treating /dev/null as forbidden and accepts /dev/fd/1, /proc/self/fd/1, and /workspace/output/null-alias as outside-path findings (no alias exception).",
+    "Revision-6 generations are consistently enforced: eval_plan@2, packet_manifest@2, task_receipt@2, checker_result@2, command_adjudication@2, checker_receipt@2, run_result@2 all carry protocolRevision 6; packet-run boundary is nomos.pi_cold_agent_boundary@4 (with @2 admitted only for the four frozen rc1 receipts and @3 rejected); finalizer, packet verifier, document validator, adjudication validator, qualification validator, and task launcher reject stale/mixed generations.",
+    "Both frozen gate-k-rc1 pairs re-finalize byte-for-byte (rebuilt subject/checker trees, checker.json, result.json, RUN.md all cmp-identical); historical final hashes e6990dacde903f527d1cb46784a54d938a7e130f1193e51bb830a4a2284f07dc (author) and f09c9214329f7f8bd7d4d4b31476a0f24c825add2f5bb434b7bf780f64d8089c (debug) and both fail verdicts with /dev/null outside-path findings are preserved.",
+    "Both revision-6 cross-family rehearsal pairs re-finalize at exact tooling head cbfa3f74e92c2e68f9916cff4ceac26859bd2994 and reproduce the documented result hashes 847a03198affb8ab896b541ff2f7f04ed9635a7877cbec960fc33bbad5627f2e and 6458c901ca637f6cdab796af28e89a21b3d831a6cdd29644d7438a9d7dac2ba4; four distinct fresh sessions (author Gemini high/checker DeepSeek max; debugger DeepSeek max/checker Gemini high), one exact task prompt per transcript, willRetry=false, operatorIntervention none, retries 0, all three dimensions pass per role with hash-bound evidence, mechanically derived overall pass, and formalAttempt false with no Gate K acceptance value.",
+    "Resource accounting is complete and uncapped and is re-derived mechanically: accounting.json must equal the stderr NOMOS_PI_ACCOUNTING record, the transcript-derived assistantTurns/providerReportedTokens/toolCalls, and the task-receipt accounting; budgets are exactly freshSessions 1, operatorSubstantiveHintsMaximum 0, operatorRetriesMaximum 0 with no token, turn, tool, or command ceiling (provider token unavailability can only be represented as null, which fails closed).",
+    "The test harness is decomposed across test-gate-k-eval-tooling.sh, test-gate-k-eval-tooling-lib.sh, test-gate-k-eval-finalizer-adversarial.sh, test-gate-k-eval-revision6-adjudication.sh, test-gate-k-rc1-refinalization.sh, test-gate-k-revision6-rehearsal-refinalization.sh, test-gate-k-eval-strictness.sh, test-gate-k-attempt-ledger.sh, and test-pi-cold-agent-preflight.sh, each under the shop file-size threshold and covering omissions, invalid values, mismatches, stale generations, identity/hash disagreement, undeclared ingress, and boundary exposure.",
+    "The formal-attempt ledger contains exactly the four frozen gate-k-rc1 import-close events (author/debug/author-checker/debug-checker at d8a0b85c55aa33c20f46e5dfd9e0d1f317e1f1c9); no reservation or launch event exists, so no round-two formal attempt has been spent."
+  ]
+}

@@ -13,7 +13,7 @@ Gate K is closed as **failed**. Peter Permenter's owner disposition is
 - current cold-agent protocol: revision 6, owner-authorized in decision 0015;
 - revision-6 tooling: implemented under issue #88; both live rehearsal pairs
   passed at exact tooling commit `cbfa3f7`, and the complete repository proof
-  plus zero-finding non-author audit passed at `1338ed4`;
+  plus zero-finding non-author audit passed at `378392c`;
 - implementation: complete through SW-N;
 - acceptance: criteria 1–16 and 19 pass; criteria 17 and 18 fail;
 - round-one retries: none authorized; a distinct round two is conditionally
@@ -150,8 +150,8 @@ DeepSeek-debugger/Gemini-checker pairs both passed at exact tooling commit
 `docs/evaluation/runs/rehearsal/2026-08-24-*-r6/`; both results explicitly have
 `formalAttempt: false` and no Gate K acceptance value. The complete repository
 and evaluation proof and a fresh DeepSeek-family non-author audit passed with
-zero findings at `1338ed4`. Three rejected predecessor audits, the first CI
-portability failure, and every repair remain disclosed under
+zero findings at `378392c`. Four rejected predecessor audits, both CI
+portability failures, and every repair remain disclosed under
 `docs/evaluation/runs/tooling/2026-08-24-*`. Issue #88 is locally complete in
 draft PR #89 pending final CI and merge. Only after it merges may a separate
 slice prove the unchanged semantic inputs and freeze `gate-k-rc2`. Formal

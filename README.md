@@ -47,7 +47,7 @@ any renderer is built.
   revision-6 packet, boundary, record, adjudication, and finalization tooling is
   implemented under issue #88. Fresh cross-family author/checker and
   debugger/checker rehearsals passed at exact tooling commit `cbfa3f7`, and the
-  complete proof plus zero-finding non-author audit passed at `1338ed4`; no
+  complete proof plus zero-finding non-author audit passed at `378392c`; no
   round-two candidate is frozen and no formal reservation or launch is ready
 - **Scope:** greenfield / vacuum architecture exercise
 - **Effect on other projects:** none unless separately adopted by an explicit
