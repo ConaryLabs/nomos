@@ -1,0 +1,2 @@
+NOMOS_PI_BOUNDARY_BLOCKED {"error":"sandbox self-test failed with exit 1: fatal: not a git repository: (null)"}
+pi cold-agent preflight: FAIL: Pi exited 78

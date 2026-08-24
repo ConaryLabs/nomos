@@ -1,0 +1,1 @@
+Add a second approved `iron_barred_door` to the fixture at the supplied legal anchor. Give it a distinct stable symbolic ID, preserve the original three primitive kinds and catalog-value rules, and reach a clean validation and compile without changing kernel source or unrelated packages.

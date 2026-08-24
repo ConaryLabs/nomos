@@ -65,9 +65,12 @@ document_validator="$script_dir/gate-k-eval-validate-documents.py"
 packet_verifier="$script_dir/gate-k-eval-verify-packet.sh"
 attempt_validator="$script_dir/gate-k-eval-attempt-ledger.py"
 attempt_ledger="$script_dir/gate-k-formal-attempt-ledger.jsonl"
+formal_record_checks="$script_dir/gate-k-eval-formal-record.sh"
+# shellcheck source=gate-k-eval-formal-record.sh
+source "$formal_record_checks"
 if [[ $record_only == false ]]; then
-  python3 "$attempt_validator" validate-frozen-inventory "$attempt_ledger" ||
-    fail 'formal-attempt ledger differs from the exact frozen Gate K inventory'
+  gate_k_validate_closed_formal_ledger "$attempt_validator" "$attempt_ledger" ||
+    fail 'formal-attempt ledger is invalid or does not preserve the frozen inventory prefix'
 fi
 for record in "${records[@]}"; do
   record=$(real_directory "$record" 'task record is absent')
@@ -166,6 +169,7 @@ for record in "${records[@]}"; do
   receipt_formal=$(jq -r '.formalAttempt' "$record/task-receipt.json")
   receipt_shape=$(jq -r '.shape' "$record/task-receipt.json")
   receipt_sha=$(sha256sum "$record/task-receipt.json" | cut -d' ' -f1)
+  receipt_schema=$(jq -r '.schema' "$record/task-receipt.json")
   archived_rehearsal=false
   case $receipt_sha in
     b25ba1d3645b8c1defa9190d9a3be252d2c7422a8e46e8be0779c8533738750c | \
@@ -176,27 +180,7 @@ for record in "${records[@]}"; do
       ;;
   esac
   if [[ $record_only == false && $receipt_class == formal && $receipt_formal == true ]]; then
-    case $receipt_shape in
-      author) frozen_receipt_sha=732af45918ebc27c02675f6c75c32e7718407545c9fa3a39de327d3591d382a8 ;;
-      author-checker) frozen_receipt_sha=2e8c97d5a939ddd6fa9b33769f6e24b80fc242b1420c2660eef7f9742d542db3 ;;
-      debug) frozen_receipt_sha=2820d2f46b2d895abc22b6677f4f3ba908199cdb9d057aee181b477eaeb82390 ;;
-      debug-checker) frozen_receipt_sha=0053d3df610e7e31322a2cfd9dfc641e160d3e5c64582df387d34cd4ddd37d37 ;;
-      *) fail "formal task shape is invalid: $record" ;;
-    esac
-    [[ $(sha256sum "$record/task-receipt.json" | cut -d' ' -f1) == "$frozen_receipt_sha" ]] ||
-      fail "formal task receipt is not one of the four frozen gate-k-rc1 records: $record"
-    ledger_matches=$(jq -s --arg commit "$(jq -r .candidateCommit "$record/task-receipt.json")" \
-      --arg shape "$receipt_shape" --arg provider "$(jq -r .identity.provider "$record/task-receipt.json")" \
-      --arg model "$(jq -r .identity.model "$record/task-receipt.json")" \
-      --arg thinking "$(jq -r .identity.thinking "$record/task-receipt.json")" \
-      --arg manifest "$(jq -r .digests.packetManifestSha256 "$record/task-receipt.json")" \
-      --arg receipt "$receipt_sha" --arg outcome "$(jq -r .outcome "$record/task-receipt.json")" '
-      [.[] | select(.event == "import-close" and .candidateCommit == $commit and
-        .shape == $shape and .provider == $provider and .model == $model and
-        .thinking == $thinking and .packetManifestSha256 == $manifest and
-        .taskReceiptSha256 == $receipt and .outcome == $outcome)] | length
-      ' "$attempt_ledger")
-    [[ $ledger_matches -eq 1 ]] ||
+    gate_k_validate_formal_receipt_event "$attempt_ledger" "$record" "$receipt_sha" ||
       fail "formal task receipt is absent from the append-only attempt ledger: $record"
   fi
   [[ $(sha256sum "$record/packet-manifest.json" | cut -d' ' -f1) == \
@@ -627,7 +611,7 @@ for record in "${records[@]}"; do
     fail "plan formal-attempt status differs from task receipt: $record"
   case $receipt_class:$receipt_formal in
     formal:true)
-      if [[ $record_only == false ]]; then
+      if [[ $record_only == false && $receipt_schema == nomos.gate_k.task_receipt@1 ]]; then
         [[ $receipt_commit == "$gate_k_rc1_commit" ]] ||
           fail "formal attempt candidate differs from frozen gate-k-rc1: $record"
       fi
@@ -659,6 +643,7 @@ for record in "${records[@]}"; do
   [[ $(sha256sum "$packet_root/bin/nomos" | cut -d' ' -f1) == "$plan_binary_sha" ]] ||
     fail "recorded immutable packet binary differs from plan: $record"
   if [[ $record_only == false && $receipt_class == formal &&
+    $receipt_schema == nomos.gate_k.task_receipt@1 &&
     $plan_binary_sha != "$gate_k_rc1_binary_sha" ]]; then
     fail "formal attempt binary differs from frozen gate-k-rc1: $record"
   fi

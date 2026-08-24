@@ -1,0 +1,127 @@
+You are the independent non-author auditor for Nomos issue #93. Review the
+exact detached Git commit currently checked out. You did not author this
+implementation. Do not modify, create, or delete any tracked file. Do not act
+as the formal DeepSeek checker and do not independently reproduce the authoring
+task; issue #95 owns that fresh checker operation.
+
+First read AGENTS.md, README.md, THESIS.md, KERNEL.md,
+docs/decisions/0015-gate-k-round-two.md,
+docs/evaluation/COLD_AGENT_PROTOCOL.md,
+docs/evaluation/GATE_K_COLD_AGENT_PLAN.md, and issue #93 as quoted below.
+Inspect the complete diff from origin/main through HEAD and every changed file.
+
+Issue #93 requires one fresh eligible Gemini-family cold-author subject against
+annotated candidate `gate-k-rc2`, with the exact route, packet, prompt, hashes,
+writable boundary, rubric, and revision-6 plan pinned before launch; a committed
+hash-chained reservation; a later distinct committed launch marker only after a
+passing neutral preflight; one launch with zero coaching and zero retry; a
+complete authenticated subject record; a mechanically derived subject-stage
+outcome; a closed ledger; a non-author audit; and no DeepSeek checker or Gate K
+verdict.
+
+Audit the exact-head record against these requirements:
+
+- `gate-k-rc2` is the unique annotated tag for
+  `53db236d397b3db0779f0d2aab23180d926e55a5`, and the committed declaration
+  records both successful exact-commit workflow URLs;
+- the fixed brief, revision-6 prompt, formal plan, packet manifest, fixture,
+  candidate binary, provider/model/thinking route, Pi and provider package
+  identities, writable paths, rubric, and sole `/dev/null` exception are
+  mutually consistent and hash-bound before launch;
+- ledger events 5-7 are canonical and hash-chained reservation, launch, and
+  authenticated close events for `gate-k-rc2-author-subject`, and Git history
+  proves the reservation and launch were distinct prior commits;
+- both blocked neutral probes are disclosed and preserved, occurred before the
+  launch marker, and are correctly characterized as prelaunch checkout/caller
+  boundary failures rather than formal subject attempts;
+- the later neutral probe passed on a clean standalone checkout at the exact
+  candidate, with the exact eligible Gemini identity and boundary;
+- exactly one formal subject session launched after the marker, with no operator
+  coaching or retry, and the task receipt binds the launch-marker commit,
+  packet, identity, boundary, complete event stream, commands, accounting, and
+  artifacts;
+- every recorded subject command stays within `/workspace` except that exact
+  `/dev/null` would be allowed as a non-information-bearing sink; no other
+  outside path, network, hidden context, repository mount, or undeclared tool is
+  present;
+- the subject artifacts contain the distinct second approved door at face
+  `6 0 0 north`, preserve the base primitive kinds and credential catalog, and
+  contain recorded successful validation/compile evidence without modifying an
+  immutable packet member;
+- the task recorder mechanically derives `eligible-for-checker`, the ledger is
+  closed, STATUS.md keeps semantic merit pending independent reproduction, and
+  neither this issue nor the status claims a cold-author pass or Gate K verdict;
+- no kernel, fixture, protocol, rubric, renderer, Gate 1, checker, or unrelated
+  project change is present.
+
+Run and independently assess all of these commands:
+
+git status --short
+git diff --check origin/main...HEAD
+git tag -n99 gate-k-rc2
+git rev-parse gate-k-rc2^{}
+git log --format='%H %s' --reverse origin/main..HEAD
+python3 docs/evaluation/gate-k-eval-attempt-ledger.py validate docs/evaluation/gate-k-formal-attempt-ledger.jsonl
+docs/evaluation/gate-k-eval-finalize.sh --validate-task-record docs/evaluation/runs/gate-k/2026-08-24-gemini-3.7-flash-author-rc2/subject-task
+docs/evaluation/test-gate-k-attempt-ledger.sh
+cargo fmt --all -- --check
+cargo clippy --workspace --all-targets --locked -- -D warnings
+cargo test --workspace --locked
+cargo xtask boundary
+docs/evaluation/test-pi-cold-agent-preflight.sh
+docs/evaluation/test-gate-k-eval-tooling.sh
+
+Also verify the checkout remains clean after review. Treat any substantive
+correctness, evidence-integrity, acceptance, regression, security, or
+maintainability defect as a finding. Do not invent stylistic findings. A pass
+requires zero findings and every required command passing.
+
+Your final response must be exactly one JSON object and no Markdown. Use this
+shape:
+
+{
+  "schema": "nomos.issue93.non_author_audit@1",
+  "reviewedCommit": "full 40-character HEAD commit",
+  "reviewer": {
+    "provider": "deepseek",
+    "model": "exact model ID",
+    "freshSession": true,
+    "nonAuthor": true,
+    "formalChecker": false
+  },
+  "status": "pass or fail",
+  "findings": [
+    {
+      "severity": "blocking, major, or minor",
+      "location": "file and line or evidence path",
+      "summary": "concise finding",
+      "evidence": "specific supporting evidence"
+    }
+  ],
+  "dimensions": {
+    "semanticMerit": "satisfied-in-subject-record-pending-independent-checker or fail",
+    "independenceIntegrity": "pass or fail",
+    "operationalCompliance": "pass or fail"
+  },
+  "subjectOutcome": "eligible-for-checker or fail",
+  "verification": [
+    {
+      "command": "exact command",
+      "status": "pass or fail",
+      "details": "concise observed result"
+    }
+  ],
+  "formalLedgerClosed": true,
+  "checkerNotLaunched": true,
+  "protectedSurfaceUnchanged": true,
+  "checkoutCleanBeforeAndAfter": true,
+  "notes": ["concise evidence-backed note"]
+}
+
+Before sending the response, pass its exact bytes through a strict JSON parser
+such as `python3 -c 'import json,sys; json.load(sys.stdin)'` or `jq -e .`. Do not
+send it until that check succeeds. Byte 1 of the response must be `{` and the
+final non-whitespace byte must be `}`. A Markdown code fence, language label,
+preface, validation message, or trailing commentary makes the audit record
+fail even when the object inside it is valid. Emit the parsed object directly
+as a single-line JSON value.

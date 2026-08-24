@@ -1,0 +1,18 @@
+{
+  "schema": "nomos.gate_k.subject_result@1",
+  "result": "completed",
+  "entityId": "north_gate_02",
+  "primitive": "primitive/iron_barred_door",
+  "anchor": {
+    "kind": "face",
+    "x": 6,
+    "y": 0,
+    "z": 0,
+    "direction": "north"
+  },
+  "explanation": "Added a second approved primitive/iron_barred_door entity named north_gate_02 at anchor face 6 0 0 north with credential credential/gaoler_key. The compiler accepted it because the entity ID is distinct and well-formed, the primitive is approved in the catalog, all required source fields (face anchor and credential) are present without duplicates or extra fields, the credential resolves to the declared catalog value, and all machine expansions, transitions, and blocking claims integrate without causal cycles or conflicts.",
+  "reproductionCommands": [
+    "/workspace/bin/nomos validate gaol.nomos",
+    "/workspace/bin/nomos compile gaol.nomos --out world"
+  ]
+}

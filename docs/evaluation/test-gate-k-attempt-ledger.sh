@@ -20,7 +20,12 @@ assert_blocked() {
 }
 
 python3 "$validator" validate "$ledger"
-python3 "$validator" validate-frozen-inventory "$ledger"
+# The live append-only ledger grows when a prospectively reserved formal
+# attempt closes. Preserve the separate frozen-inventory assertion against the
+# exact four imported round-one events rather than requiring the live ledger to
+# remain forever equal to its initial prefix.
+head -n 4 "$ledger" >"$tmp_dir/frozen-inventory.jsonl"
+python3 "$validator" validate-frozen-inventory "$tmp_dir/frozen-inventory.jsonl"
 cp "$ledger" "$tmp_dir/forged-import-ledger.jsonl"
 sed -i '1s/732af459/832af459/' "$tmp_dir/forged-import-ledger.jsonl"
 assert_blocked 'not an exact frozen Gate K import' python3 "$validator" validate \
