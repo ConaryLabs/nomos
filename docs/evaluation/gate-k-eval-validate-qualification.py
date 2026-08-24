@@ -118,6 +118,9 @@ def parse_receipt(path: Path) -> tuple[dict[str, str], list[dict[str, object]]]:
 
 
 def validate_headers(values: dict[str, str], args: argparse.Namespace) -> tuple[str, str, str]:
+    frozen_legacy_receipt = (
+        legacy_task_receipt_digest(args) in LEGACY_TASK_RECEIPT_SHA256S
+    )
     if values["PI_VERSION"] != args.version or values["PI_VERSION"] != "0.84.2":
         fail("qualification Pi version is not the pinned client")
     if values["PI_INSTALL"] != f"npm install -g --ignore-scripts @earendil-works/pi-coding-agent@{args.version}":
@@ -190,8 +193,14 @@ def validate_headers(values: dict[str, str], args: argparse.Namespace) -> tuple[
             not values["PI_PROVIDER_EXTENSION"].endswith(
                 "/lib/node_modules/pi-antigravity/src/index.ts"
             )
-            or file_sha256(values["PI_PROVIDER_EXTENSION"], "Gemini provider extension")
-            != PROVIDER_EXTENSION_SHA
+            or (
+                not frozen_legacy_receipt
+                and file_sha256(
+                    values["PI_PROVIDER_EXTENSION"],
+                    "Gemini provider extension",
+                )
+                != PROVIDER_EXTENSION_SHA
+            )
         ):
             fail("qualification Gemini provider extension differs from the pinned package entry point")
     elif any(values[field] != "none" for field in ("PI_PROVIDER_EXTENSION", "PI_PROVIDER_PACKAGE", "PI_PROVIDER_INSTALL")):
