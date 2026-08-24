@@ -50,6 +50,8 @@ case "$mode" in
     ;;
   verify)
     build
+    node --test "$experiment_dir/src/play-state.test.mjs"
+    cmp "$output_dir/rendering-plan.json" "$experiment_dir/rendering-plan.example.json"
     node "$experiment_dir/src/verify.mjs" "$output_dir/rendering-plan.json" \
       "$output_dir/frames/contact-sheet.svg"
     ;;

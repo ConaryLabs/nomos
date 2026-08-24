@@ -25,7 +25,15 @@ Open the printed local URL. The renderer receives only `rendering-plan.json`;
 it does not parse `.nomos`, World IR, or compiler receipts. The second door is
 ordinary content in `gaol.nomos` and requires no renderer change.
 
+Use WASD or the arrow keys to cross the room. Shallow water consumes the
+projected movement cost of `3`; stone costs `1`. The north edge opens only at a
+door whose selected Nomos runtime state resolves to `traversable`. Keys 1–4
+switch the real runtime scenarios, `R` resets the presentation actor, and the
+viewer interpolates movement without placing fractional positions into Nomos
+authoritative state.
+
 Known limits: this is stylized deterministic SVG rather than a GPU renderer;
-actors do not move; audio, animation, networking, and persistence beyond the
-existing Gate K state are absent. Its job is to make the semantic bridge and
-the room visible quickly enough to learn from.
+actor position is presentation-only because Gate K has no dynamic actor state;
+audio, combat, networking, and persistence beyond the existing Gate K state are
+absent. Its job is to make the semantic bridge and the room playable quickly
+enough to learn from.

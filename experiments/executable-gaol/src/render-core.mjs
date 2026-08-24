@@ -48,7 +48,7 @@ const pixelText = (text, x, y, scale, color) => {
   return `<path d="${paths.join("")}" fill="${color}"/>`;
 };
 
-export function renderSvg(plan, scenarioId, forensic = false) {
+export function renderSvg(plan, scenarioId, forensic = false, presentation = {}) {
   const scenario = plan.scenarios.find((candidate) => candidate.id === scenarioId) ?? plan.scenarios[0];
   const width = plan.camera.width;
   const height = plan.camera.height;
@@ -146,13 +146,14 @@ export function renderSvg(plan, scenarioId, forensic = false) {
 
   // Readable actor silhouettes.
   for (const actor of plan.actors) {
-    const p = iso(actor.anchor.cell.x + .5, actor.anchor.cell.y + .5);
+    const anchor = presentation.actorPositions?.[actor.id] ?? actor.anchor.cell;
+    const p = iso(anchor.x + .5, anchor.y + .5, anchor.z ?? 0);
     if (actor.id === "player") {
       chunks.push(`<g filter="url(#${prefix}-shadow)"><ellipse cx="${p.x}" cy="${p.y+12}" rx="22" ry="9" fill="#080d11" opacity=".6"/><circle cx="${p.x}" cy="${p.y-42}" r="10" fill="#80aeb0"/><path d="M${p.x-12} ${p.y-31} L${p.x-20} ${p.y+7} L${p.x-4} ${p.y+1} L${p.x+5} ${p.y+15} L${p.x+17} ${p.y+8} L${p.x+11} ${p.y-30}Z" fill="${palette.teal}" stroke="#182a2e" stroke-width="4"/><path d="M${p.x+9} ${p.y-17} L${p.x+36} ${p.y-39}" stroke="${palette.cyanDim}" stroke-width="5"/></g>`);
     } else {
       chunks.push(`<g filter="url(#${prefix}-shadow)"><ellipse cx="${p.x}" cy="${p.y+13}" rx="30" ry="10" fill="#080d11" opacity=".65"/><circle cx="${p.x+3}" cy="${p.y-45}" r="12" fill="#9d7a5c"/><path d="M${p.x-19} ${p.y-33} L${p.x-24} ${p.y+11} L${p.x+21} ${p.y+11} L${p.x+17} ${p.y-33}Z" fill="${palette.ochre}" stroke="#392921" stroke-width="5"/><path d="M${p.x-29} ${p.y-28} Q${p.x-53} ${p.y-9} ${p.x-31} ${p.y+12} Q${p.x-7} ${p.y-8} ${p.x-29} ${p.y-28}Z" fill="${palette.rust}" stroke="#3c2c27" stroke-width="5"/></g>`);
     }
-    if (forensic) chunks.push(`<text x="${p.x}" y="${p.y+30}" text-anchor="middle" fill="${palette.text}" font-family="DejaVu Sans Mono, monospace" font-size="11">actor/${esc(actor.id)} @ ${actor.anchor.cell.x},${actor.anchor.cell.y}</text>`);
+    if (forensic) chunks.push(`<text x="${p.x}" y="${p.y+30}" text-anchor="middle" fill="${palette.text}" font-family="DejaVu Sans Mono, monospace" font-size="11">actor/${esc(actor.id)} @ ${Number(anchor.x).toFixed(2)},${Number(anchor.y).toFixed(2)}</text>`);
   }
 
   // Restrained semantic effect, kept below actor salience.
