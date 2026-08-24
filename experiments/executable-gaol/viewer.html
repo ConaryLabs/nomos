@@ -19,10 +19,10 @@
 </style>
 <header><h1>Nomos // executable gaol</h1><span id="states"></span><button id="forensic" aria-pressed="false">Forensics</button></header>
 <main><div id="frame"></div></main>
-<footer><span>Move: WASD / arrows · States: 1–4 · Reset: R</span><span id="message"></span><span id="meter"></span></footer>
+<footer><span>Move: WASD / arrows · Interact: E · States: 1–4 · Reset: R</span><span id="message"></span><span id="meter"></span></footer>
 <script type="module">
   import { renderSvg } from "./render-core.mjs";
-  import { attemptMove, createPlayState, movementKeys } from "./play-state.mjs";
+  import { attemptInteraction, attemptMove, createPlayState, movementKeys } from "./play-state.mjs";
   const plan = await fetch("./rendering-plan.json").then((response) => response.json());
   const states = document.querySelector("#states");
   const frame = document.querySelector("#frame");
@@ -33,6 +33,10 @@
   let play = createPlayState();
   let visualPlayer = { ...play.player };
   let animating = false;
+  const selectScenario = (scenarioId) => {
+    selected = scenarioId;
+    for (const child of states.children) child.ariaPressed = String(child.dataset.scenario === selected);
+  };
   const draw = () => {
     frame.innerHTML = renderSvg(plan, selected, forensic.ariaPressed === "true", { actorPositions: { player: visualPlayer } });
     message.textContent = play.message;
@@ -57,13 +61,22 @@
   for (const scenario of plan.scenarios) {
     const button = document.createElement("button");
     button.textContent = scenario.label;
+    button.dataset.scenario = scenario.id;
     button.ariaPressed = String(scenario.id === selected);
-    button.onclick = () => { selected = scenario.id; for (const child of states.children) child.ariaPressed = String(child === button); draw(); };
+    button.onclick = () => { selectScenario(scenario.id); play = { ...play, message: `Loaded ${scenario.label}`, tone: "neutral" }; draw(); };
     states.append(button);
   }
   forensic.onclick = () => { forensic.ariaPressed = String(forensic.ariaPressed !== "true"); draw(); };
   addEventListener("keydown", (event) => {
     if (event.code === "KeyR") { event.preventDefault(); reset(); return; }
+    if (event.code === "KeyE" && !animating) {
+      event.preventDefault();
+      const result = attemptInteraction(plan, selected, play);
+      play = result.state;
+      selectScenario(result.scenarioId);
+      draw();
+      return;
+    }
     const number = Number(event.key);
     if (number >= 1 && number <= plan.scenarios.length) { states.children[number - 1].click(); return; }
     const delta = movementKeys[event.code];

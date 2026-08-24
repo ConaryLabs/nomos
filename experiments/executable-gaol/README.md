@@ -27,7 +27,10 @@ Open the printed local URL. The renderer receives only `rendering-plan.json`;
 it does not parse `.nomos`, World IR, or compiler receipts. The second door is
 ordinary content in `gaol.nomos` and requires no renderer change.
 
-Use WASD or the arrow keys to cross the room. Shallow water consumes the
+Use WASD or the arrow keys to cross the room. Walk beside `north_gate`, press
+`E` to ignite it, press `E` again to unseal it, and cross the resulting opening.
+Those interaction edges are derived from consecutive, state-hash-bound Nomos
+command logs rather than interpreted by the browser. Shallow water consumes the
 projected movement cost of `3`; stone costs `1`. The north edge opens only at a
 door whose selected Nomos runtime state resolves to `traversable`. Keys 1–4
 switch the real runtime scenarios, `R` resets the presentation actor, and the

@@ -81,3 +81,36 @@ export function attemptMove(plan, scenarioId, state, dx, dy) {
     cost: terrain.cost,
   };
 }
+
+export function interactionAt(plan, scenarioId, state) {
+  return plan.interactions
+    .filter((interaction) => interaction.fromScenario === scenarioId)
+    .map((interaction) => ({
+      interaction,
+      entity: plan.entities.find((entity) => entity.id === interaction.targetEntity),
+    }))
+    .filter(({ entity }) => entity?.anchor?.cell)
+    .find(({ entity }) => Math.abs(entity.anchor.cell.x - state.player.x)
+      + Math.abs(entity.anchor.cell.y - state.player.y) <= 1)?.interaction ?? null;
+}
+
+export function attemptInteraction(plan, scenarioId, state) {
+  const interaction = interactionAt(plan, scenarioId, state);
+  if (!interaction) {
+    return {
+      state: { ...state, message: "Nothing responds here", tone: "neutral" },
+      scenarioId,
+      changed: false,
+    };
+  }
+  return {
+    state: {
+      ...state,
+      message: `${interaction.action} ${interaction.targetEntity}`,
+      tone: "success",
+    },
+    scenarioId: interaction.toScenario,
+    changed: true,
+    interaction,
+  };
+}

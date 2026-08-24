@@ -65,9 +65,10 @@ const scenarioDirs = readdirSync(runsDir, { withFileTypes: true })
   .map((entry) => entry.name)
   .sort();
 
-const scenarios = scenarioDirs.map((name) => {
+const scenarioRecords = scenarioDirs.map((name) => {
   const finalState = readJson(join(runsDir, name, "final-state.json"));
   const result = readJson(join(runsDir, name, "result.json"));
+  const commandLog = readJson(join(runsDir, name, "command-log.json"));
   const expectedBaselineRejection = name === "01-baseline" && result.status === "rejected" && result.committed_command_count === 0;
   if (result.status !== "completed" && !expectedBaselineRejection) throw new Error(`${name} did not reach its declared state`);
   const states = Object.fromEntries(
@@ -92,6 +93,8 @@ const scenarios = scenarioDirs.map((name) => {
     ]),
   );
   return {
+    committedRows: commandLog.rows,
+    scenario: {
     id: name,
     label: name.replace(/^\d+-/, "").replaceAll("-", " "),
     tick: finalState.state.tick,
@@ -99,8 +102,30 @@ const scenarios = scenarioDirs.map((name) => {
     machineStates: states,
     movement,
     effectiveLight,
+    },
   };
 });
+
+const scenarios = scenarioRecords.map((record) => record.scenario);
+const interactions = [];
+for (const from of scenarioRecords) for (const to of scenarioRecords) {
+  if (to.committedRows.length !== from.committedRows.length + 1) continue;
+  const prefixMatches = from.committedRows.every((row, index) =>
+    JSON.stringify(row.request) === JSON.stringify(to.committedRows[index].request)
+    && row.resulting_state_hash === to.committedRows[index].resulting_state_hash);
+  if (!prefixMatches) continue;
+  const next = to.committedRows.at(-1);
+  if (next.input_state_hash !== from.scenario.stateHash) continue;
+  interactions.push({
+    id: `${from.scenario.id}:${next.request.action}:${next.request.entity}`,
+    fromScenario: from.scenario.id,
+    toScenario: to.scenario.id,
+    targetEntity: next.request.entity,
+    action: next.request.action,
+    inputStateHash: next.input_state_hash,
+    resultingStateHash: next.resulting_state_hash,
+  });
+}
 
 const projectionDigests = Object.fromEntries(
   ["simulation.json", "navigation.json", "persistence.json", "diagnostics.json"].map((file) => [
@@ -124,7 +149,8 @@ const plan = {
   effects: [{ id: "ward_crescent", assembly: "visual/cyan_crescent", anchorEntity: "north_gate" }],
   uiAnchors: ["vitals", "abilities", "gate_state", "water_cost"],
   scenarios,
+  interactions,
 };
 
 writeFileSync(outputPath, `${JSON.stringify(plan, null, 2)}\n`);
-console.log(`RenderingPlan@1 ${entities.length} entities ${scenarios.length} scenarios -> ${outputPath}`);
+console.log(`RenderingPlan@1 ${entities.length} entities ${scenarios.length} scenarios ${interactions.length} interactions -> ${outputPath}`);

@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { createPlayState, attemptMove, terrainAt } from "./play-state.mjs";
+import { attemptInteraction, createPlayState, attemptMove, interactionAt, terrainAt } from "./play-state.mjs";
 
 const plan = JSON.parse(readFileSync(new URL("../rendering-plan.example.json", import.meta.url)));
 
@@ -37,4 +37,26 @@ test("the unchanged second door remains blocked", () => {
   const result = attemptMove(plan, "04-open-dark", state, 0, -1);
   assert.equal(result.moved, false);
   assert.equal(result.state.tone, "blocked");
+});
+
+test("nearby interactions follow Nomos-verified state hashes", () => {
+  const state = { ...createPlayState(), player: { x: 5, y: 1, z: 0 } };
+  const ignite = interactionAt(plan, "01-baseline", state);
+  assert.equal(ignite.action, "ignite");
+  assert.equal(ignite.inputStateHash, plan.scenarios[0].stateHash);
+  assert.equal(ignite.resultingStateHash, plan.scenarios[1].stateHash);
+
+  const first = attemptInteraction(plan, "01-baseline", state);
+  assert.equal(first.changed, true);
+  assert.equal(first.scenarioId, "02-breached-warded");
+  const second = attemptInteraction(plan, first.scenarioId, first.state);
+  assert.equal(second.interaction.action, "unseal");
+  assert.equal(second.scenarioId, "03-breached-unsealed");
+});
+
+test("interaction range does not invent remote actions", () => {
+  const state = createPlayState();
+  const result = attemptInteraction(plan, "01-baseline", state);
+  assert.equal(result.changed, false);
+  assert.equal(result.scenarioId, "01-baseline");
 });
