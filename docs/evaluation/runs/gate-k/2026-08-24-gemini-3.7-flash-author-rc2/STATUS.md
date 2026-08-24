@@ -33,4 +33,11 @@ A clean standalone clone of the same tagged candidate then passed the mandatory
 neutral boundary probe. No prompt, packet, model, rubric, reservation identity,
 or candidate bytes changed, and neither blocked probe launched the formal task.
 
+Post-close verification also exposed a stale harness assumption: the offline
+ledger and finalizer tests required the live ledger to remain byte-identical to
+its four-event round-one prefix. The repair now validates the complete closed
+append-only ledger and separately proves that its first four events remain the
+exact frozen inventory. Round-one and revision-6 rehearsal re-finalizations
+remain byte-identical. This tooling repair does not alter the closed task record.
+
 No DeepSeek checker ran in this issue.
