@@ -1,0 +1,4 @@
+schema nomos.command_script@1
+ignite bastion_gate
+unseal bastion_gate
+extinguish gloam_brazier

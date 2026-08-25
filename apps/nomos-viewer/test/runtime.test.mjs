@@ -20,6 +20,7 @@ import { fileURLToPath } from "node:url";
 import { loadArtifacts } from "../src/plan.mjs";
 import { interactCommand, moveCommand, firstInteraction } from "../src/play.mjs";
 import { ABI_VERSION, loadRuntime } from "../src/runtime.mjs";
+import { solveRoute } from "../smoke/route.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const dist = join(here, "..", "dist");
@@ -48,20 +49,21 @@ const open = async () => {
   return { ...artifacts, runtime };
 };
 
-// The route the solver produces today, one string per area in route order.
-// `^ v < >` are the four directions and `*` is whatever interaction the runtime
-// offers first at that cell.
-const ROUTE_KEYS = ["^^^<<<<<<^**>^", "<<<<<^^^>^^**>^", "^^>^^>>>^**>^", "^^^^>>**>^"];
-const DIRECTIONS = { "^": "north", v: "south", "<": "west", ">": "east" };
+// The route is solved from the published artifacts, exactly as the smoke lane
+// solves it, so adding an area changes content and fixtures only — never this
+// test. The solver speaks the page's key names: the four arrows move, and
+// `KeyE` takes whatever interaction the runtime offers first at that cell.
+const DIRECTIONS = { ArrowUp: "north", ArrowDown: "south", ArrowLeft: "west", ArrowRight: "east" };
 
 const play = async () => {
   const { collection, plans, runtimeInputs, runtime } = await open();
+  const route = solveRoute(collection, plans);
   let areaId = collection.start_area;
   let bytes = runtimeInputs.get(areaId);
   let view = runtime.start(bytes.plan, bytes.semantics);
 
-  for (const keys of ROUTE_KEYS) {
-    for (const key of keys) {
+  for (const leg of route.legs) {
+    for (const key of leg.keys) {
       const direction = DIRECTIONS[key];
       if (direction) {
         view = runtime.step(moveCommand(direction));
@@ -78,7 +80,7 @@ const play = async () => {
       view = runtime.enter(bytes.plan, bytes.semantics);
     }
   }
-  return { runtime, view, collection };
+  return { runtime, view, collection, route };
 };
 
 test("the module declares no import at all", { skip: !ready && "dist/ is not built" }, async () => {
@@ -137,20 +139,21 @@ test(
 );
 
 test(
-  "the wasm runtime plays the four-area route to the escape",
+  "the wasm runtime plays the solved route to the escape",
   { skip: !ready && "dist/ is not built" },
   async () => {
-    const { runtime, view, collection } = await play();
+    const { runtime, view, collection, route } = await play();
+    const inputs = route.legs.reduce((sum, leg) => sum + leg.keys.length, 0);
     assert.equal(view.outcome, "escaped");
-    assert.equal(view.counters.moves, 44);
-    assert.equal(view.counters.traversal_cost, 60);
+    assert.equal(view.counters.moves, route.moves);
+    assert.equal(view.counters.traversal_cost, route.cost);
 
     const session = runtime.session();
     assert.equal(session.schema, "nomos.play_session@1");
     assert.equal(session.outcome, "completed");
     assert.equal(session.areas_cleared, collection.areas.length);
-    assert.equal(session.log.length, 52);
-    assert.equal(session.receipts.length, 52);
+    assert.equal(session.log.length, inputs);
+    assert.equal(session.receipts.length, inputs);
     assert.notEqual(session.receipt_chain_head, "0".repeat(64));
 
     // The two array exports are windows onto the session, not second
@@ -164,7 +167,8 @@ test(
   "the session the browser runtime produced replays clean natively",
   { skip: !ready && "dist/ is not built" },
   async () => {
-    const { runtime } = await play();
+    const { runtime, route } = await play();
+    const inputs = route.legs.reduce((sum, leg) => sum + leg.keys.length, 0);
     const scratch = mkdtempSync(join(tmpdir(), "nomos-play-"));
     const path = join(scratch, "session.json");
     // The runtime's own bytes, not a re-serialization of the parsed value.
@@ -182,6 +186,9 @@ test(
       ["replay", join(repo, "target", "executable-gaol", "areas"), "--session", path],
       { encoding: "utf8" },
     );
-    assert.match(output, /^NOMOS_PLAY_REPLAY PASS areas=4 commands=52 receipts=52 /);
+    assert.match(
+      output,
+      new RegExp(`^NOMOS_PLAY_REPLAY PASS areas=${route.areas} commands=${inputs} receipts=${inputs} `),
+    );
   },
 );

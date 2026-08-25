@@ -4,7 +4,7 @@
 //! `nomos-projection` (`RUNTIME.md` section 3). Its first bound — exact
 //! re-encode byte identity — is checked inside the kernel by
 //! `crates/nomos-compiler/tests/projection_decode.rs` against
-//! `fixtures/gaol.nomos`. This is the other half: the four committed areas of
+//! `fixtures/gaol.nomos`. This is the other half: the six committed areas of
 //! the R1 corpus, decoded by the crate that actually consumes them, compared
 //! with the value the compiler projected.
 //!
@@ -24,7 +24,7 @@ fn compiled(area: &str) -> nomos_compiler::CompiledWorld {
 }
 
 #[test]
-fn the_decoder_reproduces_the_compilers_own_plan_for_all_four_areas() {
+fn the_decoder_reproduces_the_compilers_own_plan_for_all_six_areas() {
     for area in common::ROUTE {
         let bytes = common::semantics(area);
         let decoded = SimulationPlan::from_canonical_bytes(&bytes)

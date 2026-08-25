@@ -1,4 +1,4 @@
-//! The four committed areas, played.
+//! The six committed areas, played.
 //!
 //! This is where the numbers live. `docs/review/nomos-viewer.md` section 5.3
 //! used to predict `moves` and `cost` in JavaScript inside the smoke harness,
@@ -11,17 +11,17 @@ mod common;
 use nomos_play::{SessionOutcome, batch};
 
 #[test]
-fn the_four_area_route_costs_what_the_record_says() {
+fn the_six_area_route_costs_what_the_record_says() {
     let session = common::play_route();
     assert_eq!(session.outcome(), SessionOutcome::Completed);
-    assert_eq!(session.areas_cleared(), 4);
-    assert_eq!(session.counters().moves, 44);
-    assert_eq!(session.counters().traversal_cost, 60);
-    // 52 keys: 44 moves and 8 interactions. Every input is one batch and one
+    assert_eq!(session.areas_cleared(), 6);
+    assert_eq!(session.counters().moves, 65);
+    assert_eq!(session.counters().traversal_cost, 95);
+    // 77 keys: 65 moves and 12 interactions. Every input is one batch and one
     // tick, so the tick is the input count and not the move count.
-    assert_eq!(session.log().len(), 52);
-    assert_eq!(session.receipts().len(), 52);
-    assert_eq!(session.live().state.tick, 52);
+    assert_eq!(session.log().len(), 77);
+    assert_eq!(session.receipts().len(), 77);
+    assert_eq!(session.live().state.tick, 77);
 }
 
 #[test]

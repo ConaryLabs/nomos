@@ -81,8 +81,8 @@ last identity accepted code bound whose declaration lived under `experiments/`.
 
 The executable study provides:
 
-- Cistern Walk, Ember Vault, Ossuary Reach, and North Gaol as separately
-  authored content;
+- Cistern Walk, Ember Vault, Gloam Bastion, Drowned Stair, Ossuary Reach, and
+  North Gaol as separately authored content;
 - shared camera, palette, materials, assemblies, actor silhouettes, masonry,
   effects, water, lighting, and minimal UI;
 - content-derived doors, movement cost, effective light, objectives, and a
@@ -91,6 +91,10 @@ The executable study provides:
 - forensic overlays and a procedural-versus-baseline comparison;
 - a static public build containing no source, World IR, credentials, or
   dependency on the development machine.
+
+Two of those six areas, Gloam Bastion and Drowned Stair, were cold-authored
+from `AUTHORING.md` alone as a Gate 2/Gate 3 miniature; see
+`docs/review/cold-author-area-five.md`.
 
 Actor movement and gaoler pursuit remain presentation-only because Gate K has
 no dynamic actor state. Audio, combat, networking, and the later cross-system
@@ -137,6 +141,10 @@ content-authored areas fit it without renderer-specific edits. Keep those
 iterations inside the quarantined executable study until concrete evidence
 justifies a separate decision to promote a boundary into a post-Gate-K runtime
 epoch.
+
+The cold-author area-five experiment leaves one open packet gap (issue #165,
+`route.entry` duplicating the player actor's `cell`) and an owner visual
+verdict still pending on `docs/review/cold-author-area-five.md`.
 
 That separate decision is now owner-authorized:
 `docs/decisions/0017-post-gate-k-runtime-epoch.md` opens the R1 epoch under

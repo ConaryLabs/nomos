@@ -41,10 +41,12 @@ AI-authored areas can share one coherent visual grammar.
   revision 7, or round three. No Gate K work remains active
 - **Executable-study status:** the static target pack remains preserved under
   `experiments/gate-0-gaol-target-pack/`. A separate quarantined study under
-  `experiments/executable-gaol/` now connects four independently authored areas
-  through one projection-only WebGL renderer and one bounded procedural look.
-  It is playable online and explicitly authorized to continue by decision
-  0016, but remains non-authoritative and satisfies neither Gate K nor Gate 1
+  `experiments/executable-gaol/` now connects six independently authored areas
+  — two of them cold-authored from the packet alone as a Gate 2/Gate 3
+  miniature, `docs/review/cold-author-area-five.md` — through one
+  projection-only WebGL renderer and one bounded procedural look. It is
+  playable online and explicitly authorized to continue by decision 0016, but
+  remains non-authoritative and satisfies neither Gate K nor Gate 1
 - **Post-Gate-K epoch status:** decision 0017 is **owner-authorized** under
   issue #124 and the **R1 epoch is open**: an explicit epoch break, not a Gate K
   pass, with promotion by clean implementation only. Its contract document

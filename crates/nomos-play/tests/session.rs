@@ -79,7 +79,7 @@ fn arrival_before_a_crossing_is_refused() {
 #[test]
 fn the_route_records_a_digest_for_every_area_it_enters() {
     let session = common::play_route();
-    assert_eq!(session.route().len(), 4);
+    assert_eq!(session.route().len(), 6);
     for (row, area) in session.route().iter().zip(common::ROUTE) {
         assert_eq!(row.area, area);
         assert_eq!(
@@ -99,7 +99,7 @@ fn the_terminal_area_completes_the_run() {
     assert_eq!(session.outcome(), SessionOutcome::Completed);
     assert_eq!(session.pending_area(), None);
     assert_eq!(session.live().plan.to_area, None);
-    assert_eq!(session.areas_cleared(), 4);
+    assert_eq!(session.areas_cleared(), 6);
 }
 
 #[test]
