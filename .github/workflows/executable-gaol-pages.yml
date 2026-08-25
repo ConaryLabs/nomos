@@ -1,5 +1,10 @@
 name: executable gaol pages
 
+# Publishes the promoted viewer. The study still compiles the plans and the area
+# collection the viewer consumes; what is published is `apps/nomos-viewer/dist`,
+# staged from those artifacts, scanned, and only then uploaded - and the browser
+# lane runs first, so the page that goes out is a page that was played.
+
 on:
   push:
     branches:
@@ -7,6 +12,8 @@ on:
       - "experiment/issue-*-executable-gaol"
     paths:
       - ".github/workflows/executable-gaol-pages.yml"
+      - ".github/workflows/nomos-viewer.yml"
+      - "apps/nomos-viewer/**"
       - "experiments/executable-gaol/**"
       - "crates/**"
       - "Cargo.lock"
@@ -26,22 +33,49 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
 
-      - name: Build and verify the public demo
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      - name: Verify the study and publish its artifacts
+        run: experiments/executable-gaol/gaol verify
+
+      - name: Viewer tests
+        run: node --test apps/nomos-viewer/test/*.test.mjs
+
+      - name: Stage and scan the public artifact
         run: |
-          experiments/executable-gaol/gaol verify
-          experiments/executable-gaol/gaol site
+          node apps/nomos-viewer/build.mjs \
+            --from target/executable-gaol \
+            --out apps/nomos-viewer/dist
+
+      - name: Browser smoke lane
+        run: |
+          node apps/nomos-viewer/smoke/smoke.mjs \
+            --dist apps/nomos-viewer/dist \
+            --out target/nomos-viewer-smoke \
+            --require-chrome
+
+      - name: Upload the screenshots and the offline receipt
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: nomos-viewer-pages-smoke
+          path: target/nomos-viewer-smoke
+          if-no-files-found: error
+          retention-days: 90
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v6
 
-      - name: Upload the static demo
+      - name: Upload the promoted viewer
         uses: actions/upload-pages-artifact@v5
         with:
-          path: target/executable-gaol-site
+          path: apps/nomos-viewer/dist
 
   deploy:
     environment:

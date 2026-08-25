@@ -11,11 +11,16 @@
 //    the audit's rows 14, 15, 16, 21, and 25, and it is the same split the
 //    socket table already used.
 //
-// 2. Plan accessors that both renderers, the play state, and the viewer use.
-//    Each one replaces a derivation the ownership audit found duplicated: the
-//    machine-state lookup implemented twice with its own fallbacks, the ward
-//    test written out four times, and the pursuit condition computed twice
-//    with opposite operators.
+// 2. Plan accessors the SVG evidence renderer and `verify.mjs` use. Each one
+//    replaces a derivation the ownership audit found duplicated: the
+//    machine-state lookup implemented twice with its own fallbacks, and the
+//    ward test written out four times.
+//
+// The WebGL renderer, the play state, and the playable viewer left this tree
+// with R1-4; `apps/nomos-viewer/src/catalog.mjs` is the accepted catalog, and it
+// was written fresh rather than moved. What is left here is what the study's own
+// SVG capture path still needs. `LOOK_PROFILE_IDS` and `isHunting` went with the
+// files that used them.
 //
 // Per-renderer constants are deliberately NOT here. `render-core.mjs` owns the
 // SVG camera and its pixels-per-cell; `webgl-renderer.mjs` owns its
@@ -59,13 +64,6 @@ export const ACTOR_ASSEMBLIES = Object.freeze([
 ]);
 export const EFFECT_ASSEMBLIES = Object.freeze(["visual/cyan_crescent"]);
 
-// The two look profiles the WebGL renderer implements. `viewer.html` drives its
-// toggle with these keys instead of bare string literals, and the area
-// collection no longer declares a look-profile id of its own, so "which visual
-// look is active" has one identifier scheme rather than the four the audit
-// found.
-export const LOOK_PROFILE_IDS = Object.freeze(["baseline", "procedural"]);
-
 // ---------------------------------------------------------------------------
 // Sockets
 // ---------------------------------------------------------------------------
@@ -85,9 +83,9 @@ export const LOOK_PROFILE_IDS = Object.freeze(["baseline", "procedural"]);
 // the socket is.
 //
 // A non-north door would want the offset rotated by the entity's declared
-// `anchor.direction`. Every door in the corpus faces north, so the table is a
-// fixed offset today; direction-aware resolution belongs with the promoted
-// renderer's catalog under RUNTIME.md section 5 R1-4.
+// `anchor.direction`. Every door in the corpus faces north, so this table is a
+// fixed offset; the promoted catalog resolves the same offset through the
+// declared face, which is what RUNTIME.md section 5 R1-4 deferred here.
 export const SOCKETS = Object.freeze({
   "visual/iron_barred_door": Object.freeze({
     ward: Object.freeze({ x: 5, y: 0, z: 17 }),
@@ -147,9 +145,3 @@ export const movementOf = (scenario, entity) =>
 export const lightOf = (scenario, entity) =>
   scenario.effective_light.find((row) => row.entity === entity)?.emitting ?? null;
 
-// Whether the gaoler is hunting in this scenario.
-//
-// One helper, called by `play-state.mjs` for the authoritative pursuit rule and
-// by `viewer.html` for the HUD. The audit recorded those two as logical mirrors
-// written with opposite comparison operators, tied together by nothing.
-export const isHunting = (plan, scenario) => lightOf(scenario, plan.pursuit.light) === false;
