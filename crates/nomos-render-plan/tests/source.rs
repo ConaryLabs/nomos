@@ -617,5 +617,5 @@ fn the_committed_sources_carry_no_decimal_literal() {
         }
         checked += 1;
     }
-    assert_eq!(checked, 4, "all four committed areas were checked");
+    assert_eq!(checked, 6, "all six committed areas were checked");
 }

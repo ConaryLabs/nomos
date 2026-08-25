@@ -1,4 +1,4 @@
-//! Fixtures: the four committed areas, compiled in memory.
+//! Fixtures: the six committed areas, compiled in memory.
 //!
 //! The rendering plans are the committed `rendering-plan.example.json` files;
 //! the executable semantics are obtained by compiling each area's `world.nomos`
@@ -44,8 +44,15 @@ macro_rules! area {
     };
 }
 
-/// The four committed areas, in route order.
-pub const ROUTE: [&str; 4] = ["cistern-walk", "ember-vault", "ossuary-reach", "north-gaol"];
+/// The six committed areas, in route order.
+pub const ROUTE: [&str; 6] = [
+    "cistern-walk",
+    "ember-vault",
+    "gloam-bastion",
+    "drowned-stair",
+    "ossuary-reach",
+    "north-gaol",
+];
 
 /// Every committed area, by identifier.
 #[must_use]
@@ -53,6 +60,8 @@ pub fn area(id: &str) -> AreaBytes {
     match id {
         "cistern-walk" => area!("cistern-walk"),
         "ember-vault" => area!("ember-vault"),
+        "gloam-bastion" => area!("gloam-bastion"),
+        "drowned-stair" => area!("drowned-stair"),
         "north-gaol" => area!("north-gaol"),
         "ossuary-reach" => area!("ossuary-reach"),
         other => panic!("no committed area `{other}`"),
@@ -108,14 +117,16 @@ pub const fn step(direction: Direction) -> PlayCommand {
     PlayCommand::Move { direction }
 }
 
-/// The four key sequences the smoke lane's route solver produces today, one per
+/// The six key sequences the smoke lane's route solver produces today, one per
 /// area, in route order. `^ v < >` are the four lattice directions and `*` is
 /// the interaction the enumeration offers first at the cell the player is
 /// standing on. Recorded here so a native test pins the numbers the browser
 /// lane then has to agree with.
-pub const ROUTE_KEYS: [&str; 4] = [
+pub const ROUTE_KEYS: [&str; 6] = [
     "^^^<<<<<<^**>^",
     "<<<<<^^^>^^**>^",
+    "^^^<<<v^^^**<^",
+    "^<<>^^^**^^",
     "^^>^^>>>^**>^",
     "^^^^>>**>^",
 ];
@@ -157,7 +168,7 @@ pub fn drive(session: &mut PlaySession, keys: &str) {
     }
 }
 
-/// Plays the whole four-area route, entering each area as the crossing names it.
+/// Plays the whole six-area route, entering each area as the crossing names it.
 #[must_use]
 pub fn play_route() -> PlaySession {
     let mut live = session();

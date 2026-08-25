@@ -137,8 +137,8 @@ fn a_replay_reproduces_the_final_kernel_state_hash() {
         "0c0a573503282ec7b8f10dada7da267b96f04c089054936b84bece096b0ac7f2",
         "north-gaol at `03-breached-unsealed`, where the route leaves it"
     );
-    assert_eq!(report.areas, 4);
-    assert_eq!(report.commands, 52);
+    assert_eq!(report.areas, 6);
+    assert_eq!(report.commands, 77);
 }
 
 #[test]
