@@ -6,7 +6,7 @@
     "start": false
   },
   "route": {
-    "exit": { "gate": "vault_gate", "to_area": "ossuary-reach" },
+    "exit": { "gate": "vault_gate", "to_area": "gloam-bastion" },
     "entry": { "x": 7, "y": 5, "z": 0 }
   },
   "pursuit": {

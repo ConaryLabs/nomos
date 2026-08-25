@@ -1,0 +1,59 @@
+{
+  "schema": "nomos.presentation_source@2",
+  "area": {
+    "id": "gloam-bastion",
+    "label": "Gloam Bastion",
+    "start": false
+  },
+  "route": {
+    "exit": { "gate": "bastion_gate", "to_area": "ossuary-reach" },
+    "entry": { "x": 4, "y": 5, "z": 0 }
+  },
+  "pursuit": {
+    "light": "gloam_brazier"
+  },
+  "architecture": {
+    "bounds": { "width": 9, "height": 6 },
+    "wall_height_steps": 42,
+    "style": {
+      "assembly": "visual/beveled_masonry",
+      "material_family": "stone_bounded",
+      "trim_family": "broad_mortar"
+    },
+    "masses": [
+      {
+        "id": "sunken_dais",
+        "min": { "x": 3, "y": 1 },
+        "max": { "x": 6, "y": 2 },
+        "height_steps": 9
+      },
+      {
+        "id": "southwest_keep",
+        "min": { "x": 1, "y": 4 },
+        "max": { "x": 2, "y": 6 },
+        "height_steps": 36
+      }
+    ]
+  },
+  "actors": [
+    {
+      "id": "wayfarer",
+      "role": "player",
+      "assembly": "visual/player_silhouette",
+      "cell": { "x": 4, "y": 5, "z": 0 }
+    },
+    {
+      "id": "warden",
+      "role": "pursuer",
+      "assembly": "visual/gaoler_silhouette",
+      "cell": { "x": 7, "y": 2, "z": 0 }
+    }
+  ],
+  "effects": [
+    {
+      "id": "bastion_ward_crescent",
+      "assembly": "visual/cyan_crescent",
+      "anchor": { "entity": "bastion_gate", "socket": "ward" }
+    }
+  ]
+}

@@ -1,0 +1,5 @@
+schema nomos.command_script@1
+unlock bastion_gate with credential/gaoler_key
+open bastion_gate
+unseal bastion_gate
+extinguish gloam_brazier
