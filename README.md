@@ -33,21 +33,18 @@ AI-authored areas can share one coherent visual grammar.
   formal cold-debug attempt failed criterion 18 for the same class of subject
   request. Both did the semantic task correctly, but the frozen rubric does not
   permit self-waiver. Those attempts remain failed, no acceptance tag exists,
-  and Gate K is not green. Decision 0015 prospectively authorizes a separately
-  governed round two. Its tooling, rehearsal, candidate-lineage proof, and full
-  mechanical proof prerequisites have passed; annotated candidate
-  `gate-k-rc2` / `53db236` is frozen, but no round-two formal reservation or
-  launch had occurred at freeze time. The round-two Gemini author subject has
-  since completed with an `eligible-for-checker` transport result. The
-  DeepSeek debugger record is preserved on draft PR #100 with its required
-  non-author audit unresolved. Neither subject has been independently
-  adjudicated, and round two has no Gate K verdict
+  and Gate K is not green. Decision 0015 authorized a separately governed round
+  two; its candidate and two formal subjects completed, but neither independent
+  checker ran. Decision 0016 terminates round two incomplete with no verdict,
+  preserves the unmerged debugger record at annotated tag
+  `gate-k-rc2-debug-subject-incomplete`, and authorizes no retry, protocol
+  revision 7, or round three. No Gate K work remains active
 - **Executable-study status:** the static target pack remains preserved under
   `experiments/gate-0-gaol-target-pack/`. A separate quarantined study under
   `experiments/executable-gaol/` now connects four independently authored areas
   through one projection-only WebGL renderer and one bounded procedural look.
-  It is playable online, non-authoritative, and satisfies neither Gate K nor
-  Gate 1
+  It is playable online and explicitly authorized to continue by decision
+  0016, but remains non-authoritative and satisfies neither Gate K nor Gate 1
 - **Contract revision:** 7, owner-authorized in decision 0009
 - **Cold-agent protocol revision:** 6, owner-authorized in decision 0015;
   revision-6 packet, boundary, record, adjudication, and finalization tooling is
@@ -57,9 +54,9 @@ AI-authored areas can share one coherent visual grammar.
   complete proof plus zero-finding non-author audit passed at `da19239`. Issue
   #90 / PR #91 froze exact candidate `53db236`, whose verify run `32689876814`
   and gate-k-evidence run `32689876846` passed before the annotated
-  `gate-k-rc2` tag was created. Issue #93 completed the single fresh
-  Gemini-family cold-author subject; issues #94–#97 retain the unfinished
-  debugger, independent-checker, evidence-assembly, and owner-disposition work
+  `gate-k-rc2` tag was created. Revision 6 and the incomplete round-two records
+  are now historical evidence; decision 0016 closes the evaluation without
+  further checker or audit launches
 - **Scope:** greenfield / vacuum architecture exercise
 - **Effect on other projects:** none unless separately adopted by an explicit
   decision in that project's own authority records
@@ -78,11 +75,16 @@ a useful semantic experiment. The decision-0014 static visual study produced a
 compelling owner-approved target from its ordinary gameplay frame and
 supporting tests. The executable study now asks whether separately authored
 rooms can remain coherent through shared projections, visual assemblies, and
-renderer-owned grammar. Decision 0015's subjects and final adjudication remain
-incomplete; the study is quarantined evidence, not a quiet Gate K waiver or an
-accepted renderer architecture.
+renderer-owned grammar. Decision 0016 terminates the remaining Gate K ceremony
+and explicitly permits this quarantined work to continue. It is still not a
+Gate K waiver or an accepted renderer architecture.
 
 ## Read in this order
+
+First read
+[decision 0016](docs/decisions/0016-terminate-gate-k-round-two.md), which
+terminates round two, preserves its incomplete record, and names the active
+visual direction. The historical proof sequence follows:
 
 1. [docs/decisions/0015-gate-k-round-two.md](docs/decisions/0015-gate-k-round-two.md)
    — the prospective round-two protocol, safeguards, and operating order.
@@ -196,6 +198,6 @@ accidental build cache, and should not be pruned as routine cleanup.
 - **Gate 1 and later:** prove cross-system primitives, vocabulary, cold authors,
   cold debugging, and clean rebuilds.
 
-The executable gaol is a quarantined feasibility study, not a passed gate.
-Passing Gate 0 does not prove the semantic architecture, and visual progress
-does not rewrite Gate K's failed round-one verdict or complete round two.
+Gate K is closed as failed and round two is terminated incomplete. The
+executable gaol is an owner-authorized quarantined feasibility study, not a
+passed gate. Visual progress does not rewrite the Gate K verdict.
