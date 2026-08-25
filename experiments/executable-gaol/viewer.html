@@ -51,7 +51,7 @@
     footer { justify-content:flex-start; font-size:12px }
   }
 </style>
-<header><h1>Nomos // executable gaol</h1><span id="look"></span><span id="areas"></span><span id="states"></span><button id="forensic" aria-pressed="false">Forensics</button></header>
+<header><h1>Nomos // executable gaol</h1><span id="look"></span><span id="areas"></span><span id="states"></span><button id="look-mode" aria-pressed="true">Look: procedural</button><button id="forensic" aria-pressed="false">Forensics</button></header>
 <main>
   <div id="stage">
     <div id="play-hud"><div id="progress"></div><div id="objective"></div><div id="prompt"></div></div>
@@ -73,6 +73,7 @@
   const states = document.querySelector("#states");
   const frame = document.querySelector("#frame");
   const forensic = document.querySelector("#forensic");
+  const lookMode = document.querySelector("#look-mode");
   const look = document.querySelector("#look");
   const message = document.querySelector("#message");
   const meter = document.querySelector("#meter");
@@ -192,6 +193,13 @@
   }
   buildScenarioButtons();
   forensic.onclick = () => { forensic.ariaPressed = String(forensic.ariaPressed !== "true"); draw(); };
+  lookMode.onclick = () => {
+    const procedural = lookMode.ariaPressed !== "true";
+    lookMode.ariaPressed = String(procedural);
+    lookMode.textContent = `Look: ${procedural ? "procedural" : "baseline"}`;
+    gpu.setLookProfile(procedural ? "procedural" : "baseline");
+    draw();
+  };
   restart.onclick = reset;
   addEventListener("keydown", (event) => {
     if (event.code === "KeyR") { event.preventDefault(); reset(); return; }

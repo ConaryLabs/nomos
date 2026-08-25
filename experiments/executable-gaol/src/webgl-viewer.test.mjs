@@ -19,15 +19,27 @@ test("the WebGL backend is exact-version pinned and projection-only", () => {
 });
 
 test("no declared area receives renderer special treatment", () => {
-  for (const area of ["cistern-walk", "ember-vault", "north-gaol"]) {
+  for (const area of ["cistern-walk", "ember-vault", "ossuary-reach", "north-gaol"]) {
     assert.equal(renderer.includes(area), false, `renderer special-cases ${area}`);
   }
+});
+
+test("one bounded procedural grammar has an explicit baseline comparison", () => {
+  assert.match(renderer, /export const lookProfiles/);
+  for (const control of ["palette", "fogDensity", "exposure", "bevel", "actorOutline", "materials"]) {
+    assert.equal(renderer.includes(control), true, `${control} is not a named look control`);
+  }
+  assert.match(renderer, /lookProfiles\.procedural/);
+  assert.match(viewer, /Look: procedural/);
+  assert.match(viewer, /setLookProfile/);
+  assert.doesNotMatch(renderer, /TextureLoader|\.png|\.jpg|\.webp/);
 });
 
 test("the GPU grammar includes the required graphical systems", () => {
   for (const primitive of [
     "WebGLRenderer",
     "MeshStandardMaterial",
+    "ExtrudeGeometry",
     "DirectionalLight",
     "PointLight",
     "ShaderMaterial",

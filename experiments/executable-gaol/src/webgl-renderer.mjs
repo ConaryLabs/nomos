@@ -1,6 +1,6 @@
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.185.1/build/three.module.min.js";
 
-const colors = {
+const colors = Object.freeze({
   void: 0x090e13,
   fog: 0x111b24,
   stone0: 0x202b34,
@@ -14,7 +14,32 @@ const colors = {
   amber: 0xffa544,
   player: 0x347b7d,
   gaoler: 0x8c5638,
-};
+});
+
+export const lookProfiles = Object.freeze({
+  baseline: Object.freeze({
+    id: "gaol_baseline_01",
+    palette: colors,
+    fogDensity: 0.045,
+    exposure: 1.28,
+    bevel: 0,
+    actorOutline: 0,
+    materials: Object.freeze({}),
+  }),
+  procedural: Object.freeze({
+    id: "gaol_procedural_01",
+    palette: colors,
+    fogDensity: 0.041,
+    exposure: 1.34,
+    bevel: 0.055,
+    actorOutline: 1.065,
+    materials: Object.freeze({
+      stone: Object.freeze({ scale: 1.35, variation: 0.13, accent: 0x536168, accentMix: 0.16 }),
+      iron: Object.freeze({ scale: 2.1, variation: 0.08, accent: colors.rust, accentMix: 0.22 }),
+      cloth: Object.freeze({ scale: 2.8, variation: 0.09, accent: colors.mortar, accentMix: 0.08 }),
+    }),
+  }),
+});
 
 const shadow = (object, cast = true, receive = true) => {
   object.castShadow = cast;
@@ -22,9 +47,38 @@ const shadow = (object, cast = true, receive = true) => {
   return object;
 };
 
-const material = (color, roughness = 0.78, metalness = 0.04) => new THREE.MeshStandardMaterial({
-  color, roughness, metalness,
-});
+const material = (color, roughness = 0.78, metalness = 0.04, surface = null) => {
+  const result = new THREE.MeshStandardMaterial({ color, roughness, metalness });
+  if (!surface) return result;
+  result.onBeforeCompile = (shader) => {
+    shader.uniforms.uLookScale = { value: surface.scale };
+    shader.uniforms.uLookVariation = { value: surface.variation };
+    shader.uniforms.uLookAccent = { value: new THREE.Color(surface.accent) };
+    shader.uniforms.uLookAccentMix = { value: surface.accentMix };
+    shader.vertexShader = shader.vertexShader
+      .replace("#include <common>", "#include <common>\nvarying vec3 vLookWorldPosition;")
+      .replace("#include <begin_vertex>", "#include <begin_vertex>\nvLookWorldPosition = (modelMatrix * vec4(transformed, 1.0)).xyz;");
+    shader.fragmentShader = shader.fragmentShader
+      .replace("#include <common>", `#include <common>
+        varying vec3 vLookWorldPosition;
+        uniform float uLookScale;
+        uniform float uLookVariation;
+        uniform vec3 uLookAccent;
+        uniform float uLookAccentMix;
+        float lookHash(vec3 cell) {
+          return fract(sin(dot(cell, vec3(12.9898, 78.233, 45.164))) * 43758.5453);
+        }`)
+      .replace("#include <color_fragment>", `#include <color_fragment>
+        vec3 lookCell = floor(vLookWorldPosition * uLookScale);
+        float lookValue = lookHash(lookCell);
+        float lookBand = floor(lookValue * 4.0) / 3.0;
+        diffuseColor.rgb *= mix(1.0 - uLookVariation, 1.0 + uLookVariation, lookBand);
+        float lookAccent = step(0.78, lookValue) * uLookAccentMix;
+        diffuseColor.rgb = mix(diffuseColor.rgb, uLookAccent, lookAccent);`);
+  };
+  result.customProgramCacheKey = () => JSON.stringify(surface);
+  return result;
+};
 
 const disposeTree = (root) => root.traverse((object) => {
   object.geometry?.dispose();
@@ -42,7 +96,27 @@ const cellPosition = (plan, cell, elevation = 0) => new THREE.Vector3(
 );
 
 const addBox = (parent, size, position, boxMaterial, options = {}) => {
-  const mesh = shadow(new THREE.Mesh(new THREE.BoxGeometry(...size), boxMaterial));
+  let geometry;
+  const bevel = Math.min(options.bevel ?? 0, Math.min(...size) / 4);
+  if (bevel > 0) {
+    const [width, height, depth] = size;
+    const shape = new THREE.Shape()
+      .moveTo(-width / 2 + bevel, -height / 2 + bevel)
+      .lineTo(width / 2 - bevel, -height / 2 + bevel)
+      .lineTo(width / 2 - bevel, height / 2 - bevel)
+      .lineTo(-width / 2 + bevel, height / 2 - bevel)
+      .closePath();
+    geometry = new THREE.ExtrudeGeometry(shape, {
+      depth: Math.max(depth - bevel * 2, bevel),
+      bevelEnabled: true,
+      bevelSegments: 1,
+      bevelSize: bevel,
+      bevelThickness: bevel,
+      curveSegments: 1,
+    });
+    geometry.center();
+  } else geometry = new THREE.BoxGeometry(...size);
+  const mesh = shadow(new THREE.Mesh(geometry, boxMaterial));
   mesh.position.set(...position);
   if (options.rotationY) mesh.rotation.y = options.rotationY;
   parent.add(mesh);
@@ -126,15 +200,15 @@ const buildWalls = (root, plan, resources) => {
   }
 };
 
-const buildMasses = (root, plan, resources) => {
+const buildMasses = (root, plan, resources, look) => {
   for (const mass of plan.architecture.masses) {
     const width = mass.max.x - mass.min.x;
     const depth = mass.max.y - mass.min.y;
     const height = mass.height * 0.72;
     const x = (mass.min.x + mass.max.x) / 2 - plan.architecture.bounds.width / 2;
     const z = (mass.min.y + mass.max.y) / 2 - plan.architecture.bounds.height / 2;
-    addBox(root, [width - 0.08, height, depth - 0.08], [x, height / 2, z], resources.stone[1]);
-    addBox(root, [width + 0.03, 0.12, depth + 0.03], [x, height + 0.06, z], resources.stone[2]);
+    addBox(root, [width - 0.08, height, depth - 0.08], [x, height / 2, z], resources.stone[1], { bevel: look.bevel });
+    addBox(root, [width + 0.03, 0.12, depth + 0.03], [x, height + 0.06, z], resources.stone[2], { bevel: look.bevel * 0.65 });
   }
 };
 
@@ -155,7 +229,7 @@ const buildWater = (root, plan, resources, animatedMaterials) => {
   }
 };
 
-const buildDoor = (root, plan, scenario, entity, resources, glowLights) => {
+const buildDoor = (root, plan, scenario, entity, resources, glowLights, look) => {
   const group = new THREE.Group();
   group.position.copy(cellPosition(plan, entity.anchor.cell));
   group.position.z -= 0.38;
@@ -163,10 +237,10 @@ const buildDoor = (root, plan, scenario, entity, resources, glowLights) => {
   const integrity = stateOf(scenario, entity.id, "integrity", "intact");
   const ward = stateOf(scenario, entity.id, "ward", "sealed");
 
-  addBox(group, [0.25, 2.45, 0.48], [-0.58, 1.22, 0], resources.stone[2]);
-  addBox(group, [0.25, 2.45, 0.48], [0.58, 1.22, 0], resources.stone[2]);
-  addBox(group, [1.42, 0.3, 0.5], [0, 2.38, 0], resources.stone[2]);
-  addBox(group, [1.68, 0.13, 0.58], [0, 2.6, 0], resources.stone[1]);
+  addBox(group, [0.25, 2.45, 0.48], [-0.58, 1.22, 0], resources.stone[2], { bevel: look.bevel });
+  addBox(group, [0.25, 2.45, 0.48], [0.58, 1.22, 0], resources.stone[2], { bevel: look.bevel });
+  addBox(group, [1.42, 0.3, 0.5], [0, 2.38, 0], resources.stone[2], { bevel: look.bevel });
+  addBox(group, [1.68, 0.13, 0.58], [0, 2.6, 0], resources.stone[1], { bevel: look.bevel * 0.65 });
 
   if (integrity === "destroyed") {
     for (const [x, y, angle] of [[-0.34, .65, -.16], [.02, .42, .21], [.35, .78, -.25]]) {
@@ -240,15 +314,28 @@ const buildEffectAnchors = (root, plan, scenario) => {
   }
 };
 
-const actorMesh = (id, resources) => {
+const addActorSilhouette = (group, mesh, look, resources) => {
+  if (look.actorOutline <= 1) return;
+  const outline = new THREE.Mesh(mesh.geometry, resources.outline);
+  outline.position.copy(mesh.position);
+  outline.rotation.copy(mesh.rotation);
+  outline.scale.copy(mesh.scale).multiplyScalar(look.actorOutline);
+  outline.castShadow = false;
+  outline.receiveShadow = false;
+  group.add(outline);
+};
+
+const actorMesh = (id, resources, look) => {
   const group = new THREE.Group();
   const isPlayer = id === "player";
   const bodyMaterial = isPlayer ? resources.player : resources.gaoler;
   const cloak = shadow(new THREE.Mesh(new THREE.ConeGeometry(isPlayer ? .25 : .32, isPlayer ? .78 : .9, 7), bodyMaterial));
   cloak.position.y = isPlayer ? .43 : .48;
+  addActorSilhouette(group, cloak, look, resources);
   group.add(cloak);
   const head = shadow(new THREE.Mesh(new THREE.IcosahedronGeometry(isPlayer ? .15 : .17, 1), resources.skin));
   head.position.y = isPlayer ? .92 : 1.04;
+  addActorSilhouette(group, head, look, resources);
   group.add(head);
   if (isPlayer) {
     const blade = addBox(group, [.055, .65, .055], [.28, .58, 0], resources.cyanMetal);
@@ -260,9 +347,9 @@ const actorMesh = (id, resources) => {
   return group;
 };
 
-const buildActors = (root, plan, actorPositions, resources, actorMeshes) => {
+const buildActors = (root, plan, actorPositions, resources, actorMeshes, look) => {
   for (const actor of plan.actors) {
-    const mesh = actorMesh(actor.id, resources);
+    const mesh = actorMesh(actor.id, resources, look);
     const anchor = actorPositions?.[actor.id] ?? actor.anchor.cell;
     mesh.position.copy(cellPosition(plan, anchor, anchor.z ?? 0));
     actorMeshes.set(actor.id, mesh);
@@ -270,15 +357,16 @@ const buildActors = (root, plan, actorPositions, resources, actorMeshes) => {
   }
 };
 
-const makeResources = () => ({
-  stone: [material(colors.stone0), material(colors.stone1), material(colors.stone2, .7)],
-  iron: material(colors.iron, .42, .7),
-  rust: material(colors.rust, .68, .42),
+const makeResources = (look) => ({
+  stone: [material(colors.stone0, .78, .04, look.materials.stone), material(colors.stone1, .78, .04, look.materials.stone), material(colors.stone2, .7, .04, look.materials.stone)],
+  iron: material(colors.iron, .42, .7, look.materials.iron),
+  rust: material(colors.rust, .68, .42, look.materials.iron),
   waterBed: material(colors.water, .3, .18),
-  player: material(colors.player, .62),
-  gaoler: material(colors.gaoler, .74),
+  player: material(colors.player, .62, .04, look.materials.cloth),
+  gaoler: material(colors.gaoler, .74, .04, look.materials.cloth),
   skin: material(0x96735b, .85),
   cyanMetal: material(colors.cyan, .25, .6),
+  outline: new THREE.MeshBasicMaterial({ color: colors.void, side: THREE.BackSide }),
 });
 
 export function createGaolRenderer(container) {
@@ -289,12 +377,12 @@ export function createGaolRenderer(container) {
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.28;
+  renderer.toneMappingExposure = lookProfiles.procedural.exposure;
   container.replaceChildren(renderer.domElement);
 
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(colors.void);
-  scene.fog = new THREE.FogExp2(colors.fog, 0.045);
+  scene.fog = new THREE.FogExp2(colors.fog, lookProfiles.procedural.fogDensity);
   const camera = new THREE.OrthographicCamera(-7, 7, 3.15, -3.15, 0.1, 80);
   const hemi = new THREE.HemisphereLight(0x8aa8b8, 0x131c24, 2.05);
   scene.add(hemi);
@@ -317,6 +405,7 @@ export function createGaolRenderer(container) {
   let scenarioIdentity;
   let forensicState = false;
   let grid;
+  let look = lookProfiles.procedural;
 
   const fit = () => {
     const width = Math.max(container.clientWidth, 1);
@@ -341,18 +430,18 @@ export function createGaolRenderer(container) {
     actorMeshes = new Map();
     animatedMaterials = [];
     glowLights = [];
-    const resources = makeResources();
+    const resources = makeResources(look);
     const scenario = plan.scenarios.find((candidate) => candidate.id === scenarioId) ?? plan.scenarios[0];
     buildFloor(worldRoot, plan, resources);
     buildWalls(worldRoot, plan, resources);
-    buildMasses(worldRoot, plan, resources);
+    buildMasses(worldRoot, plan, resources, look);
     buildWater(worldRoot, plan, resources, animatedMaterials);
     for (const entity of plan.entities) {
-      if (entity.kind === "door") buildDoor(worldRoot, plan, scenario, entity, resources, glowLights);
+      if (entity.kind === "door") buildDoor(worldRoot, plan, scenario, entity, resources, glowLights, look);
       if (entity.kind === "light") buildBrazier(worldRoot, plan, scenario, entity, resources, glowLights);
     }
     buildEffectAnchors(worldRoot, plan, scenario);
-    buildActors(worldRoot, plan, actorPositions, resources, actorMeshes);
+    buildActors(worldRoot, plan, actorPositions, resources, actorMeshes, look);
     const { width, height } = plan.architecture.bounds;
     const target = new THREE.Vector3(0, .5, 0);
     camera.position.set(width * .86, Math.max(width, height) * .92, height * 1.08);
@@ -382,6 +471,16 @@ export function createGaolRenderer(container) {
     }
   };
 
+  const setLookProfile = (profileId) => {
+    const next = lookProfiles[profileId];
+    if (!next) throw new Error(`unknown look profile ${profileId}`);
+    if (next === look) return;
+    look = next;
+    scene.fog.density = look.fogDensity;
+    renderer.toneMappingExposure = look.exposure;
+    planIdentity = undefined;
+  };
+
   const clock = new THREE.Clock();
   const animate = () => {
     const elapsed = clock.getElapsedTime();
@@ -396,5 +495,5 @@ export function createGaolRenderer(container) {
   };
   animate();
 
-  return { present, renderer, scene, camera };
+  return { present, setLookProfile, renderer, scene, camera };
 }

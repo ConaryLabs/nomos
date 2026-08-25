@@ -38,6 +38,13 @@ content.
 See [AUTHORING.md](AUTHORING.md) for the intentionally small LLM authoring
 packet.
 
+The default `gaol_procedural_01` look is likewise renderer-owned: one bounded
+profile controls palette roles, coarse deterministic stone/iron/cloth variation,
+bevel treatment, actor silhouettes, exposure, and fog for every area. It uses no
+bitmap texture or generated image asset. `Look: procedural` switches to the
+untreated baseline in place, so visual iteration can compare the shared grammar
+without changing or reloading area content.
+
 Use WASD or the arrow keys to cross each room. Walk beside its primary gate,
 press `E` to ignite it, press `E` again to unseal it, and cross the resulting
 opening. After unsealing, walk beside the room's brazier and press `E` to
