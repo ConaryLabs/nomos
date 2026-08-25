@@ -31,7 +31,7 @@ fn key_order_and_whitespace_are_not_differences() {
 #[test]
 fn the_schema_field_is_ignored() {
     let js = br#"{"schema":"nomos.experiment.rendering_plan@1","deterministic":true}"#;
-    let rust = br#"{"deterministic":true,"schema":"nomos.rendering_plan@1"}"#;
+    let rust = br#"{"deterministic":true,"schema":"nomos.rendering_plan@2"}"#;
     assert!(normalized_differences(js, rust).is_empty());
     // Only at the top level, and only that name: a nested `schema` still counts.
     let left = br#"{"area":{"schema":1}}"#;
@@ -69,12 +69,20 @@ fn array_order_is_a_difference() {
 }
 
 #[test]
-fn numbers_compare_by_value_and_not_by_spelling() {
-    assert!(normalized_differences(br#"{"h":4.50}"#, br#"{"h":4.5}"#).is_empty());
+fn there_is_no_number_spelling_clause_left_to_normalize() {
+    // `@1` carried decimals, so the comparison had to say that `4.50` and
+    // `4.5` were one value spelled two ways. `@2` carries integers only, and
+    // the reader refuses a decimal outright, so the clause is gone rather than
+    // merely unused: no pair of distinct lexemes denoting one number is left
+    // for it to normalize.
+    let refusal = nomos_render_plan::json::parse(br#"{"h":4.5}"#)
+        .expect_err("a decimal is refused, not normalized");
+    assert_eq!(refusal.code().as_str(), "RP0205");
     assert_eq!(
-        normalized_differences(br#"{"h":4.5}"#, br#"{"h":4.6}"#).len(),
+        normalized_differences(br#"{"h":45}"#, br#"{"h":46}"#).len(),
         1
     );
+    assert!(normalized_differences(br#"{"h":45}"#, br#"{"h":45}"#).is_empty());
 }
 
 #[test]

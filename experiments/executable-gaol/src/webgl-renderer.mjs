@@ -1,4 +1,28 @@
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.185.1/build/three.module.min.js";
+import {
+  LOOK_PROFILE_IDS,
+  cellsOf,
+  doorState,
+  lightOf,
+  socketPosition,
+  wardSealed,
+} from "./renderer-catalog.mjs";
+
+// Lattice cells of elevation to WebGL world units. Horizontal cells are 1.0
+// world unit; vertical cells are shorter, so a 4.5-cell wall reads at the
+// height the door and brazier assemblies were modelled against. This was an
+// undeclared `* 0.72` applied to two content fields — the ownership audit's
+// second and third double authorities, where the same field meant one thing
+// here and another in the SVG renderer. Content now declares heights in
+// vertical steps and each renderer declares its own conversion out of cells.
+const VERTICAL_SCALE = 0.72;
+
+// This renderer's own camera. It never read the plan's `camera` block, which
+// is why that block is gone; these are the frustum and offset it actually
+// uses, now named rather than inlined at their use sites.
+const ORTHO_HALF_HEIGHT = 3.7;
+const CAMERA_OFFSET = Object.freeze({ x: 0.86, y: 0.92, z: 1.08 });
+const CAMERA_TARGET_HEIGHT = 0.5;
 
 const colors = Object.freeze({
   void: 0x090e13,
@@ -85,9 +109,6 @@ const disposeTree = (root) => root.traverse((object) => {
   if (Array.isArray(object.material)) object.material.forEach((entry) => entry.dispose());
   else object.material?.dispose();
 });
-
-const stateOf = (scenario, entity, machine, fallback) =>
-  scenario.machineStates[`${entity}.${machine}`] ?? fallback;
 
 const cellPosition = (plan, cell, elevation = 0) => new THREE.Vector3(
   cell.x + 0.5 - plan.architecture.bounds.width / 2,
@@ -186,9 +207,12 @@ const buildFloor = (root, plan, resources) => {
 
 const buildWalls = (root, plan, resources) => {
   const { width, height } = plan.architecture.bounds;
-  const wallHeight = plan.architecture.wallHeight * 0.72;
+  const wallHeight = cellsOf(plan.architecture.wall_height_steps) * VERTICAL_SCALE;
+  // The wall a door interrupts comes from the entity's declared
+  // `anchor.direction`, not from `cell.y === 0`. The projection has always
+  // carried the direction; the ownership audit recorded that nothing read it.
   const northDoors = new Set(plan.entities
-    .filter((entity) => entity.kind === "door" && entity.anchor.cell.y === 0)
+    .filter((entity) => entity.kind === "door" && entity.anchor.direction === "north")
     .map((entity) => entity.anchor.cell.x));
   for (let x = 0; x < width; x += 1) {
     if (!northDoors.has(x)) addStoneSegment(root, x + 0.5 - width / 2, -height / 2 - 0.18, wallHeight, "x", resources.stone);
@@ -204,7 +228,7 @@ const buildMasses = (root, plan, resources, look) => {
   for (const mass of plan.architecture.masses) {
     const width = mass.max.x - mass.min.x;
     const depth = mass.max.y - mass.min.y;
-    const height = mass.height * 0.72;
+    const height = cellsOf(mass.height_steps) * VERTICAL_SCALE;
     const x = (mass.min.x + mass.max.x) / 2 - plan.architecture.bounds.width / 2;
     const z = (mass.min.y + mass.max.y) / 2 - plan.architecture.bounds.height / 2;
     addBox(root, [width - 0.08, height, depth - 0.08], [x, height / 2, z], resources.stone[1], { bevel: look.bevel });
@@ -233,9 +257,7 @@ const buildDoor = (root, plan, scenario, entity, resources, glowLights, look) =>
   const group = new THREE.Group();
   group.position.copy(cellPosition(plan, entity.anchor.cell));
   group.position.z -= 0.38;
-  const access = stateOf(scenario, entity.id, "access", "locked");
-  const integrity = stateOf(scenario, entity.id, "integrity", "intact");
-  const ward = stateOf(scenario, entity.id, "ward", "sealed");
+  const { access, integrity, ward } = doorState(scenario, entity.id);
 
   addBox(group, [0.25, 2.45, 0.48], [-0.58, 1.22, 0], resources.stone[2], { bevel: look.bevel });
   addBox(group, [0.25, 2.45, 0.48], [0.58, 1.22, 0], resources.stone[2], { bevel: look.bevel });
@@ -277,7 +299,7 @@ const buildDoor = (root, plan, scenario, entity, resources, glowLights, look) =>
 const buildBrazier = (root, plan, scenario, entity, resources, glowLights) => {
   const group = new THREE.Group();
   group.position.copy(cellPosition(plan, entity.anchor.cell));
-  const lit = scenario.effectiveLight[entity.id] === true;
+  const lit = lightOf(scenario, entity.id) === true;
   const pedestal = shadow(new THREE.Mesh(new THREE.CylinderGeometry(.16, .23, .48, 8), resources.iron));
   pedestal.position.y = .24;
   group.add(pedestal);
@@ -300,16 +322,27 @@ const buildBrazier = (root, plan, scenario, entity, resources, glowLights) => {
   root.add(group);
 };
 
+// Effects are placed by the renderer catalog's socket table, not by a
+// coordinate in content. The `ward` socket resolves to the gate's ward height,
+// so the crescent stands upright on the gate facing the way the ward ring
+// faces, rather than lying flat on the floor at a hand-placed spot. Honouring
+// all three components of the socket is the point: a renderer that dropped its
+// elevation would be the wall-height double authority again in a new field.
 const buildEffectAnchors = (root, plan, scenario) => {
-  for (const effect of plan.effects.filter((entry) => entry.assembly === "visual/cyan_crescent")) {
-    const gate = plan.entities.find((entity) => entity.id === effect.anchorEntity);
-    if (!gate || stateOf(scenario, gate.id, "ward", "sealed") !== "sealed") continue;
-    const p = cellPosition(plan, { x: effect.presentationAnchor.x, y: effect.presentationAnchor.y });
+  const { width, height } = plan.architecture.bounds;
+  for (const effect of plan.effects) {
+    const gate = plan.entities.find((entity) => entity.id === effect.anchor.entity);
+    if (!gate) throw new Error(`effect ${effect.id} anchors to absent entity ${effect.anchor.entity}`);
+    if (!wardSealed(scenario, gate.id)) continue;
+    const socket = socketPosition(gate, effect.anchor.socket);
     const material = new THREE.MeshBasicMaterial({ color: colors.cyan, transparent: true, opacity: .34, blending: THREE.AdditiveBlending });
     const crescent = new THREE.Mesh(new THREE.TorusGeometry(.38, .055, 8, 32, Math.PI * 1.25), material);
-    crescent.rotation.x = -Math.PI / 2;
     crescent.rotation.z = -.45;
-    crescent.position.set(p.x, .09, p.z);
+    crescent.position.set(
+      socket.x - width / 2,
+      socket.z * VERTICAL_SCALE,
+      socket.y - height / 2,
+    );
     root.add(crescent);
   }
 };
@@ -350,7 +383,7 @@ const actorMesh = (id, resources, look) => {
 const buildActors = (root, plan, actorPositions, resources, actorMeshes, look) => {
   for (const actor of plan.actors) {
     const mesh = actorMesh(actor.id, resources, look);
-    const anchor = actorPositions?.[actor.id] ?? actor.anchor.cell;
+    const anchor = actorPositions?.[actor.id] ?? actor.cell;
     mesh.position.copy(cellPosition(plan, anchor, anchor.z ?? 0));
     actorMeshes.set(actor.id, mesh);
     root.add(mesh);
@@ -383,7 +416,11 @@ export function createGaolRenderer(container) {
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(colors.void);
   scene.fog = new THREE.FogExp2(colors.fog, lookProfiles.procedural.fogDensity);
-  const camera = new THREE.OrthographicCamera(-7, 7, 3.15, -3.15, 0.1, 80);
+  const camera = new THREE.OrthographicCamera(
+    -ORTHO_HALF_HEIGHT * 2, ORTHO_HALF_HEIGHT * 2,
+    ORTHO_HALF_HEIGHT, -ORTHO_HALF_HEIGHT,
+    0.1, 80,
+  );
   const hemi = new THREE.HemisphereLight(0x8aa8b8, 0x131c24, 2.05);
   scene.add(hemi);
   const moon = new THREE.DirectionalLight(0xabc8d7, 4.2);
@@ -412,11 +449,10 @@ export function createGaolRenderer(container) {
     const height = Math.max(container.clientHeight, 1);
     renderer.setSize(width, height, false);
     const aspect = width / height;
-    const halfHeight = 3.7;
-    camera.left = -halfHeight * aspect;
-    camera.right = halfHeight * aspect;
-    camera.top = halfHeight;
-    camera.bottom = -halfHeight;
+    camera.left = -ORTHO_HALF_HEIGHT * aspect;
+    camera.right = ORTHO_HALF_HEIGHT * aspect;
+    camera.top = ORTHO_HALF_HEIGHT;
+    camera.bottom = -ORTHO_HALF_HEIGHT;
     camera.updateProjectionMatrix();
   };
   new ResizeObserver(fit).observe(container);
@@ -443,8 +479,12 @@ export function createGaolRenderer(container) {
     buildEffectAnchors(worldRoot, plan, scenario);
     buildActors(worldRoot, plan, actorPositions, resources, actorMeshes, look);
     const { width, height } = plan.architecture.bounds;
-    const target = new THREE.Vector3(0, .5, 0);
-    camera.position.set(width * .86, Math.max(width, height) * .92, height * 1.08);
+    const target = new THREE.Vector3(0, CAMERA_TARGET_HEIGHT, 0);
+    camera.position.set(
+      width * CAMERA_OFFSET.x,
+      Math.max(width, height) * CAMERA_OFFSET.y,
+      height * CAMERA_OFFSET.z,
+    );
     camera.lookAt(target);
     planIdentity = plan.area.id;
     scenarioIdentity = scenario.id;
@@ -452,7 +492,7 @@ export function createGaolRenderer(container) {
 
   const updateActors = (plan, actorPositions) => {
     for (const actor of plan.actors) {
-      const anchor = actorPositions?.[actor.id] ?? actor.anchor.cell;
+      const anchor = actorPositions?.[actor.id] ?? actor.cell;
       actorMeshes.get(actor.id)?.position.copy(cellPosition(plan, anchor, anchor.z ?? 0));
     }
   };
@@ -472,6 +512,9 @@ export function createGaolRenderer(container) {
   };
 
   const setLookProfile = (profileId) => {
+    if (!LOOK_PROFILE_IDS.includes(profileId)) {
+      throw new Error(`unknown look profile ${profileId}`);
+    }
     const next = lookProfiles[profileId];
     if (!next) throw new Error(`unknown look profile ${profileId}`);
     if (next === look) return;

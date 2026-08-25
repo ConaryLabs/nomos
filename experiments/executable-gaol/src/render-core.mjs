@@ -1,3 +1,33 @@
+import {
+  cellsOf,
+  doorState,
+  lightOf,
+  movementOf,
+  socketPosition,
+  wardSealed,
+} from "./renderer-catalog.mjs";
+
+// The fixed oblique camera. These six values used to be typed into every
+// rendering plan and again into the area collection, read by this renderer and
+// ignored by the other one — the ownership audit's first double authority.
+// They are renderer-catalog constants, so they live in the renderer that
+// projects with them and appear in no content artifact.
+export const camera = Object.freeze({
+  identity: "gaol_oblique_01",
+  projection: "fixed_oblique",
+  width: 1200,
+  height: 540,
+  tileWidth: 96,
+  tileHeight: 50,
+});
+
+// Where the lattice origin lands on the canvas, and how tall one lattice cell
+// of elevation is in screen pixels. The second is this renderer's counterpart
+// of the WebGL renderer's VERTICAL_SCALE: both convert lattice cells into their
+// own space, and both are now declared rather than inlined.
+const ORIGIN = Object.freeze({ x: 470, y: 125 });
+const CELL_HEIGHT_PIXELS = 38;
+
 const palette = {
   void: "#10161d", fog: "#1c2832", stone0: "#202b34", stone1: "#2c3942",
   stone2: "#3c4a51", edge: "#536168", mortar: "#182128", iron: "#172128",
@@ -50,21 +80,22 @@ const pixelText = (text, x, y, scale, color) => {
 
 export function renderSvg(plan, scenarioId, forensic = false, presentation = {}) {
   const scenario = plan.scenarios.find((candidate) => candidate.id === scenarioId) ?? plan.scenarios[0];
-  const width = plan.camera.width;
-  const height = plan.camera.height;
-  const tw = plan.camera.tileWidth;
-  const th = plan.camera.tileHeight;
+  const width = camera.width;
+  const height = camera.height;
+  const tw = camera.tileWidth;
+  const th = camera.tileHeight;
   const roomWidth = plan.architecture.bounds.width;
   const roomHeight = plan.architecture.bounds.height;
-  const wallHeight = plan.architecture.wallHeight;
-  const origin = { x: 470, y: 125 };
-  const iso = (x, y, z = 0) => ({ x: origin.x + (x - y) * tw / 2, y: origin.y + (x + y) * th / 2 - z * 38 });
+  const wallHeight = cellsOf(plan.architecture.wall_height_steps);
+  const iso = (x, y, z = 0) => ({
+    x: ORIGIN.x + (x - y) * tw / 2,
+    y: ORIGIN.y + (x + y) * th / 2 - z * CELL_HEIGHT_PIXELS,
+  });
   const cell = (x, y) => {
     const a = iso(x, y), b = iso(x + 1, y), c = iso(x + 1, y + 1), d = iso(x, y + 1);
     return points([[a.x, a.y], [b.x, b.y], [c.x, c.y], [d.x, d.y]]);
   };
   const prefix = `g-${scenario.id.replaceAll(/[^a-z0-9]/g, "-")}`;
-  const machine = (entity, name, fallback) => scenario.machineStates[`${entity}.${name}`] ?? fallback;
   const chunks = [];
 
   chunks.push(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="Nomos executable gaol: ${esc(scenario.label)}">`);
@@ -105,18 +136,19 @@ export function renderSvg(plan, scenarioId, forensic = false, presentation = {})
     }
     if (forensic) {
       const p = iso((min.x + max.x + 1) / 2, (min.y + max.y + 1) / 2);
-      const movement = scenario.movement[entity.id];
+      const movement = movementOf(scenario, entity.id);
       chunks.push(`<g><rect x="${p.x-88}" y="${p.y+24}" width="176" height="38" rx="4" fill="#091016" opacity=".9"/>${pixelText(entity.id.replaceAll("_", " "), p.x-78, p.y+32, 1, palette.text)}${pixelText(`COST ${movement?.cost ?? "-"} X${min.x}Y${min.y} X${max.x}Y${max.y}`, p.x-78, p.y+47, 1, palette.waterHi)}</g>`);
     }
   }
 
   // Bounded lattice-authored masonry masses use one shared beveled grammar.
   for (const mass of plan.architecture.masses) {
+    const massHeight = cellsOf(mass.height_steps);
     const top = [
-      iso(mass.min.x, mass.min.y, mass.height),
-      iso(mass.max.x, mass.min.y, mass.height),
-      iso(mass.max.x, mass.max.y, mass.height),
-      iso(mass.min.x, mass.max.y, mass.height),
+      iso(mass.min.x, mass.min.y, massHeight),
+      iso(mass.max.x, mass.min.y, massHeight),
+      iso(mass.max.x, mass.max.y, massHeight),
+      iso(mass.min.x, mass.max.y, massHeight),
     ];
     const base = [
       iso(mass.min.x, mass.min.y),
@@ -126,18 +158,16 @@ export function renderSvg(plan, scenarioId, forensic = false, presentation = {})
     ];
     chunks.push(`<g filter="url(#${prefix}-shadow)"><polygon points="${points([[top[1].x,top[1].y],[top[2].x,top[2].y],[base[2].x,base[2].y],[base[1].x,base[1].y]])}" fill="${palette.stone0}" stroke="${palette.mortar}" stroke-width="3"/><polygon points="${points([[top[2].x,top[2].y],[top[3].x,top[3].y],[base[3].x,base[3].y],[base[2].x,base[2].y]])}" fill="${palette.stone1}" stroke="${palette.mortar}" stroke-width="3"/><polygon points="${points(top.map((p) => [p.x,p.y]))}" fill="${palette.stone2}" stroke="${palette.edge}" stroke-width="4"/><polyline points="${points([[top[1].x,top[1].y+7],[top[2].x,top[2].y+7],[top[3].x,top[3].y+7]])}" fill="none" stroke="${palette.edge}" stroke-width="3"/></g>`);
     if (forensic) {
-      const p = iso((mass.min.x + mass.max.x) / 2, (mass.min.y + mass.max.y) / 2, mass.height);
-      chunks.push(`<text x="${p.x}" y="${p.y-10}" text-anchor="middle" fill="${palette.text}" font-family="DejaVu Sans Mono, monospace" font-size="11">masonry/${esc(mass.id)} h=${mass.height}</text>`);
+      const p = iso((mass.min.x + mass.max.x) / 2, (mass.min.y + mass.max.y) / 2, massHeight);
+      chunks.push(`<text x="${p.x}" y="${p.y-10}" text-anchor="middle" fill="${palette.text}" font-family="DejaVu Sans Mono, monospace" font-size="11">masonry/${esc(mass.id)} h=${massHeight}</text>`);
     }
   }
 
   // Door assemblies are entirely data-driven.
   for (const entity of plan.entities.filter((entry) => entry.kind === "door")) {
     const p = iso(entity.anchor.cell.x + .5, entity.anchor.cell.y, 0);
-    const access = machine(entity.id, "access", "locked");
-    const integrity = machine(entity.id, "integrity", "intact");
-    const ward = machine(entity.id, "ward", "sealed");
-    const movement = scenario.movement[entity.id] ?? { disposition: "unknown", reasons: [] };
+    const { access, integrity, ward } = doorState(scenario, entity.id);
+    const movement = movementOf(scenario, entity.id) ?? { disposition: "unknown", reasons: [] };
     chunks.push(`<g filter="url(#${prefix}-shadow)">`);
     chunks.push(`<path d="M${p.x-46} ${p.y+8} V${p.y-74} Q${p.x} ${p.y-128} ${p.x+46} ${p.y-74} V${p.y+8}Z" fill="${palette.stone2}" stroke="${palette.edge}" stroke-width="7"/>`);
     chunks.push(`<path d="M${p.x-31} ${p.y+8} V${p.y-69} Q${p.x} ${p.y-105} ${p.x+31} ${p.y-69} V${p.y+8}Z" fill="#0c1217" stroke="${palette.iron}" stroke-width="5"/>`);
@@ -160,7 +190,7 @@ export function renderSvg(plan, scenarioId, forensic = false, presentation = {})
   // Brazier and bounded light pool.
   for (const entity of plan.entities.filter((entry) => entry.kind === "light")) {
     const p = iso(entity.anchor.cell.x + .5, entity.anchor.cell.y + .5);
-    const lit = scenario.effectiveLight[entity.id];
+    const lit = lightOf(scenario, entity.id);
     if (lit) chunks.push(`<ellipse cx="${p.x}" cy="${p.y+8}" rx="150" ry="74" fill="url(#${prefix}-light)"/>`);
     chunks.push(`<g filter="url(#${prefix}-shadow)"><path d="M${p.x-18} ${p.y+10} L${p.x-12} ${p.y-18} H${p.x+12} L${p.x+18} ${p.y+10}Z" fill="${palette.iron}" stroke="${palette.rust}" stroke-width="4"/>`);
     if (lit) chunks.push(`<path d="M${p.x} ${p.y-15} C${p.x-22} ${p.y-41} ${p.x+4} ${p.y-56} ${p.x+1} ${p.y-74} C${p.x+27} ${p.y-49} ${p.x+20} ${p.y-25} ${p.x} ${p.y-15}Z" fill="${palette.amber}" stroke="#ffe3a0" stroke-width="2"/>`);
@@ -170,7 +200,7 @@ export function renderSvg(plan, scenarioId, forensic = false, presentation = {})
 
   // Readable actor silhouettes.
   for (const actor of plan.actors) {
-    const anchor = presentation.actorPositions?.[actor.id] ?? actor.anchor.cell;
+    const anchor = presentation.actorPositions?.[actor.id] ?? actor.cell;
     const p = iso(anchor.x + .5, anchor.y + .5, anchor.z ?? 0);
     if (actor.id === "player") {
       chunks.push(`<g filter="url(#${prefix}-shadow)"><ellipse cx="${p.x}" cy="${p.y+12}" rx="22" ry="9" fill="#080d11" opacity=".6"/><circle cx="${p.x}" cy="${p.y-42}" r="10" fill="#80aeb0"/><path d="M${p.x-12} ${p.y-31} L${p.x-20} ${p.y+7} L${p.x-4} ${p.y+1} L${p.x+5} ${p.y+15} L${p.x+17} ${p.y+8} L${p.x+11} ${p.y-30}Z" fill="${palette.teal}" stroke="#182a2e" stroke-width="4"/><path d="M${p.x+9} ${p.y-17} L${p.x+36} ${p.y-39}" stroke="${palette.cyanDim}" stroke-width="5"/></g>`);
@@ -181,20 +211,27 @@ export function renderSvg(plan, scenarioId, forensic = false, presentation = {})
   }
 
   // Restrained semantic effect, kept below actor salience.
-  for (const effect of plan.effects.filter((entry) => entry.assembly === "visual/cyan_crescent")) {
-    const gate = plan.entities.find((entry) => entry.id === effect.anchorEntity);
-    if (!gate || machine(gate.id, "ward", "sealed") !== "sealed") continue;
-    const p = iso(effect.presentationAnchor.x, effect.presentationAnchor.y, effect.presentationAnchor.z ?? 0);
+  //
+  // Placement comes from the renderer catalog's socket table, not from content:
+  // the effect names `{entity, socket}` and this renderer decides where that
+  // socket is. An effect whose anchor entity is absent from the plan is a build
+  // failure rather than an unplaced glyph.
+  for (const effect of plan.effects) {
+    const gate = plan.entities.find((entry) => entry.id === effect.anchor.entity);
+    if (!gate) throw new Error(`effect ${effect.id} anchors to absent entity ${effect.anchor.entity}`);
+    if (!wardSealed(scenario, gate.id)) continue;
+    const socket = socketPosition(gate, effect.anchor.socket);
+    const p = iso(socket.x, socket.y, socket.z);
     chunks.push(`<path d="M${p.x-45} ${p.y+8} Q${p.x} ${p.y-48} ${p.x+43} ${p.y-5} Q${p.x+5} ${p.y-24} ${p.x-45} ${p.y+8}Z" fill="${palette.cyan}" opacity=".5" stroke="#c0ffff" stroke-width="2"/>`);
     chunks.push(`<circle cx="${p.x+54}" cy="${p.y-17}" r="3" fill="${palette.cyan}"/><circle cx="${p.x+64}" cy="${p.y-4}" r="2" fill="${palette.cyan}"/>`);
   }
 
   // Minimal edge UI.
   chunks.push(`<g><rect x="32" y="31" width="310" height="58" rx="9" fill="#0a1117" opacity=".82" stroke="#39474d"/>${pixelText(`NOMOS // ${scenario.label}`, 49, 43, 2, palette.text)}<rect x="49" y="66" width="128" height="7" rx="3" fill="#28363d"/><rect x="49" y="66" width="102" height="7" rx="3" fill="${palette.teal}"/><circle cx="278" cy="69" r="9" fill="none" stroke="${palette.cyan}" stroke-width="2"/><path d="M271 69 H285 M278 62 V76" stroke="${palette.cyan}" stroke-width="2"/></g>`);
-  const primaryMovement = scenario.movement[plan.presentation.primaryGate];
-  const waterCost = Math.max(...plan.entities.filter((entry) => entry.kind === "water").map((entry) => scenario.movement[entry.id]?.cost ?? 1));
-  chunks.push(`<g><rect x="870" y="31" width="298" height="82" rx="9" fill="#0a1117" opacity=".84" stroke="#39474d"/>${pixelText(plan.presentation.primaryGate.replaceAll("_", " "), 891, 45, 2, palette.muted)}${pixelText(primaryMovement?.disposition ?? "unknown", 891, 66, 3, primaryMovement?.disposition === "blocked" ? palette.danger : palette.cyan)}${pixelText(`WATER ${waterCost} TICK ${scenario.tick} ${scenario.stateHash.slice(0,8)}`, 891, 95, 1, palette.text)}</g>`);
-  if (forensic) chunks.push(`<g font-family="DejaVu Sans Mono, monospace" font-size="11"><rect x="31" y="454" width="1138" height="67" rx="7" fill="#071016" opacity=".92" stroke="${palette.cyanDim}"/><text x="48" y="477" fill="${palette.cyan}">FORENSIC PROJECTION OWNERSHIP</text><text x="48" y="496" fill="${palette.text}">renderer input: nomos.rendering_plan@1 | source/World IR unavailable</text><text x="48" y="515" fill="${palette.muted}">movement: navigation projection + runtime state | light: simulation/persistence projection + runtime state | visuals: stable assembly IDs</text></g>`);
+  const primaryMovement = movementOf(scenario, plan.objective.gate);
+  const waterCost = Math.max(...plan.entities.filter((entry) => entry.kind === "water").map((entry) => movementOf(scenario, entry.id)?.cost ?? 1));
+  chunks.push(`<g><rect x="870" y="31" width="298" height="82" rx="9" fill="#0a1117" opacity=".84" stroke="#39474d"/>${pixelText(plan.objective.gate.replaceAll("_", " "), 891, 45, 2, palette.muted)}${pixelText(primaryMovement?.disposition ?? "unknown", 891, 66, 3, primaryMovement?.disposition === "blocked" ? palette.danger : palette.cyan)}${pixelText(`WATER ${waterCost} TICK ${scenario.tick} ${scenario.state_hash.slice(0,8)}`, 891, 95, 1, palette.text)}</g>`);
+  if (forensic) chunks.push(`<g font-family="DejaVu Sans Mono, monospace" font-size="11"><rect x="31" y="454" width="1138" height="67" rx="7" fill="#071016" opacity=".92" stroke="${palette.cyanDim}"/><text x="48" y="477" fill="${palette.cyan}">FORENSIC PROJECTION OWNERSHIP</text><text x="48" y="496" fill="${palette.text}">renderer input: nomos.rendering_plan@2 | source/World IR unavailable</text><text x="48" y="515" fill="${palette.muted}">movement: navigation projection + runtime state | light: simulation/persistence projection + runtime state | visuals: stable assembly IDs</text></g>`);
   chunks.push(`</svg>`);
   return chunks.join("");
 }

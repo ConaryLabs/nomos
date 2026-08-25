@@ -15,10 +15,10 @@ experiments/executable-gaol/gaol capture
 
 That diagnostic command compiles all four area sources, executes twenty real
 Nomos command scripts, and then hands the result to the accepted Rust compiler
-`nomos-render-plan` (issue #139), which derives four `nomos.rendering_plan@1`
-artifacts from `nomos entity-catalog`, one `nomos effective-facts` document per
-scenario, the run bundles, the four projection members, and `area.json` — and
-from nothing else. It then checks their exact shared visual grammar, emits
+`nomos-render-plan` (issues #139 and #146), which derives four
+`nomos.rendering_plan@2` artifacts from `nomos entity-catalog`, one `nomos
+effective-facts` document per scenario, the run bundles, the four projection
+members, and each area's `presentation.json` — and from nothing else. It then checks their exact shared visual grammar, emits
 deterministic SVG frames, and rasterizes a cross-area PNG contact sheet with
 `rsvg-convert` when available. SVG is retained as exact semantic/capture
 evidence; it is no longer the playable presentation.
@@ -30,6 +30,15 @@ Its predecessor `src/build-plan.mjs` classified doors by
 JavaScript; it is deleted, and
 `experiments/executable-gaol/compare-rendering-plan.sh` is the harness that
 proved the replacement equal on all four areas before it was removed.
+
+Content is typed too. `presentation.json` carries schema
+`nomos.presentation_source@1`, decoded strictly by the same crate: versioned,
+with every field set checked exactly, every identifier checked against a
+declared grammar, and **no decimal anywhere** — heights are integer tenths of a
+lattice cell and effects attach to a named socket rather than to a coordinate.
+[AUTHORING.md](AUTHORING.md) is the packet; `src/renderer-catalog.mjs` is where
+the renderer says what a socket, an assembly, or a family name means, which is
+the half content may name but not define.
 
 To use the interactive state and forensic-overlay controls:
 
@@ -43,7 +52,8 @@ parse `.nomos`, World IR, or compiler receipts. Its pinned Three.js backend
 supplies meshes, depth, shadows, fog, real point lights, and animated shader
 water. North Gaol, Cistern Walk, Ember Vault, and Ossuary Reach use the same
 camera, bounded palette, materials, assemblies, actor silhouettes, beveled
-masonry vocabulary, effect language, and renderer. Their doors, water, light,
+masonry vocabulary, effect language, and renderer — all of which the renderer
+owns, so none of them appears in a content file. Their doors, water, light,
 actors, wall height, masonry masses, and composition come from separate area
 content.
 See [AUTHORING.md](AUTHORING.md) for the intentionally small LLM authoring

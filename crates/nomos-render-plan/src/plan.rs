@@ -1,30 +1,48 @@
 //! The rendering plan: schema identity, assembly, and canonical bytes.
 //!
-//! This is the owner file for `nomos.rendering_plan@1`, registered in
+//! This is the owner file for `nomos.rendering_plan@2`, registered in
 //! `docs/evaluation/R1_SCHEMA_OWNERSHIP.md`.
 //!
-//! The document's field names and structure are those of the study's
-//! `nomos.experiment.rendering_plan@1`, unchanged apart from the identity
-//! itself, so `render-core.mjs`, `play-state.mjs`, `webgl-renderer.mjs`,
-//! `build-collection.mjs`, and the viewer keep working with only their
-//! schema-string checks updated. What changed is where every field comes from:
-//! kinds from the entity catalog rather than from a namespace suffix,
-//! dispositions from `nomos.effective_facts@1` rather than from a second
-//! activation evaluator, and the bytes from a canonical encoder rather than
-//! from `JSON.stringify(plan, null, 2)`.
+//! # Why `@2`, and what it retired
+//!
+//! `@1` reproduced the study's document shape so that R1-2's consumers changed
+//! only their schema-string check. That shape was camelCase, keyed two of its
+//! objects by dotted identifiers, and carried the decimal presentation values
+//! `area.json` authored — three things `nomos_core::CanonicalValue` cannot
+//! express — so R1-2 had to ship a private canonical encoder in `src/doc.rs`
+//! (issue #144), a second implementation of the `KERNEL.md` section 7 byte
+//! profile in the accepted tree.
+//!
+//! `@2` is designed to fit inside `CanonicalValue` with no widening at all, and
+//! `doc.rs` is deleted:
+//!
+//! - every field name is snake_case, so it is a `nomos_core::FieldName`;
+//! - the two dotted-key objects become arrays of declared-field pairs —
+//!   `projection_digests` as `{file, digest}` and `scenarios[].machine_states`
+//!   as `{namespace, state}`, which is how the kernel already spells the same
+//!   collection in a run bundle's `final-state.json`;
+//! - the two entity-keyed objects, `movement` and `effective_light`, become the
+//!   `{entity, ...}` arrays `nomos.effective_facts@1` itself uses, ordered by
+//!   `nomos_core::canonical::keyed_array` so that the stable-ID ordering rule
+//!   and duplicate-identity refusal come from the kernel rather than from here;
+//! - heights are integer `vertical_step` counts, so no decimal survives.
+//!
+//! `docs/review/presentation-source.md` section 2 is the full delta, with a
+//! reason for each of the twenty changes.
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
+use nomos_core::CanonicalValue;
+use nomos_core::canonical::keyed_array;
 use nomos_core::id::SchemaId;
 
-use crate::area::{self, AreaSource};
 use crate::catalog::EntityCatalog;
-use crate::doc::PlanValue;
 use crate::error::{PlanError, PlanResult, codes};
 use crate::facts::EffectiveFacts;
 use crate::read;
 use crate::runs::{self, ScenarioRun};
+use crate::source::{self, PresentationSource};
 use crate::world;
 
 /// The rendering plan's schema identity.
@@ -35,27 +53,17 @@ use crate::world;
 /// rule out.
 #[must_use]
 pub fn rendering_plan_schema() -> SchemaId {
-    SchemaId::new("nomos.rendering_plan", 1).expect("the rendering-plan schema id is a literal")
+    SchemaId::new("nomos.rendering_plan", 2).expect("the rendering-plan schema id is a literal")
 }
 
-/// The fixed camera and palette identities the plan republishes.
+/// The one objective kind the bounded profile declares.
 ///
-/// `docs/review/executable-gaol-ownership-audit.md` section 2 item 1 and
-/// section 4's last row record these as renderer-catalog constants re-typed
-/// into every content artifact, and section 2 item 9 records `palette` as a
-/// string no consumer dereferences. R1-2 reproduces them unchanged; R1-3 and
-/// R1-4 own moving them to the renderer that should hold them. Their prior site
-/// is `experiments/executable-gaol/src/build-plan.mjs:177-178`.
-mod look {
-    pub const CAMERA_IDENTITY: &str = "gaol_oblique_01";
-    pub const CAMERA_PROJECTION: &str = "fixed_oblique";
-    pub const CAMERA_WIDTH: u64 = 1200;
-    pub const CAMERA_HEIGHT: u64 = 540;
-    pub const TILE_WIDTH: u64 = 96;
-    pub const TILE_HEIGHT: u64 = 50;
-    pub const PALETTE: &str = "gaol_bounded_01";
-    pub const UI_ANCHORS: [&str; 4] = ["vitals", "abilities", "gate_state", "water_cost"];
-}
+/// The study authored `objective: {kind, target}` in every `area.json` and the
+/// compiler forced `target == primaryGate == exit.gate`, so two of the three
+/// carried no information (the audit's "Double authorities" item 5). The
+/// objective is now derived here from the single authored `route.exit.gate`,
+/// and its kind is this constant rather than a string content repeats.
+const OBJECTIVE_KIND: &str = "exit_via";
 
 /// The compiler's declared inputs.
 ///
@@ -72,14 +80,14 @@ pub struct Inputs<'a> {
     pub runs: &'a Path,
     /// The compiled world package, opened for four projection members only.
     pub world: &'a Path,
-    /// The presentation source.
-    pub area: &'a Path,
+    /// The `nomos.presentation_source@1` document.
+    pub source: &'a Path,
 }
 
 /// A compiled plan.
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct CompiledPlan {
-    /// Canonical bytes under `nomos.rendering_plan@1`.
+    /// Canonical bytes under `nomos.rendering_plan@2`.
     pub bytes: Vec<u8>,
     /// Entity count, for the compiler's status line.
     pub entity_count: usize,
@@ -97,12 +105,12 @@ pub struct CompiledPlan {
 pub fn compile(inputs: Inputs<'_>) -> PlanResult<CompiledPlan> {
     let catalog_document = read::read_document(inputs.catalog)?;
     let catalog = EntityCatalog::decode(&catalog_document, inputs.catalog)?;
-    let kinds: BTreeMap<String, &'static str> = catalog
+    let kinds: BTreeMap<String, crate::catalog::EntityKind> = catalog
         .entities()
         .iter()
-        .map(|entity| (entity.id.clone(), entity.kind.as_str()))
+        .map(|entity| (entity.id.clone(), entity.kind))
         .collect();
-    let area = area::read_area(inputs.area, &|entity| kinds.get(entity).copied())?;
+    let presentation = source::read_source(inputs.source, &|entity| kinds.get(entity).copied())?;
 
     let projections = world::read_projections(inputs.world)?;
     let scenario_runs = runs::read_runs(inputs.runs)?;
@@ -121,46 +129,45 @@ pub fn compile(inputs: Inputs<'_>) -> PlanResult<CompiledPlan> {
             .iter()
             .filter(|claim| claim.resolver == "movement")
             .map(|claim| {
-                PlanValue::object([
-                    ("claim", PlanValue::text(claim.id.clone())),
-                    ("source", PlanValue::from_canonical(&claim.source)),
+                CanonicalValue::object_declared([
+                    ("claim", CanonicalValue::text(claim.id.clone())),
+                    ("source", claim.source.clone()),
                 ])
             })
             .collect();
-        entities.push(PlanValue::object([
-            ("id", PlanValue::text(entity.id.clone())),
-            ("kind", PlanValue::text(entity.kind.as_str())),
+        entities.push(CanonicalValue::object_declared([
+            ("anchor", entity.binding.clone()),
+            ("id", CanonicalValue::text(entity.id.clone())),
+            ("kind", CanonicalValue::text(entity.kind.as_str())),
             (
-                "visualAssembly",
-                PlanValue::text(entity.kind.visual_assembly()),
-            ),
-            (
-                "materialFamily",
-                PlanValue::text(entity.kind.material_family()),
-            ),
-            ("anchor", PlanValue::from_canonical(&entity.binding)),
-            (
-                "machineNamespaces",
-                PlanValue::Array(
+                "machine_namespaces",
+                CanonicalValue::Array(
                     entity
                         .machine_namespaces
                         .iter()
-                        .map(|namespace| PlanValue::text(namespace.clone()))
+                        .map(|namespace| CanonicalValue::text(namespace.clone()))
                         .collect(),
                 ),
             ),
-            ("provenance", PlanValue::Array(provenance)),
+            (
+                "material_family",
+                CanonicalValue::text(entity.kind.material_family()),
+            ),
+            ("provenance", CanonicalValue::Array(provenance)),
+            (
+                "visual_assembly",
+                CanonicalValue::text(entity.kind.visual_assembly()),
+            ),
         ]));
     }
 
     let mut scenarios = Vec::new();
     for run in &scenario_runs {
         let fact = &facts[&run.id];
-        let movement = PlanValue::keyed_object(fact.movement.iter().map(|(entity, resolved)| {
+        let movement = stable(fact.movement.iter().map(|(entity, resolved)| {
             (
                 entity.clone(),
-                PlanValue::object([
-                    ("disposition", PlanValue::text(resolved.disposition.clone())),
+                CanonicalValue::object_declared([
                     // A blocked subject's cost is spelled `null`: the kernel's
                     // Blocked variant carries no cost key, and the plan has
                     // always published one. Presentation, not semantics —
@@ -168,64 +175,94 @@ pub fn compile(inputs: Inputs<'_>) -> PlanResult<CompiledPlan> {
                     // normalization in the comparison.
                     (
                         "cost",
-                        resolved.cost.map_or(PlanValue::Null, PlanValue::Uint),
+                        resolved
+                            .cost
+                            .map_or(CanonicalValue::Null, CanonicalValue::Uint),
                     ),
                     (
+                        "disposition",
+                        CanonicalValue::text(resolved.disposition.clone()),
+                    ),
+                    ("entity", CanonicalValue::text(entity.clone())),
+                    (
                         "reasons",
-                        PlanValue::Array(
+                        CanonicalValue::Array(
                             resolved
                                 .reasons
                                 .iter()
-                                .map(|reason| PlanValue::text(reason.clone()))
+                                .map(|reason| CanonicalValue::text(reason.clone()))
                                 .collect(),
                         ),
                     ),
                 ]),
             )
         }))?;
-        let effective_light = PlanValue::keyed_object(
-            fact.light
-                .iter()
-                .map(|(entity, emitting)| (entity.clone(), PlanValue::Bool(*emitting))),
-        )?;
-        let machine_states = PlanValue::keyed_object(
-            run.machine_states
-                .iter()
-                .map(|(namespace, state)| (namespace.clone(), PlanValue::text(state.clone()))),
-        )?;
-        scenarios.push(PlanValue::object([
-            ("id", PlanValue::text(run.id.clone())),
-            ("label", PlanValue::text(scenario_label(&run.id))),
-            ("tick", PlanValue::Uint(fact.tick)),
-            ("stateHash", PlanValue::text(fact.state_hash.clone())),
-            ("machineStates", machine_states),
+        let effective_light = stable(fact.light.iter().map(|(entity, emitting)| {
+            (
+                entity.clone(),
+                CanonicalValue::object_declared([
+                    ("emitting", CanonicalValue::Bool(*emitting)),
+                    ("entity", CanonicalValue::text(entity.clone())),
+                ]),
+            )
+        }))?;
+        let machine_states = stable(run.machine_states.iter().map(|(namespace, state)| {
+            (
+                namespace.clone(),
+                CanonicalValue::object_declared([
+                    ("namespace", CanonicalValue::text(namespace.clone())),
+                    ("state", CanonicalValue::text(state.clone())),
+                ]),
+            )
+        }))?;
+        scenarios.push(CanonicalValue::object_declared([
+            ("effective_light", effective_light),
+            ("id", CanonicalValue::text(run.id.clone())),
+            ("label", CanonicalValue::text(scenario_label(&run.id))),
+            ("machine_states", machine_states),
             ("movement", movement),
-            ("effectiveLight", effective_light),
+            ("state_hash", CanonicalValue::text(fact.state_hash.clone())),
+            ("tick", CanonicalValue::Uint(fact.tick)),
         ]));
     }
 
     let interactions = edges
         .iter()
         .map(|edge| {
-            PlanValue::object([
-                ("id", PlanValue::text(edge.id.clone())),
-                ("fromScenario", PlanValue::text(edge.from_scenario.clone())),
-                ("toScenario", PlanValue::text(edge.to_scenario.clone())),
-                ("targetEntity", PlanValue::text(edge.target_entity.clone())),
-                ("action", PlanValue::text(edge.action.clone())),
+            CanonicalValue::object_declared([
+                ("action", CanonicalValue::text(edge.action.clone())),
                 (
-                    "inputStateHash",
-                    PlanValue::text(edge.input_state_hash.clone()),
+                    "from_scenario",
+                    CanonicalValue::text(edge.from_scenario.clone()),
+                ),
+                ("id", CanonicalValue::text(edge.id.clone())),
+                (
+                    "input_state_hash",
+                    CanonicalValue::text(edge.input_state_hash.clone()),
                 ),
                 (
-                    "resultingStateHash",
-                    PlanValue::text(edge.resulting_state_hash.clone()),
+                    "resulting_state_hash",
+                    CanonicalValue::text(edge.resulting_state_hash.clone()),
+                ),
+                (
+                    "target_entity",
+                    CanonicalValue::text(edge.target_entity.clone()),
+                ),
+                (
+                    "to_scenario",
+                    CanonicalValue::text(edge.to_scenario.clone()),
                 ),
             ])
         })
         .collect();
 
-    let plan = assemble(&area, &projections, entities, scenarios, interactions)?;
+    let plan = assemble(
+        &presentation,
+        &projections,
+        entities,
+        scenarios,
+        interactions,
+    );
     let mut bytes = plan.to_canonical_bytes();
     bytes.push(b'\n');
     Ok(CompiledPlan {
@@ -236,93 +273,221 @@ pub fn compile(inputs: Inputs<'_>) -> PlanResult<CompiledPlan> {
     })
 }
 
+/// Builds one stable-ID-ordered array.
+///
+/// `nomos_core::canonical::keyed_array` is `KERNEL.md` section 7's ordering
+/// rule as a function: entity collections are arrays ordered by stable entity
+/// ID, machine collections by canonical namespace ID, and a repeated ID is
+/// refused rather than silently resolved.
+fn stable(items: impl IntoIterator<Item = (String, CanonicalValue)>) -> PlanResult<CanonicalValue> {
+    keyed_array(items).map_err(|diagnostic| {
+        PlanError::new(
+            codes::DOCUMENT_SHAPE,
+            format!("plan collection is not stably keyed: {diagnostic}"),
+        )
+    })
+}
+
+fn cell(value: source::Cell) -> CanonicalValue {
+    CanonicalValue::object_declared([
+        ("x", CanonicalValue::Int(value.x)),
+        ("y", CanonicalValue::Int(value.y)),
+        ("z", CanonicalValue::Int(value.z)),
+    ])
+}
+
+fn corner(value: source::Corner) -> CanonicalValue {
+    CanonicalValue::object_declared([
+        ("x", CanonicalValue::Int(value.x)),
+        ("y", CanonicalValue::Int(value.y)),
+    ])
+}
+
+fn architecture(value: &source::Architecture) -> CanonicalValue {
+    CanonicalValue::object_declared([
+        (
+            "bounds",
+            CanonicalValue::object_declared([
+                ("height", CanonicalValue::Int(value.bounds.height)),
+                ("width", CanonicalValue::Int(value.bounds.width)),
+            ]),
+        ),
+        (
+            "masses",
+            CanonicalValue::Array(
+                value
+                    .masses
+                    .iter()
+                    .map(|mass| {
+                        CanonicalValue::object_declared([
+                            ("height_steps", CanonicalValue::Int(mass.height_steps)),
+                            ("id", CanonicalValue::text(mass.id.clone())),
+                            ("max", corner(mass.max)),
+                            ("min", corner(mass.min)),
+                        ])
+                    })
+                    .collect(),
+            ),
+        ),
+        (
+            "style",
+            CanonicalValue::object_declared([
+                (
+                    "assembly",
+                    CanonicalValue::text(value.style.assembly.clone()),
+                ),
+                (
+                    "material_family",
+                    CanonicalValue::text(value.style.material_family.clone()),
+                ),
+                (
+                    "trim_family",
+                    CanonicalValue::text(value.style.trim_family.clone()),
+                ),
+            ]),
+        ),
+        (
+            "wall_height_steps",
+            CanonicalValue::Int(value.wall_height_steps),
+        ),
+    ])
+}
+
 fn assemble(
-    area: &AreaSource,
+    presentation: &PresentationSource,
     projections: &[world::ProjectionFacts],
-    entities: Vec<PlanValue>,
-    scenarios: Vec<PlanValue>,
-    interactions: Vec<PlanValue>,
-) -> PlanResult<PlanValue> {
-    let projection_digests = PlanValue::keyed_object(
+    entities: Vec<CanonicalValue>,
+    scenarios: Vec<CanonicalValue>,
+    interactions: Vec<CanonicalValue>,
+) -> CanonicalValue {
+    // Published in the declared PROJECTION_FILES order, row for row with
+    // `projection_schemas`, rather than sorted by file name: the two arrays
+    // describe the same four members and must not be able to disagree about
+    // which row is which.
+    let projection_digests = CanonicalValue::Array(
         projections
             .iter()
-            .map(|facts| (facts.file.to_owned(), PlanValue::text(facts.digest.clone()))),
-    )?;
-    Ok(PlanValue::object([
+            .map(|facts| {
+                CanonicalValue::object_declared([
+                    ("digest", CanonicalValue::text(facts.digest.clone())),
+                    ("file", CanonicalValue::text(facts.file)),
+                ])
+            })
+            .collect(),
+    );
+
+    let mut route = vec![(
+        "to_area",
+        presentation
+            .route
+            .exit
+            .to_area
+            .clone()
+            .map_or(CanonicalValue::Null, CanonicalValue::text),
+    )];
+    if let Some(entry) = presentation.route.entry {
+        route.push(("entry", cell(entry)));
+    }
+
+    CanonicalValue::object_declared([
         (
-            "schema",
-            PlanValue::text(rendering_plan_schema().to_string()),
+            "actors",
+            CanonicalValue::Array(
+                presentation
+                    .actors
+                    .iter()
+                    .map(|actor| {
+                        CanonicalValue::object_declared([
+                            ("assembly", CanonicalValue::text(actor.assembly.clone())),
+                            ("cell", cell(actor.cell)),
+                            ("id", CanonicalValue::text(actor.id.clone())),
+                        ])
+                    })
+                    .collect(),
+            ),
         ),
-        ("deterministic", PlanValue::Bool(true)),
+        ("architecture", architecture(&presentation.architecture)),
         (
             "area",
-            PlanValue::object([
-                ("id", PlanValue::text(area.id.clone())),
-                ("label", PlanValue::text(area.label.clone())),
-                ("start", PlanValue::Bool(area.start)),
+            CanonicalValue::object_declared([
+                ("id", CanonicalValue::text(presentation.area.id.clone())),
+                (
+                    "label",
+                    CanonicalValue::text(presentation.area.label.clone()),
+                ),
+                ("start", CanonicalValue::Bool(presentation.area.start)),
             ]),
         ),
         (
-            "projectionSchemas",
-            PlanValue::Array(
+            "effects",
+            CanonicalValue::Array(
+                presentation
+                    .effects
+                    .iter()
+                    .map(|effect| {
+                        CanonicalValue::object_declared([
+                            (
+                                "anchor",
+                                CanonicalValue::object_declared([
+                                    ("entity", CanonicalValue::text(effect.anchor.entity.clone())),
+                                    ("socket", CanonicalValue::text(effect.anchor.socket.clone())),
+                                ]),
+                            ),
+                            ("assembly", CanonicalValue::text(effect.assembly.clone())),
+                            ("id", CanonicalValue::text(effect.id.clone())),
+                        ])
+                    })
+                    .collect(),
+            ),
+        ),
+        ("entities", CanonicalValue::Array(entities)),
+        ("interactions", CanonicalValue::Array(interactions)),
+        (
+            "objective",
+            CanonicalValue::object_declared([
+                (
+                    "gate",
+                    CanonicalValue::text(presentation.route.exit.gate.clone()),
+                ),
+                ("kind", CanonicalValue::text(OBJECTIVE_KIND)),
+            ]),
+        ),
+        ("projection_digests", projection_digests),
+        (
+            "projection_schemas",
+            CanonicalValue::Array(
                 projections
                     .iter()
-                    .map(|facts| PlanValue::from_canonical(&facts.schema))
+                    .map(|facts| facts.schema.clone())
                     .collect(),
             ),
         ),
-        ("projectionDigests", projection_digests),
         (
-            "camera",
-            PlanValue::object([
-                ("identity", PlanValue::text(look::CAMERA_IDENTITY)),
-                ("projection", PlanValue::text(look::CAMERA_PROJECTION)),
-                ("width", PlanValue::Uint(look::CAMERA_WIDTH)),
-                ("height", PlanValue::Uint(look::CAMERA_HEIGHT)),
-                ("tileWidth", PlanValue::Uint(look::TILE_WIDTH)),
-                ("tileHeight", PlanValue::Uint(look::TILE_HEIGHT)),
-            ]),
+            "pursuit",
+            CanonicalValue::object_declared([(
+                "light",
+                CanonicalValue::text(presentation.pursuit.light.clone()),
+            )]),
         ),
-        ("palette", PlanValue::text(look::PALETTE)),
-        ("architecture", PlanValue::from_area(&area.architecture)?),
-        ("entities", PlanValue::Array(entities)),
-        ("actors", PlanValue::from_area(&area.actors)?),
-        ("effects", PlanValue::from_area(&area.effects)?),
+        ("route", CanonicalValue::object_declared(route)),
+        ("scenarios", CanonicalValue::Array(scenarios)),
         (
-            "presentation",
-            PlanValue::object([
-                ("primaryGate", PlanValue::text(area.primary_gate.clone())),
-                ("objective", PlanValue::from_area(&area.objective)?),
-                ("pursuitLight", PlanValue::text(area.pursuit_light.clone())),
-                (
-                    "forensicScenario",
-                    PlanValue::text(area.forensic_scenario.clone()),
-                ),
-                ("exit", PlanValue::from_area(&area.exit)?),
-            ]),
+            "schema",
+            CanonicalValue::text(rendering_plan_schema().to_string()),
         ),
-        (
-            "uiAnchors",
-            PlanValue::Array(
-                look::UI_ANCHORS
-                    .iter()
-                    .copied()
-                    .map(PlanValue::text)
-                    .collect(),
-            ),
-        ),
-        ("scenarios", PlanValue::Array(scenarios)),
-        ("interactions", PlanValue::Array(interactions)),
-    ]))
+    ])
 }
 
 /// The scenario's display label.
 ///
 /// `build-plan.mjs:133` derived it from the scenario directory name by
 /// stripping a numeric prefix and replacing hyphens with spaces.
-/// `docs/review/executable-gaol-ownership-audit.md` section 3 item 14 records
-/// that as convention-derived. R1-2 reproduces it; R1-3's typed presentation
-/// source is where an authored scenario label belongs.
+/// `docs/review/executable-gaol-ownership-audit.md`'s "Derived by convention"
+/// item 14 records that as convention-derived. It stays derived, in Rust:
+/// `docs/review/presentation-source.md` defers it to R1-5, which declares the
+/// ordered scenario collection a run's authored label would attach to. A
+/// scenario names a run, not an area, so `nomos.presentation_source@1` has no
+/// place to put one.
 fn scenario_label(id: &str) -> String {
     let digits = id.bytes().take_while(u8::is_ascii_digit).count();
     let stripped = match id.as_bytes().get(digits) {

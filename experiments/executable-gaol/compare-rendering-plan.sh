@@ -101,7 +101,7 @@ for area_dir in experiments/executable-gaol/areas/*/; do
     --facts "$work/facts" \
     --runs "$work/runs" \
     --world "$work/world" \
-    --area "${area_dir}area.json" \
+    --source "${area_dir}presentation.json" \
     --out "$work/rendering-plan.json" >/dev/null
 
   if node "$out/compare.mjs" "${area_dir}rendering-plan.example.json" \

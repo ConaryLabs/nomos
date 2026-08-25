@@ -2,8 +2,8 @@
 //!
 //! ```text
 //! nomos-render-plan --catalog <entity-catalog.json> --facts <dir> \
-//!                   --runs <dir> --world <world/> --area <area.json> \
-//!                   --out <plan.json>
+//!                   --runs <dir> --world <world/> \
+//!                   --source <presentation.json> --out <plan.json>
 //! ```
 //!
 //! Every argument is required and every one is a document or a directory of
@@ -22,7 +22,8 @@ use nomos_render_plan::error::{PlanError, PlanResult, codes};
 use nomos_render_plan::plan::{self, Inputs};
 
 const USAGE: &str = "usage: nomos-render-plan --catalog <entity-catalog.json> --facts <dir> \
-                     --runs <dir> --world <world/> --area <area.json> --out <plan.json>";
+                     --runs <dir> --world <world/> --source <presentation.json> \
+                     --out <plan.json>";
 
 fn main() -> ExitCode {
     match run() {
@@ -44,7 +45,7 @@ fn run() -> PlanResult<CanonicalValue> {
         facts: &arguments.facts,
         runs: &arguments.runs,
         world: &arguments.world,
-        area: &arguments.area,
+        source: &arguments.source,
     })?;
     write_atomically(&arguments.out, &compiled.bytes)?;
     Ok(CanonicalValue::object_declared([
@@ -107,7 +108,7 @@ struct Arguments {
     facts: PathBuf,
     runs: PathBuf,
     world: PathBuf,
-    area: PathBuf,
+    source: PathBuf,
     out: PathBuf,
 }
 
@@ -117,7 +118,7 @@ impl Arguments {
         let mut facts = None;
         let mut runs = None;
         let mut world = None;
-        let mut area = None;
+        let mut source = None;
         let mut out = None;
         let mut arguments = arguments;
         while let Some(flag) = arguments.next() {
@@ -126,7 +127,7 @@ impl Arguments {
                 "--facts" => &mut facts,
                 "--runs" => &mut runs,
                 "--world" => &mut world,
-                "--area" => &mut area,
+                "--source" => &mut source,
                 "--out" => &mut out,
                 other => {
                     return Err(PlanError::new(
@@ -155,7 +156,7 @@ impl Arguments {
             facts: required(facts, "--facts")?,
             runs: required(runs, "--runs")?,
             world: required(world, "--world")?,
-            area: required(area, "--area")?,
+            source: required(source, "--source")?,
             out: required(out, "--out")?,
         })
     }

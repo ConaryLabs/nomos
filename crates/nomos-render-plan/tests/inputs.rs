@@ -23,7 +23,7 @@ fn a_directory_of_only_the_declared_inputs_compiles() {
         "the second scenario adds exactly one command to the first"
     );
     let text = String::from_utf8(compiled.bytes.clone()).unwrap();
-    assert!(text.contains("\"schema\":\"nomos.rendering_plan@1\""));
+    assert!(text.contains("\"schema\":\"nomos.rendering_plan@2\""));
     assert!(text.ends_with('\n'), "the plan file is newline-terminated");
 }
 
@@ -145,8 +145,8 @@ fn the_binary_writes_the_plan_and_a_canonical_status() {
             fixture.runs().as_os_str(),
             "--world".as_ref(),
             fixture.world().as_os_str(),
-            "--area".as_ref(),
-            fixture.area().as_os_str(),
+            "--source".as_ref(),
+            fixture.source().as_os_str(),
             "--out".as_ref(),
             fixture.out().as_os_str(),
         ])

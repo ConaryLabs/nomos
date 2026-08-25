@@ -37,9 +37,10 @@ relative.
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `nomos.effective_facts@1` | `nomos-sim` | `crates/nomos-sim/src/effective_facts.rs` | the `effective_facts()` document, embedding the `ResolvedMovementFacts` and `ResolvedLightFacts` renderings it composes | `nomos_sim::effective_facts` composes the `CanonicalValue`; canonical entity-sorted bytes written to stdout by `nomos effective-facts` | none in-tree: derived read-only output, never re-read by the kernel and with no strict package reader; its first consumer binds identity and version | none: stdout only, never written into a run bundle or package, and outside the state-hash domain because it is derived | R1-2 Rust rendering-plan compilation; today `experiments/executable-gaol/compare-effective-facts.sh` | active R1-1 |
 | `nomos.entity_catalog@1` | `nomos-compiler` | `crates/nomos-compiler/src/entity_catalog.rs` | the `entity_catalog()` document, joining the stable World IR `IrEntity` records with the `ProjectedEntity`, `MachineDefinition`, `MovementSubject`, and `LightSubject` values of the verified plans | `nomos_compiler::entity_catalog` composes the `CanonicalValue`; canonical entity-sorted bytes written to stdout by `nomos entity-catalog` | none in-tree: derived read-only output, never re-read by the kernel and with no strict package reader; its first consumer binds identity and version | none: stdout only, never written into a package or a run bundle, and outside the state-hash domain because it is derived | R1-2 Rust rendering-plan compilation, which needs the entity kind and capability set the four projections do not carry | active R1-2 input |
-| `nomos.rendering_plan@1` | `nomos-render-plan` | `crates/nomos-render-plan/src/plan.rs` | the `PlanValue` document `compile()` assembles: area identity, republished projection identities and digests, classified entities, presentation source, per-scenario runtime facts, and derived interaction edges | `nomos_render_plan::plan::compile` assembles the `PlanValue`; `crates/nomos-render-plan/src/doc.rs` writes the `KERNEL.md` section 7 byte profile, widened only for camelCase and dotted keys and for the decimal presentation values `area.json` still carries, and `tests/canonical_profile.rs` proves the two encoders agree wherever both can express a value | none in-tree: derived read-only output with no strict package reader; its consumers are the quarantined study's JavaScript, which checks the identity string | none: written to the `--out` path the caller names, never into a package or a run bundle, and outside the state-hash domain because it is derived | the executable-gaol viewer, `render-core.mjs`, `play-state.mjs`, `build-collection.mjs`; R1-4's promoted viewer | active R1-2 |
+| `nomos.presentation_source@1` | `nomos-render-plan` | `crates/nomos-render-plan/src/source.rs` | the decoded `PresentationSource`: area identity, route placement and this area's own arrival cell, pursuit light, bounded architecture in integer vertical steps, presentation actors, and socket-anchored effects | not encoded: this is an input schema, hand-authored as pretty-printed JSON and read by `crates/nomos-render-plan/src/json.rs`, whose value type has no decimal variant | `source::read_source`, which binds the identity (`RP0104`), checks every field set exactly, checks each identifier grammar (`RP0206`), and refuses every bounded-area violation (`RP0202`) | the four `experiments/executable-gaol/areas/*/presentation.json` files; never written by any command | `nomos-render-plan`, which is its only reader | active R1-3 |
+| `nomos.rendering_plan@2` | `nomos-render-plan` | `crates/nomos-render-plan/src/plan.rs` | the `CanonicalValue` document `compile()` assembles: area identity, derived objective, route, pursuit, republished projection identities and digests, classified entities, presentation actors and effects, per-scenario runtime facts, and derived interaction edges | `nomos_render_plan::plan::compile` assembles a `nomos_core::CanonicalValue` and calls `to_canonical_bytes`; there is no encoder in this crate, and `tests/canonical_round_trip.rs` proves `parse_canonical` accepts the result and re-encodes it byte-identically | none in-tree: derived read-only output with no strict package reader; its consumers are the quarantined study's JavaScript, which checks the identity string | none: written to the `--out` path the caller names, never into a package or a run bundle, and outside the state-hash domain because it is derived | the executable-gaol viewer, `render-core.mjs`, `play-state.mjs`, `build-collection.mjs`; R1-4's promoted viewer | active R1-3 |
 
-Three R1 identities have entered the accepted tree.
+Four R1 identities have entered the accepted tree.
 
 `nomos.effective_facts@1` is the read-only effective-fact projection accepted as
 R1-1 under `RUNTIME.md` §5 (issue #126, PR #130): given a strictly verified world
@@ -49,15 +50,27 @@ light. It resolves nothing itself — `nomos_sim::resolve_movement` and
 `nomos_sim::resolve_light` do that — and it is derived output, so it is persisted
 nowhere and enters no hash domain.
 
-`nomos.rendering_plan@1` is the R1-2 rendering plan (issue #139): the document
-`nomos-render-plan` compiles from the entity catalog, the effective-fact
-documents, the run bundles, the four projection identities and digests, and the
-presentation source. It replaces the study's unowned
-`nomos.experiment.rendering_plan@1`, which was declared by a `const` inside
-`experiments/executable-gaol/src/build-plan.mjs:172` and owned by nothing. The
-new identity is emitted by the crate that assembles the document and by no other
-code path; it is derived, written only to the `--out` path its caller names, and
-outside every hash domain.
+`nomos.presentation_source@1` is the typed presentation source accepted as R1-3
+(issue #146): one `presentation.json` per area, replacing the unversioned
+`area.json`. It is the epoch's first *input* schema — every other R1 identity
+names derived output — so its acceptance is about refusal rather than about
+bytes: a version mismatch, an unknown field, a decimal literal anywhere in the
+file, an identifier outside its declared grammar, or a bounded-area violation is
+refused with a stable `RP####` code. Its owner file declares it, decodes it, and
+is the only reader of it.
+
+`nomos.rendering_plan@2` is the rendering plan. `@1` (issue #139) reproduced the
+study's camelCase, dotted-key, decimal-carrying document, which
+`nomos_core::CanonicalValue` cannot express, so R1-2 shipped a private canonical
+encoder in `crates/nomos-render-plan/src/doc.rs` — a second implementation of the
+`KERNEL.md` section 7 byte profile in the accepted tree, recorded as a drift risk
+by issue #144. `@2` is designed to fit inside `CanonicalValue` with no widening:
+snake_case field names, the kernel's own stable-ID arrays in place of the two
+dotted-key and two entity-keyed objects, and integer vertical steps in place of
+every decimal. `doc.rs` is deleted, and the plan is now the kernel's canonical
+bytes rather than a second encoder's agreement with them. `@1`'s row is replaced
+rather than kept: it was never persisted anywhere, never entered a hash domain,
+and had no consumer outside this repository.
 
 `nomos.entity_catalog@1` is the read-only entity catalog added under issue #138:
 given a strictly verified world package it emits, for every entity, the World IR

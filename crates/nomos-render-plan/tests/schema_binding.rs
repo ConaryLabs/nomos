@@ -140,19 +140,23 @@ fn a_rejected_kernel_document_is_refused_before_its_identity() {
 fn the_catalogs_extra_command_and_status_fields_are_accepted() {
     // The landed #138 document carries `command` and `status` beside the shape
     // the issue text listed. Both are ignored; the issue's shape is a subset.
-    use nomos_render_plan::json::Json;
+    use nomos_core::{CanonicalValue, FieldName};
 
     let fixture = Fixture::new("catalog-envelope");
-    let value = nomos_render_plan::json::parse(&std::fs::read(fixture.catalog()).unwrap()).unwrap();
-    let Json::Object(mut fields) = value else {
+    let bytes = std::fs::read(fixture.catalog()).unwrap();
+    let value = nomos_core::canonical::read::parse_canonical(&bytes).unwrap();
+    let CanonicalValue::Object(mut fields) = value else {
         panic!("the catalog is an object")
     };
     fields.insert(
-        "command".to_owned(),
-        Json::Text("entity-catalog".to_owned()),
+        FieldName::declared("command"),
+        CanonicalValue::text("entity-catalog"),
     );
-    fields.insert("status".to_owned(), Json::Text("completed".to_owned()));
-    let envelope = nomos_render_plan::PlanValue::from_area(&Json::Object(fields)).unwrap();
+    fields.insert(
+        FieldName::declared("status"),
+        CanonicalValue::text("completed"),
+    );
+    let envelope = CanonicalValue::Object(fields);
     std::fs::write(fixture.catalog(), envelope.to_canonical_bytes()).unwrap();
     nomos_render_plan::compile(fixture.inputs())
         .expect("the kernel stdout envelope fields are ignored");

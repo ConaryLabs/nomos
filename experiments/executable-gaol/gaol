@@ -53,7 +53,7 @@ build() {
       --facts "$area_output/facts" \
       --runs "$area_output/runs" \
       --world "$area_output/world" \
-      --area "$area_dir/area.json" \
+      --source "$area_dir/presentation.json" \
       --out "$area_output/rendering-plan.json"
     node "$experiment_dir/src/capture.mjs" \
       "$area_output/rendering-plan.json" "$area_output/frames"
@@ -71,6 +71,7 @@ stage_site() {
   fi
   mkdir -p "$site_dir/areas"
   install -m 644 "$experiment_dir/viewer.html" "$site_dir/index.html"
+  install -m 644 "$experiment_dir/src/renderer-catalog.mjs" "$site_dir/renderer-catalog.mjs"
   install -m 644 "$experiment_dir/src/render-core.mjs" "$site_dir/render-core.mjs"
   install -m 644 "$experiment_dir/src/webgl-renderer.mjs" "$site_dir/webgl-renderer.mjs"
   install -m 644 "$experiment_dir/src/play-state.mjs" "$site_dir/play-state.mjs"

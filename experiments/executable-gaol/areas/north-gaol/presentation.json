@@ -1,0 +1,44 @@
+{
+  "schema": "nomos.presentation_source@1",
+  "area": {
+    "id": "north-gaol",
+    "label": "North Gaol",
+    "start": false
+  },
+  "route": {
+    "exit": { "gate": "north_gate", "to_area": null },
+    "entry": { "x": 2, "y": 4, "z": 0 }
+  },
+  "pursuit": {
+    "light": "brazier_02"
+  },
+  "architecture": {
+    "bounds": { "width": 9, "height": 6 },
+    "wall_height_steps": 45,
+    "style": {
+      "assembly": "visual/beveled_masonry",
+      "material_family": "stone_bounded",
+      "trim_family": "broad_mortar"
+    },
+    "masses": []
+  },
+  "actors": [
+    {
+      "id": "player",
+      "assembly": "visual/player_silhouette",
+      "cell": { "x": 2, "y": 4, "z": 0 }
+    },
+    {
+      "id": "gaoler",
+      "assembly": "visual/gaoler_silhouette",
+      "cell": { "x": 5, "y": 3, "z": 0 }
+    }
+  ],
+  "effects": [
+    {
+      "id": "ward_crescent",
+      "assembly": "visual/cyan_crescent",
+      "anchor": { "entity": "north_gate", "socket": "ward" }
+    }
+  ]
+}

@@ -25,7 +25,8 @@
 //! - [`plan::Inputs::runs`] — the per-scenario run bundles, read for machine
 //!   states, declared status, and the committed command log.
 //! - [`plan::Inputs::world`] — four projection members, hashed and republished.
-//! - [`plan::Inputs::area`] — the presentation source.
+//! - [`plan::Inputs::source`] — one `nomos.presentation_source@1` document, the
+//!   typed presentation source R1-3 landed in place of `area.json`.
 //!
 //! # What it does not do
 //!
@@ -33,25 +34,29 @@
 //! cost maximum, and classifies nothing by string convention. Every one of
 //! those was a line of `build-plan.mjs`; each module names the lines it
 //! deletes.
+//!
+//! It also holds no floating-point value and writes no canonical bytes of its
+//! own. `nomos.presentation_source@1` is integer-only by the type its reader
+//! parses into, and `nomos.rendering_plan@2` is emitted through
+//! `nomos_core::CanonicalValue`, so the private encoder R1-2 needed
+//! (`src/doc.rs`, issue #144) and its decimal type are both gone.
 
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]
 #![warn(missing_debug_implementations)]
 
-pub mod area;
 pub mod catalog;
-pub mod decimal;
-pub mod doc;
 pub mod error;
 pub mod facts;
 pub mod json;
 pub mod plan;
 pub mod read;
 pub mod runs;
+pub mod source;
 pub mod world;
 
 pub use catalog::{EntityCatalog, EntityKind, entity_catalog_schema};
-pub use doc::{PlanField, PlanValue};
 pub use error::{PlanCode, PlanError, PlanResult, codes};
 pub use facts::{EffectiveFacts, effective_facts_schema};
 pub use plan::{CompiledPlan, Inputs, compile, rendering_plan_schema};
+pub use source::{PresentationSource, presentation_source_schema};

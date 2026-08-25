@@ -1,0 +1,57 @@
+{
+  "schema": "nomos.presentation_source@1",
+  "area": {
+    "id": "ember-vault",
+    "label": "Ember Vault",
+    "start": false
+  },
+  "route": {
+    "exit": { "gate": "vault_gate", "to_area": "ossuary-reach" },
+    "entry": { "x": 7, "y": 5, "z": 0 }
+  },
+  "pursuit": {
+    "light": "ember_brazier"
+  },
+  "architecture": {
+    "bounds": { "width": 9, "height": 6 },
+    "wall_height_steps": 50,
+    "style": {
+      "assembly": "visual/beveled_masonry",
+      "material_family": "stone_bounded",
+      "trim_family": "broad_mortar"
+    },
+    "masses": [
+      {
+        "id": "west_vault_pier",
+        "min": { "x": 2, "y": 1 },
+        "max": { "x": 3, "y": 2 },
+        "height_steps": 32
+      },
+      {
+        "id": "east_vault_pier",
+        "min": { "x": 6, "y": 1 },
+        "max": { "x": 7, "y": 2 },
+        "height_steps": 32
+      }
+    ]
+  },
+  "actors": [
+    {
+      "id": "player",
+      "assembly": "visual/player_silhouette",
+      "cell": { "x": 7, "y": 5, "z": 0 }
+    },
+    {
+      "id": "gaoler",
+      "assembly": "visual/gaoler_silhouette",
+      "cell": { "x": 1, "y": 3, "z": 0 }
+    }
+  ],
+  "effects": [
+    {
+      "id": "vault_ward_crescent",
+      "assembly": "visual/cyan_crescent",
+      "anchor": { "entity": "vault_gate", "socket": "ward" }
+    }
+  ]
+}

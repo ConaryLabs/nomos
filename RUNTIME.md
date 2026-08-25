@@ -127,10 +127,15 @@ an undeclared workspace member.
 
 ### Declared R1 members
 
-- `nomos-render-plan` — the R1-2 rendering-plan compiler (library plus the
-  `nomos-render-plan` binary), depending on `nomos-core` only, with
-  dev-dependency edges to `nomos-projection` and `nomos-sim` for the issue #132
-  divergence fixture.
+- `nomos-render-plan` — the R1-2 rendering-plan compiler and the R1-3
+  presentation-source decoder (library plus the `nomos-render-plan` binary),
+  depending on `nomos-core` only, with dev-dependency edges to
+  `nomos-projection` and `nomos-sim` for the issue #132 divergence fixture. It
+  declares two canonical identities, both registered in
+  `docs/evaluation/R1_SCHEMA_OWNERSHIP.md`: `nomos.presentation_source@1`, the
+  typed presentation source it decodes, and `nomos.rendering_plan@2`, the plan
+  it emits through `nomos_core::CanonicalValue`. It contains no canonical
+  encoder of its own and no floating-point type.
 
 `R1_CRATES` in `xtask/src/boundary.rs` mirrors this list, and `cargo xtask
 boundary` enforces it: a workspace member that is neither a kernel crate,

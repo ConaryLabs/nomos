@@ -59,7 +59,7 @@ a downstream compiler no longer has to infer an entity's kind from a naming
 convention.
 
 `nomos-render-plan --catalog <entity-catalog.json> --facts <dir> --runs <dir>
---world <world/> --area <area.json> --out <plan.json>` is the R1-2 compiler: it
+--world <world/> --source <presentation.json> --out <plan.json>` is the R1-2/R1-3 compiler: it
 turns those two read-only projections, the per-scenario run bundles, the four
 projection members' identities and digests, and the presentation source into
 `nomos.rendering_plan@1` as canonical bytes. It is the first declared R1 member,
@@ -119,7 +119,7 @@ R1-2, Rust rendering-plan compilation, is accepted under issue #139.
 `crates/nomos-render-plan` is the first declared R1 member: it compiles
 `nomos.rendering_plan@1` from `nomos.entity_catalog@1`, one
 `nomos.effective_facts@1` document per scenario, the run bundles, four
-projection members, and `area.json`, and it opens no `.nomos` source, World IR,
+projection members, and `presentation.json`, and it opens no `.nomos` source, World IR,
 or compiler receipt. `experiments/executable-gaol/src/build-plan.mjs` is
 deleted, and `experiments/executable-gaol/gaol` runs the Rust binary. For all
 four areas the Rust plan equalled the JavaScript fixtures under one documented
@@ -129,11 +129,22 @@ is byte-identical across the switch except the four `forensic.svg` overlays,
 which print the plan's own identity. `docs/review/rendering-plan-compiler.md` is
 its design record.
 
-**R1-3, typed presentation source, is next**: a versioned, typed replacement for
-`area.json` with exactly one owner per field. Issue #125's merged
-presentation-boundary ownership audit is its checklist; R1-2's design record
-lists which of that audit's convention-derived rows it removed and which it
-carried through unchanged for R1-3 to resolve.
+**R1-3, typed presentation source, has landed** (issue #146, PR #147). Each
+area's `presentation.json` carries `nomos.presentation_source@1`: versioned,
+closed against unknown fields, integer-only by the type its reader parses into,
+with attachment by named socket instead of by coordinate and each area owning
+its own arrival cell. The plan is `nomos.rendering_plan@2`, emitted through
+`nomos_core::CanonicalValue` — which retires issue #144, since the private
+encoder in `src/doc.rs` and its decimal type are deleted. The ownership audit's
+69 rows each have one owner and its 61 double-authority, convention-derived, and
+floating-point rows are dispositioned in `docs/review/presentation-source.md`,
+which is its design record. Seven rows are deferred with a named slice: three to
+R1-4 and four to R1-5.
+
+**R1-4, the promoted viewer, is next.** It inherits the deferrals R1-3 named:
+the kind-to-assembly and kind-to-material tables still in the compiler, the
+display strings `displayName()` invents from identifiers, direction-aware socket
+resolution, and one palette in place of two renderers' two.
 
 Simulation-boundary expansion remains deferred while the visual grammar is
 being established. Do not reopen Gate K evaluation work or add proof machinery

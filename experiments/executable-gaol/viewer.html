@@ -63,6 +63,7 @@
 <footer><span>Move: WASD / arrows · Interact: E · Forensic areas: [ ] · States: 1–5 · Reset run: R</span><span id="message"></span><span id="meter"></span></footer>
 <script type="module">
   import { createGaolRenderer } from "./webgl-renderer.mjs";
+  import { LOOK_PROFILE_IDS, isHunting } from "./renderer-catalog.mjs";
   import { attemptInteraction, attemptMove, completeRun, completionSummary, createPlayState, enterArea, guidanceFor, movementKeys } from "./play-state.mjs";
   const collection = await fetch("./areas.json").then((response) => response.json());
   const plans = new Map(await Promise.all(collection.areas.map(async (area) => [
@@ -87,7 +88,7 @@
   const completion = document.querySelector("#completion");
   const completionSummaryElement = document.querySelector("#completion-summary");
   const restart = document.querySelector("#restart");
-  let areaId = collection.startArea;
+  let areaId = collection.start_area;
   let plan = plans.get(areaId);
   let selected = plan.scenarios[0].id;
   let play = createPlayState(plan);
@@ -114,8 +115,8 @@
     gpu.present(plan, selected, forensic.ariaPressed === "true", { actorPositions: { player: visualPlayer, gaoler: visualGaoler } });
     message.textContent = play.message;
     message.dataset.tone = play.tone;
-    const pursuitLight = plan.presentation.pursuitLight;
-    const pursuit = play.caught ? "caught" : plan.scenarios.find((scenario) => scenario.id === selected)?.effectiveLight[pursuitLight] === false ? "hunting" : "dormant";
+    const scenario = plan.scenarios.find((candidate) => candidate.id === selected);
+    const pursuit = play.caught ? "caught" : scenario && isHunting(plan, scenario) ? "hunting" : "dormant";
     meter.textContent = `areas ${play.areasCleared}/${collection.areas.length} · moves ${play.moves} · cost ${play.movementCost} · gaoler ${pursuit}`;
     const guidance = guidanceFor(plan, selected, play);
     progress.textContent = `Area ${Math.min(play.areasCleared + 1, collection.areas.length)} / ${collection.areas.length} · ${plan.area.label}`;
@@ -133,7 +134,7 @@
     requestAnimationFrame(() => arrival.classList.add("active"));
     arrivalTimer = setTimeout(() => arrival.classList.remove("active"), 1400);
   };
-  const reset = () => selectArea(collection.startArea, false);
+  const reset = () => selectArea(collection.start_area, false);
   const selectArea = (nextAreaId, forensicJump = true) => {
     areaId = nextAreaId;
     plan = plans.get(areaId);
@@ -149,10 +150,10 @@
     showArrival();
   };
   const enterConnectedArea = (connection, previousState) => {
-    areaId = connection.toArea;
+    areaId = connection.to_area;
     plan = plans.get(areaId);
     selected = plan.scenarios[0].id;
-    play = enterArea(plan, previousState, connection.entry);
+    play = enterArea(plan, previousState);
     visualPlayer = { ...play.player };
     visualGaoler = { ...play.gaoler };
     for (const child of areas.children) child.ariaPressed = String(child.dataset.area === areaId);
@@ -181,7 +182,7 @@
     };
     requestAnimationFrame(step);
   };
-  look.textContent = `LOOK ${collection.lookProfile.digest.slice(0, 8)}`;
+  look.textContent = `GRAMMAR ${collection.visual_grammar.digest.slice(0, 8)}`;
   for (const area of collection.areas) {
     const button = document.createElement("button");
     button.textContent = area.label;
@@ -193,11 +194,16 @@
   }
   buildScenarioButtons();
   forensic.onclick = () => { forensic.ariaPressed = String(forensic.ariaPressed !== "true"); draw(); };
+  // The two look ids come from the renderer catalog rather than from bare
+  // literals here, so the toggle cannot drift from the profiles the renderer
+  // implements.
+  const [BASELINE_LOOK, PROCEDURAL_LOOK] = LOOK_PROFILE_IDS;
   lookMode.onclick = () => {
     const procedural = lookMode.ariaPressed !== "true";
+    const profile = procedural ? PROCEDURAL_LOOK : BASELINE_LOOK;
     lookMode.ariaPressed = String(procedural);
-    lookMode.textContent = `Look: ${procedural ? "procedural" : "baseline"}`;
-    gpu.setLookProfile(procedural ? "procedural" : "baseline");
+    lookMode.textContent = `Look: ${profile}`;
+    gpu.setLookProfile(profile);
     draw();
   };
   restart.onclick = reset;
@@ -218,8 +224,17 @@
       draw();
       return;
     }
+    // Selecting by scenario rather than by `states.children[n - 1]`: the DOM
+    // order happens to match the plan's today, and the audit recorded that
+    // coincidence as the only thing making the shortcut correct.
     const number = Number(event.key);
-    if (number >= 1 && number <= plan.scenarios.length) { states.children[number - 1].click(); return; }
+    if (number >= 1 && number <= plan.scenarios.length) {
+      const scenario = plan.scenarios[number - 1];
+      selectScenario(scenario.id);
+      play = { ...play, message: `Loaded ${scenario.label}`, tone: "neutral" };
+      draw();
+      return;
+    }
     const delta = movementKeys[event.code];
     if (!delta || animating) return;
     event.preventDefault();
@@ -229,11 +244,11 @@
     play = result.state;
     if (result.moved) {
       const connection = result.exitGate
-        ? collection.route.find((edge) => edge.fromArea === areaId && edge.gate === result.exitGate)
+        ? collection.route.find((edge) => edge.from_area === areaId && edge.gate === result.exitGate)
         : null;
       animateMove(from, play.player, gaolerFrom, play.gaoler, result.cost, () => {
         if (!result.exitGate) return;
-        if (connection?.toArea) enterConnectedArea(connection, play);
+        if (connection?.to_area) enterConnectedArea(connection, play);
         else { play = completeRun(play); draw(); }
       });
     }

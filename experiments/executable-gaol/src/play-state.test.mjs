@@ -52,8 +52,8 @@ test("nearby interactions follow Nomos-verified state hashes", () => {
   const state = { ...createPlayState(plan), player: { x: 5, y: 1, z: 0 } };
   const ignite = interactionAt(plan, "01-baseline", state);
   assert.equal(ignite.action, "ignite");
-  assert.equal(ignite.inputStateHash, plan.scenarios[0].stateHash);
-  assert.equal(ignite.resultingStateHash, plan.scenarios[1].stateHash);
+  assert.equal(ignite.input_state_hash, plan.scenarios[0].state_hash);
+  assert.equal(ignite.resulting_state_hash, plan.scenarios[1].state_hash);
 
   const first = attemptInteraction(plan, "01-baseline", state);
   assert.equal(first.changed, true);
@@ -112,9 +112,9 @@ test("the brazier interaction follows the verified extinguish receipt", () => {
   const result = attemptInteraction(plan, "03-breached-unsealed", state);
   assert.equal(result.changed, true);
   assert.equal(result.interaction.action, "extinguish");
-  assert.equal(result.interaction.targetEntity, "brazier_02");
+  assert.equal(result.interaction.target_entity, "brazier_02");
   assert.equal(result.scenarioId, "04-breached-unsealed-dark");
-  assert.equal(result.interaction.resultingStateHash, plan.scenarios[3].stateHash);
+  assert.equal(result.interaction.resulting_state_hash, plan.scenarios[3].state_hash);
 });
 
 test("the gaoler stays dormant while the brazier is lit", () => {

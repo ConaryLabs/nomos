@@ -1,0 +1,50 @@
+{
+  "schema": "nomos.presentation_source@1",
+  "area": {
+    "id": "cistern-walk",
+    "label": "Cistern Walk",
+    "start": true
+  },
+  "route": {
+    "exit": { "gate": "sluice_gate", "to_area": "ember-vault" }
+  },
+  "pursuit": {
+    "light": "watch_brazier"
+  },
+  "architecture": {
+    "bounds": { "width": 9, "height": 6 },
+    "wall_height_steps": 45,
+    "style": {
+      "assembly": "visual/beveled_masonry",
+      "material_family": "stone_bounded",
+      "trim_family": "broad_mortar"
+    },
+    "masses": [
+      {
+        "id": "channel_buttress",
+        "min": { "x": 4, "y": 0 },
+        "max": { "x": 5, "y": 1 },
+        "height_steps": 26
+      }
+    ]
+  },
+  "actors": [
+    {
+      "id": "player",
+      "assembly": "visual/player_silhouette",
+      "cell": { "x": 7, "y": 4, "z": 0 }
+    },
+    {
+      "id": "gaoler",
+      "assembly": "visual/gaoler_silhouette",
+      "cell": { "x": 4, "y": 3, "z": 0 }
+    }
+  ],
+  "effects": [
+    {
+      "id": "sluice_ward_crescent",
+      "assembly": "visual/cyan_crescent",
+      "anchor": { "entity": "sluice_gate", "socket": "ward" }
+    }
+  ]
+}
