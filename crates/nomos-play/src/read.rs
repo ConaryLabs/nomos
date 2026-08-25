@@ -218,7 +218,7 @@ mod tests {
             ]),
         )]);
         let fields = object(&document, "play state").expect("fixture is an object");
-        let expected = SchemaId::new("nomos.play_state", 1).expect("fixture schema is valid");
+        let expected = SchemaId::parse("nomos.play_state@1").expect("fixture schema is valid");
 
         let error = bind_schema(fields, &expected, "play state").unwrap_err();
         assert_eq!(error.code(), "PL0104");
