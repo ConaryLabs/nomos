@@ -7,33 +7,65 @@ output_rel=target/executable-gaol
 output_dir="$repo_root/$output_rel"
 mode=${1:-capture}
 site_dir=${2:-$repo_root/target/executable-gaol-site}
+areas_dir="$experiment_dir/areas"
 
 build() {
   if [[ -d $output_dir ]]; then
     find "$output_dir" -mindepth 1 -delete
   fi
-  mkdir -p "$output_dir/runs" "$output_dir/frames"
+  mkdir -p "$output_dir/areas" "$output_dir/frames"
 
   cd "$repo_root"
   cargo build --quiet --locked -p nomos-cli --bin nomos
-  target/debug/nomos compile experiments/executable-gaol/gaol.nomos \
-    --out "$output_rel/world"
+  local area_dir
+  for area_dir in "$areas_dir"/*; do
+    [[ -d $area_dir ]] || continue
+    local area_id area_output area_rel source_rel scenario
+    area_id=$(basename "$area_dir")
+    area_output="$output_dir/areas/$area_id"
+    area_rel="$output_rel/areas/$area_id"
+    source_rel=${area_dir#"$repo_root/"}/world.nomos
+    mkdir -p "$area_output/runs" "$area_output/frames"
+    target/debug/nomos compile "$source_rel" --out "$area_rel/world"
 
-  local scenario
-  for scenario in "$experiment_dir"/scenarios/*.commands; do
-    local name
-    name=$(basename "$scenario" .commands)
-    if ! target/debug/nomos run "$output_rel/world" \
-      --commands "experiments/executable-gaol/scenarios/$name.commands" \
-      --out "$output_rel/runs/$name"; then
-      [[ $name == 01-baseline ]] || return 1
-    fi
+    for scenario in "$area_dir"/scenarios/*.commands; do
+      local name commands_rel
+      name=$(basename "$scenario" .commands)
+      commands_rel=${scenario#"$repo_root/"}
+      if ! target/debug/nomos run "$area_rel/world" \
+        --commands "$commands_rel" --out "$area_rel/runs/$name"; then
+        [[ $name == 01-baseline ]] || return 1
+      fi
+    done
+
+    node "$experiment_dir/src/build-plan.mjs" \
+      "$area_output/world" "$area_output/runs" "$area_dir/area.json" \
+      "$area_output/rendering-plan.json"
+    node "$experiment_dir/src/capture.mjs" \
+      "$area_output/rendering-plan.json" "$area_output/frames"
   done
 
-  node "$experiment_dir/src/build-plan.mjs" \
-    "$output_dir/world" "$output_dir/runs" "$output_dir/rendering-plan.json"
-  node "$experiment_dir/src/capture.mjs" \
-    "$output_dir/rendering-plan.json" "$output_dir/frames"
+  node "$experiment_dir/src/build-collection.mjs" \
+    "$output_dir/areas" "$output_dir/areas.json"
+  node "$experiment_dir/src/capture-collection.mjs" \
+    "$output_dir/areas.json" "$output_dir/areas" "$output_dir/frames"
+}
+
+stage_site() {
+  if [[ -d $site_dir ]]; then
+    find "$site_dir" -mindepth 1 -delete
+  fi
+  mkdir -p "$site_dir/areas"
+  install -m 644 "$experiment_dir/viewer.html" "$site_dir/index.html"
+  install -m 644 "$experiment_dir/src/render-core.mjs" "$site_dir/render-core.mjs"
+  install -m 644 "$experiment_dir/src/play-state.mjs" "$site_dir/play-state.mjs"
+  install -m 644 "$output_dir/areas.json" "$site_dir/areas.json"
+  local area_dir
+  for area_dir in "$output_dir"/areas/*; do
+    [[ -d $area_dir ]] || continue
+    install -m 644 "$area_dir/rendering-plan.json" "$site_dir/areas/$(basename "$area_dir").json"
+  done
+  install -m 644 "$experiment_dir/contact-sheet.png" "$site_dir/contact-sheet.png"
 }
 
 case "$mode" in
@@ -47,26 +79,25 @@ case "$mode" in
     ;;
   serve)
     build
-    node "$experiment_dir/src/serve.mjs" "$experiment_dir" "$output_dir"
+    site_dir="$output_dir/site"
+    stage_site
+    node "$experiment_dir/src/serve.mjs" "$site_dir"
     ;;
   verify)
     build
-    node --test "$experiment_dir/src/play-state.test.mjs"
-    cmp "$output_dir/rendering-plan.json" "$experiment_dir/rendering-plan.example.json"
-    node "$experiment_dir/src/verify.mjs" "$output_dir/rendering-plan.json" \
-      "$output_dir/frames/contact-sheet.svg"
+    node --test "$experiment_dir/src/"*.test.mjs
+    for area_dir in "$areas_dir"/*; do
+      [[ -d $area_dir ]] || continue
+      area_id=$(basename "$area_dir")
+      cmp "$output_dir/areas/$area_id/rendering-plan.json" "$area_dir/rendering-plan.example.json"
+      node "$experiment_dir/src/verify.mjs" \
+        "$output_dir/areas/$area_id/rendering-plan.json" \
+        "$output_dir/areas/$area_id/frames/contact-sheet.svg"
+    done
     ;;
   site)
     build
-    if [[ -d $site_dir ]]; then
-      find "$site_dir" -mindepth 1 -delete
-    fi
-    mkdir -p "$site_dir"
-    install -m 644 "$experiment_dir/viewer.html" "$site_dir/index.html"
-    install -m 644 "$experiment_dir/src/render-core.mjs" "$site_dir/render-core.mjs"
-    install -m 644 "$experiment_dir/src/play-state.mjs" "$site_dir/play-state.mjs"
-    install -m 644 "$output_dir/rendering-plan.json" "$site_dir/rendering-plan.json"
-    install -m 644 "$experiment_dir/contact-sheet.png" "$site_dir/contact-sheet.png"
+    stage_site
     printf 'Executable gaol site staged at %s\n' "$site_dir"
     ;;
   *)

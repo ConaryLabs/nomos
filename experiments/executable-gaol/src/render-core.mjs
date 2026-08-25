@@ -157,17 +157,19 @@ export function renderSvg(plan, scenarioId, forensic = false, presentation = {})
   }
 
   // Restrained semantic effect, kept below actor salience.
-  const gate = plan.entities.find((entry) => entry.id === "north_gate");
-  if (gate && machine(gate.id, "ward", "sealed") === "sealed") {
-    const p = iso(3.6, 3.4);
+  for (const effect of plan.effects.filter((entry) => entry.assembly === "visual/cyan_crescent")) {
+    const gate = plan.entities.find((entry) => entry.id === effect.anchorEntity);
+    if (!gate || machine(gate.id, "ward", "sealed") !== "sealed") continue;
+    const p = iso(effect.presentationAnchor.x, effect.presentationAnchor.y, effect.presentationAnchor.z ?? 0);
     chunks.push(`<path d="M${p.x-45} ${p.y+8} Q${p.x} ${p.y-48} ${p.x+43} ${p.y-5} Q${p.x+5} ${p.y-24} ${p.x-45} ${p.y+8}Z" fill="${palette.cyan}" opacity=".5" stroke="#c0ffff" stroke-width="2"/>`);
     chunks.push(`<circle cx="${p.x+54}" cy="${p.y-17}" r="3" fill="${palette.cyan}"/><circle cx="${p.x+64}" cy="${p.y-4}" r="2" fill="${palette.cyan}"/>`);
   }
 
   // Minimal edge UI.
   chunks.push(`<g><rect x="32" y="31" width="310" height="58" rx="9" fill="#0a1117" opacity=".82" stroke="#39474d"/>${pixelText(`NOMOS // ${scenario.label}`, 49, 43, 2, palette.text)}<rect x="49" y="66" width="128" height="7" rx="3" fill="#28363d"/><rect x="49" y="66" width="102" height="7" rx="3" fill="${palette.teal}"/><circle cx="278" cy="69" r="9" fill="none" stroke="${palette.cyan}" stroke-width="2"/><path d="M271 69 H285 M278 62 V76" stroke="${palette.cyan}" stroke-width="2"/></g>`);
-  const primaryMovement = scenario.movement.north_gate;
-  chunks.push(`<g><rect x="870" y="31" width="298" height="82" rx="9" fill="#0a1117" opacity=".84" stroke="#39474d"/>${pixelText("NORTH GATE", 891, 45, 2, palette.muted)}${pixelText(primaryMovement?.disposition ?? "unknown", 891, 66, 3, primaryMovement?.disposition === "blocked" ? palette.danger : palette.cyan)}${pixelText(`WATER 3 TICK ${scenario.tick} ${scenario.stateHash.slice(0,8)}`, 891, 95, 1, palette.text)}</g>`);
+  const primaryMovement = scenario.movement[plan.presentation.primaryGate];
+  const waterCost = Math.max(...plan.entities.filter((entry) => entry.kind === "water").map((entry) => scenario.movement[entry.id]?.cost ?? 1));
+  chunks.push(`<g><rect x="870" y="31" width="298" height="82" rx="9" fill="#0a1117" opacity=".84" stroke="#39474d"/>${pixelText(plan.presentation.primaryGate.replaceAll("_", " "), 891, 45, 2, palette.muted)}${pixelText(primaryMovement?.disposition ?? "unknown", 891, 66, 3, primaryMovement?.disposition === "blocked" ? palette.danger : palette.cyan)}${pixelText(`WATER ${waterCost} TICK ${scenario.tick} ${scenario.stateHash.slice(0,8)}`, 891, 95, 1, palette.text)}</g>`);
   if (forensic) chunks.push(`<g font-family="DejaVu Sans Mono, monospace" font-size="11"><rect x="31" y="454" width="1138" height="67" rx="7" fill="#071016" opacity=".92" stroke="${palette.cyanDim}"/><text x="48" y="477" fill="${palette.cyan}">FORENSIC PROJECTION OWNERSHIP</text><text x="48" y="496" fill="${palette.text}">renderer input: nomos.experiment.rendering_plan@1 | source/World IR unavailable</text><text x="48" y="515" fill="${palette.muted}">movement: navigation projection + runtime state | light: simulation/persistence projection + runtime state | visuals: stable assembly IDs</text></g>`);
   chunks.push(`</svg>`);
   return chunks.join("");

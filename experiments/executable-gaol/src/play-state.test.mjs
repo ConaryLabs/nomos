@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { attemptInteraction, createPlayState, attemptMove, interactionAt, terrainAt } from "./play-state.mjs";
 
-const plan = JSON.parse(readFileSync(new URL("../rendering-plan.example.json", import.meta.url)));
+const plan = JSON.parse(readFileSync(new URL("../areas/north-gaol/rendering-plan.example.json", import.meta.url)));
 
 test("water uses the projected traversal cost", () => {
   const scenario = plan.scenarios[0];

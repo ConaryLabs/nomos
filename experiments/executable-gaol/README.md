@@ -1,8 +1,9 @@
 # Executable gaol experiment
 
-This is the deliberately quarantined answer to issue #101: one room, one
-camera, one small rendering plan, and visible semantic state. It is not Gate K
-or Gate 1 evidence and it does not change the accepted workspace.
+This is the deliberately quarantined answer to issues #101 and #103: two
+independently authored areas, one bounded look, one renderer, and visible
+semantic state. It is not Gate K or Gate 1 evidence and it does not change the
+accepted workspace.
 
 **Play online:** <https://conarylabs.github.io/nomos/>
 
@@ -12,9 +13,10 @@ Run:
 experiments/executable-gaol/gaol capture
 ```
 
-That command compiles `gaol.nomos`, executes five real Nomos command scripts,
-derives `nomos.experiment.rendering_plan@1` only from subsystem projections and
-runtime state, emits deterministic SVG frames, and rasterizes a PNG contact
+That command compiles both area sources, executes ten real Nomos command
+scripts, derives two `nomos.experiment.rendering_plan@1` artifacts only from
+subsystem projections and runtime state, checks their exact shared visual
+grammar, emits deterministic SVG frames, and rasterizes a cross-area PNG contact
 sheet with `rsvg-convert` when available.
 
 To use the interactive state and forensic-overlay controls:
@@ -23,9 +25,13 @@ To use the interactive state and forensic-overlay controls:
 experiments/executable-gaol/gaol serve
 ```
 
-Open the printed local URL. The renderer receives only `rendering-plan.json`;
-it does not parse `.nomos`, World IR, or compiler receipts. The second door is
-ordinary content in `gaol.nomos` and requires no renderer change.
+Open the printed local URL. The renderer receives only `areas.json` and the two
+selected rendering plans; it does not parse `.nomos`, World IR, or compiler
+receipts. North Gaol and Cistern Walk use the same camera, bounded palette,
+materials, assemblies, actor silhouettes, effect language, and renderer. Their
+doors, water, light, actors, and composition come from separate area content.
+See [AUTHORING.md](AUTHORING.md) for the intentionally small LLM authoring
+packet.
 
 Use WASD or the arrow keys to cross the room. Walk beside `north_gate`, press
 `E` to ignite it, press `E` again to unseal it, and cross the resulting opening.
@@ -37,8 +43,9 @@ open gate before it does.
 Those interaction edges are derived from consecutive, state-hash-bound Nomos
 command logs rather than interpreted by the browser. Shallow water consumes the
 projected movement cost of `3`; stone costs `1`. The north edge opens only at a
-door whose selected Nomos runtime state resolves to `traversable`. Keys 1–5
-switch the real runtime scenarios, `R` resets the run, and the
+door whose selected Nomos runtime state resolves to `traversable`. The area
+buttons or bracket keys switch rooms, keys 1–5 switch the real runtime
+scenarios, `R` resets the run, and the
 viewer interpolates movement without placing fractional positions into Nomos
 authoritative state.
 
@@ -56,5 +63,5 @@ Known limits: this is stylized deterministic SVG rather than a GPU renderer;
 actor positions and the gaoler pursuit rule are presentation-only because Gate
 K has no dynamic actor state;
 audio, combat, networking, and persistence beyond the existing Gate K state are
-absent. Its job is to make the semantic bridge and the room playable quickly
-enough to learn from.
+absent. Its job is to test whether independently authored rooms can remain
+visually coherent and playable through the same semantic bridge.

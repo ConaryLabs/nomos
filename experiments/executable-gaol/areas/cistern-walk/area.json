@@ -1,0 +1,27 @@
+{
+  "id": "cistern-walk",
+  "label": "Cistern Walk",
+  "primaryGate": "sluice_gate",
+  "pursuitLight": "watch_brazier",
+  "forensicScenario": "03-breached-unsealed",
+  "actors": [
+    {
+      "id": "player",
+      "assembly": "visual/player_silhouette",
+      "anchor": { "kind": "cell", "cell": { "x": 7, "y": 4, "z": 0 } }
+    },
+    {
+      "id": "gaoler",
+      "assembly": "visual/gaoler_silhouette",
+      "anchor": { "kind": "cell", "cell": { "x": 4, "y": 3, "z": 0 } }
+    }
+  ],
+  "effects": [
+    {
+      "id": "sluice_ward_crescent",
+      "assembly": "visual/cyan_crescent",
+      "anchorEntity": "sluice_gate",
+      "presentationAnchor": { "x": 4.9, "y": 3.8, "z": 0 }
+    }
+  ]
+}

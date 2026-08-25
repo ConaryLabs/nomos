@@ -1,0 +1,27 @@
+{
+  "id": "north-gaol",
+  "label": "North Gaol",
+  "primaryGate": "north_gate",
+  "pursuitLight": "brazier_02",
+  "forensicScenario": "03-breached-unsealed",
+  "actors": [
+    {
+      "id": "player",
+      "assembly": "visual/player_silhouette",
+      "anchor": { "kind": "cell", "cell": { "x": 2, "y": 4, "z": 0 } }
+    },
+    {
+      "id": "gaoler",
+      "assembly": "visual/gaoler_silhouette",
+      "anchor": { "kind": "cell", "cell": { "x": 5, "y": 3, "z": 0 } }
+    }
+  ],
+  "effects": [
+    {
+      "id": "ward_crescent",
+      "assembly": "visual/cyan_crescent",
+      "anchorEntity": "north_gate",
+      "presentationAnchor": { "x": 3.6, "y": 3.4, "z": 0 }
+    }
+  ]
+}
