@@ -7,6 +7,7 @@ const readPlan = (id) => JSON.parse(readFileSync(new URL(`../areas/${id}/renderi
 const north = readPlan("north-gaol");
 const cistern = readPlan("cistern-walk");
 const ember = readPlan("ember-vault");
+const ossuary = readPlan("ossuary-reach");
 const collection = JSON.parse(readFileSync(new URL("../area-collection.example.json", import.meta.url)));
 
 const grammar = (plan) => ({
@@ -23,10 +24,11 @@ test("independent areas retain one exact visual grammar", () => {
   assert.notEqual(north.area.id, cistern.area.id);
   assert.deepEqual(grammar(cistern), grammar(north));
   assert.deepEqual(grammar(ember), grammar(north));
+  assert.deepEqual(grammar(ossuary), grammar(north));
 });
 
 test("every area exposes one exact compiled-door objective", () => {
-  for (const plan of [cistern, ember, north]) {
+  for (const plan of [cistern, ember, ossuary, north]) {
     assert.deepEqual(Object.keys(plan.presentation.objective).sort(), ["kind", "target"]);
     assert.equal(plan.presentation.objective.kind, "exit_via");
     assert.equal(plan.presentation.objective.target, plan.presentation.primaryGate);
@@ -34,7 +36,7 @@ test("every area exposes one exact compiled-door objective", () => {
   }
 });
 
-test("the second area is a distinct composition", () => {
+test("every added area is a distinct composition", () => {
   const anchors = (plan) => plan.entities.map((entity) => entity.anchor);
   assert.notDeepEqual(anchors(cistern), anchors(north));
   assert.deepEqual(cistern.actors.find((actor) => actor.id === "player").anchor.cell, { x: 7, y: 4, z: 0 });
@@ -42,6 +44,16 @@ test("the second area is a distinct composition", () => {
   assert.notDeepEqual(anchors(ember), anchors(north));
   assert.equal(ember.architecture.masses.length, 2);
   assert.equal(ember.architecture.wallHeight, 5);
+  assert.notDeepEqual(anchors(ossuary), anchors(north));
+  assert.equal(ossuary.entities.find((entity) => entity.kind === "water").id, "burial_channel");
+  assert.deepEqual(ossuary.entities.find((entity) => entity.kind === "water").anchor, {
+    kind: "region",
+    min: { x: 3, y: 1, z: 0 },
+    max: { x: 5, y: 4, z: 0 },
+  });
+  assert.deepEqual(ossuary.architecture.masses.map((mass) => mass.id), [
+    "west_tomb_bank", "east_tomb_bank", "reliquary_pier",
+  ]);
 });
 
 test("declared masonry masses block presentation movement", () => {
@@ -155,10 +167,23 @@ test("one run traverses all declared area connections", () => {
     [[1, 0], [1, 0], [0, -1], [1, 0], [0, -1], [0, -1]],
   );
   edge = collection.route.find((candidate) => candidate.fromArea === "ember-vault" && candidate.gate === solved.exitGate);
-  state = enterArea(north, solved.state, edge.entry);
+  assert.equal(edge.toArea, "ossuary-reach");
+  state = enterArea(ossuary, solved.state, edge.entry);
   assert.equal(state.areasCleared, 2);
   assert.ok(state.moves > cisternMoves);
   assert.ok(state.movementCost > cisternCost);
+
+  solved = solveArea(
+    ossuary,
+    state,
+    [[1, 0], [1, 0], [1, 0], [1, 0], [1, 0], [0, -1], [0, -1], [0, -1], [0, -1]],
+    [[0, 1], [0, 1], [0, 1]],
+    [[0, -1], [0, -1], [0, -1], [0, -1], [0, -1]],
+  );
+  edge = collection.route.find((candidate) => candidate.fromArea === "ossuary-reach" && candidate.gate === solved.exitGate);
+  assert.equal(edge.toArea, "north-gaol");
+  state = enterArea(north, solved.state, edge.entry);
+  assert.equal(state.areasCleared, 3);
 
   solved = solveArea(
     north,
@@ -171,6 +196,6 @@ test("one run traverses all declared area connections", () => {
   assert.equal(edge.toArea, null);
   state = completeRun(solved.state);
   assert.equal(state.completed, true);
-  assert.equal(state.areasCleared, 3);
+  assert.equal(state.areasCleared, 4);
   assert.equal(state.message, "Escaped the gaol");
 });

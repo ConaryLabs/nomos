@@ -1,0 +1,20 @@
+schema nomos.source@1
+catalog credential/ossuary_key
+
+entity bone_gate primitive/iron_barred_door
+  anchor face 6 0 0 north
+  credential credential/ossuary_key
+end
+
+entity reliquary_gate primitive/iron_barred_door
+  anchor face 1 0 0 north
+  credential credential/ossuary_key
+end
+
+entity burial_channel primitive/shallow_water_region
+  anchor region 3 1 0 5 4 0
+end
+
+entity ossuary_brazier primitive/extinguishable_light
+  anchor cell 7 4 0
+end
