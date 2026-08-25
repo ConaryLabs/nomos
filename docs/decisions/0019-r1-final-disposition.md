@@ -1,47 +1,38 @@
 ---
 title: R1 final disposition — accept the runtime epoch, no game adoption
-status: Draft; no owner disposition; does not take effect
+status: Final proposal; owner disposition pending; does not take effect
 number: 0019
 date: 2026-08-26
 owner: Peter Permenter
 issue: 174
-candidate_commit: pending prerequisite merges and final rerun
-candidate_tree: pending prerequisite merges and final rerun
-runtime_contract: RUNTIME.md revision 2
-runtime_contract_sha256: pending frozen candidate
+candidate_commit: 8ef33cedff69fdac0aad5094eb41d8375a2b0898
+candidate_tree: f78f1a57ecf936f503e2bc8c8e852542b1172f75
+runtime_contract: RUNTIME.md revision 3
+runtime_contract_sha256: f13fef1b486b7258c5dfca76bb3db263f1a42e285450e9415dddeb20c789686c
+r1_authority: docs/decisions/0017-post-gate-k-runtime-epoch.md
+runtime_revision_3_authority: docs/decisions/0020-runtime-revision-3.md
 gate_k_disposition: docs/decisions/0013-gate-k-disposition.md
 round_two_termination: docs/decisions/0016-terminate-gate-k-round-two.md
 ---
 
 # R1 final disposition — accept the runtime epoch, no game adoption
 
-## Draft boundary
+## Owner-review boundary
 
-This record is prepared under issue #174 for owner review. It is deliberately
-not yet an owner decision: the exact candidate commit and tree are not frozen,
-the final `RUNTIME.md` hash is not recorded, and the prerequisite corrective
-and evidence pull requests have not received their required non-author reruns.
-Nothing in this draft takes effect, closes R1, or calls a candidate green.
+This record is complete for owner review but is not yet an owner decision.
+Nothing in it takes effect or closes R1 until the owner records the explicit
+disposition at the end.
 
-Before this record can move out of draft:
-
-- PR #169 must land issue #159's `nomos.effective_facts@2` spelling alignment;
-- PR #170 must land issue #165's explicit arrival/player-cell invariant;
-- PR #171 must land issue #167's content-owned route fixture and dynamic corpus
-  tests;
-- PR #173 must land issue #172's clean-checkout offline and complete budget
-  receipt;
-- each of those four branches must carry its own non-author rerun receipt; and
-- one different author must rerun the complete proof on the combined candidate
-  and record the commit, commands, environment, result, and reviewer.
-
-The remainder is the proposed disposition and the evidence map that will be
-made exact after those conditions hold.
+The prerequisite corrections and evidence updates landed through PRs #169,
+#170, #171, #173, #177, and #179, each with an exact-head non-author receipt.
+The final different-author proof passed on the bound candidate and is recorded
+below. No implementation, evidence, proof, or contract prerequisite remains;
+only the owner's R1 disposition is pending.
 
 ## Proposed verdict
 
-**Accept R1 as a completed, passing runtime epoch. Do not adopt Nomos into any
-game project.**
+**Accept R1 as a completed, passing runtime epoch. No game adoption is
+authorized by this decision.**
 
 Those are separate decisions. `RUNTIME.md` replaced the unsatisfiable Gate K
 criterion for the R1 line and can be satisfied on its own terms. It also kept
@@ -52,33 +43,40 @@ repository runtime baseline; it does not make the thesis apply to a project.
 
 ## Candidate and authority boundary
 
-The final record will bind one commit, one Git tree, `RUNTIME.md` revision 2 and
-its SHA-256, and the exact successful workflow runs at that commit. No local
-change, unmerged branch, expired artifact without a preserved compact receipt,
-or issue/PR assertion outside that boundary will contribute to the verdict.
+This record binds commit `8ef33cedff69fdac0aad5094eb41d8375a2b0898`, Git
+tree `f78f1a57ecf936f503e2bc8c8e852542b1172f75`, `RUNTIME.md` revision 3 and
+SHA-256
+`f13fef1b486b7258c5dfca76bb3db263f1a42e285450e9415dddeb20c789686c`, and
+the exact successful workflow runs and final receipt below. No local change,
+unmerged branch, expired artifact without a preserved compact receipt, or
+unidentified issue/PR assertion contributes to the verdict. Historical slice
+receipts contribute only where this record admits them by PR, exact head,
+reviewer, command, and result.
 
-Decision 0018 remains the authority for RUNTIME revision 2's four contract-text
-repairs. This disposition repairs no criterion and changes no contract wording;
-it evaluates the frozen candidate against the contract already in force.
+Decision 0017 remains R1's authority, decision 0018 remains the authority for
+revision 2's four repairs, and decision 0020 establishes revision 3's exact
+comparison-count repair. This disposition repairs no criterion and changes no
+contract wording; it evaluates the frozen candidate against revision 3 already
+in force.
 
-## Proposed R1 adoption matrix
+## R1 adoption matrix
 
-The final table will say `pass`, `fail`, or `incomplete`, never “mostly,” and a
-failed row cannot be offset by another. The provisional results below become
-results only at the frozen candidate after the pending rerun.
+Each row says `pass`, `fail`, or `incomplete`, never “mostly,” and no row offsets
+another. All five pass at the bound candidate.
 
-| # | Provisional result | Load-bearing evidence | Pending closure |
-| ---: | --- | --- | --- |
-| 1 | expected pass | R1-1 through R1-5 landed in dependency order with target-specific evidence and non-author receipts on PRs #130, #143, #147, #151, and #156. | PR #169 aligns the post-decision-0018 effective-facts identity and needs its own non-author receipt. |
-| 2 | expected pass | PR #143 deleted `build-plan.mjs`; `kernel_divergences.rs` plants the false-blocker, sub-base-cost, and unequal-cost cases; the accepted rendering compiler copies kernel effective facts. Issue #132 is closed with those references. | Final source audit and combined-candidate rerun. |
-| 3 | expected pass | R1-3's 69-row ownership audit, closed typed `nomos.presentation_source@2`, integer-only source, named sockets, and strict Rust decoder; R1-4/R1-5 closed its seven deferred rows. | PR #170 makes the remaining arrival/player-cell relationship explicit and mechanically enforced. |
-| 4 | expected pass | PR #173's `r1-adoption-evidence` job builds and tests the clean workspace, captures content, builds wasm, stages/scans the public artifact, and loads its first frame with no default network route; every section 7 row has a numeric runner-bound value. | PR #173 non-author receipt, merge, and combined-candidate rerun. |
-| 5 | expected pass | Ossuary Reach, Gloam Bastion, and Drowned Stair were added without renderer or compiler source edits; the six-area viewer ran unchanged. The owner judged the two cold-authored rooms compelling. | PR #171 removes the Rust test corpus pins exposed by the experiment and needs its non-author receipt. |
+| # | Result | Load-bearing evidence |
+| ---: | --- | --- |
+| 1 | pass | R1-1 through R1-5 landed in dependency order with target-specific evidence and non-author receipts on PRs #130, #143, #147, #151, and #156. PR #169 and decision 0020 bind `nomos.effective_facts@2` and the normative `30 scenarios compared, 0 differences`; PR #177 carries the revision-3 non-author receipt. The final proof reran the full target set. |
+| 2 | pass | PR #143 deleted `build-plan.mjs`; `kernel_divergences.rs` plants the false-blocker, sub-base-cost, and unequal-cost cases; the accepted rendering compiler consumes kernel effective facts. Issue #132 closed with those exact references, and the final source audit found no shadow resolver. |
+| 3 | pass | R1-3's 69-row ownership audit, closed typed `nomos.presentation_source@2`, integer-only source, named sockets, and strict Rust decoder resolve the presentation boundary. PR #170 makes arrival/player-cell equality an `RP0202` decoder invariant; the final targeted refusal and 40-test source suite passed. |
+| 4 | pass | PR #173 adds the no-default-route one-command proof; PR #179 binds section 7 and the compact record to the combined implementation candidate. Exact final-candidate run `32911714950`, job `98007062484`, rebuilt/tested offline and reproduced the recorded package, public-artifact, and wasm bytes. |
+| 5 | pass | Area-addition commits `8f71e34`, `f62efa9`, `23c2cb2`, and `b790c54` contain no renderer/compiler source edit. PR #171 moves route/counter expectations into content, dynamically discovers the corpus, and refuses current area IDs in crate tests. The final proof regenerated the six-area fixture byte-identically: 77 commands, 65 moves, traversal cost 95. |
 
 ## First-target receipts
 
-These receipts establish the five implementation slices; they do not replace
-the pending final candidate rerun.
+These receipts establish the five implementation slices. The final
+different-author receipt below proves their combined result at the bound
+candidate.
 
 | Target | Merge | Non-author receipt | What it established |
 | --- | --- | --- | --- |
@@ -94,35 +92,131 @@ as `nomos.effective_facts@2` rather than silently treating the old receipt as
 proof of new bytes. PR #169's comparison expands the corpus from twenty to
 thirty scenarios and is a required input to the final candidate.
 
+The prerequisite closure receipts are:
+
+| Repair or evidence update | Merge | Exact reviewed head | Non-author reviewer |
+| --- | --- | --- | --- |
+| Effective-facts schema alignment, #159 | PR #169, `1e65f48` | `956186b` | `/root/review_169` |
+| Route-entry/player-cell invariant, #165 | PR #170, `068ad3e` | `72bf17d` | `/root/review_170` |
+| Dynamic corpus and route fixture, #167 | PR #171, `db5d065` | `381431d` | `/root/review_171` |
+| Complete offline and budget lane, #172 | PR #173, `bf9e11b` | `02e8b04` | `/root/review_173` |
+| Combined-candidate budget refresh, #178 | PR #179, `197832e` | `1b9400e` | `/root/review_179` |
+| Runtime revision 3, #176 | PR #177, `8ef33ce` | `342b0c3` | `/root/review_177_draft` |
+
 ## Complete offline and budget evidence
 
 PR #173 adds the one-command receipt required by `RUNTIME.md` section 1
-criterion 4. Its implementation-head run `32905965046` checked out
-`bdd2229219bfb3b9efdf6c64f0d865f3202a4d82` on GitHub `ubuntu24` x86_64 image
-`20260823.283.1`, removed every default network route, retained loopback only,
-and forced Cargo offline. The compact record is
-`docs/evaluation/r1-adoption-evidence.md`; the uploaded artifact's archive
-SHA-256 is
-`8e17731c3db4fd2d9859430e8133fc3a3a11c7dfc0e7e63ef864d06837160c72`.
+criterion 4. PR #179 refreshes that receipt after the corrective implementation
+merges and binds section 7 to their combined candidate
+`bf9e11b25a37591401033d76b94ac875a1cb92c1`, tree
+`df7b1a9c023f5c9b4943b61f39c13f6b67668ead`. Run `32908589982`, job
+`97997912940`, used GitHub `ubuntu24` x86_64 image `20260823.277.1`, removed
+every default network route, retained loopback only, and forced Cargo offline.
+The compact record is `docs/evaluation/r1-adoption-evidence.md`; artifact
+`9585756215` has archive SHA-256
+`8180c7ee3e267e6ff9b371a982189a6161a3c308a092d59d215bc535aadf104d`.
 
 The observations recorded into section 7 are:
 
-- 17.344 s clean release workspace build;
-- 9.783 ms median and 9.989 ms p95 validation latency;
-- 349.668 kernel replay commands/s;
-- 1 206.731 six-area play replay commands/s, 63.476 ms median and 65.064 ms
+- 22.225 s clean release workspace build;
+- 15.692 ms median and 15.905 ms p95 validation latency;
+- 226.913 kernel replay commands/s;
+- 932.278 six-area play replay commands/s, 82.273 ms median and 83.616 ms
   p95 per 77-command replay;
 - 20 492 bytes across eight compiled-package files;
-- 1 387 887 bytes across twenty-four public-artifact files;
-- 422 432 bytes for the wasm play runtime, SHA-256
-  `70addbe7662caab4af2d0147c09dc8e839dd282c617a99cd325ced026d0d3a0f`;
+- 1 386 650 bytes across twenty-four public-artifact files;
+- 421 195 bytes for the wasm play runtime, SHA-256
+  `e8e03c125667ad937939f4a628b67df9ff813a88823fecd859784ed241673c97`;
   and
-- 27 771 ms from the cold content pipeline's start to the first completed WebGL
-  render, with 2 056 ms from navigation to that frame.
+- 27 740 ms from the cold content pipeline's start to the first completed WebGL
+  render, with 2 821 ms from navigation to that frame.
 
 Those are observations of one recorded runner, not performance promises. The
-final candidate rerun must reproduce the proof's success; its timings need not
-equal an earlier noisy observation digit for digit.
+final candidate rerun reproduced the exact package, public-artifact, and wasm
+sizes and wasm digest. Its noisy timing observations were 22.559 s build,
+14.217/14.327 ms validation, 249.336 kernel commands/s, 1 034.014 play
+commands/s with 74.445/75.045 ms replay latency, and 24 022/2 381 ms content
+pipeline/navigation-to-frame.
+
+## Final different-author proof
+
+Reviewer `/root/final_r1_proof` (Luna/max) independently checked the exact bound
+candidate on Linux x86_64 with Rust/Cargo 1.98.0, Node 26.7.0, and headless
+Chrome 151.0.7922.34. The worktree was clean before and after, and the reviewer
+made no source edit, commit, push, merge, or GitHub mutation.
+
+The reviewer set `PROOF_TARGET` to the fresh disposable directory
+`/work/signed-dev/r1-final-proof-target.yOEgJP`. These were the exact proof
+commands; the area-ID loop follows separately:
+
+```text
+CARGO_TARGET_DIR="$PROOF_TARGET" cargo fmt --all -- --check
+CARGO_TARGET_DIR="$PROOF_TARGET" cargo clippy --workspace --all-targets --locked -- -D warnings
+CARGO_TARGET_DIR="$PROOF_TARGET" cargo test --workspace --locked
+CARGO_TARGET_DIR="$PROOF_TARGET" cargo xtask boundary
+docs/evaluation/r1-schema-ownership.sh
+CARGO_TARGET_DIR="$PROOF_TARGET" experiments/executable-gaol/compare-effective-facts.sh
+CARGO_TARGET_DIR="$PROOF_TARGET" experiments/executable-gaol/gaol verify
+CARGO_TARGET_DIR="$PROOF_TARGET" cargo test -p nomos-render-plan --test schema_binding the_gate_k_object_spelling_is_refused_for_an_r1_document --locked
+CARGO_TARGET_DIR="$PROOF_TARGET" cargo test -p nomos-play r1_schema_binding_refuses_the_gate_k_object_spelling --locked
+CARGO_TARGET_DIR="$PROOF_TARGET" cargo test -p nomos-render-plan --test source a_route_entry_different_from_the_player_cell_is_refused --locked
+CARGO_TARGET_DIR="$PROOF_TARGET" cargo test -p nomos-play --test corpus --locked
+CARGO_TARGET_DIR="$PROOF_TARGET" cargo test -p nomos-play --test session --locked
+CARGO_TARGET_DIR="$PROOF_TARGET" cargo test -p nomos-render-plan --test collection --locked
+node experiments/executable-gaol/src/route-expectations.mjs target/executable-gaol/areas.json target/executable-gaol/areas "$PROOF_TARGET/route-expectations-independent.json"
+cmp "$PROOF_TARGET/route-expectations-independent.json" experiments/executable-gaol/route-expectations.json
+CARGO_TARGET_DIR="$PROOF_TARGET" crates/nomos-play/build-wasm.sh --offline
+CARGO_TARGET_DIR="$PROOF_TARGET" cargo build --locked -p nomos-play --release
+node apps/nomos-viewer/build.mjs --from target/executable-gaol --wasm target/wasm32-unknown-unknown/wasm/nomos_play.wasm --out apps/nomos-viewer/dist --receipt "$PROOF_DOWNLOAD/viewer-build-receipt.json"
+CHROME_BIN=/work/signed-dev/.cache/ms-playwright/chromium_headless_shell-1234/chrome-headless-shell-linux64/chrome-headless-shell node --test apps/nomos-viewer/test/*.test.mjs
+CHROME_BIN=/work/signed-dev/.cache/ms-playwright/chromium_headless_shell-1234/chrome-headless-shell-linux64/chrome-headless-shell node apps/nomos-viewer/smoke/smoke.mjs --dist apps/nomos-viewer/dist --out target/nomos-viewer-smoke --require-chrome
+target/release/nomos-play replay target/executable-gaol/areas --session target/nomos-viewer-smoke/session.json
+```
+
+```text
+ids=$(find experiments/executable-gaol/areas -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | LC_ALL=C sort)
+count=$(printf '%s\n' "$ids" | sed '/^$/d' | wc -l)
+test "$count" -eq 6
+matches=0
+while IFS= read -r id; do
+  [ -n "$id" ] || continue
+  found=$(rg -n --fixed-strings "$id" crates/*/tests 2>/dev/null || true)
+  [ -z "$found" ] || matches=$((matches + 1))
+done <<EOF
+$ids
+EOF
+test "$matches" -eq 0
+```
+
+The literal-`target/debug` harnesses used a temporary `target` symlink to that
+fresh external target. The independent area scan found six directory IDs and
+zero occurrences in `crates/*/tests`; route regeneration was byte-identical.
+
+The ordered local proof passed formatting, clippy with warnings denied, all
+workspace tests, the dependency boundary, schema ownership at 20 Gate K and 10
+R1 identities, 30 effective-facts scenarios with zero differences, six-area
+`gaol verify`, targeted schema refusals and `RP0202`, dynamic corpus/session/
+collection tests, the no-area-ID test scan, byte-identical route-fixture
+regeneration, wasm and native play builds, 102 viewer Node tests, browser smoke
+with zero external requests, and native replay. It reproduced 6 areas, 77
+commands, 65 moves, traversal cost 95, and native/browser chain head
+`43a1b2164f18bc54738d0402013419659576e2d866c3fca630321a2ca641f143`.
+
+The exact-head GitHub receipts are:
+
+- `verify`: run `32911714874`, job `98007062214`, success;
+- `gate-k-evidence`: run `32911714880`, jobs `98007062164`, `98007062309`,
+  `98007062310`, `98007062375`, `98007062384`, and `98007187884`, all
+  success; and
+- `nomos viewer`: run `32911714950`, tests job `98007062606` and R1 job
+  `98007062484`, both success.
+
+Artifact `9586787444` is 1 494 683 archive bytes with SHA-256
+`c3e62456301ebce3466717c6bfc117c05c205b7ea6fa06f179e481b541e77388`.
+The reviewer evaluated each of the five `RUNTIME.md` section 1 criteria
+separately and returned five passes. The overall independent verdict was safe
+to call R1 proof green; owner disposition remained expressly outside the
+reviewer's authority.
 
 ## Content-authoring evidence and its limit
 
@@ -137,9 +231,10 @@ The experiment exposed two harness debts rather than concealing them. Issue
 #165 records the unstated equality between a destination's route entry and its
 player actor's cell; PR #170 makes that relation a decoder invariant. Issue
 #167 records crate tests that named the corpus and pinned route counters; PR
-#171 makes tests discover the corpus and consumes a route/counter fixture that
-`gaol accept` regenerates and `gaol verify` compares. Those repairs strengthen
-the evidence for future content additions.
+#171 removes current area IDs and route counters from code-side tests, makes
+tests discover the corpus, and consumes a route/counter fixture that `gaol
+accept` regenerates and `gaol verify` compares. Those repairs strengthen the
+evidence for future content additions.
 
 The owner verdict in `docs/review/cold-author-area-five.md` is **compelling**.
 It is expressly an informal Gate 2/Gate 3 miniature, not a formal Gate 2 or
@@ -155,7 +250,7 @@ separately satisfied.
 | ---: | --- | --- |
 | 1. Gate K passes | historically failed; replaced for R1 only | Decision 0013 remains controlling; decision 0016 authorized no retry. An R1 pass cannot be read back as Gate K credit. |
 | 2. Gate 0 target pack approved for the adopting game | not met | The owner found the six-area study compelling, but no adopting game or its ten-part target pack exists. |
-| 3. Gate 1's three primitives proven end to end in the intended runtime | not met | The repository proves semantics, presentation, movement, pursuit, persistence, and diagnostics; the Gate 1 door/water/light matrix also requires systems such as audio and networking that are absent. |
+| 3. Gate 1's three primitives proven end to end in the intended runtime | not met | R1 proves its specified subset: semantics, presentation, movement, pursuit, persistence, and diagnostics in this repository runtime. Gate 1's intended adopting-game proof also requires the target's door/water/light matrix and systems such as audio, networking, and replication; no adopting runtime exists. |
 | 4. Adopting project records its own authority decision | not met | Nomos has authority only for this repository. No other project is in scope or has adopted it. |
 | 5. Adopting project accepts the measured runtime cost | not met | R1 now measures the costs, but no adopting project exists to accept them. Measurement is necessary and is not itself adoption. |
 
@@ -182,9 +277,9 @@ clear disposition. This record neither closes them nor uses them to waive a red
 required lane. If any required final-candidate lane is red, R1 is incomplete
 regardless of this section.
 
-Issue #145, the original schema-spelling umbrella, should close only after PR
-#169 lands its last implementation piece; decision 0018 supplied the owner
-rule, not the bytes.
+Issue #145, the original schema-spelling umbrella, closed after PR #169 landed
+its last implementation piece; decision 0018 supplied the owner rule, not the
+bytes.
 
 ## Preserved historical verdicts and non-claims
 
@@ -206,19 +301,19 @@ If the final matrix passes and the owner adopts the proposed verdict:
 
 1. R1 closes as the accepted repository runtime baseline at the frozen
    candidate. Its five first targets and recorded dependencies remain governed
-   by `RUNTIME.md` revision 2.
+   by `RUNTIME.md` revision 3.
 2. Future maintenance may repair bugs against that baseline through ordinary
    falsifiable issues and proof. A new accepted capability family, dependency
    policy, or runtime epoch requires its own owner decision.
 3. Work toward a game remains exploratory until a concrete adopting project
    separately supplies Gate 0, Gate 1, its authority-tree decision, and its
    acceptance of measured cost.
-4. No work reopens Gate K or its cold-agent rounds.
+4. No Gate K retry, round, or reopening is authorized. Any future attempt
+   requires a new owner decision.
 
 ## Owner disposition
 
-**Pending.** Recommended final text after the candidate is frozen and the
-different-author receipt is recorded:
+**Pending.** The candidate and evidence are complete. Recommended owner text:
 
 > **Accept R1; do not adopt Nomos into a game.** R1's five adoption criteria
 > pass at the bound candidate, so the runtime epoch closes as the accepted
