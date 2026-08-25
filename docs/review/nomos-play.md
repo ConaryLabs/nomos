@@ -1676,7 +1676,7 @@ promised.
 | --- | --- |
 | Play runtime, `wasm32-unknown-unknown`, `--profile wasm` | 422 432 bytes, sha256 `70addbe7662caab4af2d0147c09dc8e839dd282c617a99cd325ced026d0d3a0f` |
 | The same crate under the plain release profile | 554 732 bytes |
-| Reproducibility | two builds with `target/wasm32-unknown-unknown` removed between them, identical sha256 |
+| Reproducibility | two builds with `target/wasm32-unknown-unknown` removed between them, identical sha256 — and the `ubuntu-24.04` CI runner, from a different checkout path, produced the same one (run 32883772392) |
 | Build-machine paths in the binary | 0, checked by `build-wasm.sh`, which fails closed on one |
 | Imports the module declares | 0, asserted by `test/runtime.test.mjs` |
 | Public artifact | 1 355 141 bytes, 20 files |
@@ -1704,6 +1704,12 @@ the refusal messages — both cost more than 22 KB is worth.
   `@2` to `@3` bump. The four `forensic.svg` overlays changed, and substituting
   `nomos.rendering_plan@2` back for `@3` in each reproduces its prior digest
   exactly, with a zero byte delta.
+- **Reproducible across machines, not only across builds.** The design plan
+  measured two builds on one machine. CI gave the stronger result for free: the
+  runner's checkout lives at `/home/runner/work/nomos/nomos` rather than at this
+  worktree's path, and the binary is the same bytes. That is what
+  `build-wasm.sh`'s `cd` to the repository root buys — the panic locations come
+  out repository-relative, so where the checkout lives is not in the artifact.
 - **The browser ran the same authority.** The smoke lane recorded the browser's
   `nomos.play_session@1` and replayed it natively:
 
