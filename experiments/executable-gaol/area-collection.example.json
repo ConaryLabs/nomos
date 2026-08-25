@@ -85,6 +85,16 @@
     {
       "fromArea": "ember-vault",
       "gate": "vault_gate",
+      "toArea": "ossuary-reach",
+      "entry": {
+        "x": 1,
+        "y": 5,
+        "z": 0
+      }
+    },
+    {
+      "fromArea": "ossuary-reach",
+      "gate": "bone_gate",
       "toArea": "north-gaol",
       "entry": {
         "x": 2,
@@ -113,6 +123,11 @@
       "id": "north-gaol",
       "label": "North Gaol",
       "plan": "areas/north-gaol.json"
+    },
+    {
+      "id": "ossuary-reach",
+      "label": "Ossuary Reach",
+      "plan": "areas/ossuary-reach.json"
     }
   ]
 }

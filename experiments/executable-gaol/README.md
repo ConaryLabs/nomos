@@ -1,7 +1,7 @@
 # Executable gaol experiment
 
 This is the deliberately quarantined answer to issues #101, #103, #105, #107,
-and #110: three independently authored areas, one bounded look, one WebGL
+#109, #110, and #113: four independently authored areas, one bounded look, one WebGL
 renderer, a connected run, and visible semantic state. It is not Gate K or
 Gate 1 evidence and it does not change the accepted workspace.
 
@@ -13,8 +13,8 @@ Run:
 experiments/executable-gaol/gaol capture
 ```
 
-That diagnostic command compiles all three area sources, executes fifteen real
-Nomos command scripts, derives three `nomos.experiment.rendering_plan@1`
+That diagnostic command compiles all four area sources, executes twenty real
+Nomos command scripts, derives four `nomos.experiment.rendering_plan@1`
 artifacts only from subsystem projections and runtime state, checks their exact
 shared visual grammar, emits deterministic SVG frames, and rasterizes a
 cross-area PNG contact sheet with `rsvg-convert` when available. SVG is retained
@@ -27,13 +27,14 @@ experiments/executable-gaol/gaol serve
 ```
 
 Open the printed local URL. The WebGL renderer receives only `areas.json`, the
-three selected rendering plans, and presentation-only actor deltas; it does not
+four selected rendering plans, and presentation-only actor deltas; it does not
 parse `.nomos`, World IR, or compiler receipts. Its pinned Three.js backend
 supplies meshes, depth, shadows, fog, real point lights, and animated shader
-water. North Gaol, Cistern Walk, and Ember Vault use the same camera, bounded
-palette, materials, assemblies, actor silhouettes, beveled masonry vocabulary,
-effect language, and renderer. Their doors, water, light, actors, wall height,
-masonry masses, and composition come from separate area content.
+water. North Gaol, Cistern Walk, Ember Vault, and Ossuary Reach use the same
+camera, bounded palette, materials, assemblies, actor silhouettes, beveled
+masonry vocabulary, effect language, and renderer. Their doors, water, light,
+actors, wall height, masonry masses, and composition come from separate area
+content.
 See [AUTHORING.md](AUTHORING.md) for the intentionally small LLM authoring
 packet.
 
@@ -58,11 +59,12 @@ it contains no room-specific prompt text. Area arrivals identify route progress,
 and the final escape reports cumulative areas, moves, and traversal cost.
 
 The default run begins in Cistern Walk. Crossing its declared, traversable
-sluice enters Ember Vault; crossing Ember's vault gate enters North Gaol; the
-North Gate is the final escape. Area transitions preserve cumulative moves,
-water cost, and cleared-area count while resetting area-local actors and runtime
-scenario selection. The area buttons and bracket keys are forensic shortcuts
-that reset run progress; `R` returns to the Cistern start.
+sluice enters Ember Vault; crossing Ember's vault gate enters Ossuary Reach;
+crossing the Bone Gate enters North Gaol; the North Gate is the final escape.
+Area transitions preserve cumulative moves, water cost, and cleared-area count
+while resetting area-local actors and runtime scenario selection. The area
+buttons and bracket keys are forensic shortcuts that reset run progress; `R`
+returns to the Cistern start.
 
 The internet build is the same static viewer staged without a running process:
 

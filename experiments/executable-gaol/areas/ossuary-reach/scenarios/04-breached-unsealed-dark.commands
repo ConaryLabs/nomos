@@ -1,0 +1,4 @@
+schema nomos.command_script@1
+ignite bone_gate
+unseal bone_gate
+extinguish ossuary_brazier

@@ -1,0 +1,5 @@
+schema nomos.command_script@1
+unlock bone_gate with credential/ossuary_key
+open bone_gate
+unseal bone_gate
+extinguish ossuary_brazier

@@ -8,8 +8,8 @@
   "forensicScenario": "03-breached-unsealed",
   "exit": {
     "gate": "vault_gate",
-    "toArea": "north-gaol",
-    "entry": { "x": 2, "y": 4, "z": 0 }
+    "toArea": "ossuary-reach",
+    "entry": { "x": 1, "y": 5, "z": 0 }
   },
   "architecture": {
     "bounds": { "width": 9, "height": 6 },
