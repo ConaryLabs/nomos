@@ -16,12 +16,21 @@ publish.workspace = true
 # RUNTIME.md section 4: zero third-party dependencies. Nothing is recorded in
 # section 4's addition table by this crate. The wasm32 build links the pinned
 # toolchain's own `std`, whose allocator is `dlmalloc`; that is the standard
-# library, not a Cargo dependency, and `cargo tree` shows the three edges below
+# library, not a Cargo dependency, and `cargo tree` shows the four edges below
 # and nothing else.
 [dependencies]
 nomos-core.workspace = true
 nomos-projection.workspace = true
 nomos-sim.workspace = true
+
+# RUNTIME.md section 3 also permits an edge to another declared R1 member while
+# the graph stays acyclic. This one exists for a single constant: the rendering
+# plan's identity is declared by the crate that emits it, and binding it from
+# there rather than restating it here is what keeps one identity to one owner —
+# the rule `docs/evaluation/r1-schema-ownership.sh` enforces. A version move
+# then carries both ends at once, which is the same reason
+# `collection.rs` reads it from `plan.rs` rather than spelling it again.
+nomos-render-plan.workspace = true
 
 # Dev-only. `tests/semantics.rs` compiles the four committed area sources in
 # memory and asserts that the simulation projection this crate decodes is the

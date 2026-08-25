@@ -66,9 +66,15 @@ projection members' identities and digests, and the presentation source into
 depends on `nomos-core` alone, and replaces
 `experiments/executable-gaol/src/build-plan.mjs`.
 
+`nomos-play replay <areas-dir> --session <session.json>` re-executes a recorded
+`nomos.play_session@1` against the content its route names, compares every
+receipt by canonical bytes, and reports the first difference with its ordinal.
+It is what the browser lane shells to prove that the session the page produced
+is the one the native runtime produces from the same inputs.
+
 `nomos-render-plan collection --plans <dir-or-plan> --out <areas.json>` is the
 same binary's second mode, added by issue #152: it reads the compiled plans and
-emits `nomos.area_collection@1` — the route chain, the visual grammar every area
+emits `nomos.area_collection@2` — the route chain, the visual grammar every area
 shares, and one row per area naming the published plan file and its SHA-256. It
 replaces `experiments/executable-gaol/src/build-collection.mjs`, which was the
 last identity accepted code bound whose declaration lived under `experiments/`.
@@ -110,12 +116,16 @@ experiments/executable-gaol/gaol verify
 Build and prove the promoted viewer with:
 
 ```text
+crates/nomos-play/build-wasm.sh
+cargo build --locked -p nomos-play
 node --test apps/nomos-viewer/test/*.test.mjs
 node apps/nomos-viewer/build.mjs --from target/executable-gaol --out apps/nomos-viewer/dist
 node apps/nomos-viewer/smoke/smoke.mjs --dist apps/nomos-viewer/dist --out target/nomos-viewer-smoke
 ```
 
-The last one needs a Chrome. It uses `CHROME_BIN` if that is set, otherwise
+The first line builds the authoritative runtime the viewer loads and prints its
+size and sha256; the second builds the native binary the smoke lane shells to
+replay what the browser did. The last one needs a Chrome. It uses `CHROME_BIN` if that is set, otherwise
 `google-chrome` or `chromium` on `PATH`, and falls back to a Playwright cache
 only if one happens to be present. With none of those it skips with an explicit
 message; in CI it is required.
@@ -149,10 +159,10 @@ which print the plan's own identity. `docs/review/rendering-plan-compiler.md` is
 its design record.
 
 **R1-3, typed presentation source, has landed** (issue #146, PR #147). Each
-area's `presentation.json` carries `nomos.presentation_source@1`: versioned,
+area's `presentation.json` is versioned,
 closed against unknown fields, integer-only by the type its reader parses into,
 with attachment by named socket instead of by coordinate and each area owning
-its own arrival cell. The plan is `nomos.rendering_plan@2`, emitted through
+its own arrival cell. The plan is emitted through
 `nomos_core::CanonicalValue` — which retires issue #144, since the private
 encoder in `src/doc.rs` and its decimal type are deleted. The ownership audit's
 69 rows each have one owner and its 61 double-authority, convention-derived, and
@@ -162,7 +172,7 @@ R1-4 and four to R1-5.
 
 **R1-4, the promoted viewer, has landed** (issue #148, PR #151).
 `apps/nomos-viewer/` is a clean implementation - no file moved or copied - with
-a strict decoder for `nomos.rendering_plan@2`, a vendored `three@0.185.1`
+a strict decoder for the rendering plan, a vendored `three@0.185.1`
 recorded under `RUNTIME.md` section 4, a `dist/` staged from published artifacts
 and scanned before it is published, and a dependency-free headless Chromium lane
 that plays the four-area route to the final escape and fails on a single console
@@ -178,10 +188,37 @@ the app's own strings, and tables keyed by closed sets the schema declares;
 sockets resolve through the entity's declared face; and the two colour tables
 are one palette that the page reads too.
 
-Still deferred to R1-5: the literal actor ids, the scenario label derived from a
-directory name, the interaction reconstruction, and a declared actor role. The
-viewer picks its initial scenario by lowest authoritative tick rather than array
-position, which closes the audit's remaining positional convention early.
+**R1-5, authoritative movement and pursuit, has landed** (issue #154).
+`crates/nomos-play` is the second declared R1 member: it holds the actors, the
+command batch, occupancy, pursuit, receipts, and replay, and it layers them over
+the kernel's own transactions rather than beside them. `play.mjs` shrank from
+316 lines that owned everything the player experienced to an adapter that turns
+a key into a command document and paints what comes back. The same crate builds
+for `wasm32-unknown-unknown` with a hand-written `extern "C"` ABI — no
+`wasm-bindgen`, no third-party crate, zero imports declared — and that binary is
+what the browser plays. `docs/review/nomos-play.md` is its design record.
+
+The claim it exists to make is an identity, not a number: the smoke lane records
+the whole `nomos.play_session@1` document the browser produced and replays it
+through the native `nomos-play replay`, and the receipts and the chain head
+match. Every batch the browser committed, refusals included, is what the native
+runtime produces from the same inputs.
+
+Three content identities moved together so the four fixtures are regenerated
+once — `nomos.presentation_source@2` with the declared actor role,
+`nomos.rendering_plan@3` with the role and without the assembly and material
+strings issue #153 moved to the renderer catalog, and
+`nomos.area_collection@2` with `entity_kinds` in place of `entity_assemblies`.
+The drawn artifacts are unchanged: every SVG frame and every contact sheet is
+byte-identical across the bump, and substituting the old version string back
+into the four `forensic.svg` overlays reproduces each prior digest exactly.
+
+That closes the audit deferrals R1-3 named: the literal actor ids and the
+missing role are one field, the interaction reconstruction is replaced by an
+enumeration of what the kernel says is legal within reach, and the scenario
+label is recorded as tooling's own. The plan's `scenarios` and `interactions`
+stay where they are, as the SVG capture ladder and the evidence that the
+compiler consumed committed run bundles; they are no longer gameplay.
 
 Simulation-boundary expansion remains deferred while the visual grammar is
 being established. Do not reopen Gate K evaluation work or add proof machinery

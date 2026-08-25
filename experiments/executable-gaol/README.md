@@ -19,7 +19,7 @@ experiments/executable-gaol/gaol capture
 That diagnostic command compiles all four area sources, executes twenty real
 Nomos command scripts, and then hands the result to the accepted Rust compiler
 `nomos-render-plan` (issues #139 and #146), which derives four
-`nomos.rendering_plan@2` artifacts from `nomos entity-catalog`, one `nomos
+`nomos.rendering_plan@3` artifacts from `nomos entity-catalog`, one `nomos
 effective-facts` document per scenario, the run bundles, the four projection
 members, and each area's `presentation.json` — and from nothing else. It then checks their exact shared visual grammar, emits
 deterministic SVG frames, and rasterizes a cross-area PNG contact sheet with
@@ -35,7 +35,7 @@ JavaScript; it is deleted, and
 proved the replacement equal on all four areas before it was removed.
 
 Content is typed too. `presentation.json` carries schema
-`nomos.presentation_source@1`, decoded strictly by the same crate: versioned,
+`nomos.presentation_source@2`, decoded strictly by the same crate: versioned,
 with every field set checked exactly, every identifier checked against a
 declared grammar, and **no decimal anywhere** — heights are integer tenths of a
 lattice cell and effects attach to a named socket rather than to a coordinate.

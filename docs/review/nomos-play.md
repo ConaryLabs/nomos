@@ -1,11 +1,11 @@
 ---
 title: The authoritative play runtime — R1-5 design record
-status: R1-5 design record; phase 1, awaiting review before implementation
+status: R1-5 design record; reviewed, ruled on, and implemented on this branch
 date: 2026-08-25
 issue: 154
 branch: r1/issue-154-nomos-play
-accepts_against: RUNTIME.md §5 R1-5 (revision 1)
-registers: docs/evaluation/R1_SCHEMA_OWNERSHIP.md (nomos.play_state@1, nomos.play_command@1, nomos.play_receipt@1, nomos.play_session@1, nomos.presentation_state@1, nomos.rendering_plan@3 replacing @2)
+accepts_against: RUNTIME.md §5 R1-5 (revision 2, under docs/decisions/0018-runtime-revision-2.md)
+registers: docs/evaluation/R1_SCHEMA_OWNERSHIP.md (nomos.play_state@1, nomos.play_command@1, nomos.play_receipt@1, nomos.play_session@1, nomos.presentation_state@1; nomos.rendering_plan@3 replacing @2, nomos.presentation_source@2 replacing @1, nomos.area_collection@2 replacing @1)
 depends_on: issue #126 (R1-1 effective facts), issue #139 (R1-2 plan compiler), issue #146 (R1-3 presentation source), issue #148 (R1-4 viewer)
 folds_in: issue #153 (rendering_plan@3, kind→assembly out of Rust)
 applies_to: RUNTIME.md §3, §5, §6, §7; docs/evaluation/R1_SCHEMA_OWNERSHIP.md; docs/review/presentation-source.md; docs/review/nomos-viewer.md; docs/review/executable-gaol-ownership-audit.md
@@ -1425,7 +1425,7 @@ unchanged, so no Gate K determinism receipt moves.
 Seven findings. Three need an owner ruling before phase 2 starts; four are
 recorded corrections this design already makes.
 
-### Finding 1 — nothing in the tree can turn a simulation projection back into a `SimulationPlan`, and the issue's Scope has no room for the code that would — NEEDS A RULING
+### Finding 1 — nothing in the tree can turn a simulation projection back into a `SimulationPlan`, and the issue's Scope has no room for the code that would — RULED
 
 This is the load-bearing one.
 
@@ -1503,14 +1503,45 @@ to obtain executable semantics is to recompile them from verified World IR and
 check the bytes, and a public projection decoder would make a projection
 loadable as input without its World IR ever being seen.
 
-**What the owner needs to rule.** Whether the decoder lives in `nomos-play`
-(this design) or in `nomos-projection` as a §3 surface row. Either way, one
-non-claim goes in the record: **the browser does not verify a world package.** It
-replays the semantics of a package that was compiled and verified natively at
-build time, whose bytes `build.mjs` digests and whose digest the recorded
-session carries, and whose replay is re-verified natively by the smoke lane.
+**Ruled: `nomos-projection`.** The decoder is
+`crates/nomos-projection/src/decode.rs`, beside the encoder it inverts,
+declared as an R1 read-only surface row in `RUNTIME.md` §3's kernel-surface
+table under option (a). Encoder and decoder in one file cannot drift; a decoder
+in the consuming crate could, which is what decided it. Only the simulation
+projection needs one — nothing in the runtime reads the navigation, persistence,
+or diagnostics plans — so only the simulation projection got one.
 
-### Finding 2 — `RUNTIME.md` §5 R1-5 requires "the rendering-plan digests are unchanged", and adding `actors[].role` necessarily changes them — NEEDS A RULING
+The conditions the ruling attached are all met, and each is a check rather than
+a claim:
+
+- **No Gate K command executes from a bare projection.** The module's own
+  doc-comment says so: `nomos compile`, `nomos run`, `nomos replay`,
+  `nomos verify`, and `nomos effective-facts` still obtain their
+  `SimulationPlan` by recompiling the packaged stable World IR and checking the
+  stored member bytes against it. Nothing in the module is reachable from any of
+  them.
+- **Exact re-encode byte identity.**
+  `crates/nomos-compiler/tests/projection_decode.rs` proves it against the bytes
+  the compiler writes for `fixtures/gaol.nomos`, and that the decoded value is
+  `==` the compiler's own projection; `crates/nomos-play/tests/semantics.rs`
+  proves the same over the four committed areas.
+- **The plan binds the projection before it is decoded.**
+  `nomos_play::session::open` hashes the offered bytes and refuses `PL0502`
+  unless they equal the digest the rendering plan published for
+  `simulation.json`, before `from_canonical_bytes` is called at all.
+- **The kernel's `EK0813` is the second lock**, and it costs nothing: a
+  persisted state binds `runtime_semantics_digest`, and
+  `a_play_state_from_another_world_is_refused_by_the_kernel` shows the refusal.
+
+The trust-model note stands, and is recorded both here and in the module:
+**the browser does not verify a world package.** It replays the semantics of a
+package compiled and verified natively at build time, whose bytes `build.mjs`
+digests and whose digest the recorded session carries, and whose replay is
+re-verified natively by the smoke lane. A decoded projection is executable
+semantics that arrived without its World IR, and the decoder proves
+reconstruction and nothing more.
+
+### Finding 2 — `RUNTIME.md` §5 R1-5 required "the rendering-plan digests are unchanged", and adding `actors[].role` necessarily changes them — REPAIRED BY DECISION 0018
 
 §5 R1-5's last acceptance bullet reads: "the four-area route, interactions,
 water cost, capture, and reset remain green, **and the rendering-plan digests
@@ -1529,13 +1560,12 @@ proved the *contact sheet* byte-identical instead
 `@3`, and it holds: frames and contact sheet byte-identical, plan digests moved,
 forensic overlay moved by one version string.
 
-But `AGENTS.md` forbids silently reinterpreting the contract, so this is not
-reinterpreted. **The owner needs to either (a) rule that the clause means the
-drawn-artifact digests, recording the ruling here, or (b) authorise a §8
-contract repair amending §5 R1-5's wording and raising the R1 contract
-revision.** Phase 2 does not start until one of the two exists, because the
-alternative — dropping `actors[].role` — removes the field audit rows 7 and 21
-are waiting on and puts the role back in a literal id.
+But `AGENTS.md` forbids silently reinterpreting the contract, so it was not
+reinterpreted: it was repaired. `docs/decisions/0018-runtime-revision-2.md`
+raises the R1 contract to revision 2 and rewrites the clause to "the drawn
+artifacts — the SVG frames and contact sheet — are unchanged; rendering-plan
+digests may change when the plan's fields change". §6.2 above is the proof under
+the repaired wording, and §11 records it as measured.
 
 ### Finding 3 — the stated build command cannot carry the flags the build needs — CORRECTED HERE
 
@@ -1590,7 +1620,7 @@ The one occupancy source that does change behaviour is "other actors" blocking
 the *player* (§3.2 rule 4). Measured free against the committed corpus: the
 solved route never enters the pursuer's cell in any of the four areas (§8.4).
 
-### Finding 7 — `presentation_source@1` gains a required field without a version bump — NEEDS A RULING
+### Finding 7 — `presentation_source@1` gains a required field without a version bump — RULED: BUMP
 
 `actors[].role` is a required field on an input schema whose version does not
 change. Every one of its four authored files is edited in the same commit, its
@@ -1600,11 +1630,13 @@ this repository can be handed a `@1` file that no longer parses. The
 conservative alternative is `nomos.presentation_source@2`: one register row, one
 literal, four `schema` lines in content, and a strictly honest version history.
 
-This design proposes staying at `@1` and records the argument on both sides
-rather than deciding for the owner, because R1-3's acceptance criterion — "the
-accepted source is versioned, and a version mismatch is refused with a stable
-diagnostic" — is about refusal rather than about incrementing, and because a
-version number that moves for every field is a version number nobody reads.
+**Ruled: bump.** Versioned means versioned.
+`nomos.presentation_source@2` is what the four authored files declare, `@1`'s
+register row is replaced with its history noted, and the same rule was applied a
+third time in the same slice: `nomos.area_collection@1` becomes `@2` because its
+`visual_grammar` stops publishing `entity_assemblies`. Three identities move
+together, which is also what makes the four fixtures regenerate once rather than
+three times.
 
 ### Nothing in the issue is impossible
 
@@ -1615,3 +1647,78 @@ first rather than assumed: the kernel links and runs on `wasm32-unknown-unknown`
 with zero imports and a 211,650-byte floor (§5.1), and the authoritative
 interaction enumeration reproduces the authored ladder at every edge the
 four-area route uses (§3.6).
+
+---
+
+## 11. What the implementation changed, and what it measured
+
+The design above is what was reviewed. This section is what happened when it was
+built: every departure from it, with its cause, and every number the record
+promised.
+
+### 11.1 Departures from the design
+
+| # | Design said | Implementation does | Cause |
+| --- | --- | --- | --- |
+| 1 | the projection decoder lives in `crates/nomos-play/src/semantics.rs`, ~540 lines | it is `crates/nomos-projection/src/decode.rs`, R1 read-only surface | Finding 1 ruled. `nomos-play` loses the module and gains a four-line `session::open` that binds the digest and calls the kernel's decoder. |
+| 2 | `nomos-play` depends on three kernel crates | it also depends on the declared R1 member `nomos-render-plan` | One constant. `docs/evaluation/r1-schema-ownership.sh` refused a second `SchemaId::new("nomos.rendering_plan", 3)` outside the owner file, which is the rule working: the identity is bound from the crate that declares it, so a version move carries both ends at once. Measured cost: 2 348 bytes of wasm, because LTO drops everything else the plan compiler contains. |
+| 3 | occupancy asks whether any entity's binding *covers* the target cell | a `Face` binding occupies nothing | Found by a test. A door bound to the north face of `(5, 0)` is not standing in `(5, 0)`, and treating it as if it were made the objective gate's own cell unenterable — so the route could not reach the cell it exits from. A face is the boundary between two cells and governs passage through it, which the crossing rule already resolves. `play.mjs` had the same behaviour by accident, because `terrainAt` looked only at water; `occupancy::occupies_cell` states it. |
+| 4 | the smoke lane stops predicting `moves` and `cost` in JavaScript | the route solver keeps predicting them | Changed on reflection, and recorded rather than done quietly. The design's reason was that a predictor is a third implementation of rules the runtime owns. The better argument is the other way: an *independent* predictor that disagrees is how a runtime that is wrong in both places gets caught, and the solver has to model the geometry anyway to plan a path. So the lane now makes both assertions — the replay identity, which is primary, and the counters, which corroborate — and `tests/corpus.rs` pins the same numbers a third time, natively. Three agreeing sources, not one. |
+| 5 | `presentation_state` carries `interactions` as a `keyed_array` | it is a plain array ordered by `(entity, action)` | An entity can offer more than one legal action at once — `north_gate` offers `ignite` and `unseal` at `01-baseline` — so the entity is not a key. The order is the rule; `keyed_array` would have refused the duplicate. |
+| 6 | the five identities spell `schema` as `{name, version}` | they spell it as the string `name@version` | `RUNTIME.md` revision 2 §3 settled the spelling for R1 documents while this was being built. `read::bind_schema` reads both, because `nomos.effective_facts@1` still writes the object form and issue #159 owns that alignment; a reader that refused it would refuse a kernel document for a spelling this crate does not own. |
+| 7 | the scan pins the staged binary by digest | it checks the binary is a WebAssembly module, and `stage()` reads back what it wrote | The digest comparison as designed was vacuous: the scan computed it from the same file it compared. `stage()` now reads the staged bytes back, which catches a short write and can actually fail, and the scan checks the magic number and the module version. The properties that matter for a binary — no external origin, no build-machine path — are enforced by `build-wasm.sh`, where a `strings` sweep is meaningful. |
+| 8 | — | `build.mjs`'s `.nomos` rule was tightened | `[^"'\s]*\.nomos` matched inside `exports.nomos_play_step`. The rule wants a file extension; it now requires one. That is the same class of false positive `docs/review/nomos-viewer.md` §10 finding 1 records for the acceptance grep. |
+| 9 | — | `render-core.mjs` selects the player's silhouette by `role` | The design left `actor.id === "player"` alone to keep the frames byte-identical. It selects the same actor either way in this corpus, so the bytes do not move and audit item 21 closes completely instead of being filed forward. |
+
+### 11.2 The numbers
+
+| What | Measured |
+| --- | --- |
+| Play runtime, `wasm32-unknown-unknown`, `--profile wasm` | 422 432 bytes, sha256 `70addbe7662caab4af2d0147c09dc8e839dd282c617a99cd325ced026d0d3a0f` |
+| The same crate under the plain release profile | 554 732 bytes |
+| Reproducibility | two builds with `target/wasm32-unknown-unknown` removed between them, identical sha256 |
+| Build-machine paths in the binary | 0, checked by `build-wasm.sh`, which fails closed on one |
+| Imports the module declares | 0, asserted by `test/runtime.test.mjs` |
+| Public artifact | 1 355 141 bytes, 20 files |
+| Native tests, `crates/nomos-play` | 79 |
+| Viewer tests | 102 |
+| `cargo xtask boundary` | `r1 members 2` |
+| `r1-schema-ownership.sh` | `schema_identities_r1 10` |
+| Play replay throughput | 1 194 commands/s; 43.5 ms per 52-command replay, process start included |
+| Four-area route | 44 moves, 60 traversal cost, 52 batches — agreed by `tests/corpus.rs`, by `test/runtime.test.mjs` under node, and by the browser |
+
+The size expectation this record set — "the ceiling this design will accept
+without a finding is 400 KB" — was exceeded by 22 432 bytes, 5.6 per cent. It is
+recorded here rather than edited away. The cause is what the ceiling guessed at
+wrongly: the stub reached `commit_transaction` and nothing else, while the real
+crate also carries the reducer, five document encoders, the plan decoder, and
+the diagnostic strings for twenty refusal codes. Nothing was traded away to
+approach the number, and the two levers that would move it — dropping the
+`Debug` derives the `missing_debug_implementations` lint requires, or shortening
+the refusal messages — both cost more than 22 KB is worth.
+
+### 11.3 The evidence
+
+- **Drawn artifacts unchanged.** All twenty per-area frames, all four per-area
+  contact sheets, and the cross-area contact sheet are byte-identical across the
+  `@2` to `@3` bump. The four `forensic.svg` overlays changed, and substituting
+  `nomos.rendering_plan@2` back for `@3` in each reproduces its prior digest
+  exactly, with a zero byte delta.
+- **The browser ran the same authority.** The smoke lane recorded the browser's
+  `nomos.play_session@1` and replayed it natively:
+
+  ```text
+  NOMOS_VIEWER_SMOKE PASS areas=4 moves=44 cost=60 requests=19 external=0
+  NOMOS_PLAY_REPLAY PASS areas=4 commands=52 receipts=52
+    chain=74e8b6a2da867434db20e703729413fea1367a18b76df87469348fbdbd3f330b
+    final_kernel=0c0a573503282ec7b8f10dada7da267b96f04c089054936b84bece096b0ac7f2
+  ```
+
+- **The runtime agrees with the captured ladder.** Playing to each interaction
+  point reaches the kernel state hash the corresponding scenario recorded —
+  `9d81ddaf…`, `bc01b2f3…`, `0c0a5735…` for North Gaol — which is the strongest
+  single check that the live runtime and the capture are the same kernel.
+- **The enumeration is the ladder.** §3.6's measurement holds in the
+  implementation: at the cell the route stands on, only the objective gate is
+  within reach, and its first legal action by `(entity, action)` is the edge the
+  authored ladder used, at every step. `tests/corpus.rs` pins it per area.

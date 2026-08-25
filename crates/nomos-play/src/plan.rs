@@ -17,7 +17,7 @@
 use std::collections::BTreeMap;
 
 use nomos_core::Sha256Digest;
-use nomos_core::id::{EntityId, SchemaId};
+use nomos_core::id::EntityId;
 use nomos_projection::LatticeCell;
 
 use crate::error::{PlayError, PlayResult, codes};
@@ -25,14 +25,10 @@ use crate::read;
 
 /// The rendering-plan identity this runtime plays.
 ///
-/// # Panics
-///
-/// Panics if the literal is not a valid schema id, which this crate's tests
-/// rule out.
-#[must_use]
-pub fn rendering_plan_schema() -> SchemaId {
-    SchemaId::new("nomos.rendering_plan", 3).expect("the rendering-plan schema id is a literal")
-}
+/// Read from the crate that declares it.
+/// gives one identity one owner file, and a second constant here would be a
+/// second place a version move has to be remembered.
+pub use nomos_render_plan::plan::rendering_plan_schema;
 
 /// The projection member whose bytes are this area's executable semantics.
 pub const SEMANTICS_MEMBER: &str = "simulation.json";

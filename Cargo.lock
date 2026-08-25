@@ -32,6 +32,7 @@ dependencies = [
  "nomos-compiler",
  "nomos-core",
  "nomos-projection",
+ "nomos-render-plan",
  "nomos-schema",
  "nomos-sim",
 ]
