@@ -49,6 +49,7 @@ pub use light::{
 pub use movement::{
     LatticeCell, MovementClaim, MovementConnectivity, MovementDisposition, MovementResolverPlan,
     MovementSubject, NavigationPlan, ProjectedActivation, ResolvedMovement, ResolvedMovementFacts,
+    activation_is_true,
 };
 pub use simulation::{
     CausalEdge, Command, CommandArgument, CommandRequirement, CommandTransition, EventHandler,

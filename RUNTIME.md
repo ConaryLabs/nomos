@@ -95,6 +95,7 @@ artifact, hash, or diagnostic.
 | `nomos-compiler` | `entity_catalog.rs`, the `nomos.entity_catalog@1` document builder over the decoded stable World IR and the four verified plans | #138, an R1-2 input | accepted with R1-2 |
 | `nomos-cli` | the `entity-catalog` subcommand | #138, an R1-2 input | accepted with R1-2 |
 | `nomos-core` | `SourceSpan::to_canonical`, the one rendering of a source span; it replaces five byte-identical private copies in `nomos-core`, `nomos-schema`, `nomos-projection`, and `nomos-cli` | #138, an R1-2 input | accepted with R1-2 |
+| `nomos-projection` | `activation_is_true`, the one evaluator of `ProjectedActivation`, taking the activation and a caller-supplied state lookup that owns its own diagnostic; it replaces the private copies in `nomos-compiler` and `nomos-sim`, which cannot share code as placed | #136 | proposed |
 
 The three R1-1 rows are accepted: `nomos.effective_facts@1` is registered in
 `docs/evaluation/R1_SCHEMA_OWNERSHIP.md`, its comparison harness reports

@@ -9,7 +9,7 @@ use nomos_projection::{
     LightResolverPlan as ProjectedLightResolverPlan, LightSubject, MachineDefinition,
     MovementClaim, MovementConnectivity, MovementResolverPlan as ProjectedMovementResolverPlan,
     MovementSubject, NavigationPlan, PersistencePlan, Phase, ProjectedActivation,
-    ProjectedDirection, ProjectedEntity, RuntimeBinding, SimulationPlan,
+    ProjectedDirection, ProjectedEntity, RuntimeBinding, SimulationPlan, activation_is_true,
     validate_light_projection_agreement,
 };
 use nomos_schema::{
@@ -111,18 +111,14 @@ pub(crate) fn validate_all_light_projections(ir: &WorldIr) -> Result<(), Diagnos
 
 pub(crate) fn initial_movement_v1(ir: &WorldIr) -> Result<Vec<StableGroundMovementV1>, Diagnostic> {
     let projected = movement_plan(ir)?;
-    let initial_states: BTreeMap<NamespaceId, Ident> = ir
-        .entities()
-        .iter()
-        .flat_map(|entity| entity.expansion().machines())
-        .map(|machine| (machine.namespace().clone(), machine.initial().clone()))
-        .collect();
+    let initial_states = initial_machine_states(ir);
+    let state_equals = initial_state_lookup(&initial_states);
     let mut rows = Vec::new();
     for subject in projected.subjects() {
         let mut blocked = false;
         let mut maximum_cost = None;
         for claim in subject.claims() {
-            if !projected_activation_is_true(claim.activation(), &initial_states)? {
+            if !activation_is_true(claim.activation(), &state_equals)? {
                 continue;
             }
             match claim {
@@ -149,12 +145,8 @@ pub(crate) fn initial_movement_v1(ir: &WorldIr) -> Result<Vec<StableGroundMoveme
 
 pub(crate) fn initial_movement_v2(ir: &WorldIr) -> Result<Vec<StableGroundMovementV2>, Diagnostic> {
     let projected = movement_plan(ir)?;
-    let initial_states: BTreeMap<NamespaceId, Ident> = ir
-        .entities()
-        .iter()
-        .flat_map(|entity| entity.expansion().machines())
-        .map(|machine| (machine.namespace().clone(), machine.initial().clone()))
-        .collect();
+    let initial_states = initial_machine_states(ir);
+    let state_equals = initial_state_lookup(&initial_states);
     projected
         .subjects()
         .iter()
@@ -162,7 +154,7 @@ pub(crate) fn initial_movement_v2(ir: &WorldIr) -> Result<Vec<StableGroundMoveme
             let mut blockers = Vec::new();
             let mut costs = Vec::new();
             for claim in subject.claims() {
-                if !projected_activation_is_true(claim.activation(), &initial_states)? {
+                if !activation_is_true(claim.activation(), &state_equals)? {
                     continue;
                 }
                 match claim {
@@ -617,13 +609,26 @@ fn project_activation(activation: &ClaimActivation) -> ProjectedActivation {
     }
 }
 
-fn projected_activation_is_true(
-    activation: &ProjectedActivation,
+/// Every machine's authored initial state, keyed by namespace.
+fn initial_machine_states(ir: &WorldIr) -> BTreeMap<NamespaceId, Ident> {
+    ir.entities()
+        .iter()
+        .flat_map(|entity| entity.expansion().machines())
+        .map(|machine| (machine.namespace().clone(), machine.initial().clone()))
+        .collect()
+}
+
+/// The compile-time state lookup `nomos_projection::activation_is_true` consumes.
+///
+/// It owns the diagnostic the initial-movement shape has always emitted for a
+/// namespace the world does not declare. Issue #136 moved the evaluator, not
+/// this message: the runtime resolver reports a different code and wording for
+/// its own two lookups, and unifying them would change accepted diagnostics.
+fn initial_state_lookup(
     states: &BTreeMap<NamespaceId, Ident>,
-) -> Result<bool, Diagnostic> {
-    match activation {
-        ProjectedActivation::Always => Ok(true),
-        ProjectedActivation::StateEquals { namespace, state } => states
+) -> impl Fn(&NamespaceId, &Ident) -> Result<bool, Diagnostic> + '_ {
+    move |namespace, state| {
+        states
             .get(namespace)
             .map(|current| current == state)
             .ok_or_else(|| {
@@ -631,22 +636,7 @@ fn projected_activation_is_true(
                     nomos_core::diagnostic::codes::RESOLVER_ACTIVATION_NAMESPACE_MISSING,
                     format!("initial movement activation namespace `{namespace}` does not exist"),
                 )
-            }),
-        ProjectedActivation::Any(children) => {
-            let mut result = false;
-            for child in children {
-                result |= projected_activation_is_true(child, states)?;
-            }
-            Ok(result)
-        }
-        ProjectedActivation::All(children) => {
-            let mut result = true;
-            for child in children {
-                result &= projected_activation_is_true(child, states)?;
-            }
-            Ok(result)
-        }
-        ProjectedActivation::Not(child) => Ok(!projected_activation_is_true(child, states)?),
+            })
     }
 }
 
