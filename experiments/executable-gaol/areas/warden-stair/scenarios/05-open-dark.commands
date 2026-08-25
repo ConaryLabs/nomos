@@ -1,0 +1,5 @@
+schema nomos.command_script@1
+unlock warden_gate with credential/gaoler_key
+open warden_gate
+unseal warden_gate
+extinguish stair_lantern

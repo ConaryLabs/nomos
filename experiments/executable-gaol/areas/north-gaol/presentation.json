@@ -6,7 +6,7 @@
     "start": false
   },
   "route": {
-    "exit": { "gate": "north_gate", "to_area": null },
+    "exit": { "gate": "north_gate", "to_area": "warden-stair" },
     "entry": { "x": 2, "y": 4, "z": 0 }
   },
   "pursuit": {

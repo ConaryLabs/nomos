@@ -1,0 +1,20 @@
+schema nomos.source@1
+catalog credential/gaoler_key
+
+entity warden_gate primitive/iron_barred_door
+  anchor face 3 0 0 north
+  credential credential/gaoler_key
+end
+
+entity service_hatch primitive/iron_barred_door
+  anchor face 6 0 0 north
+  credential credential/gaoler_key
+end
+
+entity drain_basin primitive/shallow_water_region
+  anchor region 1 2 0 3 3 0
+end
+
+entity stair_lantern primitive/extinguishable_light
+  anchor cell 6 1 0
+end

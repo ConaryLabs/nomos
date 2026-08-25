@@ -1,0 +1,57 @@
+{
+  "schema": "nomos.presentation_source@1",
+  "area": {
+    "id": "warden-stair",
+    "label": "Warden Stair",
+    "start": false
+  },
+  "route": {
+    "exit": { "gate": "warden_gate", "to_area": null },
+    "entry": { "x": 1, "y": 4, "z": 0 }
+  },
+  "pursuit": {
+    "light": "stair_lantern"
+  },
+  "architecture": {
+    "bounds": { "width": 8, "height": 5 },
+    "wall_height_steps": 42,
+    "style": {
+      "assembly": "visual/beveled_masonry",
+      "material_family": "stone_bounded",
+      "trim_family": "broad_mortar"
+    },
+    "masses": [
+      {
+        "id": "stair_landing",
+        "min": { "x": 0, "y": 0 },
+        "max": { "x": 2, "y": 1 },
+        "height_steps": 18
+      },
+      {
+        "id": "warden_plinth",
+        "min": { "x": 5, "y": 2 },
+        "max": { "x": 6, "y": 4 },
+        "height_steps": 30
+      }
+    ]
+  },
+  "actors": [
+    {
+      "id": "player",
+      "assembly": "visual/player_silhouette",
+      "cell": { "x": 1, "y": 4, "z": 0 }
+    },
+    {
+      "id": "gaoler",
+      "assembly": "visual/gaoler_silhouette",
+      "cell": { "x": 6, "y": 4, "z": 0 }
+    }
+  ],
+  "effects": [
+    {
+      "id": "warden_crescent",
+      "assembly": "visual/cyan_crescent",
+      "anchor": { "entity": "warden_gate", "socket": "ward" }
+    }
+  ]
+}

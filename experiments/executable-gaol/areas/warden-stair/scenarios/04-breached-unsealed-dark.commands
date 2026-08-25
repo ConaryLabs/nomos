@@ -1,0 +1,4 @@
+schema nomos.command_script@1
+ignite warden_gate
+unseal warden_gate
+extinguish stair_lantern

@@ -17,6 +17,8 @@ const north = readPlan("north-gaol");
 const cistern = readPlan("cistern-walk");
 const ember = readPlan("ember-vault");
 const ossuary = readPlan("ossuary-reach");
+const warden = readPlan("warden-stair");
+const plans = [cistern, ember, ossuary, north, warden];
 const collection = JSON.parse(readFileSync(new URL("../area-collection.example.json", import.meta.url)));
 
 const grammar = (plan) => ({
@@ -108,11 +110,12 @@ test("each area declares its own arrival cell, and only the start area declares 
   assert.deepEqual(ember.route.entry, { x: 7, y: 5, z: 0 });
   assert.deepEqual(ossuary.route.entry, { x: 1, y: 5, z: 0 });
   assert.deepEqual(north.route.entry, { x: 2, y: 4, z: 0 });
-  assert.equal(north.route.to_area, null);
+  assert.deepEqual(warden.route.entry, { x: 1, y: 4, z: 0 });
+  assert.equal(warden.route.to_area, null);
   // And the collection's route reads each hop's arrival from the destination.
   for (const edge of collection.route) {
     if (edge.to_area === null) continue;
-    const target = [cistern, ember, ossuary, north].find((plan) => plan.area.id === edge.to_area);
+    const target = plans.find((plan) => plan.area.id === edge.to_area);
     assert.deepEqual(edge.entry, target.route.entry);
   }
 });
