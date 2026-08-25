@@ -1,12 +1,13 @@
 ---
 title: The promoted viewer — R1-4 design record
-status: R1-4 design record; phase 1, reviewed before implementation
+status: R1-4 design record; reviewed, ruled on, and implemented on this branch
 date: 2026-08-25
 issue: 148
 branch: r1/issue-148-nomos-viewer
 accepts_against: RUNTIME.md §5 R1-4 (revision 1)
 depends_on: issue #139 (R1-2 rendering-plan compiler), issue #146 (R1-3 typed presentation source)
-applies_to: RUNTIME.md §3, §4, §5, §6, §7; docs/review/presentation-source.md; docs/review/executable-gaol-ownership-audit.md
+follow_ups: issue #152 (promote the area collection), issue #153 (rendering_plan@3)
+applies_to: RUNTIME.md §3, §4, §5, §6, §7; docs/workspace.md; docs/review/presentation-source.md; docs/review/executable-gaol-ownership-audit.md
 ---
 
 # The promoted viewer
@@ -223,7 +224,8 @@ draw one. That asymmetry is deliberate and tested.
 §10 finding 3 records what this does *not* do: the mapping "kind → assembly"
 still lives in Rust, because removing it means the plan stops carrying
 `entities[].visual_assembly` and `material_family`, which is a
-`nomos.rendering_plan@3` and is outside this issue's Scope.
+`nomos.rendering_plan@3` and is outside this issue's Scope. Issue #153 carries
+that move.
 
 ### 3.3 Sockets, resolved by the declared face
 
@@ -413,7 +415,7 @@ two identities.
 | Artifact | `schema` value bound | Declared by |
 | --- | --- | --- |
 | `areas/<area-id>.json` | `nomos.rendering_plan@2` | `crates/nomos-render-plan/src/plan.rs` (accepted) |
-| `areas.json` | `nomos.experiment.area_collection@2` | `experiments/executable-gaol/src/build-collection.mjs:88` (quarantined — §10 finding 2) |
+| `areas.json` | `nomos.experiment.area_collection@2` | `experiments/executable-gaol/src/build-collection.mjs:88` (quarantined tooling — §10 finding 2, follow-up issue #152) |
 
 Binding is the first operation: the decoder reads `schema`, compares the exact
 string, and refuses before any other field is interpreted.
@@ -797,11 +799,13 @@ requires.
 | **why not local** | A WebGL2 scene graph with material and shader compilation, orthographic camera math, shadow maps, and generated geometry — extrusion with bevels, torus, cone, icosahedron, cylinder, plane. A local implementation would be a second renderer to maintain and would not be more trustworthy for being ours; `RUNTIME.md` §4 admits exactly this case outside the six kernel crates, and `AGENTS.md` states the zero-dependency rule "was never a permanent claim that later epochs should reimplement mature libraries". |
 | **determinism** | Cannot affect authoritative state, hashes, or receipts. It is loaded only by `apps/nomos-viewer/`, which consumes published artifacts and writes none. No kernel crate, no R1 crate, no `xtask` target, and no step that produces a canonical artifact links or executes it; the plans and their digests are produced by `nomos-render-plan` before `build.mjs` runs. Bounded by: `cargo xtask boundary` (§10 finding 4 adds the `apps/` isolation rule `RUNTIME.md` §3 promises), the scan's file-shape rule, and the smoke lane, which hashes no GPU output — `RUNTIME.md` §9 already states the pixels are not deterministic across GPUs, and no receipt depends on them. |
 | **offline proof** | The file is committed; there is no `npm install`, no lockfile to resolve, and no bundler. `node --test apps/nomos-viewer/test/vendor.test.mjs` recomputes both sha256 digests from the working tree and compares them to `vendor/MANIFEST.json`. `build.mjs` re-checks them while copying, and the scan refuses any external origin in `dist/`. The smoke lane runs Chrome with `--host-resolver-rules="MAP * ~NOTFOUND, EXCLUDE localhost"`, records every request in the receipt, requires the external list to be empty, and proves the rule is in force with a negative-control probe that must fail. |
-| **added by** | Issue #148, PR (this branch). |
+| **added by** | Issue #148, pull request #151. |
 
 `RUNTIME.md` §3 gains one sentence noting `apps/nomos-viewer/` is present and
-what enforces its isolation; §7's "Public artifact size" row gains the measured
-byte total of `apps/nomos-viewer/dist/` with the runner that produced it.
+that `cargo xtask boundary` now enforces its isolation (§10 finding 4); §6's
+comparison block drops `gaol site` and gains the smoke lane's local entry point
+(§10 finding 6); §7's "Public artifact size" row gains the measured byte total
+of `apps/nomos-viewer/dist/` with the runner that produced it.
 
 ---
 
@@ -878,8 +882,9 @@ catalog under `apps/` is written fresh regardless, so nothing is shared.
 
 ### 8.4 Documents
 
-`RUNTIME.md` §3, §4, §7 as in §7 above, plus §6 — see §10 finding 6, which asks
-the owner to rule before that edit is made. `docs/HANDOFF.md` ("How to verify"
+`RUNTIME.md` §3, §4, §6, and §7 as in §7 above and §10 finding 6.
+`docs/workspace.md`'s rule table gains the `apps/` isolation rule.
+`docs/HANDOFF.md` ("How to verify"
 at line 101 names `gaol site`; the R1-4 paragraph at line 144 becomes a landed
 paragraph). `README.md` status. `experiments/executable-gaol/README.md` (the
 `gaol serve`/`gaol site` sections at lines 43-47 and 97-105, and the "Play
@@ -938,10 +943,10 @@ visit every declared area, so the new area must be named by an existing one.
 
 ## 10. Findings against the issue
 
-Seven findings. None makes the issue impossible; three want an owner ruling
-before phase 2 implements them.
+Seven findings. None makes the issue impossible. Three wanted an owner ruling;
+all seven are ruled, and what ships is what the rulings say.
 
-### Finding 1 — the acceptance grep and the scan rule both have a false positive, and both are fixable — MEASURED
+### Finding 1 — the acceptance grep and the scan rule both have a false positive, and both are fixable — MEASURED, ACCEPTED
 
 Two of the issue's acceptance lines are literal string checks that the artifacts
 as they exist today would fail.
@@ -968,12 +973,16 @@ a citation of a source path is not source — so the contract is satisfiable; th
 issue's wording is tighter than the contract. **Resolution, §6 rule 4**: the
 scan refuses `.nomos` everywhere except as a `provenance[].source.path` value
 matching `^experiments/executable-gaol/areas/[a-z0-9-]+/world\.nomos$`, and
-separately refuses `.nomos` *content* markers and any absolute path. A planted
-test proves each half. No owner ruling needed unless the owner wants the
-provenance block stripped instead, which would mean the staged plan no longer
-matches the published one — the record recommends against it.
+separately refuses `.nomos` *content* markers and any absolute path. A planted test proves each half.
 
-### Finding 2 — the accepted app binds an identity declared by quarantined tooling — NEEDS A RULING
+**Ruled: accepted as designed.** The scan allows the single
+structurally-located repo-relative citation and refuses `.nomos` content
+markers and absolute paths, each with a planted test, and
+`vendor/MANIFEST.json` records the `https://` occurrence count so a Three.js
+bump that adds a second one is a visible diff. Stripping the provenance block
+instead was declined: the staged plan would no longer be the published one.
+
+### Finding 2 — the accepted app binds an identity declared by quarantined tooling — RULED (a)
 
 `areas.json` carries `nomos.experiment.area_collection@2`, declared at
 `experiments/executable-gaol/src/build-collection.mjs:88`. The issue's Scope
@@ -989,16 +998,16 @@ presentation artifacts only", and the register lane
 worth naming rather than discovering later: the four `rendering-plan.json` files
 are accepted output, and the file that stitches them into a route is not.
 
-Options, for the owner: **(a)** accept as-is for R1-4 and record the boundary
-here, which is what this record assumes; **(b)** promote the collection builder
-into `nomos-render-plan` as a later slice, giving it a registered identity;
-**(c)** have `build.mjs` derive the collection from the four plans itself, which
-would remove the dependency but would put route-graph validation
-(`build-collection.mjs:43-85`) into the app — the wrong layer, and the viewer
-would then own a fact no artifact declares. The record recommends (a) now and
-(b) as a follow-up issue.
+**Ruled: (a).** R1-4 binds `nomos.experiment.area_collection@2` now, and this
+record and `apps/nomos-viewer/README.md` state that its declaring file is
+quarantined tooling. Issue #152, "Promote the area collection into
+nomos-render-plan", carries the follow-up: a registered identity emitted by the
+accepted crate. Option (c) — deriving the collection inside `build.mjs` — was
+declined, because it would move route-graph validation
+(`build-collection.mjs:43-85`) into the app, where the viewer would own a fact
+no artifact declares.
 
-### Finding 3 — resolving the kind→assembly deferral fully needs a plan `@3`, which is out of scope — NEEDS A RULING
+### Finding 3 — resolving the kind→assembly deferral fully needs a plan `@3`, which is out of scope — RULED (a)
 
 `crates/nomos-render-plan/src/catalog.rs:50-63` says of its two tables: "**This
 is the last place in the tree where a visual assembly name or a material family
@@ -1019,13 +1028,17 @@ two sides name exactly the same three rows, so neither can drift. That is a
 genuine single-owner story, but it is not the deletion `catalog.rs` asks for, and
 it does add a *set* to the renderer while leaving the *mapping* in Rust.
 
-For the owner: **(a)** accept §3.2 as the R1-4 resolution and open a follow-up
-issue for the `@3` move; **(b)** widen R1-4 to include the `@3` change. The
-record recommends (a) — (b) would put a schema change, four regenerated
-fixtures, and a collection-grammar change inside the slice that is also
-introducing the first `apps/` member and the first browser lane.
+**Ruled: (a).** §3.2 is the R1-4 resolution — the catalog owns what the names
+mean, refuses one it does not know, and
+`the_catalog_knows_every_assembly_the_compiler_can_emit` parses
+`crates/nomos-render-plan/src/catalog.rs` so neither side can drift. Issue #153,
+"Move kind→assembly assignment out of the Rust plan compiler
+(rendering_plan@3)", carries the move itself. Widening R1-4 was declined: it
+would put a schema change, four regenerated fixtures, and a collection-grammar
+change inside the slice that is also introducing the first `apps/` member and
+the first browser lane.
 
-### Finding 4 — `RUNTIME.md` §3 promises a boundary-checker rule this issue does not mention — NEEDS A RULING
+### Finding 4 — `RUNTIME.md` §3 promises a boundary-checker rule this issue does not mention — CONFIRMED
 
 §3, last paragraph: "Viewer isolation is not enforced yet — no `apps/` member
 exists — and joins the checker with R1-4."
@@ -1040,10 +1053,10 @@ promise true, and that the checker's existing data supports:
 > kernel graph could reach, and `RUNTIME.md` §3 forbids a kernel crate depending
 > on `apps/`.
 
-Roughly fifteen lines in `xtask/src/boundary.rs`, one planted-violation test in
-`xtask/src/planted.rs`, one line in the module doc. The record proposes adding
-it in phase 2 and asks the owner to confirm, since it is scope the issue did not
-name.
+**Confirmed.** It ships in this slice: the rule in `xtask/src/boundary.rs`, one
+planted-violation test in `xtask/src/planted.rs`, the module doc, a row in
+`docs/workspace.md`'s rule table, and `RUNTIME.md` §3's sentence changed from
+"joins the checker with R1-4" to a statement that it now holds.
 
 ### Finding 5 — the deletion list is not self-consistent — RESOLVED IN THIS RECORD
 
@@ -1061,7 +1074,7 @@ retained files use them. `gaol verify` stays green, and the accepted catalog is
 still written fresh, so no line is shared between the trees. Recorded as a
 correction to the issue's list rather than a silent deviation.
 
-### Finding 6 — deleting `gaol site` removes a command `RUNTIME.md` §6 names — NEEDS A RULING
+### Finding 6 — deleting `gaol site` removes a command `RUNTIME.md` §6 names — RULED
 
 `RUNTIME.md` §6 lists, as the comparison target:
 
@@ -1077,14 +1090,13 @@ smoke lane runs in CI on every change and locally through the same entry point"
 — and the preamble scopes the comparison block to "while R1-2 and R1-3 are
 open", both of which are now landed. So the premise has expired.
 
-`RUNTIME.md` §8 forbids silently reinterpreting the contract, so this record
-does not decide it. The minimal edit, for the owner's ruling: drop the `gaol
-site` line from §6's comparison block and add
-`node apps/nomos-viewer/smoke/smoke.mjs` as the R1-4 lane's local entry point,
-leaving `gaol verify` in place. Whether that counts as a §8 repair needing a
-decision record, or as a factual update inside a slice the section already
-anticipates, is the owner's call. Phase 2 applies whichever is ruled. Nothing
-else in the slice depends on the answer.
+**Ruled: make the minimal edit.** §6's comparison block is scoped to "while
+R1-2 and R1-3 are open", both of which are landed, so this is the expiry the
+section anticipated rather than a reinterpretation, and it is not a §8 repair.
+The `gaol site` line is dropped and `node apps/nomos-viewer/smoke/smoke.mjs` is
+added as the R1-4 lane's local entry point; `gaol verify` stays. The pull
+request quotes the before and after under a "Contract text touched" heading so
+the owner sees the changed contract line beside the other pending ones.
 
 ### Finding 7 — the area-addition parenthetical is unreachable; the contract criterion is not — RESOLVED IN THIS RECORD
 
