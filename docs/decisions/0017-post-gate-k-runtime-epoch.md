@@ -18,7 +18,7 @@ r1_contract: RUNTIME.md
 This record was prepared under issue #124. Peter Permenter authorized it on
 2026-08-25; the disposition is recorded below.
 
-It proposes one thing: an explicit epoch break. Gate K is closed and cannot be
+It records one thing: an explicit epoch break. Gate K is closed and cannot be
 retried, so the executable study currently has no authorized route into accepted
 work. R1 is that route, governed by its own contract document, and it is not a
 Gate K pass, a Gate K waiver, or a Gate 1 claim.
