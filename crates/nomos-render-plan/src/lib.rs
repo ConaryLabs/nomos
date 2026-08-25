@@ -35,6 +35,16 @@
 //! those was a line of `build-plan.mjs`; each module names the lines it
 //! deletes.
 //!
+//! # The second command
+//!
+//! `nomos-render-plan collection --plans <dir-or-plan> --out <areas.json>`
+//! stitches the compiled plans into `nomos.area_collection@1`: the route chain,
+//! the visual grammar every area shares, and one row per area naming the plan
+//! file and its SHA-256. It replaces
+//! `experiments/executable-gaol/src/build-collection.mjs`, which was the only
+//! authority for the route graph; [`collection`] is its owner file and names the
+//! study lines it reproduces.
+//!
 //! It also holds no floating-point value and writes no canonical bytes of its
 //! own. `nomos.presentation_source@1` is integer-only by the type its reader
 //! parses into, and `nomos.rendering_plan@2` is emitted through
@@ -46,6 +56,7 @@
 #![warn(missing_debug_implementations)]
 
 pub mod catalog;
+pub mod collection;
 pub mod error;
 pub mod facts;
 pub mod json;
@@ -56,6 +67,7 @@ pub mod source;
 pub mod world;
 
 pub use catalog::{EntityCatalog, EntityKind, entity_catalog_schema};
+pub use collection::{CompiledCollection, PlanInput, area_collection_schema};
 pub use error::{PlanCode, PlanError, PlanResult, codes};
 pub use facts::{EffectiveFacts, effective_facts_schema};
 pub use plan::{CompiledPlan, Inputs, compile, rendering_plan_schema};

@@ -75,6 +75,14 @@ pub mod codes {
     /// An identifier in the presentation source is outside the grammar its
     /// field declares.
     pub const IDENTIFIER_UNSUPPORTED: PlanCode = PlanCode("RP0206");
+
+    /// The area collection's route graph is not one chain: it starts nowhere or
+    /// twice, leads to an area that is not declared or cannot receive an
+    /// arrival, cycles, leaves an area unvisited, or does not terminate at one
+    /// area declaring no destination.
+    pub const COLLECTION_ROUTE_INVALID: PlanCode = PlanCode("RP0301");
+    /// Two areas in one collection do not share the visual grammar.
+    pub const COLLECTION_GRAMMAR_DIVERGED: PlanCode = PlanCode("RP0302");
 }
 
 /// A rejection, with the file that produced it when there is one.

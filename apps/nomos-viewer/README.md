@@ -47,12 +47,19 @@ vendored file are the whole dependency set.
 | Artifact | Identity | Emitted by |
 | --- | --- | --- |
 | `areas/<area-id>.json` | `nomos.rendering_plan@2` | `crates/nomos-render-plan`, accepted |
-| `areas.json` | `nomos.experiment.area_collection@2` | `experiments/executable-gaol/src/build-collection.mjs`, **quarantined tooling** |
+| `areas.json` | `nomos.area_collection@1` | `crates/nomos-render-plan`, accepted |
 
-The second row is recorded rather than hidden: the four plans are accepted
-output and the file that stitches them into a route is not. The owner ruled that
-acceptable for R1-4 and issue #152 carries promoting the collection into
-`nomos-render-plan`, which is what will retire the row.
+Both rows are accepted output. The second was
+`nomos.experiment.area_collection@2`, declared by
+`experiments/executable-gaol/src/build-collection.mjs` — quarantined tooling —
+which the design record raised as finding 2 and issue #152 closed by promoting
+the route graph into the compiler. This app refuses the retired identity by name.
+
+The collection names each area's plan by file and by SHA-256.
+`apps/nomos-viewer/build.mjs` checks that digest against the bytes it stages, so
+the collection decides which bytes are an area's plan; the page itself does not
+hash, because `crypto.subtle` is absent outside a secure context and a plan that
+failed to publish is a build failure rather than a runtime one.
 
 Both identities are bound before any field is read, and a mismatch, an unknown
 field, a missing field, a fractional number at any depth, a name outside a

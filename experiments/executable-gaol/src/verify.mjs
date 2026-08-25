@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import {
   ACTOR_ASSEMBLIES,
   ARCHITECTURE_ASSEMBLIES,
@@ -10,6 +11,57 @@ import {
   lightOf,
   movementOf,
 } from "./renderer-catalog.mjs";
+
+const digestOf = (bytes) => createHash("sha256").update(bytes).digest("hex");
+
+// The area collection, which `crates/nomos-render-plan/src/collection.rs` emits
+// and `build-collection.mjs` used to. The Rust tests own the route-graph
+// semantics; this is the comparison the study keeps: the committed example is
+// byte-equal to what the compiler just produced, and every digest the collection
+// publishes is a digest of the plan file actually on disk.
+if (process.argv[2] === "--collection") {
+  const [collectionPath, examplePath, areasDir] = process.argv.slice(3);
+  if (!collectionPath || !examplePath || !areasDir) {
+    throw new Error("usage: verify.mjs --collection <areas.json> <example> <areas-dir>");
+  }
+  const bytes = readFileSync(collectionPath);
+  const expected = readFileSync(examplePath);
+  if (!bytes.equals(expected)) {
+    throw new Error(`${collectionPath} is not byte-equal to the committed ${examplePath}`);
+  }
+  const collection = JSON.parse(bytes);
+  if (collection.schema !== "nomos.area_collection@1") throw new Error("wrong collection schema");
+  const chain = [];
+  let current = collection.start_area;
+  while (current !== null) {
+    const area = collection.areas.find((one) => one.id === current);
+    if (!area) throw new Error(`the route names undeclared area ${current}`);
+    if (chain.includes(current)) throw new Error(`the route cycles at ${current}`);
+    chain.push(current);
+    const planBytes = readFileSync(join(areasDir, area.id, "rendering-plan.json"));
+    if (area.plan.file !== `${area.id}.json`) {
+      throw new Error(`${area.id} publishes its plan as ${area.plan.file}`);
+    }
+    if (area.plan.sha256 !== digestOf(planBytes)) {
+      throw new Error(`${area.id} does not carry the digest of its own plan`);
+    }
+    const plan = JSON.parse(planBytes);
+    if (plan.area.label !== area.label) throw new Error(`${area.id} disagrees about its label`);
+    if (plan.objective.gate !== area.exit.gate) throw new Error(`${area.id} disagrees about its gate`);
+    if ((plan.route.to_area ?? null) !== area.exit.to_area) {
+      throw new Error(`${area.id} disagrees about its destination`);
+    }
+    current = area.exit.to_area;
+  }
+  if (chain.length !== collection.areas.length) {
+    throw new Error(`the route visits ${chain.length} of ${collection.areas.length} areas`);
+  }
+  console.log(
+    `AREA_COLLECTION_VERIFY PASS areas=${chain.length} ` +
+      `grammar=${collection.visual_grammar.digest} collection=${digestOf(bytes)}`,
+  );
+  process.exit(0);
+}
 
 const [planPath, sheetPath] = process.argv.slice(2);
 const planBytes = readFileSync(planPath);
@@ -62,5 +114,4 @@ for (const effect of plan.effects) {
 const forensicBytes = readFileSync(new URL("forensic.svg", `file://${sheetPath.replace(/[^/]+$/, "")}`));
 if (!forensicBytes.includes(Buffer.from("FORENSIC PROJECTION OWNERSHIP"))) fail("forensic overlay missing");
 
-const digest = (bytes) => createHash("sha256").update(bytes).digest("hex");
-console.log(`EXECUTABLE_GAOL_VERIFY PASS plan=${digest(planBytes)} contact_sheet=${digest(sheetBytes)}`);
+console.log(`EXECUTABLE_GAOL_VERIFY PASS plan=${digestOf(planBytes)} contact_sheet=${digestOf(sheetBytes)}`);

@@ -64,6 +64,19 @@ export function stage({ from, out, app = here }) {
     if (plan.area.id !== area.id) {
       throw new BuildError("staging", `${area.plan} carries area \`${plan.area.id}\``);
     }
+    // `nomos.area_collection@1` carries a SHA-256 over each plan's published
+    // bytes, so the collection says which bytes are that area's plan and the
+    // build proves the file it found is them. The viewer cannot: hashing in the
+    // page needs `crypto.subtle`, which is absent outside a secure context, and
+    // an artifact that failed to publish is a build failure rather than a
+    // runtime one. It runs after the decoder so that an unreadable plan is
+    // reported as what it is rather than as a digest that disagrees.
+    if (sha256(planBytes) !== area.sha256) {
+      throw new BuildError(
+        "plan-digest",
+        `${area.plan} does not match the digest the collection declares for it`,
+      );
+    }
     writeFileSync(join(target, area.plan), planBytes);
   }
 
@@ -228,7 +241,10 @@ export function scanDist(dir) {
   const collection = JSON.parse(readFileSync(join(root, "areas.json"), "utf8"));
   const expected = [
     ...EXPECTED_FILES,
-    ...collection.areas.map((one) => one.plan),
+    // Read from the raw document rather than the decoder's derived path: the
+    // scan is a second opinion about the staged tree, so it re-derives the
+    // layout from what `areas.json` actually says.
+    ...collection.areas.map((one) => `areas/${one.plan.file}`),
   ].sort();
   if (files.join("\n") !== expected.join("\n")) {
     refuse(

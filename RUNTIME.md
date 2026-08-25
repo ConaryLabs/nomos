@@ -128,15 +128,23 @@ an undeclared workspace member.
 
 ### Declared R1 members
 
-- `nomos-render-plan` — the R1-2 rendering-plan compiler and the R1-3
-  presentation-source decoder (library plus the `nomos-render-plan` binary),
+- `nomos-render-plan` — the R1-2 rendering-plan compiler, the R1-3
+  presentation-source decoder, and the area collection promoted from the study
+  by issue #152 (library plus the `nomos-render-plan` binary, whose second mode
+  is `nomos-render-plan collection --plans <dir-or-plan> --out <areas.json>`),
   depending on `nomos-core` only, with dev-dependency edges to
   `nomos-projection` and `nomos-sim` for the issue #132 divergence fixture. It
-  declares two canonical identities, both registered in
+  declares three canonical identities, all registered in
   `docs/evaluation/R1_SCHEMA_OWNERSHIP.md`: `nomos.presentation_source@1`, the
-  typed presentation source it decodes, and `nomos.rendering_plan@2`, the plan
-  it emits through `nomos_core::CanonicalValue`. It contains no canonical
-  encoder of its own and no floating-point type.
+  typed presentation source it decodes; `nomos.rendering_plan@2`, the plan it
+  emits through `nomos_core::CanonicalValue`; and `nomos.area_collection@1`, the
+  route graph over the compiled plans, emitted the same way. It contains no
+  canonical encoder of its own and no floating-point type.
+
+  The surface table above is the record for R1 additions to the six *kernel*
+  crates, which is why the collection has no row there: `nomos-render-plan` is a
+  declared R1 member, so its surface is declared here, and no Gate K command,
+  artifact, hash, or diagnostic is touched by it.
 
 `R1_CRATES` in `xtask/src/boundary.rs` mirrors this list, and `cargo xtask
 boundary` enforces it: a workspace member that is neither a kernel crate,
@@ -433,7 +441,7 @@ acceptance.
 | Validation latency | ms | `nomos validate` on the accepted fixture | not measured |
 | Replay throughput | commands/s | `nomos replay` over the accepted log | not measured |
 | Package size | bytes | a compiled world package directory | not measured |
-| Public artifact size | bytes | the staged public site directory | 894 174 — `apps/nomos-viewer/dist`, 14 files, of which 750 938 is the vendored renderer; measured by `apps/nomos-viewer/build.mjs` on the R1-4 branch |
+| Public artifact size | bytes | the staged public site directory | 896 680 — `apps/nomos-viewer/dist`, 14 files, of which 750 938 is the vendored renderer; measured by `apps/nomos-viewer/build.mjs` on the issue #152 branch. It was 894 174 on the R1-4 branch; the 2 506 bytes are the collection's new area rows and the decoder that reads them |
 | Edit-to-visible-frame latency | ms | content edit to first rendered frame | not measured |
 
 ## 8. Contract repair

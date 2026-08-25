@@ -23,6 +23,14 @@ The plans and the collection are `nomos.rendering_plan@2` and
 four `presentation.json` sources that replaced `area.json`. Every plan hash
 moved, because every field name did; what did *not* move is the drawn output.
 
+Issue #152 then retired the collection identity: `nomos.area_collection@1` is
+emitted by `crates/nomos-render-plan/src/collection.rs`, and the AreaCollection
+hash above is the last one `build-collection.mjs` produced. The four plan hashes
+and every frame digest below are unchanged by that change — the collection is
+downstream of the plans and no capture reads it — and the collection now
+published is `53bba38ca42119f13263b20530a490379b9fba3f0290a455eb736593ee5cf4f4`,
+committed verbatim as `area-collection.example.json`.
+
 ## Frame digests across R1-3
 
 Thirty artifacts, captured immediately before and immediately after the switch.

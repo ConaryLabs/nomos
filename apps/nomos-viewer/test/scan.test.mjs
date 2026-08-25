@@ -253,6 +253,20 @@ test("staging refuses an artifact the viewer could not read", (t) => {
   assert.throws(() => stage({ from, out: join(root, "dist"), app }), /NV0102/);
 });
 
+test("staging refuses a plan whose bytes are not the ones the collection names", (t) => {
+  const root = workspace();
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const from = publish(root);
+  // Re-serialized, not edited: the document still decodes and still carries the
+  // same area, and its bytes are no longer the published ones. That is exactly
+  // what the collection's SHA-256 is for.
+  writeFileSync(
+    join(from, "areas", "test-hall", "rendering-plan.json"),
+    `${JSON.stringify(hallPlan(), null, 2)}\n`,
+  );
+  refuses("plan-digest", () => stage({ from, out: join(root, "dist"), app }));
+});
+
 test("staging refuses a vendored file that does not match its manifest", (t) => {
   const root = workspace();
   t.after(() => rmSync(root, { recursive: true, force: true }));

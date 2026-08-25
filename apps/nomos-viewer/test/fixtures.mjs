@@ -10,6 +10,8 @@
 // water sits between the player and everything else, so the movement rules are
 // exercised rather than described.
 
+import { createHash } from "node:crypto";
+
 const hash = (seed) => seed.repeat(64).slice(0, 64);
 
 export const HASHES = Object.freeze({
@@ -224,18 +226,40 @@ export function yardPlan() {
   };
 }
 
+/// The bytes a plan is published as: canonical bytes plus one `LF`, which is
+/// what `nomos-render-plan` writes and what `publish()` in `scan.test.mjs`
+/// stages. The collection's digest is over exactly these, so the staged build
+/// checks a digest that is true rather than one invented for the fixture.
+export const publishedPlanBytes = (plan) => `${JSON.stringify(plan)}\n`;
+
+const planDigest = (plan) => createHash("sha256").update(publishedPlanBytes(plan)).digest("hex");
+
 /// The two-area collection over the two plans above.
 export function collectionDocument() {
   return {
     areas: [
-      { id: "test-hall", label: "Test Hall", plan: "areas/test-hall.json" },
-      { id: "test-yard", label: "Test Yard", plan: "areas/test-yard.json" },
+      {
+        entry: null,
+        exit: { gate: "hall_gate", to_area: "test-yard" },
+        id: "test-hall",
+        label: "Test Hall",
+        plan: { file: "test-hall.json", sha256: planDigest(hallPlan()) },
+        start: true,
+      },
+      {
+        entry: { x: 1, y: 1, z: 0 },
+        exit: { gate: "yard_gate", to_area: null },
+        id: "test-yard",
+        label: "Test Yard",
+        plan: { file: "test-yard.json", sha256: planDigest(yardPlan()) },
+        start: false,
+      },
     ],
     route: [
       { entry: { x: 1, y: 1, z: 0 }, from_area: "test-hall", gate: "hall_gate", to_area: "test-yard" },
       { entry: null, from_area: "test-yard", gate: "yard_gate", to_area: null },
     ],
-    schema: "nomos.experiment.area_collection@2",
+    schema: "nomos.area_collection@1",
     start_area: "test-hall",
     visual_grammar: {
       actor_assemblies: ["visual/gaoler_silhouette", "visual/player_silhouette"],
@@ -247,9 +271,9 @@ export function collectionDocument() {
       digest: hash("f6"),
       effect_assemblies: ["visual/cyan_crescent"],
       entity_assemblies: [
-        ["door", "visual/iron_barred_door", "iron_oxidized"],
-        ["light", "visual/brazier", "iron_brazier"],
-        ["water", "visual/shallow_water", "water_cold"],
+        { kind: "door", material_family: "iron_oxidized", visual_assembly: "visual/iron_barred_door" },
+        { kind: "light", material_family: "iron_brazier", visual_assembly: "visual/brazier" },
+        { kind: "water", material_family: "water_cold", visual_assembly: "visual/shallow_water" },
       ],
       projection_schemas: PROJECTIONS,
       rendering_plan_schema: "nomos.rendering_plan@2",

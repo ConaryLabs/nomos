@@ -66,6 +66,13 @@ projection members' identities and digests, and the presentation source into
 depends on `nomos-core` alone, and replaces
 `experiments/executable-gaol/src/build-plan.mjs`.
 
+`nomos-render-plan collection --plans <dir-or-plan> --out <areas.json>` is the
+same binary's second mode, added by issue #152: it reads the compiled plans and
+emits `nomos.area_collection@1` — the route chain, the visual grammar every area
+shares, and one row per area naming the published plan file and its SHA-256. It
+replaces `experiments/executable-gaol/src/build-collection.mjs`, which was the
+last identity accepted code bound whose declaration lived under `experiments/`.
+
 The executable study provides:
 
 - Cistern Walk, Ember Vault, Ossuary Reach, and North Gaol as separately

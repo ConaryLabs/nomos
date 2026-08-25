@@ -77,7 +77,7 @@ phase 1 and corrected here to what landed.
 | File | Responsibility | Lines |
 | --- | --- | --- |
 | `index.html` | Document, stylesheet, and a three-line inline module that imports `start` from `src/ui.mjs` and calls it. Every colour is `var(--nomos-<role>)`; the custom properties are written at boot from the catalog palette, so no colour value exists here. `<link rel="icon" href="data:,">` so the page issues no favicon request. | 96 |
-| `src/plan.mjs` | Binds `nomos.rendering_plan@2` and `nomos.experiment.area_collection@2`; refuses a mismatch, an unknown field, a missing field, a non-integer number, a name outside the catalog, and a broken cross-reference, each with a stable `NV####` code. Exports `loadArtifacts(base, fetchImpl)` — the only place a URL is constructed — and the typed accessors (`movementOf`, `lightOf`, `machineState`, `doorState`, `wardSealed`, `initialScenario`, `interactionsFrom`). | 922 |
+| `src/plan.mjs` | Binds `nomos.rendering_plan@2` and `nomos.area_collection@1` (`nomos.experiment.area_collection@2` until issue #152); refuses a mismatch, an unknown field, a missing field, a non-integer number, a name outside the catalog, and a broken cross-reference, each with a stable `NV####` code. Exports `loadArtifacts(base, fetchImpl)` — the only place a URL is constructed — and the typed accessors (`movementOf`, `lightOf`, `machineState`, `doorState`, `wardSealed`, `initialScenario`, `interactionsFrom`). | 986 |
 | `src/catalog.mjs` | The one renderer catalog: units, scales, camera, sockets, closed sets, entity assemblies and material families, palette, look profiles, and the prose tables keyed by closed sets. Pure data plus pure resolution functions; imports nothing. | 295 |
 | `src/play.mjs` | Play state over a decoded plan: movement keys, terrain cost, masonry, the declared-face exit, gaoler pursuit, interaction adjacency, area arrival, completion, and guidance. No DOM, no renderer, no fetch. | 316 |
 | `src/render.mjs` | `createGaolRenderer(container, three, host)`: floor, walls, masses, water, doors, braziers, socket-placed effects, actors, lights, look profiles, and the frame loop. Dispatches on catalog entries only — no entity id, no assembly string literal, no area name. Three.js arrives as a parameter, which is what makes the scene graph testable in node. | 623 |
@@ -423,7 +423,7 @@ two identities.
 | Artifact | `schema` value bound | Declared by |
 | --- | --- | --- |
 | `areas/<area-id>.json` | `nomos.rendering_plan@2` | `crates/nomos-render-plan/src/plan.rs` (accepted) |
-| `areas.json` | `nomos.experiment.area_collection@2` | `experiments/executable-gaol/src/build-collection.mjs:88` (quarantined tooling — §10 finding 2, follow-up issue #152) |
+| `areas.json` | `nomos.area_collection@1` | `crates/nomos-render-plan/src/collection.rs` (accepted; it was `nomos.experiment.area_collection@2` at `experiments/executable-gaol/src/build-collection.mjs:88` until issue #152 resolved §10 finding 2) |
 
 Binding is the first operation: the decoder reads `schema`, compares the exact
 string, and refuses before any other field is interpreted.
@@ -1009,7 +1009,7 @@ markers and absolute paths, each with a planted test, and
 bump that adds a second one is a visible diff. Stripping the provenance block
 instead was declined: the staged plan would no longer be the published one.
 
-### Finding 2 — the accepted app binds an identity declared by quarantined tooling — RULED (a)
+### Finding 2 — the accepted app binds an identity declared by quarantined tooling — RESOLVED BY ISSUE #152
 
 `areas.json` carries `nomos.experiment.area_collection@2`, declared at
 `experiments/executable-gaol/src/build-collection.mjs:88`. The issue's Scope
@@ -1033,6 +1033,14 @@ accepted crate. Option (c) — deriving the collection inside `build.mjs` — wa
 declined, because it would move route-graph validation
 (`build-collection.mjs:43-85`) into the app, where the viewer would own a fact
 no artifact declares.
+
+**Resolved by issue #152.** `nomos.area_collection@1` is declared and emitted by
+`crates/nomos-render-plan/src/collection.rs`, registered in
+`docs/evaluation/R1_SCHEMA_OWNERSHIP.md` as the fifth R1 identity, and bound by
+`src/plan.mjs`, which refuses the retired `@2` by name. `build-collection.mjs` is
+deleted, the route-graph refusals are `crates/nomos-render-plan/tests/collection.rs`,
+and `docs/review/area-collection.md` is the record. Every identity this app binds
+is now declared under `crates/`.
 
 ### Finding 3 — resolving the kind→assembly deferral fully needs a plan `@3`, which is out of scope — RULED (a)
 

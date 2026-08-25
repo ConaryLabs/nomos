@@ -31,12 +31,14 @@ The declared R1 members of `RUNTIME.md` section 3, which are not section 10
 kernel crates and are not Gate K evidence:
 
 ```text
-crates/nomos-render-plan  the R1-2 rendering-plan compiler and the R1-3
-                          presentation-source decoder: the
-                          `nomos_render_plan` library plus the
-                          `nomos-render-plan` binary. Declares
-                          `nomos.presentation_source@1` and
-                          `nomos.rendering_plan@2`
+crates/nomos-render-plan  the R1-2 rendering-plan compiler, the R1-3
+                          presentation-source decoder, and the area
+                          collection: the `nomos_render_plan` library plus
+                          the `nomos-render-plan` binary and its
+                          `collection` mode. Declares
+                          `nomos.presentation_source@1`,
+                          `nomos.rendering_plan@2`, and
+                          `nomos.area_collection@1`
 ```
 
 Edges, verbatim from section 10:
