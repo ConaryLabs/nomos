@@ -8,6 +8,7 @@ import {
   MATERIAL_FAMILIES,
   SOCKETS,
   TRIM_FAMILIES,
+  assemblyOf,
   lightOf,
   movementOf,
 } from "./renderer-catalog.mjs";
@@ -30,7 +31,7 @@ if (process.argv[2] === "--collection") {
     throw new Error(`${collectionPath} is not byte-equal to the committed ${examplePath}`);
   }
   const collection = JSON.parse(bytes);
-  if (collection.schema !== "nomos.area_collection@1") throw new Error("wrong collection schema");
+  if (collection.schema !== "nomos.area_collection@2") throw new Error("wrong collection schema");
   const chain = [];
   let current = collection.start_area;
   while (current !== null) {
@@ -69,7 +70,7 @@ const sheetBytes = readFileSync(sheetPath);
 const plan = JSON.parse(planBytes);
 const fail = (message) => { throw new Error(message); };
 
-if (plan.schema !== "nomos.rendering_plan@2") fail("wrong plan schema");
+if (plan.schema !== "nomos.rendering_plan@3") fail("wrong plan schema");
 if (plan.entities.filter((entity) => entity.kind === "door").length !== 2) fail("second content-driven door absent");
 if (plan.scenarios.length !== 5) fail("expected five scenarios");
 if (plan.interactions.length !== 3) fail("expected three verified in-world interactions");
@@ -82,8 +83,8 @@ if (movementOf(plan.scenarios[0], plan.objective.gate).disposition !== "blocked"
 if (movementOf(plan.scenarios[2], plan.objective.gate).disposition !== "traversable") fail("breached/unsealed gate must be traversable");
 if (lightOf(plan.scenarios[3], plan.pursuit.light) !== false) fail("breached dark scenario must extinguish the pursuit light");
 
-// No decimal reaches the plan. `nomos.presentation_source@1` is integer-only by
-// the type its reader parses into and `nomos.rendering_plan@2` is emitted
+// No decimal reaches the plan. `nomos.presentation_source@2` is integer-only by
+// the type its reader parses into and `nomos.rendering_plan@3` is emitted
 // through `nomos_core::CanonicalValue`, which has no floating-point variant;
 // this is the same statement checked against the artifact rather than the code.
 if (/[-\d]\.\d/.test(planBytes.toString("utf8").replaceAll(/"[^"]*"/g, '""'))) {
@@ -101,13 +102,28 @@ const member = (set, value, what) => {
 member(ARCHITECTURE_ASSEMBLIES, plan.architecture.style.assembly, "architecture assembly");
 member(MATERIAL_FAMILIES, plan.architecture.style.material_family, "material family");
 member(TRIM_FAMILIES, plan.architecture.style.trim_family, "trim family");
-for (const actor of plan.actors) member(ACTOR_ASSEMBLIES, actor.assembly, "actor assembly");
+for (const actor of plan.actors) {
+  member(ACTOR_ASSEMBLIES, actor.assembly, "actor assembly");
+  member(["player", "pursuer"], actor.role, "actor role");
+}
+if (plan.actors.filter((actor) => actor.role === "player").length !== 1) {
+  fail("a plan declares exactly one player actor");
+}
+if (plan.actors.filter((actor) => actor.role === "pursuer").length > 1) {
+  fail("a plan declares at most one pursuer actor");
+}
+// The plan carries no assembly or material family for a compiled entity any
+// more; the catalog owns both, and every kind the plan uses must resolve.
+for (const entity of plan.entities) assemblyOf(entity.kind);
+if (plan.entities.some((entity) => "visual_assembly" in entity || "material_family" in entity)) {
+  fail("a rendering_plan@3 entity carries no visual_assembly and no material_family");
+}
 for (const effect of plan.effects) {
   member(EFFECT_ASSEMBLIES, effect.assembly, "effect assembly");
   const anchor = plan.entities.find((entity) => entity.id === effect.anchor.entity);
   if (!anchor) fail(`effect ${effect.id} anchors to absent entity ${effect.anchor.entity}`);
-  if (!SOCKETS[anchor.visual_assembly]?.[effect.anchor.socket]) {
-    fail(`effect ${effect.id} names socket ${effect.anchor.socket}, which ${anchor.visual_assembly} does not declare`);
+  if (!SOCKETS[anchor.kind]?.[effect.anchor.socket]) {
+    fail(`effect ${effect.id} names socket ${effect.anchor.socket}, which kind ${anchor.kind} does not declare`);
   }
 }
 

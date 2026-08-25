@@ -4,7 +4,7 @@
 // thing live here, and nothing else:
 //
 // 1. Renderer-catalog data — facts about how content is drawn, which content
-//    may *select* from but may not *define*. `nomos.presentation_source@1`
+//    may *select* from but may not *define*. `nomos.presentation_source@2`
 //    checks that an assembly, family, or socket name is well formed; this file
 //    is where the legal values are, and `verify.mjs` checks each compiled plan
 //    against them. That is the definition/selection split the owner ruled for
@@ -32,7 +32,7 @@
 // Units
 // ---------------------------------------------------------------------------
 
-// One vertical step is a tenth of a lattice cell. `nomos.presentation_source@1`
+// One vertical step is a tenth of a lattice cell. `nomos.presentation_source@2`
 // declares wall and mass heights as integer counts of this unit, and each
 // renderer converts to its own space: multiply by CELL_HEIGHT_PIXELS in the SVG
 // renderer, by VERTICAL_SCALE in the WebGL one.
@@ -64,6 +64,26 @@ export const ACTOR_ASSEMBLIES = Object.freeze([
 ]);
 export const EFFECT_ASSEMBLIES = Object.freeze(["visual/cyan_crescent"]);
 
+// Compiled entity kind to the assembly that draws it and the material family it
+// is drawn in. `nomos.rendering_plan@2` carried these two strings on every
+// entity, assigned by a table in `crates/nomos-render-plan/src/catalog.rs`
+// whose own comment said the correct change was to move it out. `@3` drops both
+// fields and issue #153 is that move: the mapping is renderer-catalog data and
+// this is the renderer catalog.
+export const ENTITY_ASSEMBLIES = Object.freeze({
+  door: Object.freeze({ assembly: "visual/iron_barred_door", material_family: "iron_oxidized" }),
+  light: Object.freeze({ assembly: "visual/brazier", material_family: "iron_brazier" }),
+  water: Object.freeze({ assembly: "visual/shallow_water", material_family: "water_cold" }),
+});
+
+// Fail closed: a kind the catalog has no assembly for is a build failure, not a
+// silently unmarked entity.
+export function assemblyOf(kind) {
+  const row = ENTITY_ASSEMBLIES[kind];
+  if (!row) throw new Error(`the renderer catalog knows no assembly for kind ${kind}`);
+  return row;
+}
+
 // ---------------------------------------------------------------------------
 // Sockets
 // ---------------------------------------------------------------------------
@@ -87,7 +107,7 @@ export const EFFECT_ASSEMBLIES = Object.freeze(["visual/cyan_crescent"]);
 // fixed offset; the promoted catalog resolves the same offset through the
 // declared face, which is what RUNTIME.md section 5 R1-4 deferred here.
 export const SOCKETS = Object.freeze({
-  "visual/iron_barred_door": Object.freeze({
+  door: Object.freeze({
     ward: Object.freeze({ x: 5, y: 0, z: 17 }),
   }),
 });
@@ -97,12 +117,10 @@ export const SOCKETS = Object.freeze({
 // Fail closed: a socket the renderer has no offset for is a build failure, not
 // a silently unplaced glyph.
 export function socketPosition(entity, socket) {
-  const table = SOCKETS[entity.visual_assembly];
+  const table = SOCKETS[entity.kind];
   const offset = table?.[socket];
   if (!offset) {
-    throw new Error(
-      `no socket ${socket} on ${entity.visual_assembly} for entity ${entity.id}`,
-    );
+    throw new Error(`no socket ${socket} on kind ${entity.kind} for entity ${entity.id}`);
   }
   const cell = entity.anchor.cell;
   if (!cell) throw new Error(`entity ${entity.id} has no anchor cell to socket against`);
@@ -117,7 +135,7 @@ export function socketPosition(entity, socket) {
 // Plan accessors
 // ---------------------------------------------------------------------------
 
-// `nomos.rendering_plan@2` spells its stable-ID collections as arrays of
+// `nomos.rendering_plan@3` spells its stable-ID collections as arrays of
 // `{entity, ...}` or `{namespace, ...}` rows rather than as objects keyed by
 // data, so every lookup goes through one of these.
 

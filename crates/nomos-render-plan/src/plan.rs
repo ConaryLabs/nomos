@@ -1,9 +1,9 @@
 //! The rendering plan: schema identity, assembly, and canonical bytes.
 //!
-//! This is the owner file for `nomos.rendering_plan@2`, registered in
+//! This is the owner file for `nomos.rendering_plan@3`, registered in
 //! `docs/evaluation/R1_SCHEMA_OWNERSHIP.md`.
 //!
-//! # Why `@2`, and what it retired
+//! # Why `@2`, and then `@3`
 //!
 //! `@1` reproduced the study's document shape so that R1-2's consumers changed
 //! only their schema-string check. That shape was camelCase, keyed two of its
@@ -27,8 +27,26 @@
 //!   and duplicate-identity refusal come from the kernel rather than from here;
 //! - heights are integer `vertical_step` counts, so no decimal survives.
 //!
-//! `docs/review/presentation-source.md` section 2 is the full delta, with a
-//! reason for each of the twenty changes.
+//! `docs/review/presentation-source.md` section 2 is the full delta from `@1`,
+//! with a reason for each of the twenty changes.
+//!
+//! `@3` is two changes, made together so the four fixtures are regenerated
+//! once (`docs/review/nomos-play.md` section 6):
+//!
+//! - `actors[]` gains `role`, `player` or `pursuer`, which is what
+//!   `crates/nomos-play` reads to decide which actor a command moves and which
+//!   one the pursuit rule steps. It retires the ownership audit's items 7 and
+//!   21, where an actor's identity string was the only role signal.
+//! - `entities[]` loses `visual_assembly` and `material_family`. Both were
+//!   renderer-catalog data assigned per kind by a table in
+//!   `crates/nomos-render-plan/src/catalog.rs`, whose own comment said the
+//!   correct change was to move them out; issue #153 is that move, and this
+//!   crate now names no assembly and no material family at all.
+//!
+//! No drawn field changes, so the SVG frames and the contact sheet are
+//! byte-identical across the bump. `RUNTIME.md` revision 2, authorized by
+//! `docs/decisions/0018`, is what makes the plan digests free to move while the
+//! drawn artifacts are the thing held fixed.
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -53,7 +71,7 @@ use crate::world;
 /// rule out.
 #[must_use]
 pub fn rendering_plan_schema() -> SchemaId {
-    SchemaId::new("nomos.rendering_plan", 2).expect("the rendering-plan schema id is a literal")
+    SchemaId::new("nomos.rendering_plan", 3).expect("the rendering-plan schema id is a literal")
 }
 
 /// The one objective kind the bounded profile declares.
@@ -80,14 +98,14 @@ pub struct Inputs<'a> {
     pub runs: &'a Path,
     /// The compiled world package, opened for four projection members only.
     pub world: &'a Path,
-    /// The `nomos.presentation_source@1` document.
+    /// The `nomos.presentation_source@2` document.
     pub source: &'a Path,
 }
 
 /// A compiled plan.
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct CompiledPlan {
-    /// Canonical bytes under `nomos.rendering_plan@2`.
+    /// Canonical bytes under `nomos.rendering_plan@3`.
     pub bytes: Vec<u8>,
     /// Entity count, for the compiler's status line.
     pub entity_count: usize,
@@ -149,15 +167,7 @@ pub fn compile(inputs: Inputs<'_>) -> PlanResult<CompiledPlan> {
                         .collect(),
                 ),
             ),
-            (
-                "material_family",
-                CanonicalValue::text(entity.kind.material_family()),
-            ),
             ("provenance", CanonicalValue::Array(provenance)),
-            (
-                "visual_assembly",
-                CanonicalValue::text(entity.kind.visual_assembly()),
-            ),
         ]));
     }
 
@@ -401,6 +411,7 @@ fn assemble(
                             ("assembly", CanonicalValue::text(actor.assembly.clone())),
                             ("cell", cell(actor.cell)),
                             ("id", CanonicalValue::text(actor.id.clone())),
+                            ("role", CanonicalValue::text(actor.role.clone())),
                         ])
                     })
                     .collect(),
@@ -486,7 +497,7 @@ fn assemble(
 /// item 14 records that as convention-derived. It stays derived, in Rust:
 /// `docs/review/presentation-source.md` defers it to R1-5, which declares the
 /// ordered scenario collection a run's authored label would attach to. A
-/// scenario names a run, not an area, so `nomos.presentation_source@1` has no
+/// scenario names a run, not an area, so `nomos.presentation_source@2` has no
 /// place to put one.
 fn scenario_label(id: &str) -> String {
     let digits = id.bytes().take_while(u8::is_ascii_digit).count();

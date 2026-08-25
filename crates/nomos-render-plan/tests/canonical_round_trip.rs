@@ -7,11 +7,11 @@
 //! records that as a drift risk of the same class as a shadow resolver, and
 //! `tests/canonical_profile.rs` was the agreement test that contained it.
 //!
-//! `nomos.rendering_plan@2` is designed to fit inside `CanonicalValue`, so the
-//! second encoder is deleted and there is nothing left to compare against. What
-//! replaces the agreement test is the stronger property issue #144 asks for:
-//! the kernel's own strict reader accepts the emitted plan, and re-encoding
-//! what it read reproduces the bytes exactly.
+//! `nomos.rendering_plan@2` was designed to fit inside `CanonicalValue`, and
+//! `@3` still is, so the second encoder is deleted and there is nothing left to
+//! compare against. What replaces the agreement test is the stronger property
+//! issue #144 asks for: the kernel's own strict reader accepts the emitted
+//! plan, and re-encoding what it read reproduces the bytes exactly.
 
 mod common;
 
@@ -108,11 +108,11 @@ fn compiling_twice_is_byte_identical() {
 fn the_schema_identity_literals_are_valid() {
     assert_eq!(
         nomos_render_plan::rendering_plan_schema().to_string(),
-        "nomos.rendering_plan@2"
+        "nomos.rendering_plan@3"
     );
     assert_eq!(
         nomos_render_plan::presentation_source_schema().to_string(),
-        "nomos.presentation_source@1"
+        "nomos.presentation_source@2"
     );
     assert_eq!(
         nomos_render_plan::entity_catalog_schema().to_string(),

@@ -153,11 +153,20 @@ export const ACTOR_ASSEMBLIES = Object.freeze([
 ]);
 export const EFFECT_ASSEMBLIES = Object.freeze(["visual/cyan_crescent"]);
 
+// The closed set of declared actor roles. `nomos.rendering_plan@3` carries
+// `actors[].role`, which retires the ownership audit's items 7 and 21: an
+// actor's identity string was the only role signal, and `player` and `gaoler`
+// were magic names. The runtime reads the role to decide which actor a command
+// moves and which one the pursuit rule steps; this list is what the decoder
+// checks a plan's value against.
+export const ACTOR_ROLES = Object.freeze(["player", "pursuer"]);
+
 // What an actor assembly is shaped like. The study told the two silhouettes
 // apart with `actor.id === "player"`, which audit section 3 item 21 recorded as
 // the only role signal in the content model; the assembly is a declared field,
-// so the renderer dispatches on it and holds no actor identifier at all. A
-// declared role belongs with the authoritative actor collection R1-5 adds.
+// so the renderer dispatches on it and holds no actor identifier at all. R1-5
+// added the declared role beside it, so the *runtime* has a typed answer too
+// and neither side reads an identity string.
 export const ACTOR_SHAPES = Object.freeze({
   "visual/player_silhouette": Object.freeze({
     body: "player",
@@ -222,12 +231,12 @@ export const OBJECTIVE_KINDS = Object.freeze(["exit_via"]);
 // face frame: x runs along the face, y runs inward from it, z is up, all in
 // vertical steps, so the table holds integers only.
 //
-// `ward` on `visual/iron_barred_door` is {5, 0, 17}: half a cell along the
+// `ward` on a `door` is {5, 0, 17}: half a cell along the
 // door's axis, on the face plane, 1.7 cells up — where both study renderers
 // already drew the ward mark, the WebGL ring sitting at y = 1.22 against
 // (17 / 10) * 0.72 = 1.224.
 export const SOCKETS = Object.freeze({
-  "visual/iron_barred_door": Object.freeze({
+  door: Object.freeze({
     ward: Object.freeze({ x: 5, y: 0, z: 17 }),
   }),
 });
@@ -239,7 +248,11 @@ export const SOCKETS = Object.freeze({
 // section 3.3 deferred direction-aware resolution here. The north row is
 // arithmetically identical to what the study computed.
 export function resolveSocket(entity, socket) {
-  const table = SOCKETS[entity.visual_assembly];
+  // Keyed by compiled kind. `nomos.rendering_plan@3` no longer carries an
+  // assembly name per entity — this catalog owns the kind-to-assembly mapping
+  // now (issue #153) — so the socket table is keyed by the thing the plan does
+  // carry.
+  const table = SOCKETS[entity.kind];
   const offset = table?.[socket];
   if (!offset) return null;
   const cell = entity.anchor.cell;

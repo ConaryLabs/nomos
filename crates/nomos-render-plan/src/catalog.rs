@@ -45,22 +45,22 @@ pub fn entity_catalog_schema() -> SchemaId {
 
 /// The closed set of entity kinds the rendering plan distinguishes.
 ///
-/// # The last assignment of these strings outside the renderer catalog
+/// # The tables that used to be here
 ///
-/// [`EntityKind::visual_assembly`] and [`EntityKind::material_family`] are the
+/// `EntityKind::visual_assembly` and `EntityKind::material_family` were the
 /// kind-to-assembly and kind-to-material tables that lived at
-/// `experiments/executable-gaol/src/build-plan.mjs:33-38` and `:43`. They are
-/// here, typed and closed, because R1-2 has to emit the same plan; they do not
-/// belong here. `docs/review/executable-gaol-ownership-audit.md` section 3
-/// items 5 and 6 record them as a renderer catalog living in the wrong layer,
-/// and `RUNTIME.md` section 5 R1-3 and R1-4 revisit their ownership: R1-3 gives
-/// every presentation field exactly one owner and R1-4 promotes the viewer that
-/// should own an assembly name.
+/// `experiments/executable-gaol/src/build-plan.mjs:33-38` and `:43`, and this
+/// file's own comment said of them: "This is the last place in the tree where a
+/// visual assembly name or a material family is assigned to an entity kind
+/// outside the renderer catalog. No later slice may add a third such table; the
+/// correct change is to move these two out."
 ///
-/// **This is the last place in the tree where a visual assembly name or a
-/// material family is assigned to an entity kind outside the renderer
-/// catalog.** No later slice may add a third such table; the correct change is
-/// to move these two out.
+/// Issue #153 made the move, folded into the `nomos.rendering_plan@3` bump so
+/// the four fixtures are regenerated once. Both functions are deleted, the plan
+/// stops carrying `entities[].visual_assembly` and `entities[].material_family`,
+/// and the accepted viewer catalog maps `kind` to an assembly and a material
+/// itself. The ownership audit's section 3 items 5 and 6 are resolved: this
+/// crate now names no assembly and no material family at all.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 pub enum EntityKind {
     /// A door: `primitive/iron_barred_door`.
@@ -82,28 +82,6 @@ impl EntityKind {
             Self::Water => "water",
             Self::Light => "light",
             Self::Unknown => "unknown",
-        }
-    }
-
-    /// The plan's `visualAssembly` string.
-    #[must_use]
-    pub const fn visual_assembly(self) -> &'static str {
-        match self {
-            Self::Door => "visual/iron_barred_door",
-            Self::Water => "visual/shallow_water",
-            Self::Light => "visual/brazier",
-            Self::Unknown => "visual/marker",
-        }
-    }
-
-    /// The plan's `materialFamily` string.
-    #[must_use]
-    pub const fn material_family(self) -> &'static str {
-        match self {
-            Self::Door => "iron_oxidized",
-            Self::Water => "water_cold",
-            Self::Light => "iron_brazier",
-            Self::Unknown => "stone",
         }
     }
 

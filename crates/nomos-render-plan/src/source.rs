@@ -1,6 +1,6 @@
 //! The typed presentation source, decoded strictly.
 //!
-//! This is the owner file for `nomos.presentation_source@1`, registered in
+//! This is the owner file for `nomos.presentation_source@2`, registered in
 //! `docs/evaluation/R1_SCHEMA_OWNERSHIP.md`, and it replaces the unversioned
 //! `area.json` reader R1-2 landed. `RUNTIME.md` section 5 R1-3 and
 //! `docs/review/presentation-source.md` are the design; this module is that
@@ -9,7 +9,7 @@
 //! What changed from `area.json`, and why each one is here rather than in a
 //! consumer:
 //!
-//! - **Versioned.** The file declares `nomos.presentation_source@1`. A
+//! - **Versioned.** The file declares `nomos.presentation_source@2`. A
 //!   different name or version is refused with `RP0104` naming both sides, so
 //!   a source written for a later schema cannot be read as if it were this one.
 //! - **Integer-only.** [`crate::json`] has no decimal variant, so a raw
@@ -61,7 +61,7 @@ use crate::json::{self, Json};
 /// rule out.
 #[must_use]
 pub fn presentation_source_schema() -> SchemaId {
-    SchemaId::new("nomos.presentation_source", 1)
+    SchemaId::new("nomos.presentation_source", 2)
         .expect("the presentation-source schema id is a literal")
 }
 
@@ -86,13 +86,20 @@ pub const MAX_ASSEMBLY_BYTES: usize = 96;
 /// The longest a socket name may be, in bytes.
 pub const MAX_SOCKET_BYTES: usize = 32;
 
-/// The two actor identities every area declares, in sorted order.
+/// The closed set of declared actor roles, in sorted order.
 ///
-/// The audit's "Derived by convention" item 7 records this as a magic-id
-/// gameplay role. It stays, deliberately: `RUNTIME.md` section 5 R1-5 makes
-/// actors authoritative runtime state with a declared role, and moving them now
-/// would put a second half-typed actor model in the tree.
-pub const REQUIRED_ACTORS: [&str; 2] = ["gaoler", "player"];
+/// This replaces `REQUIRED_ACTORS`, the pair of magic identities `player` and
+/// `gaoler` that `@1` required. The ownership audit's "Derived by convention"
+/// items 7 and 21 recorded those as a magic-id gameplay role and deferred them
+/// to R1-5; a declared role belongs with the authoritative actor collection,
+/// and it is here. The identities are now free: content may name its actors
+/// anything, and `tests/source.rs` renames both to prove nothing depends on the
+/// strings.
+///
+/// Exactly one actor declares `player`, and at most one declares `pursuer`.
+/// `RUNTIME.md` section 5 R1-5 rules a second pursuer out as content, so the
+/// bound is enforced here rather than left to the runtime to discover.
+pub const ACTOR_ROLES: [&str; 2] = ["player", "pursuer"];
 
 /// A lattice cell.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -205,6 +212,8 @@ pub struct Actor {
     pub assembly: String,
     /// The cell the actor starts on.
     pub cell: Cell,
+    /// The role the runtime plays this actor as: `player` or `pursuer`.
+    pub role: String,
 }
 
 /// Where an effect attaches.
@@ -255,7 +264,7 @@ pub struct PresentationSource {
 ///
 /// Returns `RP0101` when the file cannot be read, `RP0103` when it is not
 /// well-formed JSON, `RP0205` when it carries a number that is not an integer,
-/// `RP0104` when its schema identity is not `nomos.presentation_source@1`,
+/// `RP0104` when its schema identity is not `nomos.presentation_source@2`,
 /// `RP0206` when an identifier is outside its declared grammar, and `RP0202`
 /// for every other invariant it breaks.
 pub fn read_source(
@@ -546,10 +555,17 @@ fn decode_actors(value: &Json, architecture: &Architecture) -> PlanResult<Vec<Ac
     let mut actors = Vec::with_capacity(entries.len());
     let mut seen: BTreeSet<String> = BTreeSet::new();
     for entry in entries {
-        exact_fields(entry, &["assembly", "cell", "id"], "an actor")?;
+        exact_fields(entry, &["assembly", "cell", "id", "role"], "an actor")?;
         let id = entity_id(text(entry, "id")?, "actors[].id")?;
         let assembly = assembly_name(text(entry, "assembly")?, "actors[].assembly")?;
         let cell = decode_cell(field(entry, "cell")?, "actors[].cell")?;
+        let role = text(entry, "role")?.to_owned();
+        if !ACTOR_ROLES.contains(&role.as_str()) {
+            return Err(invalid(format!(
+                "`actors[].role` must be `{}` or `{}`; `{role}` is neither",
+                ACTOR_ROLES[0], ACTOR_ROLES[1]
+            )));
+        }
         in_bounds(cell, architecture, "actors[].cell")?;
         if let Some(mass) = mass_at(architecture, cell) {
             return Err(invalid(format!(
@@ -559,13 +575,26 @@ fn decode_actors(value: &Json, architecture: &Architecture) -> PlanResult<Vec<Ac
         if !seen.insert(id.clone()) {
             return Err(invalid(format!("actor `{id}` is declared more than once")));
         }
-        actors.push(Actor { id, assembly, cell });
+        actors.push(Actor {
+            id,
+            assembly,
+            cell,
+            role,
+        });
     }
-    let declared: BTreeSet<&str> = seen.iter().map(String::as_str).collect();
-    if declared != BTreeSet::from(REQUIRED_ACTORS) {
+    let players = actors.iter().filter(|actor| actor.role == "player").count();
+    if players != 1 {
         return Err(invalid(format!(
-            "`actors` must declare exactly `{}` and `{}`",
-            REQUIRED_ACTORS[0], REQUIRED_ACTORS[1]
+            "`actors` must declare exactly one `player`; this area declares {players}"
+        )));
+    }
+    let pursuers = actors
+        .iter()
+        .filter(|actor| actor.role == "pursuer")
+        .count();
+    if pursuers > 1 {
+        return Err(invalid(format!(
+            "`actors` must declare at most one `pursuer`; this area declares {pursuers}"
         )));
     }
     Ok(actors)

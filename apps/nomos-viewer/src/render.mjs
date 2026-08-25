@@ -543,7 +543,14 @@ export function createGaolRenderer(container, three, host = globalThis) {
     buildWalls(three, worldRoot, plan, resources);
     buildMasses(three, worldRoot, plan, resources, look);
     for (const entity of plan.entities) {
-      ENTITY_BUILDERS[entity.visual_assembly](three, worldRoot, plan, entity, resources, context);
+      ENTITY_BUILDERS[ENTITY_KINDS[entity.kind].visualAssembly](
+        three,
+        worldRoot,
+        plan,
+        entity,
+        resources,
+        context,
+      );
     }
     buildEffects(three, worldRoot, plan, context);
     buildActors(three, worldRoot, plan, resources, context);

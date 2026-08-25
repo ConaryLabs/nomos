@@ -19,6 +19,7 @@ import {
   ENTITY_KIND_IDS,
   OBJECTIVE_KINDS,
   ACTOR_ASSEMBLIES,
+  ACTOR_ROLES,
   ARCHITECTURE_ASSEMBLIES,
   EFFECT_ASSEMBLIES,
   MATERIAL_FAMILIES,
@@ -26,14 +27,14 @@ import {
   TRIM_FAMILIES,
 } from "./catalog.mjs";
 
-export const PLAN_SCHEMA = "nomos.rendering_plan@2";
+export const PLAN_SCHEMA = "nomos.rendering_plan@3";
 
 // Declared by `crates/nomos-render-plan/src/collection.rs` and registered in
 // `docs/evaluation/R1_SCHEMA_OWNERSHIP.md`. It was
 // `nomos.experiment.area_collection@2`, declared by quarantined tooling, which
 // the design record raised as finding 2 and issue #152 closed: both identities
 // this app binds are now emitted by accepted code.
-export const COLLECTION_SCHEMA = "nomos.area_collection@1";
+export const COLLECTION_SCHEMA = "nomos.area_collection@2";
 
 /// A refusal. The code space is `NV####`, disjoint by prefix from the frozen
 /// Gate K `EK` space and from `nomos-render-plan`'s `RP` space.
@@ -225,15 +226,7 @@ function entity(value, index, artifact) {
   object(
     value,
     where,
-    [
-      "id",
-      "kind",
-      "anchor",
-      "visual_assembly",
-      "material_family",
-      "machine_namespaces",
-      "provenance",
-    ],
+    ["id", "kind", "anchor", "machine_namespaces", "provenance"],
     artifact,
   );
   const id = text(value.id, `${where}.id`, artifact);
@@ -250,19 +243,11 @@ function entity(value, index, artifact) {
       artifact,
     );
   }
+  // The catalog is the only authority for what a kind is drawn as. `@2` carried
+  // `visual_assembly` and `material_family` on every entity and this decoder
+  // checked that the plan agreed with the catalog; `@3` drops both fields
+  // (issue #153), so there is one table and nothing left to disagree.
   const declared = ENTITY_KINDS[kind];
-  constrain(
-    value.visual_assembly === declared.visualAssembly,
-    `entity \`${id}\` is a \`${kind}\` but names assembly \`${value.visual_assembly}\`, ` +
-      `and the catalog draws that kind as \`${declared.visualAssembly}\``,
-    artifact,
-  );
-  constrain(
-    value.material_family === declared.materialFamily,
-    `entity \`${id}\` is a \`${kind}\` but names material family \`${value.material_family}\`, ` +
-      `and the catalog gives that kind \`${declared.materialFamily}\``,
-    artifact,
-  );
   const namespaces = array(value.machine_namespaces, `${where}.machine_namespaces`, artifact).map(
     (one, at) => text(one, `${where}.machine_namespaces[${at}]`, artifact),
   );
@@ -402,7 +387,7 @@ function architecture(value, artifact) {
   });
 }
 
-/// Decodes one `nomos.rendering_plan@2` document.
+/// Decodes one `nomos.rendering_plan@3` document.
 export function decodePlan(document, artifact = "the rendering plan") {
   bindSchema(document, PLAN_SCHEMA, artifact);
   refuseNonIntegerNumbers(document, artifact);
@@ -493,11 +478,15 @@ export function decodePlan(document, artifact = "the rendering plan") {
 
   const actors = array(document.actors, "actors", artifact).map((one, at) => {
     const row = `actors[${at}]`;
-    object(one, row, ["id", "assembly", "cell"], artifact);
+    object(one, row, ["id", "assembly", "cell", "role"], artifact);
     return Object.freeze({
       id: text(one.id, `${row}.id`, artifact),
       assembly: member(ACTOR_ASSEMBLIES, one.assembly, `${row}.assembly`, artifact),
       cell: Object.freeze(cell(one.cell, `${row}.cell`, artifact)),
+      // The declared role, which `@3` added and `crates/nomos-play` reads to
+      // decide which actor a command moves. The renderer reads it to pick a
+      // silhouette; nothing anywhere reads the identity string any more.
+      role: member(ACTOR_ROLES, one.role, `${row}.role`, artifact),
     });
   });
 
@@ -621,12 +610,12 @@ function checkPlanReferences(plan, artifact) {
       `effect \`${effect.id}\` anchors to absent entity \`${effect.anchor.entity}\``,
       artifact,
     );
-    const declared = SOCKETS[host.visual_assembly];
+    const declared = SOCKETS[host.kind];
     if (!declared?.[effect.anchor.socket]) {
       fail(
         CODES.CATALOG_UNKNOWN,
         `effect \`${effect.id}\` names socket \`${effect.anchor.socket}\`, which ` +
-          `\`${host.visual_assembly}\` does not declare`,
+          `kind \`${host.kind}\` does not declare`,
         artifact,
       );
     }
@@ -706,7 +695,7 @@ const sameCell = (left, right) =>
     ? right === null
     : right !== null && left.x === right.x && left.y === right.y && left.z === right.z;
 
-/// Decodes one `nomos.area_collection@1` document.
+/// Decodes one `nomos.area_collection@2` document.
 export function decodeCollection(document, artifact = "the area collection") {
   bindSchema(document, COLLECTION_SCHEMA, artifact);
   refuseNonIntegerNumbers(document, artifact);
@@ -721,7 +710,7 @@ export function decodeCollection(document, artifact = "the area collection") {
       "rendering_plan_schema",
       "projection_schemas",
       "architecture_style",
-      "entity_assemblies",
+      "entity_kinds",
       "actor_assemblies",
       "effect_assemblies",
     ],
@@ -939,7 +928,7 @@ export async function loadArtifacts(base, fetchImpl) {
 // Accessors
 // ---------------------------------------------------------------------------
 //
-// `nomos.rendering_plan@2` spells its stable-ID collections as arrays of
+// `nomos.rendering_plan@3` spells its stable-ID collections as arrays of
 // `{entity, ...}` or `{namespace, ...}` rows rather than as objects keyed by
 // data, so every lookup goes through one of these. None of them has a fallback:
 // the study's four independent machine-state lookups each invented their own

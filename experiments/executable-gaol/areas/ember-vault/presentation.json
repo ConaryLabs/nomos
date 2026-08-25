@@ -1,5 +1,5 @@
 {
-  "schema": "nomos.presentation_source@1",
+  "schema": "nomos.presentation_source@2",
   "area": {
     "id": "ember-vault",
     "label": "Ember Vault",
@@ -38,11 +38,13 @@
   "actors": [
     {
       "id": "player",
+      "role": "player",
       "assembly": "visual/player_silhouette",
       "cell": { "x": 7, "y": 5, "z": 0 }
     },
     {
       "id": "gaoler",
+      "role": "pursuer",
       "assembly": "visual/gaoler_silhouette",
       "cell": { "x": 1, "y": 3, "z": 0 }
     }
