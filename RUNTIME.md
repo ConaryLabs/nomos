@@ -1,12 +1,13 @@
 ---
 title: The R1 runtime contract
-status: Owner-authorized; revision 2 in force
+status: Owner-authorized; revision 3 in force
 epoch: R1
-contract_revision: 2
+contract_revision: 3
 authority: docs/decisions/0017-post-gate-k-runtime-epoch.md
 revision_2_authority: docs/decisions/0018-runtime-revision-2.md
+revision_3_authority: docs/decisions/0020-runtime-revision-3.md
 kernel_contract: KERNEL.md revision 7, frozen
-date: 2026-08-25
+date: 2026-08-26
 issue: 128
 ---
 
@@ -272,9 +273,11 @@ Accepted when:
   `crates/nomos-sim/src/effective_facts.rs`. It is not added to
   `docs/evaluation/SCHEMA_OWNERSHIP.md`, which is frozen Gate K evidence;
 - `experiments/executable-gaol/compare-effective-facts.sh` reports
-  `20 scenarios compared, 0 differences` against the committed
-  `rendering-plan.example.json` blocks, with the `"cost": null` spelling on a
-  blocked subject the only normalization;
+  `30 scenarios compared, 0 differences` against the committed
+  `rendering-plan.example.json` blocks — the original twenty scenarios plus
+  the ten from the two cold-authored areas in the quarantined experiment —
+  with the `"cost": null` spelling on a blocked subject the only
+  normalization;
 - byte identity holds across ten runs for the fixed triple of source bytes,
   source path, and runtime state — not for source bytes alone, because the
   source path appears in claim source spans and is therefore inside the hash
