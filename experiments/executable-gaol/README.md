@@ -1,9 +1,13 @@
 # Executable gaol experiment
 
 This is the deliberately quarantined answer to issues #101, #103, #105, #107,
-#109, #110, and #113: four independently authored areas, one bounded look, one WebGL
-renderer, a connected run, and visible semantic state. It is not Gate K or
-Gate 1 evidence and it does not change the accepted workspace.
+#109, #110, and #113: six independently authored areas, one bounded look, one
+WebGL renderer, a connected run, and visible semantic state. It is not Gate K
+or Gate 1 evidence and it does not change the accepted workspace.
+
+Two of the six — Gloam Bastion and Drowned Stair — were cold-authored from
+`AUTHORING.md` alone, one by a cross-family model, as a Gate 2/Gate 3
+miniature; see [docs/review/cold-author-area-five.md](../../docs/review/cold-author-area-five.md).
 
 **Play online:** <https://conarylabs.github.io/nomos/> — that page is the
 promoted viewer under `apps/nomos-viewer/`, which is accepted R1 code. This
@@ -16,11 +20,11 @@ Run:
 experiments/executable-gaol/gaol capture
 ```
 
-That diagnostic command compiles all four area sources, executes twenty real
+That diagnostic command compiles all six area sources, executes thirty real
 Nomos command scripts, and then hands the result to the accepted Rust compiler
-`nomos-render-plan` (issues #139 and #146), which derives four
+`nomos-render-plan` (issues #139 and #146), which derives six
 `nomos.rendering_plan@3` artifacts from `nomos entity-catalog`, one `nomos
-effective-facts` document per scenario, the run bundles, the four projection
+effective-facts` document per scenario, the run bundles, the six projection
 members, and each area's `presentation.json` — and from nothing else. It then checks their exact shared visual grammar, emits
 deterministic SVG frames, and rasterizes a cross-area PNG contact sheet with
 `rsvg-convert` when available. SVG is retained as exact semantic/capture
@@ -52,13 +56,13 @@ node apps/nomos-viewer/build.mjs --from target/executable-gaol --out apps/nomos-
 node apps/nomos-viewer/smoke/smoke.mjs --dist apps/nomos-viewer/dist --out target/nomos-viewer-smoke
 ```
 
-The viewer receives only `areas.json` and the four rendering plans; it does not
-parse `.nomos`, World IR, or compiler receipts. North Gaol, Cistern Walk, Ember
-Vault, and Ossuary Reach use the same camera, palette, materials, assemblies,
-actor silhouettes, beveled masonry vocabulary, effect language, and renderer —
-all of which the renderer owns, so none of them appears in a content file. Their
-doors, water, light, actors, wall height, masonry masses, and composition come
-from separate area content.
+The viewer receives only `areas.json` and the six rendering plans; it does not
+parse `.nomos`, World IR, or compiler receipts. Cistern Walk, Ember Vault,
+Gloam Bastion, Drowned Stair, Ossuary Reach, and North Gaol use the same
+camera, palette, materials, assemblies, actor silhouettes, beveled masonry
+vocabulary, effect language, and renderer — all of which the renderer owns,
+so none of them appears in a content file. Their doors, water, light, actors,
+wall height, masonry masses, and composition come from separate area content.
 See [AUTHORING.md](AUTHORING.md) for the intentionally small LLM authoring
 packet.
 
@@ -91,9 +95,10 @@ it contains no room-specific prompt text. Area arrivals identify route progress,
 and the final escape reports cumulative areas, moves, and traversal cost.
 
 The default run begins in Cistern Walk. Crossing its declared, traversable
-sluice enters Ember Vault; crossing Ember's vault gate enters Ossuary Reach;
-crossing the Bone Gate enters North Gaol; the North Gate is the final escape.
-Area transitions preserve cumulative moves, water cost, and cleared-area count
+sluice enters Ember Vault; crossing Ember's vault gate enters Gloam Bastion;
+crossing the Bastion Gate enters Drowned Stair; crossing the Stair Gate enters
+Ossuary Reach; crossing the Bone Gate enters North Gaol; the North Gate is the
+final escape. Area transitions preserve cumulative moves, water cost, and cleared-area count
 while resetting area-local actors and runtime scenario selection. The area
 buttons and bracket keys are forensic shortcuts that reset run progress; `R`
 returns to the Cistern start.
