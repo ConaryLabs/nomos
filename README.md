@@ -48,8 +48,8 @@ AI-authored areas can share one coherent visual grammar.
 - **Post-Gate-K epoch status:** decision 0017 is **owner-authorized** under
   issue #124 and the **R1 epoch is open**: an explicit epoch break, not a Gate K
   pass, with promotion by clean implementation only. Its contract document
-  `RUNTIME.md` is still pending under issue #128, and nothing is accepted into
-  R1 until it exists
+  `RUNTIME.md` is now owner-authorized under issue #128 and governs what R1
+  accepts
 - **Contract revision:** 7, owner-authorized in decision 0009
 - **Cold-agent protocol revision:** 6, owner-authorized in decision 0015;
   revision-6 packet, boundary, record, adjudication, and finalization tooling is
@@ -62,13 +62,13 @@ AI-authored areas can share one coherent visual grammar.
   `gate-k-rc2` tag was created. Revision 6 and the incomplete round-two records
   are now historical evidence; decision 0016 closes the evaluation without
   further checker or audit launches
-- **R1 contract status:** [RUNTIME.md](RUNTIME.md) revision 1 is a **draft
-  awaiting owner authorization** under issue #128. It is the R1 epoch's own
-  acceptance contract under decision 0017, reconciled with the merged ownership
-  audit (#125, PR #129) and the effective-facts spike (#126, PR #130); it flags
-  one open owner decision in section 3 on whether R1 surface may enter the
-  kernel crates. `KERNEL.md` revision 7 stays frozen and unamended, and no R1
-  work is accepted until the owner records a disposition
+- **R1 contract status:** [RUNTIME.md](RUNTIME.md) revision 1 is
+  **owner-authorized and in force** as of 2026-08-25 under issue #128. It is the
+  R1 epoch's own acceptance contract under decision 0017, reconciled with the
+  merged ownership audit (#125, PR #129); its section 3 permits read-only R1
+  surface inside the kernel crates under stated conditions. R1-1, the kernel
+  effective-facts projection prototyped on PR #130, is the first slice under
+  acceptance. `KERNEL.md` revision 7 stays frozen and unamended
 - **Scope:** greenfield / vacuum architecture exercise
 - **Effect on other projects:** none unless separately adopted by an explicit
   decision in that project's own authority records

@@ -1,6 +1,6 @@
 ---
 title: The R1 runtime contract
-status: Draft; awaiting owner authorization
+status: Owner-authorized; revision 1 in force
 epoch: R1
 contract_revision: 1
 authority: docs/decisions/0017-post-gate-k-runtime-epoch.md
@@ -68,33 +68,20 @@ its cause.
 
 ## 3. Workspace
 
-The six kernel crates named in `KERNEL.md` section 10 are unchanged: their
-membership, their permitted edges, and their zero third-party dependencies.
-`cargo xtask boundary` continues to fail closed on them.
+The six kernel crates named in `KERNEL.md` section 10 keep their membership,
+their permitted edges, and their zero third-party dependencies. `cargo xtask
+boundary` continues to fail closed on them.
 
-**Owner decision required:** the #126 spike (PR #130,
-`docs/review/effective-facts-spike.md`) places R1-1 *inside* the kernel crates —
-a new `crates/nomos-sim/src/effective_facts.rs`, a `nomos effective-facts`
-subcommand in `crates/nomos-cli/src/command.rs`, and public canonical accessors
-in `crates/nomos-projection`. That contradicts the sentence above as written, so
-this contract must say which reading holds before R1-1 can be accepted.
-**(a)** Kernel crates may gain R1 surface — new read-only projections and CLI
+Kernel crates may gain R1 surface — new read-only projections and CLI
 subcommands — provided no Gate K command, artifact, hash, or diagnostic changes,
-proved by the existing determinism and verify lanes; that membership, permitted
+proved by the existing determinism and verify lanes; membership, permitted
 edges, and zero third-party dependencies stay exactly as `KERNEL.md` section 10
-declares; and that each such addition is listed below. **(b)** R1 code never
-enters the six kernel crates, and R1-1 is re-homed into a new
-`crates/nomos-facts` or similar, depending on `nomos-sim` — which requires
-making `resolve_movement` and `resolve_light` public anyway, so the new crate
-would mostly re-export.
-**This document recommends (a):** the resolvers already live in `nomos-sim`,
-whose section 10 charter is effective-fact resolution, and `explain-entity`
-already composes that exact pair at
-`crates/nomos-cli/src/explanation.rs:25-27`; a separate crate would add a
-workspace member and an edge without moving any logic. The list below is written
-on that recommendation, and is empty if the owner chooses (b).
+declares; and each such addition is listed in the table below. The alternative,
+keeping R1 code out of the six kernel crates and re-homing R1-1 into a new crate
+depending on `nomos-sim`, was considered and declined by the owner on
+2026-08-25.
 
-### R1 surface added to kernel crates, under option (a)
+### R1 surface added to kernel crates
 
 Pending acceptance of the slice that adds it. No row changes an existing Gate K
 command, artifact, hash, or diagnostic.
@@ -116,8 +103,8 @@ experiments/        quarantined study; non-authoritative
 ```
 
 No R1 crate exists yet, so the declared R1 member list is empty; each new member
-joins that list in the change that creates it. Under option (a), R1-1 adds no
-member at all — only the surface tabled above.
+joins that list in the change that creates it. R1-1 adds no member at all —
+only the surface tabled above.
 
 Permitted new edges: an R1 crate may depend on any kernel crate, and on another
 declared R1 crate while the graph stays acyclic; `apps/nomos-viewer/` consumes
@@ -411,11 +398,7 @@ and are not accepted until the slice that emits them is.
 
 ## 10. Owner disposition
 
-_Not yet recorded._ Peter Permenter records exactly one outcome:
-
-1. **authorize** — R1 revision 1 takes effect as written; R1-1 opens.
-2. **authorize with amendments** — R1 revision 1 takes effect with the recorded
-   changes to its adoption criteria, workspace layout, dependency policy, target
-   acceptance, proof commands, or budget fields.
-3. **decline** — no R1 contract is adopted, no R1 work is accepted, and the
-   executable study continues under decision 0016 alone.
+**Authorize.** Recorded by Peter Permenter on 2026-08-25. Revision 1 takes
+effect as written, with section 3 resolved to option (a): kernel crates may gain
+read-only R1 surface under the conditions stated there. No further amendments.
+R1-1 is the first slice under acceptance.

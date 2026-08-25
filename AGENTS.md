@@ -75,7 +75,7 @@ here is authority for any other project.
 README.md          status and reading order
 THESIS.md          exploratory design thesis, currently revision 2
 KERNEL.md          Gate K acceptance contract, currently revision 7
-RUNTIME.md         R1 epoch contract, currently draft revision 1
+RUNTIME.md         R1 epoch contract, currently revision 1
 docs/decisions/    owner-authorized contract and architecture decisions
 docs/evaluation/   reproducible evaluation protocols
 docs/review/       review syntheses, provenance notes, and cold-review records
