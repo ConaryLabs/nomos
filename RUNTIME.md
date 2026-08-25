@@ -177,18 +177,24 @@ Accepted when:
 - the document carries schema identity `nomos.effective_facts@1` declared in
   `nomos-sim`, is canonical entity-sorted bytes, and stays outside the
   state-hash domain because it is derived;
-- a source-review receipt names that reused pair and adds the acceptance-15 row
-  for the new identity: `nomos.effective_facts@1` / `nomos-sim` /
-  `crates/nomos-sim/src/effective_facts.rs`;
+- a source-review receipt names that reused pair, and the new identity is
+  registered in `docs/evaluation/R1_SCHEMA_OWNERSHIP.md` — the R1 register
+  created under issue #133, "R1 schema-ownership lane" — as
+  `nomos.effective_facts@1` / `nomos-sim` /
+  `crates/nomos-sim/src/effective_facts.rs`. It is not added to
+  `docs/evaluation/SCHEMA_OWNERSHIP.md`, which is frozen Gate K evidence;
 - `experiments/executable-gaol/compare-effective-facts.sh` reports
   `20 scenarios compared, 0 differences` against the committed
   `rendering-plan.example.json` blocks, with the `"cost": null` spelling on a
   blocked subject the only normalization;
-- the same package and runtime state give byte-identical output across ten runs.
-  **Not proved by the spike:** PR #130's six tests cover schema and inputs,
-  subject coverage, `explain-entity` agreement, input immutability, argument
-  grammar, and cross-world rejection; none reruns the command for byte identity.
-  R1-1 closes that gap before acceptance;
+- byte identity holds across ten runs for the fixed triple of source bytes,
+  source path, and runtime state — not for source bytes alone, because the
+  source path appears in claim source spans and is therefore inside the hash
+  domain. A state presented against a world compiled from a different path must
+  fail closed with the stable diagnostic `EK0813`, "persisted state belongs to
+  different simulation semantics", exit 1, rather than diverging silently.
+  Proved on PR #130 by `the_same_world_and_state_produce_byte_identical_output`,
+  which also guards against a vacuous pass on empty output;
 - the four kernel commands in section 6 pass, and no Gate K command, artifact,
   hash, or diagnostic changes.
 
@@ -198,7 +204,7 @@ and light composition anywhere in the accepted tree — the spike instead delete
 third-party dependency to a kernel crate; edit `KERNEL.md`; write a seventh file
 into a run bundle, whose strict reopener fails closed on extra entries.
 
-Evidence: the source-review receipt and its new schema row; the twenty-scenario
+Evidence: the source-review receipt and the R1 register row; the twenty-scenario
 comparison output; the four command outputs; the ten-run byte-identity result;
 `build-plan.mjs` lines 86–95 and 111–128 named as deletable, with 134–135
 re-sourced from the document's `tick` and `state_hash`.
@@ -340,6 +346,13 @@ cargo clippy --workspace --all-targets --locked -- -D warnings
 cargo test --workspace --locked
 cargo xtask boundary
 ```
+
+The Gate K schema-ownership script `docs/evaluation/gate-k-schema-ownership.sh`
+remains valid only at its frozen commit `eb86f25` — it fails on any diff under
+`crates/` since that commit and on a seventeenth `SchemaId::new` literal — so R1
+PR CI runs the R1 register check from issue #133 instead, which holds the twenty
+Gate K identities fixed and requires every new identity to have exactly one
+registered owner.
 
 The comparison target, which proves the study rather than accepted work and is
 the specification while R1-2 and R1-3 are open:
