@@ -1,6 +1,6 @@
 ---
 title: Typed presentation source — R1-3 design record
-status: R1-3 design record; phase 1, pending owner review before implementation
+status: R1-3 design record; reviewed, ruled on, and implemented on this branch
 date: 2026-08-25
 issue: 146
 branch: r1/issue-146-presentation-source
@@ -105,7 +105,7 @@ graph**, **test fixture**, **tooling only**.
 | `architecture.bounds.width` | integer | `1 ≤ width ≤ 9` | presentation source — deliberate deviation from the audit's World IR, §6 finding 2 |
 | `architecture.bounds.height` | integer | `1 ≤ height ≤ 6` | presentation source — deliberate deviation from the audit's World IR, §6 finding 2 |
 | `architecture.wall_height_steps` | integer | `1 ≤ steps ≤ 50`, in `vertical_step` units of 1/10 lattice cell | presentation source |
-| `architecture.style.assembly` | string | `AssemblyName`; member of the catalog's `ASSEMBLIES` | renderer catalog defines, source selects |
+| `architecture.style.assembly` | string | `AssemblyName`; member of the catalog's `ARCHITECTURE_ASSEMBLIES` | renderer catalog defines, source selects |
 | `architecture.style.material_family` | string | `FamilyName`; member of `MATERIAL_FAMILIES` | renderer catalog defines, source selects |
 | `architecture.style.trim_family` | string | `FamilyName`; member of `TRIM_FAMILIES` | renderer catalog defines, source selects |
 | `architecture.masses` | array | 0–8 entries, ordered as authored; ids unique within the area | presentation source |
@@ -337,23 +337,31 @@ constants that only one renderer can own.
 
 ### 3.1 `vertical_step = 1/10 cell`
 
-One declared constant, `VERTICAL_STEP = 1 / 10`. A height in the plan is an
-integer step count; a renderer computes `steps * VERTICAL_STEP` to get lattice
-cells and then applies its own cells-to-screen scale.
+One declared constant, `VERTICAL_STEPS_PER_CELL = 10`. A height in the plan is
+an integer step count; a renderer computes `cellsOf(steps) = steps /
+VERTICAL_STEPS_PER_CELL` to get lattice cells and then applies its own
+cells-to-screen scale.
 
-This reproduces today's doubles **exactly**, not approximately. All ten former
-decimal values are `n/10` for an integer `n`, and IEEE-754 division is correctly
-rounded, so `n/10` is the nearest double to the real `n/10` — which is the same
-double the source literal denoted. Checked, all ten:
+**The conversion is a division, and that is load-bearing.** IEEE-754 division is
+correctly rounded, so `n / 10` is the nearest double to the real n/10 — which is
+the same double the decimal literal it replaces denoted. Multiplying by the
+nearest double to `0.1` is a *different operation* with a different answer for
+three of the ten values:
 
 ```text
-45/10 === 4.5   50/10 === 5     48/10 === 4.8   26/10 === 2.6   32/10 === 3.2
- 7/10 === 0.7   24/10 === 2.4
-45/10*0.72 === 4.5*0.72   26/10*0.72 === 2.6*0.72   (and the rest)
+45 / 10 === 4.5   50 / 10 === 5     48 / 10 === 4.8   26 / 10 === 2.6
+32 / 10 === 3.2    7 / 10 === 0.7   24 / 10 === 2.4
+
+48 * 0.1 === 4.800000000000001    7 * 0.1 === 0.7000000000000001
+24 * 0.1 === 2.4000000000000004
 ```
 
-The implementation commits this as an executable assertion in
-`area-collection.test.mjs`, not as a claim in prose.
+Implementation note, recorded because it is the one defect this slice found in
+its own work: the first version wrote `steps * (1 / 10)`, and every Ossuary
+Reach frame moved — that being the only area whose values are 48, 7, and 24.
+Fixed to the division this section specifies. `area-collection.test.mjs` now
+pins all ten values rather than asserting the property, so the same mistake
+fails a test instead of a digest comparison.
 
 ### 3.2 The `0.72` WebGL scale, declared
 
@@ -465,7 +473,7 @@ costs nothing and closes the note.
 | Constant | Home | Replaces |
 | --- | --- | --- |
 | `LOOK_PROFILE_IDS = ["baseline", "procedural"]` | `renderer-catalog.mjs` | `collection.lookProfile.id`, and `viewer.html:196-201`'s bare `"procedural"`/`"baseline"` literals |
-| `ASSEMBLIES`, `MATERIAL_FAMILIES`, `TRIM_FAMILIES`, `ACTOR_ASSEMBLIES`, `EFFECT_ASSEMBLIES` | `renderer-catalog.mjs` | the closed sets audit §1 rows 14, 15, 16, 21, 25 name; content selects from them, `verify.mjs` checks membership (owner ruling 1) |
+| `ARCHITECTURE_ASSEMBLIES`, `MATERIAL_FAMILIES`, `TRIM_FAMILIES`, `ACTOR_ASSEMBLIES`, `EFFECT_ASSEMBLIES` | `renderer-catalog.mjs` | the closed sets audit §1 rows 14, 15, 16, 21, 25 name; content selects from them, `verify.mjs` checks membership (owner ruling 1) |
 | `machineState(scenario, entity, machine)` | `renderer-catalog.mjs` | the two independent lookups with their own fallbacks at `render-core.mjs:67` and `webgl-renderer.mjs:89-90`; throws when the namespace is absent |
 | `doorState(scenario, entity)` → `{access, integrity, ward}` | `renderer-catalog.mjs` | the four `"sealed"`, two `"intact"`, and two `"locked"` literal fallbacks |
 | `wardSealed(scenario, entity)` | `renderer-catalog.mjs` | the four independent `=== "sealed"` re-derivations |
@@ -496,7 +504,7 @@ after this slice.
 | 11 | `exit.entry` | `presentation.json` `route.entry` | area/gameplay graph | Owner ruling 3: each area declares its own arrival cell, validated against its own bounds and masses; the start area declares none. Cross-area authority removed. |
 | 12 | `architecture.bounds.width`/`.height` | `presentation.json` `architecture.bounds` | presentation source (deliberate deviation) | Audit proposes World IR; `nomos.source@1` has no lattice-extent syntax, so it is unreachable in R1. Owner-approved deviation with the remedy recorded — §6 finding 2. |
 | 13 | `architecture.wallHeight` | `presentation.json` `architecture.wall_height_steps` | presentation source | Integer tenths of a cell; the unit is now in the schema, not in two renderers. |
-| 14 | `architecture.style.assembly` | `presentation.json`, selected from `ASSEMBLIES` | renderer catalog defines the closed set; presentation source selects from it | Owner ruling 1: same definition/selection split as socket names. `source.rs` checks the grammar, `verify.mjs` checks membership. Resolved. |
+| 14 | `architecture.style.assembly` | `presentation.json`, selected from `ARCHITECTURE_ASSEMBLIES` | renderer catalog defines the closed set; presentation source selects from it | Owner ruling 1: same definition/selection split as socket names. `source.rs` checks the grammar, `verify.mjs` checks membership. Resolved. |
 | 15 | `architecture.style.materialFamily` | `presentation.json`, selected from `MATERIAL_FAMILIES` | renderer catalog defines the closed set; presentation source selects from it | Same. |
 | 16 | `architecture.style.trimFamily` | `presentation.json`, selected from `TRIM_FAMILIES` | renderer catalog defines the closed set; presentation source selects from it | Same. |
 | 17 | `architecture.masses[].id` | `presentation.json` | presentation source | Presentation-only collision mass; unique per area. |
@@ -682,13 +690,13 @@ is open-ended.**
 
 | File | Edit |
 | --- | --- |
-| `src/renderer-catalog.mjs` | New: `VERTICAL_STEP`, `SOCKETS`, `LOOK_PROFILE_IDS`, the five closed sets, `machineState`, `doorState`, `wardSealed`, `isHunting`. |
-| `src/render-core.mjs` | Camera constants and `CELL_HEIGHT_PIXELS` declared and exported; `steps * VERTICAL_STEP`; socket-resolved crescent; fallbacks removed; `plan.objective.gate`; array lookups for `movement`/`effective_light`/`machine_states`. |
+| `src/renderer-catalog.mjs` | New: `VERTICAL_STEPS_PER_CELL`, `cellsOf`, `SOCKETS`, `socketPosition`, `LOOK_PROFILE_IDS`, the five closed sets, `machineState`, `doorState`, `wardSealed`, `isHunting`. |
+| `src/render-core.mjs` | Camera constants and `CELL_HEIGHT_PIXELS` declared and exported; `cellsOf(steps)`; socket-resolved crescent; fallbacks removed; `plan.objective.gate`; array lookups for `movement`/`effective_light`/`machine_states`. |
 | `src/webgl-renderer.mjs` | `VERTICAL_SCALE`, `ORTHO_HALF_HEIGHT`, `CAMERA_OFFSET` declared; socket-resolved upright crescent; `anchor.direction === "north"`; fallbacks removed; renamed fields. |
 | `src/play-state.mjs` | Actor fallbacks deleted; `plan.objective.gate`, `plan.pursuit.light`; `isHunting`; array lookups; `enterArea` places the player at the destination plan's own `route.entry`. |
 | `viewer.html` | `isHunting`; look ids from `LOOK_PROFILE_IDS`; number keys index `plan.scenarios`; `collection.visual_grammar.digest`; `connection.to_area`. |
 | `src/build-collection.mjs` | Collection `@2`; grammar without camera/palette/ui anchors; route walked from `plan.objective.gate` and `plan.route.to_area`, with each hop's `entry` read from the destination plan; every non-null `to_area` must name a declared area that declares an `entry`; snake_case output. |
-| `src/verify.mjs` | `@2`; renamed fields; membership assertions against the renderer catalog's closed sets — sockets in `SOCKETS`, and assemblies and families in `ASSEMBLIES`/`MATERIAL_FAMILIES`/`TRIM_FAMILIES`/`ACTOR_ASSEMBLIES`/`EFFECT_ASSEMBLIES` (owner ruling 1). |
+| `src/verify.mjs` | `@2`; renamed fields; membership assertions against the renderer catalog's closed sets — sockets in `SOCKETS`, and assemblies and families in `ARCHITECTURE_ASSEMBLIES`/`MATERIAL_FAMILIES`/`TRIM_FAMILIES`/`ACTOR_ASSEMBLIES`/`EFFECT_ASSEMBLIES` (owner ruling 1). |
 | `src/capture.mjs` | `FORENSIC_SCENARIO`; camera imported from `render-core.mjs`. |
 | `src/capture-collection.mjs` | Camera imported from `render-core.mjs`. |
 | `src/area-collection.test.mjs`, `src/play-state.test.mjs`, `src/webgl-viewer.test.mjs` | Renamed fields; the `steps/10` exactness assertion; no `presentationAnchor` anywhere; no bare look-id literals. |
@@ -786,7 +794,7 @@ renderer catalog defines the closed set a field may draw from; the presentation
 source selects one member of it. That is exactly the split already adopted for
 socket names (§3.3), and it gives each fact one owner: the catalog owns *what
 is legal*, content owns *which one this area uses*. `source.rs` checks the
-grammar; `verify.mjs` checks membership in `ASSEMBLIES`, `MATERIAL_FAMILIES`,
+grammar; `verify.mjs` checks membership in `ARCHITECTURE_ASSEMBLIES`, `MATERIAL_FAMILIES`,
 `TRIM_FAMILIES`, `ACTOR_ASSEMBLIES`, and `EFFECT_ASSEMBLIES`, so a well-formed
 name outside the catalog fails the build rather than a frame. The five rows are
 **resolved**, not deferred. R1-4 turns the JavaScript closed sets into a
