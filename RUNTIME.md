@@ -1,9 +1,10 @@
 ---
 title: The R1 runtime contract
-status: Owner-authorized; revision 1 in force
+status: Owner-authorized; revision 2 in force
 epoch: R1
-contract_revision: 1
+contract_revision: 2
 authority: docs/decisions/0017-post-gate-k-runtime-epoch.md
+revision_2_authority: docs/decisions/0018-runtime-revision-2.md
 kernel_contract: KERNEL.md revision 7, frozen
 date: 2026-08-25
 issue: 128
@@ -126,6 +127,12 @@ an R1 crate or the viewer parsing `.nomos` source, Canonical World IR, or
 compiler receipts; one canonical schema identity defined in more than one crate;
 an undeclared workspace member.
 
+Schema identity spelling: R1 documents emitted to stdout or as R1 artifacts —
+`effective_facts`, `entity_catalog`, `rendering_plan`, `area_collection`,
+`presentation_source`, and their successors — spell `schema` as the single
+string `name@version`, while Gate K package and run artifacts keep
+`{name, version}`; a reader binds exactly the form its document family uses.
+
 ### Declared R1 members
 
 - `nomos-render-plan` — the R1-2 rendering-plan compiler, the R1-3
@@ -219,9 +226,11 @@ Accepted when:
   read-only, writing no artifact, mutating no input package or state file, and
   adding no file to a run bundle;
 - all resolution comes from `nomos_sim::resolve_movement` and
-  `nomos_sim::resolve_light` (`crates/nomos-sim/src/resolver.rs:21,82`), with
-  `activation_is_true` (`resolver.rs:155`) staying private so the projected law
-  flags stay in the path;
+  `nomos_sim::resolve_light` (`crates/nomos-sim/src/resolver.rs:21,82`), and
+  activation evaluation is the single `pub fn activation_is_true` in
+  `nomos-projection` (`crates/nomos-projection/src/movement.rs`, issue #136,
+  pull request #149), so effective facts still come only from that resolver
+  pair with the projected law flags in the path;
 - the document carries schema identity `nomos.effective_facts@1` declared in
   `nomos-sim`, is canonical entity-sorted bytes, and stays outside the
   state-hash domain because it is derived;
@@ -372,7 +381,8 @@ Accepted when:
 - the pursuit rule is authoritative and deterministic: the same command log
   produces the same capture outcome;
 - the four-area route, interactions, water cost, capture, and reset remain
-  green, and the rendering-plan digests are unchanged.
+  green, and the drawn artifacts — the SVG frames and contact sheet — are
+  unchanged; rendering-plan digests may change when the plan's fields change.
 
 Must not: place a fractional position, a wall-clock value, or a frame rate into
 authoritative state or into the ordering of authoritative work; interpolate
