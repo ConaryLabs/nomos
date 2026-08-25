@@ -1,0 +1,5 @@
+schema nomos.command_script@1
+unlock vault_gate with credential/vault_key
+open vault_gate
+unseal vault_gate
+extinguish ember_brazier

@@ -1,0 +1,20 @@
+schema nomos.source@1
+catalog credential/vault_key
+
+entity vault_gate primitive/iron_barred_door
+  anchor face 4 0 0 north
+  credential credential/vault_key
+end
+
+entity ossuary_gate primitive/iron_barred_door
+  anchor face 8 0 0 north
+  credential credential/vault_key
+end
+
+entity cooling_pool primitive/shallow_water_region
+  anchor region 3 2 0 5 4 0
+end
+
+entity ember_brazier primitive/extinguishable_light
+  anchor cell 1 1 0
+end

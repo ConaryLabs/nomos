@@ -4,6 +4,23 @@
   "primaryGate": "sluice_gate",
   "pursuitLight": "watch_brazier",
   "forensicScenario": "03-breached-unsealed",
+  "architecture": {
+    "bounds": { "width": 9, "height": 6 },
+    "wallHeight": 4.5,
+    "style": {
+      "assembly": "visual/beveled_masonry",
+      "materialFamily": "stone_bounded",
+      "trimFamily": "broad_mortar"
+    },
+    "masses": [
+      {
+        "id": "channel_buttress",
+        "min": { "x": 4, "y": 0 },
+        "max": { "x": 5, "y": 1 },
+        "height": 2.6
+      }
+    ]
+  },
   "actors": [
     {
       "id": "player",

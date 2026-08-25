@@ -6,10 +6,12 @@ import { attemptInteraction, attemptMove, createPlayState } from "./play-state.m
 const readPlan = (id) => JSON.parse(readFileSync(new URL(`../areas/${id}/rendering-plan.example.json`, import.meta.url)));
 const north = readPlan("north-gaol");
 const cistern = readPlan("cistern-walk");
+const ember = readPlan("ember-vault");
 
 const grammar = (plan) => ({
   camera: plan.camera,
   palette: plan.palette,
+  architectureStyle: plan.architecture.style,
   entities: [...new Set(plan.entities.map((entity) => `${entity.kind}:${entity.visualAssembly}:${entity.materialFamily}`))].sort(),
   actors: [...new Set(plan.actors.map((actor) => actor.assembly))].sort(),
   effects: [...new Set(plan.effects.map((effect) => effect.assembly))].sort(),
@@ -19,6 +21,7 @@ const grammar = (plan) => ({
 test("independent areas retain one exact visual grammar", () => {
   assert.notEqual(north.area.id, cistern.area.id);
   assert.deepEqual(grammar(cistern), grammar(north));
+  assert.deepEqual(grammar(ember), grammar(north));
 });
 
 test("the second area is a distinct composition", () => {
@@ -26,6 +29,16 @@ test("the second area is a distinct composition", () => {
   assert.notDeepEqual(anchors(cistern), anchors(north));
   assert.deepEqual(cistern.actors.find((actor) => actor.id === "player").anchor.cell, { x: 7, y: 4, z: 0 });
   assert.equal(cistern.entities.find((entity) => entity.kind === "water").id, "runoff_channel");
+  assert.notDeepEqual(anchors(ember), anchors(north));
+  assert.equal(ember.architecture.masses.length, 2);
+  assert.equal(ember.architecture.wallHeight, 5);
+});
+
+test("declared masonry masses block presentation movement", () => {
+  const state = { ...createPlayState(cistern), player: { x: 3, y: 0, z: 0 } };
+  const result = attemptMove(cistern, "01-baseline", state, 1, 0);
+  assert.equal(result.moved, false);
+  assert.equal(result.state.message, "Blocked by channel_buttress");
 });
 
 test("the cistern interactions remain projection-bound", () => {
@@ -57,6 +70,30 @@ test("the cistern dark route is winnable", () => {
   scenarioId = extinguish.scenarioId;
   for (const [dx, dy] of [[0, -1], [-1, 0], [-1, 0], [-1, 0], [0, -1], [0, -1]]) {
     state = attemptMove(cistern, scenarioId, state, dx, dy).state;
+  }
+  assert.equal(state.escaped, true);
+  assert.equal(state.caught, false);
+});
+
+test("the ember vault dark route is winnable", () => {
+  let scenarioId = "01-baseline";
+  let state = createPlayState(ember);
+  for (const [dx, dy] of [[0, -1], [0, -1], [0, -1], [-1, 0], [-1, 0], [-1, 0], [0, -1]]) {
+    state = attemptMove(ember, scenarioId, state, dx, dy).state;
+  }
+  for (let count = 0; count < 2; count += 1) {
+    const result = attemptInteraction(ember, scenarioId, state);
+    state = result.state;
+    scenarioId = result.scenarioId;
+  }
+  for (const [dx, dy] of [[-1, 0], [0, 1], [-1, 0], [-1, 0]]) {
+    state = attemptMove(ember, scenarioId, state, dx, dy).state;
+  }
+  const extinguish = attemptInteraction(ember, scenarioId, state);
+  state = extinguish.state;
+  scenarioId = extinguish.scenarioId;
+  for (const [dx, dy] of [[1, 0], [1, 0], [0, -1], [1, 0], [0, -1], [0, -1]]) {
+    state = attemptMove(ember, scenarioId, state, dx, dy).state;
   }
   assert.equal(state.escaped, true);
   assert.equal(state.caught, false);

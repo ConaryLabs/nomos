@@ -1,7 +1,7 @@
 # Executable gaol experiment
 
-This is the deliberately quarantined answer to issues #101 and #103: two
-independently authored areas, one bounded look, one renderer, and visible
+This is the deliberately quarantined answer to issues #101, #103, and #105:
+three independently authored areas, one bounded look, one renderer, and visible
 semantic state. It is not Gate K or Gate 1 evidence and it does not change the
 accepted workspace.
 
@@ -13,8 +13,8 @@ Run:
 experiments/executable-gaol/gaol capture
 ```
 
-That command compiles both area sources, executes ten real Nomos command
-scripts, derives two `nomos.experiment.rendering_plan@1` artifacts only from
+That command compiles all three area sources, executes fifteen real Nomos
+command scripts, derives three `nomos.experiment.rendering_plan@1` artifacts only from
 subsystem projections and runtime state, checks their exact shared visual
 grammar, emits deterministic SVG frames, and rasterizes a cross-area PNG contact
 sheet with `rsvg-convert` when available.
@@ -25,11 +25,12 @@ To use the interactive state and forensic-overlay controls:
 experiments/executable-gaol/gaol serve
 ```
 
-Open the printed local URL. The renderer receives only `areas.json` and the two
+Open the printed local URL. The renderer receives only `areas.json` and the three
 selected rendering plans; it does not parse `.nomos`, World IR, or compiler
-receipts. North Gaol and Cistern Walk use the same camera, bounded palette,
-materials, assemblies, actor silhouettes, effect language, and renderer. Their
-doors, water, light, actors, and composition come from separate area content.
+receipts. North Gaol, Cistern Walk, and Ember Vault use the same camera, bounded
+palette, materials, assemblies, actor silhouettes, beveled masonry vocabulary,
+effect language, and renderer. Their doors, water, light, actors, wall height,
+masonry masses, and composition come from separate area content.
 See [AUTHORING.md](AUTHORING.md) for the intentionally small LLM authoring
 packet.
 
@@ -60,8 +61,8 @@ repository checkout, `.nomos` source, World IR, or credential enters the public
 artifact.
 
 Known limits: this is stylized deterministic SVG rather than a GPU renderer;
-actor positions and the gaoler pursuit rule are presentation-only because Gate
-K has no dynamic actor state;
+actor positions, masonry-mass collision, and the gaoler pursuit rule are
+presentation-only because Gate K has no dynamic actor or architecture state;
 audio, combat, networking, and persistence beyond the existing Gate K state are
 absent. Its job is to test whether independently authored rooms can remain
 visually coherent and playable through the same semantic bridge.

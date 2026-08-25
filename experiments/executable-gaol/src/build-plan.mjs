@@ -60,6 +60,19 @@ if (!area.actors.some((actor) => actor.id === "player") || !area.actors.some((ac
 if (area.effects.some((effect) => !entityIds.has(effect.anchorEntity))) {
   throw new Error("effect anchor must reference a compiled entity");
 }
+const { width, height } = area.architecture.bounds;
+if (!Number.isInteger(width) || !Number.isInteger(height) || width < 1 || width > 9 || height < 1 || height > 6) {
+  throw new Error("architecture bounds must fit the bounded 9x6 lattice");
+}
+if (area.architecture.wallHeight <= 0 || area.architecture.wallHeight > 5) {
+  throw new Error("architecture wall height must be in (0, 5]");
+}
+for (const mass of area.architecture.masses) {
+  if (mass.min.x < 0 || mass.min.y < 0 || mass.max.x > width || mass.max.y > height
+    || mass.min.x >= mass.max.x || mass.min.y >= mass.max.y || mass.height <= 0 || mass.height > 4) {
+    throw new Error(`masonry mass ${mass.id} exceeds the bounded architecture profile`);
+  }
+}
 
 const activationIsActive = (activation, states) => {
   switch (activation.kind) {
@@ -154,6 +167,7 @@ const plan = {
   projectionDigests,
   camera: { identity: "gaol_oblique_01", projection: "fixed_oblique", width: 1200, height: 540, tileWidth: 96, tileHeight: 50 },
   palette: "gaol_bounded_01",
+  architecture: area.architecture,
   entities,
   actors: area.actors,
   effects: area.effects,
