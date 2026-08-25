@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Nomos — Executable Gaol</title>
+<style>
+  :root { color-scheme: dark; background:#0d1218; color:#d7ddd9; font:14px system-ui,sans-serif }
+  body { margin:0; min-height:100vh; display:grid; grid-template-rows:auto 1fr auto; background:radial-gradient(circle at 50% 10%,#24323d,#0d1218 60%) }
+  header { display:flex; flex-wrap:wrap; gap:12px; align-items:center; padding:12px 18px; background:#0a1016dd; border-bottom:1px solid #33424a }
+  h1 { margin:0 auto 0 0; font-size:15px; letter-spacing:.12em; text-transform:uppercase }
+  #states { display:flex; gap:6px }
+  button { color:#d7ddd9; background:#202d35; border:1px solid #4c6068; border-radius:5px; padding:7px 11px; cursor:pointer }
+  button[aria-pressed="true"] { color:#10161d; background:#8ee6e3; border-color:#bfffff }
+  main { display:grid; place-items:center; padding:18px }
+  #frame { width:min(100%,1200px); box-shadow:0 28px 80px #0009; border:1px solid #3c4a51; line-height:0 }
+  #frame svg { width:100%; height:auto }
+  footer { display:flex; justify-content:center; gap:24px; padding:11px 18px 15px; color:#8e9b9c; background:#0a1016dd; border-top:1px solid #26343b }
+  #message[data-tone="blocked"], #message[data-tone="danger"] { color:#d47158 } #message[data-tone="success"] { color:#8ee6e3 } #message[data-tone="water"] { color:#70909a }
+</style>
+<header><h1>Nomos // executable gaol</h1><span id="states"></span><button id="forensic" aria-pressed="false">Forensics</button></header>
+<main><div id="frame"></div></main>
+<footer><span>Move: WASD / arrows · Interact: E · States: 1–5 · Reset: R</span><span id="message"></span><span id="meter"></span></footer>
+<script type="module">
+  import { renderSvg } from "./render-core.mjs";
+  import { attemptInteraction, attemptMove, createPlayState, movementKeys } from "./play-state.mjs";
+  const plan = await fetch("./rendering-plan.json").then((response) => response.json());
+  const states = document.querySelector("#states");
+  const frame = document.querySelector("#frame");
+  const forensic = document.querySelector("#forensic");
+  const message = document.querySelector("#message");
+  const meter = document.querySelector("#meter");
+  let selected = plan.scenarios[0].id;
+  let play = createPlayState(plan);
+  let visualPlayer = { ...play.player };
+  let visualGaoler = { ...play.gaoler };
+  let animating = false;
+  const selectScenario = (scenarioId) => {
+    selected = scenarioId;
+    for (const child of states.children) child.ariaPressed = String(child.dataset.scenario === selected);
+  };
+  const draw = () => {
+    frame.innerHTML = renderSvg(plan, selected, forensic.ariaPressed === "true", { actorPositions: { player: visualPlayer, gaoler: visualGaoler } });
+    message.textContent = play.message;
+    message.dataset.tone = play.tone;
+    const pursuit = play.caught ? "caught" : plan.scenarios.find((scenario) => scenario.id === selected)?.effectiveLight.brazier_02 === false ? "hunting" : "dormant";
+    meter.textContent = `moves ${play.moves} · cost ${play.movementCost} · gaoler ${pursuit}`;
+  };
+  const reset = () => { selectScenario(plan.scenarios[0].id); play = createPlayState(plan); visualPlayer = { ...play.player }; visualGaoler = { ...play.gaoler }; animating = false; draw(); };
+  const animateMove = (from, to, gaolerFrom, gaolerTo, cost) => {
+    const started = performance.now();
+    const duration = 105 * cost;
+    animating = true;
+    const step = (now) => {
+      const t = Math.min(1, (now - started) / duration);
+      const eased = 1 - Math.pow(1 - t, 3);
+      visualPlayer = { x: from.x + (to.x - from.x) * eased, y: from.y + (to.y - from.y) * eased, z: Math.sin(Math.PI * t) * .08 };
+      visualGaoler = { x: gaolerFrom.x + (gaolerTo.x - gaolerFrom.x) * eased, y: gaolerFrom.y + (gaolerTo.y - gaolerFrom.y) * eased, z: 0 };
+      draw();
+      if (t < 1) requestAnimationFrame(step);
+      else { visualPlayer = { ...to }; visualGaoler = { ...gaolerTo }; animating = false; draw(); }
+    };
+    requestAnimationFrame(step);
+  };
+  for (const scenario of plan.scenarios) {
+    const button = document.createElement("button");
+    button.textContent = scenario.label;
+    button.dataset.scenario = scenario.id;
+    button.ariaPressed = String(scenario.id === selected);
+    button.onclick = () => { selectScenario(scenario.id); play = { ...play, message: `Loaded ${scenario.label}`, tone: "neutral" }; draw(); };
+    states.append(button);
+  }
+  forensic.onclick = () => { forensic.ariaPressed = String(forensic.ariaPressed !== "true"); draw(); };
+  addEventListener("keydown", (event) => {
+    if (event.code === "KeyR") { event.preventDefault(); reset(); return; }
+    if (event.code === "KeyE" && !animating) {
+      event.preventDefault();
+      const result = attemptInteraction(plan, selected, play);
+      play = result.state;
+      selectScenario(result.scenarioId);
+      draw();
+      return;
+    }
+    const number = Number(event.key);
+    if (number >= 1 && number <= plan.scenarios.length) { states.children[number - 1].click(); return; }
+    const delta = movementKeys[event.code];
+    if (!delta || animating) return;
+    event.preventDefault();
+    const from = { ...play.player };
+    const gaolerFrom = { ...play.gaoler };
+    const result = attemptMove(plan, selected, play, ...delta);
+    play = result.state;
+    if (result.moved) animateMove(from, play.player, gaolerFrom, play.gaoler, result.cost);
+    else draw();
+  });
+  draw();
+</script>
+</html>
