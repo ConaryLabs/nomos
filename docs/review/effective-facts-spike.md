@@ -275,6 +275,48 @@ failure is `EK0813 persisted state belongs to different simulation semantics`,
 exit 1, not a silent byte difference. Byte identity is a property of a fixed
 (source bytes, source path, state) triple, not of source bytes alone.
 
+### CI: `verify` passes, `gate-k-evidence` cannot
+
+`verify` — the lane that runs the four proof commands — **passes** on this
+branch. `gate-k-evidence` **fails**, and that is the guard working correctly,
+not a defect to repair.
+
+`docs/evaluation/gate-k-schema-ownership.sh` fails this branch for two
+independent reasons:
+
+1. **The frozen-source guard.** Its last check is
+   `git diff --name-only eb86f25f5084a5da83cdd4f26e42e68089367a11 -- crates`,
+   which must be empty. `origin/main` has a zero-file diff from that commit
+   under `crates/`, so *any* branch that edits kernel source fails this check
+   by construction — this spike, or any other. It is a freeze proof, not a
+   correctness test.
+2. **The schema-constructor count.** The script requires exactly 16 literal
+   `SchemaId::new("nomos.` constructors across `crates/*/src`, and exactly
+   twenty rows in `docs/evaluation/SCHEMA_OWNERSHIP.md`. Adding
+   `nomos.effective_facts@1` makes it 17 and would make it twenty-one. It fails
+   with `literal schema constructor set changed outside the reviewed
+   inventory`.
+
+Reason 2 is the acceptance-15 receipt requirement predicted in
+[Recorded caveat](#recorded-caveat-this-is-a-new-convention), arriving as a
+live check rather than a paper obligation. That is a good outcome: the
+inventory is enforced, not merely written down.
+
+**Neither was worked around.** Editing `SCHEMA_OWNERSHIP.md` to add a
+twenty-first row, or moving the freeze commit, would forge a source-review
+receipt that no human has given — exactly the "weakening a criterion merely
+because an implementation failed it" that `AGENTS.md` forbids, and a contract
+repair that requires an owner-authorized decision record. The spike therefore
+ships red on `gate-k-evidence` on purpose.
+
+For decision 0017 this sharpens item 1 below: promoting this command is not
+just a code change, it requires an owner-authorized re-review of the frozen
+twenty-identity inventory (to twenty-one), a new freeze commit, and the
+corresponding update to `gate-k-schema-ownership.sh`'s two hard-coded counts.
+If the owner instead chooses to drop the `schema` field, reason 2 disappears
+entirely and only the freeze-commit reason remains — which any kernel change
+must clear regardless.
+
 ### Build time
 
 Measured on this branch, worktree root, after `cargo clean`:
@@ -372,8 +414,11 @@ that reuses the existing resolvers exactly and deletes a 28-line shadow
 resolver. Three items need an owner decision before any of it is promoted:
 
 1. **Schema identity.** Whether `nomos.effective_facts@1` should exist at all,
-   given that no `nomos` stdout document currently carries one, and if so the
-   acceptance-15 source-review receipt row it requires.
+   given that no `nomos` stdout document currently carries one. If it should,
+   promotion needs an owner-authorized re-review of the frozen twenty-identity
+   inventory in `docs/evaluation/SCHEMA_OWNERSHIP.md`, a new freeze commit, and
+   the two hard-coded counts in `gate-k-schema-ownership.sh` moved from 16/20
+   to 17/21. See [CI](#ci-verify-passes-gate-k-evidence-cannot).
 2. **`machine_states` in the document.** Include it and the plan builder stops
    reading `final-state.json`; exclude it and the document stays purely
    composed facts.
