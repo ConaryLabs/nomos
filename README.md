@@ -62,6 +62,11 @@ AI-authored areas can share one coherent visual grammar.
   `gate-k-rc2` tag was created. Revision 6 and the incomplete round-two records
   are now historical evidence; decision 0016 closes the evaluation without
   further checker or audit launches
+- **R1 contract status:** [RUNTIME.md](RUNTIME.md) revision 1 is a **draft
+  awaiting owner authorization** under issue #128. It is the R1 epoch's own
+  acceptance contract under decision 0017; `KERNEL.md` revision 7 stays frozen
+  and unamended, and no R1 work is accepted until the owner records a
+  disposition
 - **Scope:** greenfield / vacuum architecture exercise
 - **Effect on other projects:** none unless separately adopted by an explicit
   decision in that project's own authority records

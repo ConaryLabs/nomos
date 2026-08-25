@@ -1,8 +1,8 @@
 # Agent guide
 
 Read [README.md](README.md), then [THESIS.md](THESIS.md), then
-[KERNEL.md](KERNEL.md). For changes to the acceptance contract, also read the
-latest record under `docs/decisions/`.
+[KERNEL.md](KERNEL.md), then [RUNTIME.md](RUNTIME.md). For changes to the
+acceptance contract, also read the latest record under `docs/decisions/`.
 
 Nomos is the project/runtime; The Signed World is the thesis it tests. Nothing
 here is authority for any other project.
@@ -75,6 +75,7 @@ here is authority for any other project.
 README.md          status and reading order
 THESIS.md          exploratory design thesis, currently revision 2
 KERNEL.md          Gate K acceptance contract, currently revision 7
+RUNTIME.md         R1 epoch contract, currently draft revision 1
 docs/decisions/    owner-authorized contract and architecture decisions
 docs/evaluation/   reproducible evaluation protocols
 docs/review/       review syntheses, provenance notes, and cold-review records
