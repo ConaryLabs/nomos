@@ -9,21 +9,36 @@
 //! The planted cases are the ones `RUNTIME.md` section 3 turns into rules: an
 //! undeclared member, a declared member depending on a kernel crate, a kernel
 //! crate depending back, an R1 crate depending on an undeclared member, and a
-//! cycle between two R1 crates. Only the copy ever contains those crates; the
-//! accepted workspace declares none.
+//! cycle between two R1 crates. Only the copy ever contains the planted crates,
+//! and their names are deliberately ones the workspace will never use, so that
+//! a real R1 member joining `R1_CRATES` can never turn a planted violation into
+//! an accepted one. Where a test needs its planted member *declared*, it passes
+//! the shipped `R1_CRATES` plus the planted names, so the workspace's real
+//! members stay declared too.
 
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use crate::boundary::{Graph, Violation};
+use crate::boundary::{Graph, R1_CRATES, Violation};
 use crate::load_graph;
 
-/// The crate R1-2 will add for real (issue #139); planted here, never accepted.
-const RENDER_PLAN: &str = "nomos-render-plan";
+/// A planted R1 member. The name is not, and will not become, a workspace
+/// member: a planted violation must stay a violation when a real R1 crate is
+/// declared.
+const PLANTED_R1: &str = "nomos-planted-r1";
 
 /// A second planted R1 member: a cycle needs two crates.
-const PRESENTATION: &str = "nomos-presentation";
+const PLANTED_PEER: &str = "nomos-planted-peer";
+
+/// The shipped declared members plus the planted ones.
+fn declared_with<'a>(planted: &[&'a str]) -> Vec<&'a str> {
+    R1_CRATES
+        .iter()
+        .copied()
+        .chain(planted.iter().copied())
+        .collect()
+}
 
 /// A copy of this workspace in a temporary directory, removed on drop.
 struct Planted {
@@ -173,21 +188,21 @@ fn only_violation(violations: &[Violation], rule: &str) -> String {
 #[test]
 fn an_undeclared_r1_member_fails_membership() {
     let planted = Planted::copy_of_the_workspace("undeclared");
-    planted.plant_crate(RENDER_PLAN, &["nomos-sim"], &[]);
+    planted.plant_crate(PLANTED_R1, &["nomos-sim"], &[]);
 
-    // `check` uses the shipped `R1_CRATES`, which declares nothing.
+    // `check` uses the shipped `R1_CRATES`, which does not declare this name.
     let detail = only_violation(&planted.graph().check(), "membership");
-    assert!(detail.contains(&format!("`{RENDER_PLAN}`")), "{detail}");
+    assert!(detail.contains(&format!("`{PLANTED_R1}`")), "{detail}");
 }
 
 #[test]
 fn a_declared_r1_member_may_depend_on_a_kernel_crate() {
     let planted = Planted::copy_of_the_workspace("declared");
-    planted.plant_crate(RENDER_PLAN, &["nomos-sim"], &[]);
+    planted.plant_crate(PLANTED_R1, &["nomos-sim"], &[]);
 
-    let violations = planted.graph().check_with(&[RENDER_PLAN]);
+    let violations = planted.graph().check_with(&declared_with(&[PLANTED_R1]));
     println!(
-        "PLANTED [declared] {RENDER_PLAN} -> nomos-sim: {} violation(s)",
+        "PLANTED [declared] {PLANTED_R1} -> nomos-sim: {} violation(s)",
         violations.len()
     );
     assert!(violations.is_empty(), "{violations:?}");
@@ -196,15 +211,15 @@ fn a_declared_r1_member_may_depend_on_a_kernel_crate() {
 #[test]
 fn a_kernel_crate_depending_on_an_r1_member_fails_permitted_edges() {
     let planted = Planted::copy_of_the_workspace("kernel-edge");
-    planted.plant_crate(RENDER_PLAN, &[], &[]);
-    planted.plant_dependency("nomos-sim", RENDER_PLAN);
+    planted.plant_crate(PLANTED_R1, &[], &[]);
+    planted.plant_dependency("nomos-sim", PLANTED_R1);
 
     let detail = only_violation(
-        &planted.graph().check_with(&[RENDER_PLAN]),
+        &planted.graph().check_with(&declared_with(&[PLANTED_R1])),
         "permitted-edges",
     );
     assert!(
-        detail.contains(&format!("`nomos-sim` depends on `{RENDER_PLAN}`")),
+        detail.contains(&format!("`nomos-sim` depends on `{PLANTED_R1}`")),
         "{detail}"
     );
 }
@@ -215,22 +230,22 @@ fn an_r1_member_depending_on_an_undeclared_member_fails_twice() {
     // crates nor declared R1 crates are undeclared ones and, once R1-4 lands,
     // `apps/`: Cargo drops a dependency on `xtask`, which has no lib target.
     let planted = Planted::copy_of_the_workspace("undeclared-peer");
-    planted.plant_crate(RENDER_PLAN, &[PRESENTATION], &[]);
-    planted.plant_crate(PRESENTATION, &[], &[]);
+    planted.plant_crate(PLANTED_R1, &[PLANTED_PEER], &[]);
+    planted.plant_crate(PLANTED_PEER, &[], &[]);
 
-    let violations = planted.graph().check_with(&[RENDER_PLAN]);
+    let violations = planted.graph().check_with(&declared_with(&[PLANTED_R1]));
     for violation in &violations {
         println!("PLANTED [{}] {}", violation.rule, violation.detail);
     }
     let rules: Vec<&str> = violations.iter().map(|violation| violation.rule).collect();
     assert_eq!(rules, ["membership", "permitted-edges"], "{violations:?}");
     assert!(
-        violations[0].detail.contains(PRESENTATION),
+        violations[0].detail.contains(PLANTED_PEER),
         "{violations:?}"
     );
     assert!(
         violations[1].detail.contains(&format!(
-            "R1 crate `{RENDER_PLAN}` depends on workspace member `{PRESENTATION}`"
+            "R1 crate `{PLANTED_R1}` depends on workspace member `{PLANTED_PEER}`"
         )),
         "{violations:?}"
     );
@@ -241,15 +256,17 @@ fn a_cycle_between_two_r1_members_fails_cycles() {
     let planted = Planted::copy_of_the_workspace("r1-cycle");
     // Cargo refuses a cycle of normal dependencies outright, so the return edge
     // is a dev-dependency — the kind Cargo allows and this rule still refuses.
-    planted.plant_crate(RENDER_PLAN, &[PRESENTATION], &[]);
-    planted.plant_crate(PRESENTATION, &[], &[RENDER_PLAN]);
+    planted.plant_crate(PLANTED_R1, &[PLANTED_PEER], &[]);
+    planted.plant_crate(PLANTED_PEER, &[], &[PLANTED_R1]);
 
     let detail = only_violation(
-        &planted.graph().check_with(&[RENDER_PLAN, PRESENTATION]),
+        &planted
+            .graph()
+            .check_with(&declared_with(&[PLANTED_R1, PLANTED_PEER])),
         "cycles",
     );
     assert!(
-        detail.contains(&format!("{RENDER_PLAN} -> {PRESENTATION} -> {RENDER_PLAN}")),
+        detail.contains(&format!("{PLANTED_R1} -> {PLANTED_PEER} -> {PLANTED_R1}")),
         "{detail}"
     );
 }

@@ -118,3 +118,42 @@ fn a_run_bundle_without_a_facts_document_is_refused() {
         error.message()
     );
 }
+
+#[test]
+fn a_rejected_kernel_document_is_refused_before_its_identity() {
+    // `nomos entity-catalog` writes `{"diagnostics":[...],"status":"rejected"}`
+    // with no `schema` field when it refuses a package. Reporting "no `schema`
+    // field" would throw away the kernel's own reason.
+    let fixture = Fixture::new("rejected-catalog");
+    std::fs::write(
+        fixture.catalog(),
+        br#"{"command":"entity-catalog","diagnostics":[{"code":"EK0413","message":"inconsistent"}],"status":"rejected"}"#,
+    )
+    .unwrap();
+    let error = nomos_render_plan::compile(fixture.inputs()).unwrap_err();
+    assert_eq!(error.code().as_str(), "RP0105");
+    assert!(error.message().contains("rejected"), "{}", error.message());
+    assert!(error.message().contains("EK0413"), "{}", error.message());
+}
+
+#[test]
+fn the_catalogs_extra_command_and_status_fields_are_accepted() {
+    // The landed #138 document carries `command` and `status` beside the shape
+    // the issue text listed. Both are ignored; the issue's shape is a subset.
+    use nomos_render_plan::json::Json;
+
+    let fixture = Fixture::new("catalog-envelope");
+    let value = nomos_render_plan::json::parse(&std::fs::read(fixture.catalog()).unwrap()).unwrap();
+    let Json::Object(mut fields) = value else {
+        panic!("the catalog is an object")
+    };
+    fields.insert(
+        "command".to_owned(),
+        Json::Text("entity-catalog".to_owned()),
+    );
+    fields.insert("status".to_owned(), Json::Text("completed".to_owned()));
+    let envelope = nomos_render_plan::PlanValue::from_area(&Json::Object(fields)).unwrap();
+    std::fs::write(fixture.catalog(), envelope.to_canonical_bytes()).unwrap();
+    nomos_render_plan::compile(fixture.inputs())
+        .expect("the kernel stdout envelope fields are ignored");
+}

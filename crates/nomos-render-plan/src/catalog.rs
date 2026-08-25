@@ -174,6 +174,7 @@ impl EntityCatalog {
     /// mis-shaped, and `RP0201` when a declaration and its capability set
     /// contradict each other.
     pub fn decode(document: &CanonicalValue, path: &Path) -> PlanResult<Self> {
+        read::require_completed(document, path)?;
         read::bind_schema(document, &entity_catalog_schema(), path)?;
         let mut entities = Vec::new();
         let mut seen = BTreeSet::new();

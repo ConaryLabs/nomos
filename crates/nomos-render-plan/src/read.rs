@@ -44,6 +44,49 @@ pub fn read_document(path: &Path) -> PlanResult<CanonicalValue> {
     })
 }
 
+/// Refuses a kernel document that reports a rejection.
+///
+/// `nomos` commands write one document to stdout either way: a completed
+/// command carries `"status": "completed"` beside its payload, and a rejection
+/// carries `"status": "rejected"` with a `diagnostics` array and no `schema`
+/// field at all. Binding the identity first would report "no `schema` field"
+/// and lose the kernel's own reason, so the status is checked first and the
+/// kernel's diagnostic codes are carried through.
+///
+/// A document with no `status` field — a package member, a run-bundle member —
+/// passes: the field is a property of a command's stdout, not of every
+/// canonical document.
+///
+/// # Errors
+///
+/// Returns `RP0105` naming the reported status and every diagnostic code the
+/// document carries.
+pub fn require_completed(document: &CanonicalValue, path: &Path) -> PlanResult<()> {
+    let Some(status) = document.get("status").and_then(CanonicalValue::as_text) else {
+        return Ok(());
+    };
+    if status == "completed" {
+        return Ok(());
+    }
+    let codes: Vec<&str> = document
+        .get("diagnostics")
+        .and_then(CanonicalValue::as_array)
+        .unwrap_or_default()
+        .iter()
+        .filter_map(|diagnostic| diagnostic.get("code").and_then(CanonicalValue::as_text))
+        .collect();
+    let reported = if codes.is_empty() {
+        String::new()
+    } else {
+        format!(" ({})", codes.join(", "))
+    };
+    Err(PlanError::new(
+        codes::DOCUMENT_SHAPE,
+        format!("input document reports status `{status}`, not `completed`{reported}"),
+    )
+    .at(path))
+}
+
 /// Binds a document's `schema` field to an expected identity and version.
 ///
 /// Two spellings are accepted, and both are compared as `name@version`:

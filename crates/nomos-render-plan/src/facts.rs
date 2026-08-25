@@ -80,6 +80,7 @@ impl EffectiveFacts {
     /// `nomos.effective_facts@1` and `RP0105` when a required field is absent,
     /// mis-shaped, or repeats a subject.
     pub fn decode(document: &CanonicalValue, path: &Path) -> PlanResult<Self> {
+        read::require_completed(document, path)?;
         read::bind_schema(document, &effective_facts_schema(), path)?;
         let tick = read::required_uint(document, "tick", path)?;
         let state_hash = read::required_text(document, "state_hash", path)?.to_owned();
