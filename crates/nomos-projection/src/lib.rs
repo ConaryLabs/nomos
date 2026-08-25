@@ -35,6 +35,7 @@
 use nomos_core::id::SchemaId;
 
 mod artifacts;
+mod decode;
 mod light;
 mod movement;
 mod simulation;
