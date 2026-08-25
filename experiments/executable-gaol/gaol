@@ -93,8 +93,19 @@ case "$mode" in
         "$output_dir/areas/$area_id/frames/contact-sheet.svg"
     done
     ;;
+  accept)
+    build
+    for area_dir in "$areas_dir"/*; do
+      [[ -d $area_dir ]] || continue
+      area_id=$(basename "$area_dir")
+      cp "$output_dir/areas/$area_id/rendering-plan.json" "$area_dir/rendering-plan.example.json"
+      printf 'wrote %s\n' "${area_dir#"$repo_root/"}/rendering-plan.example.json"
+    done
+    cp "$output_dir/areas.json" "$experiment_dir/area-collection.example.json"
+    printf 'wrote %s\n' "${experiment_dir#"$repo_root/"}/area-collection.example.json"
+    ;;
   *)
-    printf 'usage: %s [capture|verify]\n' "$0" >&2
+    printf 'usage: %s [capture|verify|accept]\n' "$0" >&2
     exit 64
     ;;
 esac

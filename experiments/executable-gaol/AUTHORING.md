@@ -129,3 +129,59 @@ movement disposition, cost, reasons, and light come from `nomos
 effective-facts` — so renaming an entity or a machine cannot change how it is
 drawn, and a primitive the compiler has no kind for is refused rather than
 drawn as a marker.
+
+## Connecting a new area
+
+Adding an area to the route is content, not code. The procedure:
+
+1. **Choose the predecessor.** Pick the existing area the new one will sit
+   behind, and edit that one field: its `presentation.json` `route.exit.to_area`,
+   from `null` (or another area's id) to the new area's id.
+2. **Write the new area.** Create `areas/<id>/` with `world.nomos` and
+   `presentation.json`, following the required-files list and the
+   `presentation.json` rules above. Give it its own `route.entry` — the cell a
+   player lands on arriving through the predecessor's gate — and set its own
+   `route.exit.to_area` to whatever the predecessor's old destination was (`null`
+   if the predecessor used to be the route's terminal).
+3. **Write five scenario scripts.** Copy `areas/north-gaol/scenarios/*.commands`
+   into `areas/<id>/scenarios/` and rename the entities each command names to
+   the new area's own gate and light. The five scripts stay in the same order —
+   baseline, ignite, unseal, extinguish, open — and each of scenarios 2–4 still
+   adds exactly one command to the one before it, because that ordering is what
+   lets the pipeline derive interactions between consecutive scenarios.
+4. **Produce the fixtures.**
+   ```sh
+   experiments/executable-gaol/gaol accept
+   ```
+   This compiles every area — including the new one — and copies what it
+   compiled over the committed examples: each area's
+   `target/executable-gaol/areas/<id>/rendering-plan.json` to that area's own
+   `areas/<id>/rendering-plan.example.json`, and
+   `target/executable-gaol/areas.json` to `area-collection.example.json`. It
+   prints every fixture it wrote.
+5. **Prove it.**
+   ```sh
+   experiments/executable-gaol/gaol verify
+   ```
+   `verify` never writes a fixture; it only compares. Green here is the proof
+   that the fixtures `accept` just wrote are what the pipeline actually
+   produces, not what an author typed by hand.
+
+**What a connected area legitimately changes.** The new area's own directory
+under `areas/<id>/`; the predecessor's `presentation.json` (the one
+`route.exit.to_area` edit) and its regenerated `rendering-plan.example.json`;
+and `area-collection.example.json`, which `gaol accept` also regenerates,
+because the route graph now has one more edge. Nothing under `src/`, `apps/`,
+or `crates/` changes. If a change to connect an area seems to require editing
+any of those, the area is not actually content — file it rather than route
+around it.
+
+**Where the vocabulary lives.** `world.nomos` is written in the source
+language the compiler reads; its full vocabulary — primitives, credentials,
+machines, commands — is `docs/authoring.md`, not this file. The scenario
+scripts under `scenarios/*.commands` are written in the command-script
+vocabulary the scenario files themselves demonstrate: `open`, `ignite`,
+`unseal`, `extinguish`, and `unlock ... with ...` are the commands this corpus
+uses, each one a command the compiled world already accepts or refuses on its
+own terms. This file governs only `presentation.json` and the shape of the
+five scenario scripts; it is not a second copy of either vocabulary.

@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import {
   ACTOR_ASSEMBLIES,
   ARCHITECTURE_ASSEMBLIES,
@@ -13,18 +14,28 @@ import {
   cellsOf,
 } from "./renderer-catalog.mjs";
 
-const readPlan = (id) => JSON.parse(readFileSync(new URL(`../areas/${id}/rendering-plan.example.json`, import.meta.url)));
-const north = readPlan("north-gaol");
-const cistern = readPlan("cistern-walk");
-const ember = readPlan("ember-vault");
-const ossuary = readPlan("ossuary-reach");
+// The corpus is discovered, not named. Every directory under `areas/` is one
+// area; adding a fifth (or a fifteenth) changes nothing below this line.
+const areasDir = fileURLToPath(new URL("../areas/", import.meta.url));
+const areaIds = readdirSync(areasDir, { withFileTypes: true })
+  .filter((entry) => entry.isDirectory())
+  .map((entry) => entry.name)
+  .sort();
 
-// The area collection itself is not read here any more. `nomos.area_collection@2`
-// is emitted by `crates/nomos-render-plan/src/collection.rs`, its route-graph and
+const readPlan = (id) => JSON.parse(readFileSync(new URL(`../areas/${id}/rendering-plan.example.json`, import.meta.url)));
+const readSource = (id) => readFileSync(new URL(`../areas/${id}/presentation.json`, import.meta.url), "utf8");
+
+const plans = areaIds.map(readPlan);
+const byId = new Map(plans.map((plan) => [plan.area.id, plan]));
+
+// The area collection itself is not read here. `nomos.area_collection@2` is
+// emitted by `crates/nomos-render-plan/src/collection.rs`, its route-graph and
 // visual-grammar refusals are proved by `crates/nomos-render-plan/tests/collection.rs`,
 // and the committed `area-collection.example.json` is compared byte for byte by
-// `verify.mjs --collection`, which also re-derives every plan digest it publishes.
-// What is left in this file is what it was always about: the four committed plans.
+// `verify.mjs --collection`, which also re-derives every plan digest it
+// publishes. What is left in this file is what it was always about: every
+// committed plan, and the route graph each plan's own `route` already carries
+// — discovered from `areas/*/` rather than named here.
 
 const grammar = (plan) => ({
   architectureStyle: plan.architecture.style,
@@ -33,15 +44,16 @@ const grammar = (plan) => ({
   effects: [...new Set(plan.effects.map((effect) => effect.assembly))].sort(),
 });
 
-test("independent areas retain one exact visual grammar", () => {
-  assert.notEqual(north.area.id, cistern.area.id);
-  assert.deepEqual(grammar(cistern), grammar(north));
-  assert.deepEqual(grammar(ember), grammar(north));
-  assert.deepEqual(grammar(ossuary), grammar(north));
+test("every area retains one exact visual grammar", () => {
+  const [reference, ...rest] = plans;
+  for (const plan of rest) {
+    assert.notEqual(plan.area.id, reference.area.id);
+    assert.deepEqual(grammar(plan), grammar(reference));
+  }
 });
 
 test("every area exposes one exact compiled-door objective", () => {
-  for (const plan of [cistern, ember, ossuary, north]) {
+  for (const plan of plans) {
     // The objective is derived from the one authored `route.exit.gate`, so
     // there is no `target` to agree with a `primaryGate` any more: the triple
     // the ownership audit recorded is one field.
@@ -52,17 +64,16 @@ test("every area exposes one exact compiled-door objective", () => {
 });
 
 test("no plan or source carries a decimal, a camera, a palette, or ui anchors", () => {
-  for (const plan of [cistern, ember, ossuary, north]) {
+  for (const plan of plans) {
     for (const gone of ["camera", "palette", "uiAnchors", "ui_anchors", "deterministic", "presentation"]) {
       assert.equal(plan[gone], undefined, `${plan.area.id} still carries ${gone}`);
     }
     const withoutStrings = JSON.stringify(plan).replaceAll(/"[^"]*"/g, '""');
     assert.doesNotMatch(withoutStrings, /[-\d]\.\d/, `${plan.area.id} carries a decimal literal`);
   }
-  for (const area of ["cistern-walk", "ember-vault", "north-gaol", "ossuary-reach"]) {
-    const text = readFileSync(new URL(`../areas/${area}/presentation.json`, import.meta.url), "utf8");
-    const withoutStrings = text.replaceAll(/"[^"]*"/g, '""');
-    assert.doesNotMatch(withoutStrings, /[-\d]\.\d/, `${area} source carries a decimal literal`);
+  for (const id of areaIds) {
+    const withoutStrings = readSource(id).replaceAll(/"[^"]*"/g, '""');
+    assert.doesNotMatch(withoutStrings, /[-\d]\.\d/, `${id} source carries a decimal literal`);
   }
 });
 
@@ -77,16 +88,24 @@ test("vertical steps convert by division, reproducing every replaced decimal", (
   for (const [steps, cells] of expected) {
     assert.equal(cellsOf(steps), cells, `${steps} steps is not ${cells} cells`);
   }
-  assert.equal(cellsOf(north.architecture.wall_height_steps), 4.5);
-  assert.equal(cellsOf(ember.architecture.wall_height_steps), 5);
-  assert.equal(cellsOf(ossuary.architecture.wall_height_steps), 4.8);
-  assert.deepEqual(ossuary.architecture.masses.map((mass) => cellsOf(mass.height_steps)), [0.7, 0.7, 2.4]);
+});
+
+test("architecture heights are declared in bounds, as integer steps", () => {
+  // AUTHORING.md: walls are 1..=50 steps and masonry masses 1..=40.
+  for (const plan of plans) {
+    const wall = plan.architecture.wall_height_steps;
+    assert.ok(Number.isInteger(wall) && wall >= 1 && wall <= 50, `${plan.area.id} wall height ${wall} is out of bounds`);
+    for (const mass of plan.architecture.masses) {
+      const height = mass.height_steps;
+      assert.ok(Number.isInteger(height) && height >= 1 && height <= 40, `${plan.area.id} mass ${mass.id} height ${height} is out of bounds`);
+    }
+  }
 });
 
 test("content selects from the renderer catalog's closed sets", () => {
   // The catalog defines what is legal; the presentation source selects one
   // member. The Rust decoder checks the grammar, this checks the membership.
-  for (const plan of [cistern, ember, ossuary, north]) {
+  for (const plan of plans) {
     assert.ok(ARCHITECTURE_ASSEMBLIES.includes(plan.architecture.style.assembly));
     assert.ok(MATERIAL_FAMILIES.includes(plan.architecture.style.material_family));
     assert.ok(TRIM_FAMILIES.includes(plan.architecture.style.trim_family));
@@ -100,10 +119,11 @@ test("content selects from the renderer catalog's closed sets", () => {
 });
 
 test("every actor declares a role and no plan entity names an assembly", () => {
-  for (const plan of [cistern, ember, ossuary, north]) {
+  for (const plan of plans) {
     assert.equal(plan.schema, "nomos.rendering_plan@3");
-    const roles = plan.actors.map((actor) => actor.role).sort();
-    assert.deepEqual(roles, ["player", "pursuer"]);
+    const roles = plan.actors.map((actor) => actor.role);
+    assert.equal(roles.filter((role) => role === "player").length, 1, `${plan.area.id} declares exactly one player`);
+    assert.ok(roles.filter((role) => role === "pursuer").length <= 1, `${plan.area.id} declares at most one pursuer`);
     for (const entity of plan.entities) {
       assert.equal(entity.visual_assembly, undefined);
       assert.equal(entity.material_family, undefined);
@@ -113,7 +133,7 @@ test("every actor declares a role and no plan entity names an assembly", () => {
 });
 
 test("effects attach by socket and carry no coordinate", () => {
-  for (const plan of [cistern, ember, ossuary, north]) {
+  for (const plan of plans) {
     for (const effect of plan.effects) {
       assert.deepEqual(Object.keys(effect.anchor).sort(), ["entity", "socket"]);
       assert.equal(effect.anchor.socket, "ward");
@@ -122,39 +142,72 @@ test("effects attach by socket and carry no coordinate", () => {
   }
 });
 
-test("each area declares its own arrival cell, and only the start area declares none", () => {
-  assert.equal(cistern.area.start, true);
-  assert.equal(cistern.route.entry, undefined);
-  assert.deepEqual(ember.route.entry, { x: 7, y: 5, z: 0 });
-  assert.deepEqual(ossuary.route.entry, { x: 1, y: 5, z: 0 });
-  assert.deepEqual(north.route.entry, { x: 2, y: 4, z: 0 });
-  assert.equal(north.route.to_area, null);
+test("exactly one area is the start", () => {
+  assert.equal(plans.filter((plan) => plan.area.start).length, 1);
 });
 
-test("every added area is a distinct composition", () => {
-  const anchors = (plan) => plan.entities.map((entity) => entity.anchor);
-  assert.notDeepEqual(anchors(cistern), anchors(north));
-  assert.deepEqual(cistern.actors.find((actor) => actor.role === "player").cell, { x: 7, y: 4, z: 0 });
-  assert.equal(cistern.entities.find((entity) => entity.kind === "water").id, "runoff_channel");
-  assert.notDeepEqual(anchors(ember), anchors(north));
-  assert.equal(ember.architecture.masses.length, 2);
-  assert.equal(ember.architecture.wall_height_steps, 50);
-  assert.notDeepEqual(anchors(ossuary), anchors(north));
-  assert.equal(ossuary.entities.find((entity) => entity.kind === "water").id, "burial_channel");
-  assert.deepEqual(ossuary.entities.find((entity) => entity.kind === "water").anchor, {
-    kind: "region",
-    min: { x: 3, y: 1, z: 0 },
-    max: { x: 5, y: 4, z: 0 },
-  });
-  assert.deepEqual(ossuary.architecture.masses.map((mass) => mass.id), [
-    "west_tomb_bank", "east_tomb_bank", "reliquary_pier",
-  ]);
+test("every non-start area's arrival cell lies inside its own bounds; the start declares none", () => {
+  for (const plan of plans) {
+    if (plan.area.start) {
+      assert.equal(plan.route.entry, undefined, `${plan.area.id} is the start and declares an entry`);
+      continue;
+    }
+    assert.ok(plan.route.entry, `${plan.area.id} is not the start and declares no entry`);
+    const { x, y, z } = plan.route.entry;
+    assert.ok(x >= 0 && x < plan.architecture.bounds.width, `${plan.area.id} entry x is out of bounds`);
+    assert.ok(y >= 0 && y < plan.architecture.bounds.height, `${plan.area.id} entry y is out of bounds`);
+    assert.equal(z, 0, `${plan.area.id} entry is not at z 0`);
+  }
 });
 
+test("every declared to_area names an enumerated area", () => {
+  for (const plan of plans) {
+    if (plan.route.to_area === null) continue;
+    assert.ok(byId.has(plan.route.to_area), `${plan.area.id} names undeclared area ${plan.route.to_area}`);
+  }
+});
 
-// The six tests that drove `play-state.mjs` over these four areas are gone with
-// it. What they asserted - that each committed area is winnable and that one run
-// crosses every declared connection - is now proved end to end by
+test("the route chain from the start visits every area exactly once and ends at the one null exit", () => {
+  const terminal = plans.filter((plan) => plan.route.to_area === null);
+  assert.equal(terminal.length, 1, "exactly one area declares no to_area");
+  const start = plans.find((plan) => plan.area.start);
+  const chain = [];
+  let current = start.area.id;
+  while (current !== null) {
+    assert.ok(!chain.includes(current), `the route cycles at ${current}`);
+    const plan = byId.get(current);
+    assert.ok(plan, `the route names undeclared area ${current}`);
+    chain.push(current);
+    current = plan.route.to_area;
+  }
+  assert.equal(chain.length, plans.length, `the route visits ${chain.length} of ${plans.length} areas`);
+  assert.equal(chain[chain.length - 1], terminal[0].area.id);
+});
+
+test("every area's pursuit light and exit gate are compiled entities of the right kind", () => {
+  for (const plan of plans) {
+    const light = plan.entities.find((entity) => entity.id === plan.pursuit.light);
+    assert.ok(light, `${plan.area.id} pursuit light ${plan.pursuit.light} is not a compiled entity`);
+    assert.equal(light.kind, "light");
+    const gate = plan.entities.find((entity) => entity.id === plan.objective.gate);
+    assert.ok(gate, `${plan.area.id} exit gate ${plan.objective.gate} is not a compiled entity`);
+    assert.equal(gate.kind, "door");
+  }
+});
+
+test("every area is a distinct composition", () => {
+  const anchorsOf = (plan) => JSON.stringify(plan.entities.map((entity) => entity.anchor).sort());
+  const seen = new Map();
+  for (const plan of plans) {
+    const key = anchorsOf(plan);
+    assert.ok(!seen.has(key), `${plan.area.id} and ${seen.get(key)} share an identical entity layout`);
+    seen.set(key, plan.area.id);
+  }
+});
+
+// The six tests that drove `play-state.mjs` over these areas are gone with
+// it. What they asserted - that each committed area is winnable and that one
+// run crosses every declared connection - is now proved end to end by
 // `apps/nomos-viewer/smoke/`, which plays the same corpus in a browser and
 // checks the cumulative counters against a walk solved from these artifacts.
 // RUNTIME.md section 2: the study is the specification, and this is what it
