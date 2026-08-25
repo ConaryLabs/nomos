@@ -1,111 +1,93 @@
 {
-  "schema": "nomos.experiment.area_collection@1",
-  "deterministic": true,
-  "lookProfile": {
-    "id": "gaol_bounded_01",
-    "digest": "7b4f2b2cd50df4ac3f71c8f2a73adf1cfba06ebb9b0eca1ab97c4b9f780b8eba",
-    "grammar": {
-      "renderingPlanSchema": "nomos.rendering_plan@1",
-      "projectionSchemas": [
-        {
-          "name": "nomos.projection.simulation",
-          "version": 3
-        },
-        {
-          "name": "nomos.projection.navigation",
-          "version": 1
-        },
-        {
-          "name": "nomos.projection.persistence",
-          "version": 1
-        },
-        {
-          "name": "nomos.projection.diagnostics",
-          "version": 1
-        }
-      ],
-      "camera": {
-        "height": 540,
-        "identity": "gaol_oblique_01",
-        "projection": "fixed_oblique",
-        "tileHeight": 50,
-        "tileWidth": 96,
-        "width": 1200
+  "schema": "nomos.experiment.area_collection@2",
+  "visual_grammar": {
+    "digest": "e3f338b14907b8194b7d31597d2a1382b7e295c2f35642c7dc0108a090108b06",
+    "rendering_plan_schema": "nomos.rendering_plan@2",
+    "projection_schemas": [
+      {
+        "name": "nomos.projection.simulation",
+        "version": 3
       },
-      "palette": "gaol_bounded_01",
-      "architectureStyle": {
-        "assembly": "visual/beveled_masonry",
-        "materialFamily": "stone_bounded",
-        "trimFamily": "broad_mortar"
+      {
+        "name": "nomos.projection.navigation",
+        "version": 1
       },
-      "entityAssemblies": [
-        [
-          "door",
-          "visual/iron_barred_door",
-          "iron_oxidized"
-        ],
-        [
-          "light",
-          "visual/brazier",
-          "iron_brazier"
-        ],
-        [
-          "water",
-          "visual/shallow_water",
-          "water_cold"
-        ]
+      {
+        "name": "nomos.projection.persistence",
+        "version": 1
+      },
+      {
+        "name": "nomos.projection.diagnostics",
+        "version": 1
+      }
+    ],
+    "architecture_style": {
+      "assembly": "visual/beveled_masonry",
+      "material_family": "stone_bounded",
+      "trim_family": "broad_mortar"
+    },
+    "entity_assemblies": [
+      [
+        "door",
+        "visual/iron_barred_door",
+        "iron_oxidized"
       ],
-      "actorAssemblies": [
-        "visual/gaoler_silhouette",
-        "visual/player_silhouette"
+      [
+        "light",
+        "visual/brazier",
+        "iron_brazier"
       ],
-      "effectAssemblies": [
-        "visual/cyan_crescent"
-      ],
-      "uiAnchors": [
-        "vitals",
-        "abilities",
-        "gate_state",
-        "water_cost"
+      [
+        "water",
+        "visual/shallow_water",
+        "water_cold"
       ]
-    }
+    ],
+    "actor_assemblies": [
+      "visual/gaoler_silhouette",
+      "visual/player_silhouette"
+    ],
+    "effect_assemblies": [
+      "visual/cyan_crescent"
+    ]
   },
-  "startArea": "cistern-walk",
+  "start_area": "cistern-walk",
   "route": [
     {
-      "fromArea": "cistern-walk",
+      "from_area": "cistern-walk",
+      "gate": "sluice_gate",
+      "to_area": "ember-vault",
       "entry": {
         "x": 7,
         "y": 5,
         "z": 0
-      },
-      "gate": "sluice_gate",
-      "toArea": "ember-vault"
+      }
     },
     {
-      "fromArea": "ember-vault",
+      "from_area": "ember-vault",
+      "gate": "vault_gate",
+      "to_area": "ossuary-reach",
       "entry": {
         "x": 1,
         "y": 5,
         "z": 0
-      },
-      "gate": "vault_gate",
-      "toArea": "ossuary-reach"
+      }
     },
     {
-      "fromArea": "ossuary-reach",
+      "from_area": "ossuary-reach",
+      "gate": "bone_gate",
+      "to_area": "north-gaol",
       "entry": {
         "x": 2,
         "y": 4,
         "z": 0
-      },
-      "gate": "bone_gate",
-      "toArea": "north-gaol"
+      }
     },
     {
-      "fromArea": "north-gaol",
+      "from_area": "north-gaol",
       "gate": "north_gate",
-      "toArea": null
+      "to_area": null,
+      "entry": null
     }
   ],
   "areas": [

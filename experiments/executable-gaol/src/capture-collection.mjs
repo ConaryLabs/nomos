@@ -1,6 +1,6 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { renderSvg } from "./render-core.mjs";
+import { camera, renderSvg } from "./render-core.mjs";
 
 const [collectionPath, areasDir, outputDir] = process.argv.slice(2);
 if (!collectionPath || !areasDir || !outputDir) {
@@ -12,7 +12,6 @@ const rows = collection.areas.map((area) => {
   const plan = JSON.parse(readFileSync(join(areasDir, area.id, "rendering-plan.json"), "utf8"));
   return [plan.scenarios[0], plan.scenarios[2]].map((scenario) => ({ plan, scenario }));
 });
-const camera = rows[0][0].plan.camera;
 const sheetWidth = camera.width * 2;
 const sheetHeight = camera.height * rows.length;
 const nested = rows.flatMap((row, y) => row.map(({ plan, scenario }, x) => {

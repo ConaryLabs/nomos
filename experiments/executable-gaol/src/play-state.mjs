@@ -1,3 +1,5 @@
+import { isHunting, movementOf } from "./renderer-catalog.mjs";
+
 export const movementKeys = {
   ArrowUp: [0, -1], KeyW: [0, -1],
   ArrowDown: [0, 1], KeyS: [0, 1],
@@ -5,18 +7,27 @@ export const movementKeys = {
   ArrowRight: [1, 0], KeyD: [1, 0],
 };
 
-const actorPosition = (plan, id, fallback) => ({
-  ...(plan?.actors.find((actor) => actor.id === id)?.anchor?.cell ?? fallback),
-});
+// No fallback. `play-state.mjs` used to carry hardcoded defaults of exactly
+// North Gaol's player and gaoler cells, so generic runtime code silently
+// encoded one area's coordinates as "the" defaults — the ownership audit's
+// fourth double authority. The presentation source is the only authority for
+// where an actor starts, and it declares both actors for every area.
+const actorPosition = (plan, id) => {
+  const actor = plan.actors.find((entry) => entry.id === id);
+  if (!actor) throw new Error(`plan for ${plan.area.id} declares no actor ${id}`);
+  return { ...actor.cell };
+};
 
 export const displayName = (id) => id.replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 
-const objectiveTarget = (plan) => plan.presentation.objective.target;
+// The objective's gate, which the compiler derives from the single authored
+// `route.exit.gate`. The study authored the same string three times.
+const objectiveTarget = (plan) => plan.objective.gate;
 
 export function createPlayState(plan) {
   return {
-    player: actorPosition(plan, "player", { x: 2, y: 4, z: 0 }),
-    gaoler: actorPosition(plan, "gaoler", { x: 5, y: 3, z: 0 }),
+    player: actorPosition(plan, "player"),
+    gaoler: actorPosition(plan, "gaoler"),
     movementCost: 0,
     moves: 0,
     areasCleared: 0,
@@ -29,7 +40,13 @@ export function createPlayState(plan) {
   };
 }
 
-export function enterArea(plan, state, entry) {
+// Arrival places the player at the destination area's own `route.entry`.
+// The exiting area used to name a cell inside its destination; each area now
+// declares the one cell a player arrives on, validated against its own bounds
+// and its own masses.
+export function enterArea(plan, state) {
+  const entry = plan.route.entry;
+  if (!entry) throw new Error(`plan for ${plan.area.id} declares no arrival cell`);
   return {
     ...createPlayState(plan),
     player: { ...entry },
@@ -64,7 +81,7 @@ export function terrainAt(plan, scenario, point) {
   return {
     kind: "water",
     entity: water.id,
-    cost: scenario.movement[water.id]?.cost ?? 1,
+    cost: movementOf(scenario, water.id)?.cost ?? 1,
   };
 }
 
@@ -80,9 +97,13 @@ export function attemptMove(plan, scenarioId, state, dx, dy) {
 
   const target = { x: state.player.x + dx, y: state.player.y + dy, z: 0 };
   if (target.y < 0) {
+    // The north face is the entity's declared `anchor.direction`, not a
+    // `cell.y === 0` inference — the same convention the WebGL renderer used
+    // for its wall segments, recorded by the audit as never reading the field
+    // that already carried the answer.
     const door = plan.entities.find((entity) => entity.kind === "door"
-      && entity.anchor.cell.x === state.player.x && entity.anchor.cell.y === 0);
-    const movement = door && scenario.movement[door.id];
+      && entity.anchor.direction === "north" && entity.anchor.cell.x === state.player.x);
+    const movement = door && movementOf(scenario, door.id);
     if (!door || movement?.disposition !== "traversable") {
       const reasons = movement?.reasons?.map((reason) => reason.split("#").at(-1)).join(" + ");
       return {
@@ -135,8 +156,10 @@ export function attemptMove(plan, scenarioId, state, dx, dy) {
 }
 
 export function advanceGaoler(plan, scenario, state) {
-  const pursuitLight = plan.presentation.pursuitLight;
-  if (state.escaped || state.caught || scenario.effectiveLight[pursuitLight] !== false) return state;
+  // One `isHunting` helper, shared with the HUD. The audit recorded these as
+  // two logical mirrors written with opposite comparison operators and tied
+  // together by nothing.
+  if (state.escaped || state.caught || !isHunting(plan, scenario)) return state;
 
   const pursuitClock = state.pursuitClock + 1;
   if (pursuitClock < 2) return { ...state, pursuitClock };
@@ -161,10 +184,10 @@ export function advanceGaoler(plan, scenario, state) {
 
 export function interactionAt(plan, scenarioId, state) {
   return plan.interactions
-    .filter((interaction) => interaction.fromScenario === scenarioId)
+    .filter((interaction) => interaction.from_scenario === scenarioId)
     .map((interaction) => ({
       interaction,
-      entity: plan.entities.find((entity) => entity.id === interaction.targetEntity),
+      entity: plan.entities.find((entity) => entity.id === interaction.target_entity),
     }))
     .filter(({ entity }) => entity?.anchor?.cell)
     .find(({ entity }) => Math.abs(entity.anchor.cell.x - state.player.x)
@@ -188,13 +211,13 @@ export function guidanceFor(plan, scenarioId, state) {
   if (interaction) {
     return {
       objective: `Exit via ${targetLabel}`,
-      prompt: `E · ${displayName(interaction.action)} ${displayName(interaction.targetEntity)}`,
+      prompt: `E · ${displayName(interaction.action)} ${displayName(interaction.target_entity)}`,
       tone: "action",
     };
   }
 
   const scenario = plan.scenarios.find((candidate) => candidate.id === scenarioId);
-  const movement = scenario?.movement[target];
+  const movement = scenario && movementOf(scenario, target);
   return {
     objective: `Exit via ${targetLabel}`,
     prompt: movement?.disposition === "traversable"
@@ -223,10 +246,10 @@ export function attemptInteraction(plan, scenarioId, state) {
   return {
     state: {
       ...state,
-      message: `${interaction.action} ${interaction.targetEntity}`,
+      message: `${interaction.action} ${interaction.target_entity}`,
       tone: "success",
     },
-    scenarioId: interaction.toScenario,
+    scenarioId: interaction.to_scenario,
     changed: true,
     interaction,
   };
