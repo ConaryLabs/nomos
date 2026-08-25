@@ -83,11 +83,14 @@ AI-authored areas can share one coherent visual grammar.
   `gate-k-rc2` tag was created. Revision 6 and the incomplete round-two records
   are now historical evidence; decision 0016 closes the evaluation without
   further checker or audit launches
-- **R1 contract status:** [RUNTIME.md](RUNTIME.md) revision 1 is
-  **owner-authorized and in force** as of 2026-08-25 under issue #128. It is the
-  R1 epoch's own acceptance contract under decision 0017, reconciled with the
-  merged ownership audit (#125, PR #129); its section 3 permits read-only R1
-  surface inside the kernel crates under stated conditions. R1-1, the kernel
+- **R1 contract status:** [RUNTIME.md](RUNTIME.md) revision 2 is
+  **owner-authorized and in force** as of 2026-08-25 under
+  [decision 0018](docs/decisions/0018-runtime-revision-2.md), which repairs four
+  contract texts in §3, §5, and §6 and weakens no criterion; revision 1 was
+  authorized under issue #128. It is the R1 epoch's own acceptance contract
+  under decision 0017, reconciled with the merged ownership audit (#125,
+  PR #129); its section 3 permits read-only R1 surface inside the kernel crates
+  under stated conditions. R1-1, the kernel
   effective-facts projection prototyped on PR #130, is the first slice under
   acceptance, and R1-2, the Rust rendering-plan compiler, is the second; its
   crate is the first declared R1 member in `RUNTIME.md` §3 and in
@@ -123,7 +126,9 @@ Gate K waiver or an accepted renderer architecture.
 First read
 [decision 0016](docs/decisions/0016-terminate-gate-k-round-two.md), which
 terminates round two, preserves its incomplete record, and names the active
-visual direction. The historical proof sequence follows:
+visual direction. Then read [RUNTIME.md](RUNTIME.md) revision 2 with
+[decision 0018](docs/decisions/0018-runtime-revision-2.md), its owner-authorized
+four-repair amendment. The historical proof sequence follows:
 
 1. [docs/decisions/0015-gate-k-round-two.md](docs/decisions/0015-gate-k-round-two.md)
    — the prospective round-two protocol, safeguards, and operating order.
