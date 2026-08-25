@@ -1,4 +1,8 @@
-//! Spike proof for issue #126: the composed effective-fact projection.
+//! R1-1 acceptance proof: the composed effective-fact projection.
+//!
+//! Acceptance criteria are `RUNTIME.md` section 5 R1-1; the design record is
+//! `docs/review/effective-facts-spike.md`, which maps each bullet to the test
+//! below that proves it.
 //!
 //! The point of the command is that no consumer needs a second resolver. These
 //! tests hold it to that: the projection must agree with `explain-entity`'s
@@ -91,6 +95,28 @@ fn text(value: &CanonicalValue) -> &str {
 
 fn json(value: &CanonicalValue) -> String {
     String::from_utf8(value.to_canonical_bytes()).unwrap()
+}
+
+fn bundle_listing(dir: &Path) -> Vec<(PathBuf, Vec<u8>)> {
+    let mut entries: Vec<(PathBuf, Vec<u8>)> = fs::read_dir(dir)
+        .unwrap()
+        .map(|entry| {
+            let path = entry.unwrap().path();
+            let bytes = fs::read(&path).unwrap();
+            (path, bytes)
+        })
+        .collect();
+    entries.sort();
+    entries
+}
+
+fn diagnostic_code(output: &Output) -> String {
+    let value = canonical_stdout(output);
+    let diagnostic = &array(field(&value, "diagnostics"))[0];
+    let CanonicalValue::Text(code) = field(diagnostic, "code") else {
+        panic!("diagnostic code must be text")
+    };
+    code.clone()
 }
 
 /// Compiles the fixture world and executes the five-command script.
@@ -276,6 +302,9 @@ fn a_state_from_another_world_is_rejected_rather_than_resolved() {
         text(field(&canonical_stdout(&output), "status")),
         "rejected"
     );
+    // RUNTIME.md section 5 R1-1 requires this exact stable code, not merely a
+    // rejection: EK0813 RUNTIME_SEMANTICS_MISMATCH.
+    assert_eq!(diagnostic_code(&output), "EK0813");
 }
 
 #[test]
@@ -294,8 +323,14 @@ fn the_projection_mutates_no_input() {
         .collect();
     before_package.sort();
 
+    // R1-1 also forbids adding a file to a run bundle, whose strict reopener
+    // fails closed on extra entries. Capture the exact six-file set first.
+    let bundle_before = bundle_listing(&root.join("runs/gaol"));
+    assert_eq!(bundle_before.len(), 6, "run bundle is not the six-file set");
+
     let _ = effective_facts(&root, "runs/gaol/final-state.json");
 
+    assert_eq!(bundle_listing(&root.join("runs/gaol")), bundle_before);
     assert_eq!(fs::read(&state).unwrap(), before_state);
     let mut after_package: Vec<(PathBuf, Vec<u8>)> = fs::read_dir(root.join("gaol.world"))
         .unwrap()
@@ -422,4 +457,28 @@ fn the_same_world_and_state_produce_byte_identical_output() {
         String::from_utf8_lossy(first),
         "a second compilation of the same source produced different bytes"
     );
+
+    // The other half of the R1-1 bullet: identical source bytes at a *different*
+    // source path are a different world, and must fail closed rather than
+    // diverge silently. This is what bounds byte identity to the fixed triple.
+    fs::create_dir_all(root.join("nested")).unwrap();
+    fs::copy(root.join("gaol.nomos"), root.join("nested/gaol.nomos")).unwrap();
+    assert_exit(
+        &run(
+            &root,
+            ["compile", "nested/gaol.nomos", "--out", "nested.world"],
+        ),
+        0,
+    );
+    let moved = run(
+        &root,
+        [
+            "effective-facts",
+            "nested.world",
+            "--state",
+            "runs/gaol/final-state.json",
+        ],
+    );
+    assert_exit(&moved, 1);
+    assert_eq!(diagnostic_code(&moved), "EK0813");
 }

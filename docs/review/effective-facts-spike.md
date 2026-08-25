@@ -1,11 +1,12 @@
 ---
-title: Kernel effective-facts projection at a runtime state — spike design
-status: Spike design and prototype record; non-authoritative, not merged
+title: Kernel effective-facts projection at a runtime state — R1-1 design record
+status: R1-1 design record; slice under acceptance per RUNTIME.md §5
 date: 2026-08-25
 issue: 126
 branch: spike/issue-126-effective-facts
-informs: docs/decisions/0017 (first R1 target)
-applies_to: KERNEL.md sections 3, 8, 10; docs/movement.md; docs/runtime.md
+accepts_against: RUNTIME.md §5 R1-1 (revision 1, main b718192)
+blocked_on: issue #133 (R1 schema-ownership lane)
+applies_to: RUNTIME.md §5, §6; KERNEL.md sections 3, 8, 10; docs/movement.md; docs/runtime.md
 ---
 
 # Kernel effective-facts projection at a runtime state
@@ -23,6 +24,59 @@ at *this* state".
 
 This is a shadow resolver, and it has already drifted. See
 [Divergence found](#divergence-found-in-the-existing-shadow-resolver).
+
+## Acceptance mapping
+
+Every bullet of `RUNTIME.md` §5 R1-1 against the artifact that proves it. Test
+names are in `crates/nomos-cli/tests/effective_facts.rs`.
+
+| R1-1 criterion | Proved by | State |
+| --- | --- | --- |
+| Command is `nomos effective-facts <world/> --state <state.json>`, read-only, writes no artifact | `the_argument_grammar_is_exact` — exact grammar, `--help`, four usage rejections, missing-state environment failure | ✅ |
+| Mutates no input package or state file | `the_projection_mutates_no_input` — byte comparison of every package member and the state file | ✅ |
+| Adds no file to a run bundle | `the_projection_mutates_no_input` — asserts the run bundle is the six-file set before and byte-identical after | ✅ |
+| All resolution from `resolve_movement` / `resolve_light` | [Rust entry points reused](#rust-entry-points-reused) is the source-review receipt; `the_projection_agrees_with_explain_entity_at_the_initial_state` forces two surfaces to one answer | ✅ |
+| `activation_is_true` stays private | `crates/nomos-sim/src/resolver.rs:155` is unexported: `grep activation_is_true` over `nomos-sim/src/lib.rs` and `nomos-cli/src` returns zero hits | ✅ |
+| Schema identity `nomos.effective_facts@1` declared in `nomos-sim` | `the_projection_names_its_schema_world_and_state`; declared at `crates/nomos-sim/src/effective_facts.rs` | ✅ |
+| Canonical entity-sorted bytes | `every_resolver_subject_is_composed_at_the_supplied_state` asserts the exact canonical byte string of the `effective_facts` subtree at two states | ✅ |
+| Stays outside the state-hash domain | The command writes nothing, and the reported `state_hash` equals the input state's — asserted in `the_projection_names_its_schema_world_and_state` | ✅ |
+| Source-review receipt names the reused pair | [Rust entry points reused](#rust-entry-points-reused) in this record | ✅ |
+| Identity registered in `docs/evaluation/R1_SCHEMA_OWNERSHIP.md` as `nomos.effective_facts@1` / `nomos-sim` / `crates/nomos-sim/src/effective_facts.rs` | The R1 register created under issue #133 | ⏳ **pending #133** |
+| Not added to the frozen `docs/evaluation/SCHEMA_OWNERSHIP.md` | `git diff origin/main HEAD -- docs/evaluation/SCHEMA_OWNERSHIP.md` is empty | ✅ |
+| `compare-effective-facts.sh` reports `20 scenarios compared, 0 differences` | [Comparison](#comparison-against-the-four-areas-committed-plans), with `"cost": null` the only normalization | ✅ |
+| Byte identity across ten runs for the fixed triple | `the_same_world_and_state_produce_byte_identical_output`, with three anti-vacuous guards | ✅ |
+| A world compiled from a different path fails closed with `EK0813`, exit 1 | Same test's second half — compiles the identical source at `nested/gaol.nomos` and asserts exit 1 plus `EK0813` | ✅ |
+| Differing simulation semantics fail closed with `EK0813` | `a_state_from_another_world_is_rejected_rather_than_resolved` — exit 1, `status: "rejected"`, code `EK0813` | ✅ |
+| The four §6 kernel commands pass | [Proof commands](#proof-commands); `verify` lane green on PR #130 | ✅ |
+| No Gate K command, artifact, hash, or diagnostic changes | 214 workspace tests pass with every pre-existing suite unchanged; `determinism` matrix green on all three targets; no new diagnostic code added | ✅ |
+
+Must-nots:
+
+| Must not | Evidence | State |
+| --- | --- | --- |
+| Add a second implementation of activation evaluation or movement/light composition | This slice adds none and **deletes** `explanation.rs`'s byte-identical disposition renderer. One pre-existing duplicate is disclosed below | ⚠️ see note |
+| Add a third-party dependency to a kernel crate | `Cargo.lock` unchanged versus `origin/main`, still seven local entries; `cargo xtask boundary` clean | ✅ |
+| Edit `KERNEL.md` | `git diff origin/main HEAD -- KERNEL.md` is empty (`THESIS.md` likewise) | ✅ |
+| Write a seventh file into a run bundle | `the_projection_mutates_no_input` asserts the six-file set is unchanged | ✅ |
+
+### Disclosed pre-existing duplicate: `projected_activation_is_true`
+
+`crates/nomos-compiler/src/projection.rs:620` contains a second activation
+evaluator over the same `ProjectedActivation` tree, called from lines 125 and
+165 to compute the initial movement and light shape recorded in the stable v2
+IR at compile time. **It predates this slice** — it is on `origin/main` and this
+branch does not touch it — so R1-1's "must not *add*" is satisfied. But a
+reviewer checking "no second implementation of activation evaluation anywhere
+in the accepted tree" will find it, so it is disclosed here rather than left to
+be discovered.
+
+It is not reachable from the resolvers this slice uses, and the two cannot
+currently share code: `nomos-compiler` has no edge to `nomos-sim`, and section
+10 does not permit one. The boundary-legal unification is to move the evaluator
+down into `nomos-projection`, which already owns `ProjectedActivation` and which
+both crates may depend on. That is a separate change with its own evidence, not
+something to smuggle into an R1-1 slice; recommended to be filed as its own
+issue.
 
 ## Rust entry points reused
 
@@ -321,20 +375,23 @@ Reason 2 is the acceptance-15 receipt requirement predicted in
 live check rather than a paper obligation. That is a good outcome: the
 inventory is enforced, not merely written down.
 
-**Neither was worked around.** Editing `SCHEMA_OWNERSHIP.md` to add a
-twenty-first row, or moving the freeze commit, would forge a source-review
-receipt that no human has given — exactly the "weakening a criterion merely
-because an implementation failed it" that `AGENTS.md` forbids, and a contract
-repair that requires an owner-authorized decision record. The spike therefore
-ships red on `gate-k-evidence` on purpose.
+**Neither was worked around**, and the owner has now settled how they resolve.
+`docs/evaluation/SCHEMA_OWNERSHIP.md` **stays frozen**: it is Gate K evidence,
+and `nomos.effective_facts@1` is not a Gate K identity, so it is not added
+there and the twenty-row inventory is not reopened. The new identity registers
+instead in `docs/evaluation/R1_SCHEMA_OWNERSHIP.md`, the R1 register created
+under issue #133, as `nomos.effective_facts@1` / `nomos-sim` /
+`crates/nomos-sim/src/effective_facts.rs`.
 
-For decision 0017 this sharpens item 1 below: promoting this command is not
-just a code change, it requires an owner-authorized re-review of the frozen
-twenty-identity inventory (to twenty-one), a new freeze commit, and the
-corresponding update to `gate-k-schema-ownership.sh`'s two hard-coded counts.
-If the owner instead chooses to drop the `schema` field, reason 2 disappears
-entirely and only the freeze-commit reason remains — which any kernel change
-must clear regardless.
+That branch also makes the script R1-aware, which is what clears reason 2. This
+branch does not touch either file: the register and the R1-aware script land
+under #133, and this lane stays red until it merges. Editing the frozen receipt
+here would forge a source-review receipt no human has given — the "weakening a
+criterion merely because an implementation failed it" that `AGENTS.md` forbids.
+
+Reason 1, the freeze-commit guard, is inherent to any accepted kernel change
+and is dispositioned by `RUNTIME.md` §3 option (a): kernel crates may gain
+read-only R1 surface.
 
 ### Build time
 
@@ -428,16 +485,15 @@ instead of `final-state.json`, which also gets the plan builder a
 
 ## Disposition
 
-The spike answers the sizing question: this is a small, boundary-clean change
-that reuses the existing resolvers exactly and deletes a 28-line shadow
-resolver. Three items need an owner decision before any of it is promoted:
+This began as a spike and is now the accepted R1-1 slice. It is a small,
+boundary-clean change that reuses the existing resolvers exactly and deletes a
+28-line shadow resolver. Of the three items that needed an owner decision, the
+first is settled and the other two remain open:
 
-1. **Schema identity.** Whether `nomos.effective_facts@1` should exist at all,
-   given that no `nomos` stdout document currently carries one. If it should,
-   promotion needs an owner-authorized re-review of the frozen twenty-identity
-   inventory in `docs/evaluation/SCHEMA_OWNERSHIP.md`, a new freeze commit, and
-   the two hard-coded counts in `gate-k-schema-ownership.sh` moved from 16/20
-   to 17/21. See [CI](#ci-verify-passes-gate-k-evidence-cannot).
+1. **Schema identity — settled.** `RUNTIME.md` §5 R1-1 requires
+   `nomos.effective_facts@1`, declared in `nomos-sim`. The Gate K receipt stays
+   frozen; the identity registers in `docs/evaluation/R1_SCHEMA_OWNERSHIP.md`
+   under issue #133. See [CI](#ci-verify-passes-gate-k-evidence-cannot).
 2. **`machine_states` in the document.** Include it and the plan builder stops
    reading `final-state.json`; exclude it and the document stays purely
    composed facts.
@@ -445,4 +501,5 @@ resolver. Three items need an owner decision before any of it is promoted:
    unreachable today; if the gaol experiment consumes this command, they
    evaporate rather than needing a JavaScript fix.
 
-This branch is a spike. It is not to be merged before decision 0017.
+This branch is the R1-1 slice under `RUNTIME.md` §5. It is blocked on issue
+#133 for the schema-ownership lane and is not merged before that lands.
