@@ -139,7 +139,7 @@ jobs:
           retention-days: 90
 
   schema-ownership:
-    name: canonical schema ownership
+    name: canonical schema ownership (R1)
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -147,11 +147,13 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
-      - name: Verify the final twenty-identity source review
+      # docs/evaluation/gate-k-schema-ownership.sh applies at freeze commit
+      # eb86f25 only; the R1 lane below is the pull-request gate.
+      - name: Verify canonical schema ownership across both registers
         run: |
           set -o pipefail
           mkdir -p target/gate-k-evidence/schema-ownership
-          docs/evaluation/gate-k-schema-ownership.sh | \
+          docs/evaluation/r1-schema-ownership.sh | \
             tee target/gate-k-evidence/schema-ownership/receipt.txt
 
       - name: Upload schema-ownership receipt
