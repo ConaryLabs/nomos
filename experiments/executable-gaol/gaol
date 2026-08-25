@@ -66,6 +66,8 @@ build() {
     --out "$output_dir/areas.json"
   node "$experiment_dir/src/capture-collection.mjs" \
     "$output_dir/areas.json" "$output_dir/areas" "$output_dir/frames"
+  node "$experiment_dir/src/route-expectations.mjs" \
+    "$output_dir/areas.json" "$output_dir/areas" "$output_dir/route-expectations.json"
 }
 
 case "$mode" in
@@ -84,6 +86,7 @@ case "$mode" in
       "$output_dir/areas.json" \
       "$experiment_dir/area-collection.example.json" \
       "$output_dir/areas"
+    cmp "$output_dir/route-expectations.json" "$experiment_dir/route-expectations.json"
     for area_dir in "$areas_dir"/*; do
       [[ -d $area_dir ]] || continue
       area_id=$(basename "$area_dir")
@@ -103,6 +106,8 @@ case "$mode" in
     done
     cp "$output_dir/areas.json" "$experiment_dir/area-collection.example.json"
     printf 'wrote %s\n' "${experiment_dir#"$repo_root/"}/area-collection.example.json"
+    cp "$output_dir/route-expectations.json" "$experiment_dir/route-expectations.json"
+    printf 'wrote %s\n' "${experiment_dir#"$repo_root/"}/route-expectations.json"
     ;;
   *)
     printf 'usage: %s [capture|verify|accept]\n' "$0" >&2

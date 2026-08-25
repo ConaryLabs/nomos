@@ -4,7 +4,7 @@
 //! `docs/evaluation/R1_SCHEMA_OWNERSHIP.md`.
 //!
 //! Derived, emitted once per tick, persisted nowhere, and outside every hash
-//! domain — the standing `nomos.effective_facts@1` has under `RUNTIME.md`
+//! domain — the standing `nomos.effective_facts@2` has under `RUNTIME.md`
 //! section 5 R1-1.
 //!
 //! `machine_states`, `movement`, and `effective_light` are spelled exactly as

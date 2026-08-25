@@ -22,7 +22,7 @@
 //!   as `{namespace, state}`, which is how the kernel already spells the same
 //!   collection in a run bundle's `final-state.json`;
 //! - the two entity-keyed objects, `movement` and `effective_light`, become the
-//!   `{entity, ...}` arrays `nomos.effective_facts@1` itself uses, ordered by
+//!   `{entity, ...}` arrays `nomos.effective_facts@2` itself uses, ordered by
 //!   `nomos_core::canonical::keyed_array` so that the stable-ID ordering rule
 //!   and duplicate-identity refusal come from the kernel rather than from here;
 //! - heights are integer `vertical_step` counts, so no decimal survives.
@@ -91,7 +91,7 @@ const OBJECTIVE_KIND: &str = "exit_via";
 pub struct Inputs<'a> {
     /// The `nomos.entity_catalog@1` document.
     pub catalog: &'a Path,
-    /// A directory of `nomos.effective_facts@1` documents, one per scenario,
+    /// A directory of `nomos.effective_facts@2` documents, one per scenario,
     /// named `<scenario>.json`.
     pub facts: &'a Path,
     /// The per-scenario run bundles.

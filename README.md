@@ -53,7 +53,7 @@ AI-authored areas can share one coherent visual grammar.
   `RUNTIME.md` is now owner-authorized under issue #128 and governs what R1
   accepts. **R1-1, the kernel effective-facts projection (`nomos
   effective-facts`, PR #130), is the first accepted R1 slice**: it meets every
-  `RUNTIME.md` §5 R1-1 criterion, and its identity `nomos.effective_facts@1` is
+  `RUNTIME.md` §5 R1-1 criterion, and its identity `nomos.effective_facts@2` is
   the first row of the R1 register `docs/evaluation/R1_SCHEMA_OWNERSHIP.md`.
   `nomos entity-catalog <world/>` (issue #138) adds the register's second row,
   `nomos.entity_catalog@1`: the read-only entity kind, capability set, binding,

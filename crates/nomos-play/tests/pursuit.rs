@@ -9,10 +9,11 @@ mod common;
 
 use nomos_play::{Direction, Outcome, batch, codes};
 
-/// Walks North Gaol's player to `(3, 2)`, one cell south of `brazier_02`, and
+/// Walks the behavior fixture's player to `(3, 2)`, one cell south of its
+/// brazier, and
 /// extinguishes it. From here the pursuit light is out and the gaoler hunts.
 fn dark_at_the_brazier() -> nomos_play::PlaySession {
-    let mut session = common::session_at("north-gaol");
+    let mut session = common::behavior_session();
     common::drive(&mut session, "^^>");
     let player = session.live().state.player().cell;
     assert_eq!((player.x(), player.y()), (3, 2));
@@ -29,7 +30,7 @@ fn dark_at_the_brazier() -> nomos_play::PlaySession {
 
 #[test]
 fn the_gaoler_stays_dormant_while_the_light_is_lit() {
-    let mut session = common::session_at("north-gaol");
+    let mut session = common::behavior_session();
     let start = session.live().state.pursuer().unwrap().cell;
     assert!(!batch::hunting(session.live()).unwrap());
     for _ in 0..6 {
@@ -45,7 +46,7 @@ fn the_gaoler_stays_dormant_while_the_light_is_lit() {
 
 #[test]
 fn the_gaoler_hunts_only_when_the_pursuit_light_is_out() {
-    let mut session = common::session_at("north-gaol");
+    let mut session = common::behavior_session();
     assert!(!batch::hunting(session.live()).unwrap());
     session = dark_at_the_brazier();
     assert!(batch::hunting(session.live()).unwrap());
@@ -189,7 +190,7 @@ fn the_same_log_produces_the_same_capture() {
 
 #[test]
 fn a_crossing_does_not_offer_the_pursuer_a_step() {
-    let mut session = common::session_at("north-gaol");
+    let mut session = common::behavior_session();
     common::drive(&mut session, "^^^^>>**>");
     let before = session.live().state.pursuer().unwrap().cell;
     let counter = session.live().state.moves_since_step;

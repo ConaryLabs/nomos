@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 # Spike harness for issue #126.
 #
-# Proves that `nomos effective-facts` equals what build-plan.mjs currently
-# computes in JavaScript, for all twenty gaol scenarios. Quarantined
-# experiment tooling: not Gate K evidence, not part of the accepted proof set.
+# Proves that the rendering plans carry exactly the facts emitted by `nomos
+# effective-facts`, for the original twenty R1-1 scenarios and the ten added by
+# the two cold-authored areas. Quarantined experiment tooling: not Gate K
+# evidence, not part of the accepted proof set.
 set -euo pipefail
 
 script_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
@@ -26,13 +27,14 @@ if (!scenario) throw new Error(`committed plan has no scenario ${scenarioId}`);
 const differences = [];
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 if (scenario.tick !== kernel.tick) differences.push(`tick ${scenario.tick} != ${kernel.tick}`);
-if (scenario.stateHash !== kernel.state_hash) differences.push("state hash differs");
+if (scenario.state_hash !== kernel.state_hash) differences.push("state hash differs");
 
 const movement = new Map(kernel.effective_facts.ground_movement.map((f) => [f.entity, f.disposition]));
-if (!same([...movement.keys()].sort(), Object.keys(scenario.movement).sort())) {
+const plannedMovement = new Map(scenario.movement.map((f) => [f.entity, f]));
+if (!same([...movement.keys()].sort(), [...plannedMovement.keys()].sort())) {
   differences.push("movement subject sets differ");
 }
-for (const [entity, js] of Object.entries(scenario.movement)) {
+for (const [entity, js] of plannedMovement) {
   const rust = movement.get(entity);
   if (!rust) { differences.push(`${entity}: absent from kernel output`); continue; }
   if (js.disposition !== rust.kind) differences.push(`${entity}: ${js.disposition} != ${rust.kind}`);
@@ -46,10 +48,11 @@ for (const [entity, js] of Object.entries(scenario.movement)) {
 }
 
 const light = new Map(kernel.effective_facts.light_emission.map((f) => [f.entity, f.emitting]));
-if (!same([...light.keys()].sort(), Object.keys(scenario.effectiveLight).sort())) {
+const plannedLight = new Map(scenario.effective_light.map((f) => [f.entity, f.emitting]));
+if (!same([...light.keys()].sort(), [...plannedLight.keys()].sort())) {
   differences.push("light subject sets differ");
 }
-for (const [entity, emitting] of Object.entries(scenario.effectiveLight)) {
+for (const [entity, emitting] of plannedLight) {
   if (light.get(entity) !== emitting) differences.push(`${entity}: light ${emitting} != ${light.get(entity)}`);
 }
 

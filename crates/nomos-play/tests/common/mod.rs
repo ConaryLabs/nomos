@@ -1,4 +1,4 @@
-//! Fixtures: the six committed areas, compiled in memory.
+//! Fixtures: every committed area, discovered and compiled in memory.
 //!
 //! The rendering plans are the committed `rendering-plan.example.json` files;
 //! the executable semantics are obtained by compiling each area's `world.nomos`
@@ -14,57 +14,89 @@
 
 #![allow(dead_code)]
 
+use std::collections::BTreeSet;
+use std::fs;
+use std::path::PathBuf;
+
 use nomos_core::SourcePath;
 use nomos_play::{Direction, PlayCommand, PlaySession};
+use nomos_render_plan::json::{self, Json};
 
 /// One committed area's bytes.
 pub struct AreaBytes {
-    pub id: &'static str,
-    pub plan: &'static [u8],
-    pub source: &'static str,
-    pub source_path: &'static str,
+    pub id: String,
+    pub plan: Vec<u8>,
+    pub source: String,
+    pub source_path: String,
 }
 
-macro_rules! area {
-    ($id:literal) => {
-        AreaBytes {
-            id: $id,
-            plan: include_bytes!(concat!(
-                "../../../../experiments/executable-gaol/areas/",
-                $id,
-                "/rendering-plan.example.json"
-            )),
-            source: include_str!(concat!(
-                "../../../../experiments/executable-gaol/areas/",
-                $id,
-                "/world.nomos"
-            )),
-            source_path: concat!("experiments/executable-gaol/areas/", $id, "/world.nomos"),
-        }
-    };
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct RouteLeg {
+    pub area: String,
+    pub keys: String,
 }
 
-/// The six committed areas, in route order.
-pub const ROUTE: [&str; 6] = [
-    "cistern-walk",
-    "ember-vault",
-    "gloam-bastion",
-    "drowned-stair",
-    "ossuary-reach",
-    "north-gaol",
-];
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct RouteExpectations {
+    pub areas: u64,
+    pub commands: u64,
+    pub moves: u64,
+    pub traversal_cost: u64,
+    pub route: Vec<RouteLeg>,
+}
+
+fn repo_root() -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..")
+}
+
+fn areas_root() -> PathBuf {
+    repo_root().join("experiments/executable-gaol/areas")
+}
+
+/// Every committed area identifier, discovered from the content directory.
+#[must_use]
+pub fn area_ids() -> Vec<String> {
+    let mut ids = fs::read_dir(areas_root())
+        .expect("the study's areas directory is readable")
+        .filter_map(|entry| {
+            let entry = entry.expect("an area-directory entry is readable");
+            let path = entry.path();
+            (path.is_dir()
+                && path.join("world.nomos").is_file()
+                && path.join("rendering-plan.example.json").is_file())
+            .then(|| {
+                entry
+                    .file_name()
+                    .into_string()
+                    .expect("an area id is UTF-8")
+            })
+        })
+        .collect::<Vec<_>>();
+    ids.sort();
+    assert!(!ids.is_empty(), "the committed corpus is not empty");
+    ids
+}
 
 /// Every committed area, by identifier.
 #[must_use]
 pub fn area(id: &str) -> AreaBytes {
-    match id {
-        "cistern-walk" => area!("cistern-walk"),
-        "ember-vault" => area!("ember-vault"),
-        "gloam-bastion" => area!("gloam-bastion"),
-        "drowned-stair" => area!("drowned-stair"),
-        "north-gaol" => area!("north-gaol"),
-        "ossuary-reach" => area!("ossuary-reach"),
-        other => panic!("no committed area `{other}`"),
+    assert!(
+        area_ids().iter().any(|candidate| candidate == id),
+        "no committed area `{id}`"
+    );
+    let directory = areas_root().join(id);
+    let source_path = directory.join("world.nomos");
+    AreaBytes {
+        id: id.to_owned(),
+        plan: fs::read(directory.join("rendering-plan.example.json"))
+            .expect("the committed rendering plan is readable"),
+        source: fs::read_to_string(&source_path).expect("the committed world is readable"),
+        source_path: source_path
+            .strip_prefix(repo_root())
+            .expect("the world is inside the repository")
+            .to_str()
+            .expect("the source path is UTF-8")
+            .to_owned(),
     }
 }
 
@@ -73,8 +105,8 @@ pub fn area(id: &str) -> AreaBytes {
 pub fn semantics(id: &str) -> Vec<u8> {
     let bytes = area(id);
     let world = nomos_compiler::compile_world_package(
-        bytes.source,
-        SourcePath::new(bytes.source_path).expect("the fixture path is repository-relative"),
+        &bytes.source,
+        SourcePath::new(&bytes.source_path).expect("the fixture path is repository-relative"),
     )
     .expect("the committed area compiles");
     world
@@ -89,7 +121,119 @@ pub fn semantics(id: &str) -> Vec<u8> {
 /// One area's committed rendering plan.
 #[must_use]
 pub fn plan(id: &str) -> Vec<u8> {
-    area(id).plan.to_vec()
+    area(id).plan
+}
+
+fn required<'a>(value: &'a Json, field: &str) -> &'a Json {
+    value
+        .get(field)
+        .unwrap_or_else(|| panic!("the route fixture has no `{field}` field"))
+}
+
+fn text(value: &Json, field: &str) -> String {
+    required(value, field)
+        .as_text()
+        .unwrap_or_else(|| panic!("route fixture `{field}` is not text"))
+        .to_owned()
+}
+
+fn unsigned(value: &Json, field: &str) -> u64 {
+    u64::try_from(
+        required(value, field)
+            .as_integer()
+            .unwrap_or_else(|| panic!("route fixture `{field}` is not an integer")),
+    )
+    .unwrap_or_else(|_| panic!("route fixture `{field}` is negative"))
+}
+
+/// The content-side route and counter fixture regenerated by `gaol accept`.
+#[must_use]
+pub fn route_expectations() -> RouteExpectations {
+    let path = repo_root().join("experiments/executable-gaol/route-expectations.json");
+    let document = json::parse(&fs::read(&path).expect("the route fixture is readable"))
+        .expect("the route fixture is valid JSON");
+    let expected = required(&document, "expected");
+    let route = required(&document, "route")
+        .as_array()
+        .expect("the route fixture's route is an array")
+        .iter()
+        .map(|leg| RouteLeg {
+            area: text(leg, "area"),
+            keys: text(leg, "keys"),
+        })
+        .collect::<Vec<_>>();
+    let discovered = area_ids().into_iter().collect::<BTreeSet<_>>();
+    let routed = route
+        .iter()
+        .map(|leg| leg.area.clone())
+        .collect::<BTreeSet<_>>();
+    assert_eq!(
+        routed, discovered,
+        "the route fixture covers the corpus once"
+    );
+    RouteExpectations {
+        areas: unsigned(expected, "areas"),
+        commands: unsigned(expected, "commands"),
+        moves: unsigned(expected, "moves"),
+        traversal_cost: unsigned(expected, "traversal_cost"),
+        route,
+    }
+}
+
+/// The solved key sequence for one area.
+#[must_use]
+pub fn keys_for(id: &str) -> String {
+    route_expectations()
+        .route
+        .into_iter()
+        .find(|leg| leg.area == id)
+        .unwrap_or_else(|| panic!("the route fixture has no area `{id}`"))
+        .keys
+}
+
+/// One captured scenario's kernel state hash from a committed plan.
+#[must_use]
+pub fn scenario_hash(id: &str, index: usize) -> String {
+    let document = json::parse(&plan(id)).expect("the committed plan is JSON");
+    required(&document, "scenarios")
+        .as_array()
+        .expect("plan scenarios is an array")
+        .get(index)
+        .and_then(|scenario| scenario.get("state_hash"))
+        .and_then(Json::as_text)
+        .unwrap_or_else(|| panic!("area `{id}` has no scenario state hash at {index}"))
+        .to_owned()
+}
+
+/// The long-standing behavior fixture, selected by a property of its plan
+/// rather than by an area identifier.
+#[must_use]
+pub fn behavior_area() -> String {
+    area_ids()
+        .into_iter()
+        .find(|id| {
+            nomos_play::AreaPlan::decode(&plan(id))
+                .is_ok_and(|plan| plan.objective_gate.to_string() == "north_gate")
+        })
+        .expect("one committed area carries the behavior fixture's objective")
+}
+
+/// A committed area with exactly two masonry masses.
+#[must_use]
+pub fn mass_area() -> String {
+    area_ids()
+        .into_iter()
+        .find(|id| nomos_play::AreaPlan::decode(&plan(id)).is_ok_and(|plan| plan.masses.len() == 2))
+        .expect("one committed area carries the two-mass fixture")
+}
+
+/// A committed area other than `id`.
+#[must_use]
+pub fn different_area(id: &str) -> String {
+    area_ids()
+        .into_iter()
+        .find(|candidate| candidate != id)
+        .expect("the corpus contains more than one area")
 }
 
 /// A session opened at one area.
@@ -101,7 +245,14 @@ pub fn session_at(id: &str) -> PlaySession {
 /// A session opened at the route's start area.
 #[must_use]
 pub fn session() -> PlaySession {
-    session_at(ROUTE[0])
+    let expectations = route_expectations();
+    session_at(&expectations.route[0].area)
+}
+
+/// A session opened at the behavior fixture.
+#[must_use]
+pub fn behavior_session() -> PlaySession {
+    session_at(&behavior_area())
 }
 
 /// Enters the next area of the route.
@@ -116,20 +267,6 @@ pub fn enter(session: &mut PlaySession, id: &str) {
 pub const fn step(direction: Direction) -> PlayCommand {
     PlayCommand::Move { direction }
 }
-
-/// The six key sequences the smoke lane's route solver produces today, one per
-/// area, in route order. `^ v < >` are the four lattice directions and `*` is
-/// the interaction the enumeration offers first at the cell the player is
-/// standing on. Recorded here so a native test pins the numbers the browser
-/// lane then has to agree with.
-pub const ROUTE_KEYS: [&str; 6] = [
-    "^^^<<<<<<^**>^",
-    "<<<<<^^^>^^**>^",
-    "^^^<<<v^^^**<^",
-    "^<<>^^^**^^",
-    "^^>^^>>>^**>^",
-    "^^^^>>**>^",
-];
 
 /// The direction one route letter names, or `None` for the interaction key.
 #[must_use]
@@ -168,15 +305,16 @@ pub fn drive(session: &mut PlaySession, keys: &str) {
     }
 }
 
-/// Plays the whole six-area route, entering each area as the crossing names it.
+/// Plays the whole committed route, entering each area as the crossing names it.
 #[must_use]
 pub fn play_route() -> PlaySession {
+    let expectations = route_expectations();
     let mut live = session();
-    for (index, area_id) in ROUTE.iter().enumerate() {
+    for (index, leg) in expectations.route.iter().enumerate() {
         if index > 0 {
-            enter(&mut live, area_id);
+            enter(&mut live, &leg.area);
         }
-        drive(&mut live, ROUTE_KEYS[index]);
+        drive(&mut live, &leg.keys);
     }
     live
 }

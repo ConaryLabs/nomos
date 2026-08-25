@@ -266,11 +266,11 @@ difference that is not the runtime's.
 
 Owner: `crates/nomos-play/src/presentation.rs`. Derived, emitted once per tick,
 never persisted, outside every hash domain — the same standing
-`nomos.effective_facts@1` has (`RUNTIME.md` §5 R1-1).
+`nomos.effective_facts@2` has (`RUNTIME.md` §5 R1-1).
 
 | Field | Shape | Owner |
 | --- | --- | --- |
-| `schema` | `{name, version}` | this file |
+| `schema` | string `name@version` | this file |
 | `area` | text | rendering plan |
 | `tick` | Uint | `play_state.tick` |
 | `kernel_state_hash` | text | `nomos-sim` |
@@ -1346,6 +1346,14 @@ ossuary-reach  ↑↑→↑↑→→→↑ E E →↑     36 moves  48 cost   1,
 north-gaol     ↑↑↑↑→→ E E →↑        44 moves  60 cost   2,4 → … → 5,0 → out
 ```
 
+That table is the original R1-5 measurement. The active corpus is discovered
+from `experiments/executable-gaol/areas/*/`, and issue #167 moves the solver's
+current route keys and counter pins to the content-side
+`route-expectations.json`. `gaol accept` regenerates it, `gaol verify` compares
+it byte-for-byte, and the native tests drive it through the authoritative
+runtime; adding an area therefore edits content and generated fixtures rather
+than a crate test.
+
 No leg's path enters the pursuer's cell — `4,3`, `1,3`, `7,3`, `5,3`
 respectively — which is what makes §3.2 rule 4 free. Note that
 `docs/review/nomos-viewer.md` §5.3's prose says "the lane dispatches 60 keys"
@@ -1665,7 +1673,7 @@ promised.
 | 3 | occupancy asks whether any entity's binding *covers* the target cell | a `Face` binding occupies nothing | Found by a test. A door bound to the north face of `(5, 0)` is not standing in `(5, 0)`, and treating it as if it were made the objective gate's own cell unenterable — so the route could not reach the cell it exits from. A face is the boundary between two cells and governs passage through it, which the crossing rule already resolves. `play.mjs` had the same behaviour by accident, because `terrainAt` looked only at water; `occupancy::occupies_cell` states it. |
 | 4 | the smoke lane stops predicting `moves` and `cost` in JavaScript | the route solver keeps predicting them | Changed on reflection, and recorded rather than done quietly. The design's reason was that a predictor is a third implementation of rules the runtime owns. The better argument is the other way: an *independent* predictor that disagrees is how a runtime that is wrong in both places gets caught, and the solver has to model the geometry anyway to plan a path. So the lane now makes both assertions — the replay identity, which is primary, and the counters, which corroborate — and `tests/corpus.rs` pins the same numbers a third time, natively. Three agreeing sources, not one. |
 | 5 | `presentation_state` carries `interactions` as a `keyed_array` | it is a plain array ordered by `(entity, action)` | An entity can offer more than one legal action at once — `north_gate` offers `ignite` and `unseal` at `01-baseline` — so the entity is not a key. The order is the rule; `keyed_array` would have refused the duplicate. |
-| 6 | the five identities spell `schema` as `{name, version}` | they spell it as the string `name@version` | `RUNTIME.md` revision 2 §3 settled the spelling for R1 documents while this was being built. `read::bind_schema` reads both, because `nomos.effective_facts@1` still writes the object form and issue #159 owns that alignment; a reader that refused it would refuse a kernel document for a spelling this crate does not own. |
+| 6 | the five identities spell `schema` as `{name, version}` | they spell it as the string `name@version` | `RUNTIME.md` revision 2 §3 settled the spelling for R1 documents while this was being built. Issue #159 aligned the last object-form document as `nomos.effective_facts@2`; both accepted R1 readers now refuse the Gate K object spelling. |
 | 7 | the scan pins the staged binary by digest | it checks the binary is a WebAssembly module, and `stage()` reads back what it wrote | The digest comparison as designed was vacuous: the scan computed it from the same file it compared. `stage()` now reads the staged bytes back, which catches a short write and can actually fail, and the scan checks the magic number and the module version. The properties that matter for a binary — no external origin, no build-machine path — are enforced by `build-wasm.sh`, where a `strings` sweep is meaningful. |
 | 8 | — | `build.mjs`'s `.nomos` rule was tightened | `[^"'\s]*\.nomos` matched inside `exports.nomos_play_step`. The rule wants a file extension; it now requires one. That is the same class of false positive `docs/review/nomos-viewer.md` §10 finding 1 records for the acceptance grep. |
 | 9 | — | `render-core.mjs` selects the player's silhouette by `role` | The design left `actor.id === "player"` alone to keep the frames byte-identical. It selects the same actor either way in this corpus, so the bytes do not move and audit item 21 closes completely instead of being filed forward. |

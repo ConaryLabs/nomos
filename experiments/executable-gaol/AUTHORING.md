@@ -85,7 +85,8 @@ steps and masonry masses `1..=40`. The renderer divides by ten.
 **Positions are lattice cells.** `0 ≤ x < bounds.width`, `0 ≤ y < bounds.height`,
 `z == 0`. A mass is a positive rectangle, `min` inclusive and `max` exclusive,
 inside the bounds. An actor may not start inside a mass, and neither may the
-arrival cell.
+arrival cell. In a non-start area, `route.entry` and the sole player-role
+actor's `cell` are the same arrival fact and must be equal.
 
 **Effects attach by socket, never by coordinate.** `anchor` is exactly
 `{ entity, socket }`. The entity must be compiled, and the socket must be one
@@ -99,7 +100,8 @@ authored spelling of the gate this area leaves by; the compiler derives the
 `objective.target` to keep in agreement. `route.entry` is *this* area's own
 arrival cell — the cell a player lands on when another area's gate leads here —
 validated against this area's own bounds and masses. The start area declares no
-`entry`, because nothing arrives there; every other area declares one.
+`entry`, because nothing arrives there; every other area declares one equal to
+the player-role actor's starting `cell`.
 `to_area` is `null` exactly at the route's terminal.
 
 **Names come from closed sets.** The decoder checks that an id, assembly, or
@@ -158,7 +160,9 @@ Adding an area to the route is content, not code. The procedure:
    `target/executable-gaol/areas/<id>/rendering-plan.json` to that area's own
    `areas/<id>/rendering-plan.example.json`, and
    `target/executable-gaol/areas.json` to `area-collection.example.json`. It
-   prints every fixture it wrote.
+   also regenerates `route-expectations.json`, the content-side route and
+   counter fixture derived by the smoke solver. It prints every fixture it
+   wrote.
 5. **Prove it.**
    ```sh
    experiments/executable-gaol/gaol verify
@@ -171,10 +175,11 @@ Adding an area to the route is content, not code. The procedure:
 under `areas/<id>/`; the predecessor's `presentation.json` (the one
 `route.exit.to_area` edit) and its regenerated `rendering-plan.example.json`;
 and `area-collection.example.json`, which `gaol accept` also regenerates,
-because the route graph now has one more edge. Nothing under `src/`, `apps/`,
-or `crates/` changes. If a change to connect an area seems to require editing
-any of those, the area is not actually content — file it rather than route
-around it.
+because the route graph now has one more edge; and `route-expectations.json`,
+because the solved walk and its counters now include the new area. Nothing
+under `src/`, `apps/`, or `crates/` changes. If a change to connect an area
+seems to require editing any of those, the area is not actually content — file
+it rather than route around it.
 
 **Where the vocabulary lives.** `world.nomos` is written in the source
 language the compiler reads; its full vocabulary — primitives, credentials,

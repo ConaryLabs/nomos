@@ -83,6 +83,8 @@ the session lead committed its unedited output under a Codex author identity.
   convention rather than risk diverging from it, though nothing in `gaol
   verify` checks the relationship directly. Filed as issue #165,
   "Presentation source: route.entry duplicates the player actor's cell."
+  Issue #165 makes the equality an authored rule and an `RP0202` decoder
+  invariant, so a later author cannot make the two spellings diverge.
 - **The read boundary hid three of five comparison axes from Codex.** Its
   note records that the permitted presentations exposed the other areas'
   masonry masses but not their gate columns, water regions, or brazier
@@ -118,6 +120,12 @@ tests, not renderer or compiler source, so `RUNTIME.md` §1 criterion 5 holds.
 But it is the same hazard #163 removed from the JavaScript collection test
 before the run, and it is recorded here as a finding rather than folded into
 the connection commit: issue #167.
+
+Issue #167 closes the class: crate tests now discover the area directories,
+and a planted scan refuses any corpus area id under `crates/*/tests/`. The
+solver writes the route keys and cumulative counters to the content-side
+`route-expectations.json`; `gaol accept` regenerates it and `gaol verify`
+compares it byte-for-byte.
 
 **A pin under `apps/` — an R1-4 criterion regression.**
 `apps/nomos-viewer/test/runtime.test.mjs` hardcoded the four-area route as
