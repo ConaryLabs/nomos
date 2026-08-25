@@ -19,8 +19,8 @@
 //! Rules 1 to 3 carry `RUNTIME.md` section 3 as well as section 10. An R1 crate
 //! may depend on any kernel crate and on another declared R1 crate; a kernel
 //! crate may not depend on an R1 crate, on `xtask`, or on `apps/`; and the
-//! declared list `R1_CRATES` is empty until a slice adds a member, so an
-//! undeclared member still fails rule 1. Rule 4 stays scoped to what a kernel
+//! declared list `R1_CRATES` names every R1 member, so an undeclared member
+//! still fails rule 1. Rule 4 stays scoped to what a kernel
 //! crate reaches: R1's own third-party policy is `RUNTIME.md` section 4, not
 //! this list.
 //!
@@ -56,10 +56,10 @@ pub const KERNEL_CRATES: [&str; 6] = [
 
 /// The declared R1 members, mirroring the list in `RUNTIME.md` section 3.
 ///
-/// Empty: no R1 crate exists yet. A crate joins this list in the change that
-/// creates it, and `RUNTIME.md` section 3 names the same members, or the
-/// `membership` rule refuses the workspace.
-pub const R1_CRATES: [&str; 0] = [];
+/// A crate joins this list in the change that creates it, and `RUNTIME.md`
+/// section 3 names the same members, or the `membership` rule refuses the
+/// workspace.
+pub const R1_CRATES: [&str; 1] = ["nomos-render-plan"];
 
 /// Workspace members that are tooling rather than kernel crates.
 pub const TOOLING_CRATES: [&str; 1] = ["xtask"];

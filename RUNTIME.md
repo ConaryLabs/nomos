@@ -121,7 +121,12 @@ an undeclared workspace member.
 
 ### Declared R1 members
 
-None. `R1_CRATES` in `xtask/src/boundary.rs` mirrors this list, and `cargo xtask
+- `nomos-render-plan` — the R1-2 rendering-plan compiler (library plus the
+  `nomos-render-plan` binary), depending on `nomos-core` only, with
+  dev-dependency edges to `nomos-projection` and `nomos-sim` for the issue #132
+  divergence fixture.
+
+`R1_CRATES` in `xtask/src/boundary.rs` mirrors this list, and `cargo xtask
 boundary` enforces it: a workspace member that is neither a kernel crate,
 declared tooling, nor named here fails its `membership` rule, and its report
 counts what is declared as `r1 members N`.
