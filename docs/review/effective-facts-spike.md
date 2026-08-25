@@ -277,9 +277,28 @@ exit 1, not a silent byte difference. Byte identity is a property of a fixed
 
 ### CI: `verify` passes, `gate-k-evidence` cannot
 
-`verify` — the lane that runs the four proof commands — **passes** on this
-branch. `gate-k-evidence` **fails**, and that is the guard working correctly,
-not a defect to repair.
+Six of the seven PR checks pass. Exactly one fails, and it is the guard
+working correctly rather than a defect to repair:
+
+```console
+$ gh pr checks 130
+canonical schema ownership          fail   4s
+determinism (aarch64-release)       pass   27s
+determinism (cross-target)          pass   7s
+determinism (x86_64-debug)          pass   20s
+determinism (x86_64-release)        pass   32s
+measured budgets (x86_64 release)   pass   34s
+verify                              pass   4m0s
+```
+
+`verify` is the lane that runs the four proof commands. Worth noting for the
+R1 contract: the whole **determinism matrix passes**, including the
+cross-target comparison, so the byte-identity property R1-1 asks for holds
+across x86_64 debug, x86_64 release, and aarch64 release with this change in
+the tree — independent corroboration of the new test.
+
+The single failure is the `canonical schema ownership` job of
+`gate-k-evidence`.
 
 `docs/evaluation/gate-k-schema-ownership.sh` fails this branch for two
 independent reasons:
