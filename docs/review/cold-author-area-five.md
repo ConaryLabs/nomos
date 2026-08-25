@@ -1,6 +1,6 @@
 ---
 title: Cold-author area five — Gloam Bastion and Drowned Stair
-status: Experiment record; owner visual verdict pending
+status: Experiment record; owner visual verdict compelling
 date: 2026-08-25
 applies_to: THESIS.md §18 (Gate 2, Gate 3); experiments/executable-gaol
 scope: experiments/executable-gaol (quarantined, non-authoritative)
@@ -130,6 +130,9 @@ smoke lane's solver, the same way the lane does; #167 covers the class.
 
 ## Owner visual verdict
 
-`[ ]` rejected — `[ ]` promising — `[ ]` compelling
+`[ ]` rejected — `[ ]` promising — `[x]` **compelling**
 
-_Recorded on merge._
+Recorded by Peter Permenter on 2026-08-25 after reviewing both five-area
+contact sheets: both cold-authored rooms read as the same game and as distinct
+rooms, and the packet-plus-grammar approach works. This is the owner visual
+disposition the experiment left open; it is not a Gate 2 or Gate 3 verdict.
