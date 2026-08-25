@@ -3,4 +3,7 @@
 [toolchain]
 channel = "1.98.0"
 components = ["rustfmt", "clippy"]
+# RUNTIME.md section 5 R1-5: nomos-play also builds for the browser, and a clean
+# checkout must be able to build it without a separate rustup target add.
+targets = ["wasm32-unknown-unknown"]
 profile = "minimal"

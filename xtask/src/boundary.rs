@@ -61,7 +61,7 @@ pub const KERNEL_CRATES: [&str; 6] = [
 /// A crate joins this list in the change that creates it, and `RUNTIME.md`
 /// section 3 names the same members, or the `membership` rule refuses the
 /// workspace.
-pub const R1_CRATES: [&str; 1] = ["nomos-render-plan"];
+pub const R1_CRATES: [&str; 2] = ["nomos-play", "nomos-render-plan"];
 
 /// Workspace members that are tooling rather than kernel crates.
 pub const TOOLING_CRATES: [&str; 1] = ["xtask"];
