@@ -3,20 +3,23 @@
 //! Every kernel document this compiler reads — the entity catalog, the
 //! effective-fact documents, the run bundle, the four projections — is already
 //! canonical, and [`crate::read`] hands those to `nomos-core`'s strict reader.
-//! `area.json` is not: it is hand-authored, pretty-printed, camelCase, and
-//! carries decimal presentation values that `CanonicalValue` has no variant
-//! for. `RUNTIME.md` section 5 R1-3 replaces it with a typed, versioned source;
-//! until then it needs a reader of its own.
+//! `presentation.json` is not: a human writes it, so it is pretty-printed and
+//! carries insignificant whitespace. It needs a reader of its own.
 //!
 //! This one is deliberately strict for a hand-authored file: duplicate keys are
-//! refused rather than resolved by last-write-wins, numbers must fit
-//! [`Decimal`]'s exact profile, and nesting is bounded. There is no writer —
-//! output goes through [`crate::doc`].
+//! refused rather than resolved by last-write-wins, nesting is bounded, and
+//! **there is no decimal variant at all**. `RUNTIME.md` section 5 R1-3 forbids a
+//! raw floating-point transform in accepted content, and the cheapest
+//! enforcement is the same one `nomos_core::CanonicalValue` uses: a value type
+//! that cannot hold one. Any number lexeme carrying `.`, `e`, `E`, or a leading
+//! `+` is refused with `RP0205` at the point it is read, at any depth, in a
+//! field the schema knows and in one it does not.
+//!
+//! There is no writer: the plan goes out through `nomos_core::CanonicalValue`.
 
 use std::collections::BTreeMap;
 use std::collections::btree_map::Entry;
 
-use crate::decimal::Decimal;
 use crate::error::{PlanError, PlanResult, codes};
 
 /// The deepest nesting the reader accepts, matching `nomos-core`'s canonical
@@ -30,8 +33,8 @@ pub enum Json {
     Null,
     /// JSON `true` or `false`.
     Bool(bool),
-    /// An exact decimal.
-    Number(Decimal),
+    /// A signed 64-bit integer. There is deliberately no decimal variant.
+    Integer(i64),
     /// A UTF-8 string.
     Text(String),
     /// An array in document order.
@@ -68,11 +71,11 @@ impl Json {
         }
     }
 
-    /// The number, or `None`.
+    /// The integer, or `None`.
     #[must_use]
-    pub const fn as_number(&self) -> Option<&Decimal> {
+    pub const fn as_integer(&self) -> Option<i64> {
         match self {
-            Self::Number(value) => Some(value),
+            Self::Integer(value) => Some(*value),
             _ => None,
         }
     }
@@ -100,7 +103,7 @@ impl Json {
 ///
 /// Returns `RP0103` when the bytes are not valid UTF-8, are not well-formed
 /// JSON, nest deeper than 64, repeat an object key, or carry trailing content;
-/// returns `RP0205` when a number is outside [`Decimal`]'s profile.
+/// returns `RP0205` when a number is not a base-10 integer.
 pub fn parse(bytes: &[u8]) -> PlanResult<Json> {
     let text = std::str::from_utf8(bytes)
         .map_err(|error| malformed(format!("input is not valid UTF-8: {error}")))?;
@@ -182,7 +185,10 @@ impl Parser<'_> {
             Some(b'"') => Ok(Json::Text(self.string()?)),
             Some(b'[') => self.array(depth),
             Some(b'{') => self.object(depth),
-            Some(byte) if byte == b'-' || byte.is_ascii_digit() => self.number(),
+            // `+` is routed here too, though JSON does not allow it: the
+            // number reader can then say what is wrong with `+45` instead of
+            // reporting a stray byte.
+            Some(byte) if byte == b'-' || byte == b'+' || byte.is_ascii_digit() => self.number(),
             Some(byte) => Err(malformed(format!(
                 "unexpected byte `{}` at offset {}",
                 byte as char, self.position
@@ -262,29 +268,76 @@ impl Parser<'_> {
         }
     }
 
+    /// Reads one number, which must be a base-10 integer.
+    ///
+    /// The whole lexeme is consumed first — fraction digits and exponent
+    /// included — so that the rejection can quote what the author actually
+    /// wrote rather than stopping at the `.` and complaining about a stray
+    /// character. `RUNTIME.md` section 5 R1-3: "a schema test rejects a source
+    /// file carrying a raw floating-point transform"; this is that rejection,
+    /// and it fires wherever a number appears, not only in the fields the
+    /// schema goes on to read.
     fn number(&mut self) -> PlanResult<Json> {
         let start = self.position;
-        if self.peek() == Some(b'-') {
+        let mut fractional = false;
+        let mut exponent = false;
+        if matches!(self.peek(), Some(b'-' | b'+')) {
             self.position += 1;
         }
         while matches!(self.peek(), Some(byte) if byte.is_ascii_digit()) {
             self.position += 1;
         }
         if self.peek() == Some(b'.') {
+            fractional = true;
             self.position += 1;
             while matches!(self.peek(), Some(byte) if byte.is_ascii_digit()) {
                 self.position += 1;
             }
         }
         if matches!(self.peek(), Some(b'e' | b'E')) {
-            return Err(PlanError::new(
-                codes::NUMBER_UNSUPPORTED,
-                format!("number at offset {start} carries an exponent"),
-            ));
+            exponent = true;
+            self.position += 1;
+            if matches!(self.peek(), Some(b'-' | b'+')) {
+                self.position += 1;
+            }
+            while matches!(self.peek(), Some(byte) if byte.is_ascii_digit()) {
+                self.position += 1;
+            }
         }
         let lexeme = std::str::from_utf8(&self.bytes[start..self.position])
             .map_err(|_| malformed(format!("number at offset {start} is not UTF-8")))?;
-        Ok(Json::Number(Decimal::parse(lexeme)?))
+        let reject = |reason: &str| {
+            Err(PlanError::new(
+                codes::NUMBER_UNSUPPORTED,
+                format!(
+                    "presentation number `{lexeme}` {reason}; presentation source carries \
+                     integers only"
+                ),
+            ))
+        };
+        if fractional {
+            return reject("carries a fraction");
+        }
+        if exponent {
+            return reject("carries an exponent");
+        }
+        let digits = lexeme.strip_prefix('-').unwrap_or(lexeme);
+        if lexeme.starts_with('+') {
+            return reject("carries a leading `+`");
+        }
+        if digits.is_empty() {
+            return reject("has no digits");
+        }
+        if digits.len() > 1 && digits.starts_with('0') {
+            return reject("carries a redundant leading zero");
+        }
+        if lexeme == "-0" {
+            return reject("spells negative zero");
+        }
+        match lexeme.parse::<i64>() {
+            Ok(value) => Ok(Json::Integer(value)),
+            Err(_) => reject("does not fit a 64-bit integer"),
+        }
     }
 
     fn string(&mut self) -> PlanResult<String> {

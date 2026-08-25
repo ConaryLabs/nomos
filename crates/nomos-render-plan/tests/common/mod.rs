@@ -3,9 +3,9 @@
 //! Every document here is built with `nomos_core::CanonicalValue` and written
 //! as canonical bytes, so the fixtures are produced the same way the kernel
 //! produces the real ones rather than by pasting JSON text. The one exception
-//! is `area.json`, which is deliberately written as hand-authored,
-//! pretty-printed, camelCase text with decimal values, because that is what the
-//! compiler has to accept until R1-3 replaces it.
+//! is `presentation.json`, which is deliberately written as hand-authored,
+//! pretty-printed text, because that is what a human writes and what the
+//! compiler has to accept.
 
 #![allow(dead_code)]
 
@@ -134,7 +134,7 @@ impl Fixture {
         fixture.write_world(options.poison_world);
         fixture.write_catalog(options);
         fixture.write_scenarios(options);
-        fixture.write_area(options);
+        fixture.write_source(options);
         fixture
     }
 
@@ -154,8 +154,8 @@ impl Fixture {
         self.root.join("world")
     }
 
-    pub fn area(&self) -> PathBuf {
-        self.root.join("area.json")
+    pub fn source(&self) -> PathBuf {
+        self.root.join("presentation.json")
     }
 
     pub fn out(&self) -> PathBuf {
@@ -168,7 +168,7 @@ impl Fixture {
             facts: self.facts(),
             runs: self.runs(),
             world: self.world(),
-            area: self.area(),
+            source: self.source(),
         }))
         .as_inputs()
     }
@@ -523,45 +523,57 @@ impl Fixture {
         );
     }
 
-    fn write_area(&self, options: Options) {
+    /// Writes the hand-authored presentation source.
+    ///
+    /// Pretty-printed, snake_case, integer-only, and socket-anchored: this is
+    /// `nomos.presentation_source@1` as a human writes it. There is no decimal
+    /// anywhere, which is the property `tests/source.rs` proves is enforced
+    /// rather than merely observed.
+    fn write_source(&self, options: Options) {
         let rename = options.rename;
         let gate = rename("north_gate");
         let brazier = rename("watch_brazier");
-        // Hand-authored presentation source: pretty-printed, camelCase, and
-        // carrying the decimal transforms the audit's section 4 lists.
         let text = format!(
             r#"{{
-  "id": "test-area",
-  "label": "Test Area",
-  "start": true,
-  "primaryGate": "{gate}",
-  "objective": {{ "kind": "exit_via", "target": "{gate}" }},
-  "pursuitLight": "{brazier}",
-  "forensicScenario": "02-unsealed",
-  "exit": {{ "gate": "{gate}", "toArea": null }},
+  "schema": "nomos.presentation_source@1",
+  "area": {{
+    "id": "test-area",
+    "label": "Test Area",
+    "start": true
+  }},
+  "route": {{
+    "exit": {{ "gate": "{gate}", "to_area": null }}
+  }},
+  "pursuit": {{
+    "light": "{brazier}"
+  }},
   "architecture": {{
     "bounds": {{ "width": 9, "height": 6 }},
-    "wallHeight": 4.5,
+    "wall_height_steps": 45,
     "style": {{
       "assembly": "visual/beveled_masonry",
-      "materialFamily": "stone_bounded",
-      "trimFamily": "broad_mortar"
+      "material_family": "stone_bounded",
+      "trim_family": "broad_mortar"
     }},
     "masses": [
-      {{ "id": "pier", "min": {{ "x": 2, "y": 1 }}, "max": {{ "x": 3, "y": 2 }}, "height": 3.2 }}
+      {{ "id": "pier", "min": {{ "x": 2, "y": 1 }}, "max": {{ "x": 3, "y": 2 }}, "height_steps": 32 }}
     ]
   }},
   "actors": [
-    {{ "id": "player", "assembly": "visual/player_silhouette", "anchor": {{ "kind": "cell", "cell": {{ "x": 7, "y": 4, "z": 0 }} }} }},
-    {{ "id": "gaoler", "assembly": "visual/gaoler_silhouette", "anchor": {{ "kind": "cell", "cell": {{ "x": 4, "y": 3, "z": 0 }} }} }}
+    {{ "id": "player", "assembly": "visual/player_silhouette", "cell": {{ "x": 7, "y": 4, "z": 0 }} }},
+    {{ "id": "gaoler", "assembly": "visual/gaoler_silhouette", "cell": {{ "x": 4, "y": 3, "z": 0 }} }}
   ],
   "effects": [
-    {{ "id": "ward_crescent", "assembly": "visual/cyan_crescent", "anchorEntity": "{gate}", "presentationAnchor": {{ "x": 4.9, "y": 3.8, "z": 0 }} }}
+    {{
+      "id": "ward_crescent",
+      "assembly": "visual/cyan_crescent",
+      "anchor": {{ "entity": "{gate}", "socket": "ward" }}
+    }}
   ]
 }}
 "#
         );
-        fs::write(self.area(), text).unwrap();
+        fs::write(self.source(), text).unwrap();
     }
 }
 
@@ -577,7 +589,7 @@ pub struct Paths {
     pub facts: PathBuf,
     pub runs: PathBuf,
     pub world: PathBuf,
-    pub area: PathBuf,
+    pub source: PathBuf,
 }
 
 impl Paths {
@@ -587,7 +599,7 @@ impl Paths {
             facts: &self.facts,
             runs: &self.runs,
             world: &self.world,
-            area: &self.area,
+            source: &self.source,
         }
     }
 }
@@ -700,7 +712,7 @@ pub fn normalized_differences(left: &[u8], right: &[u8]) -> Vec<String> {
         match value {
             Json::Null => "null",
             Json::Bool(_) => "boolean",
-            Json::Number(_) => "number",
+            Json::Integer(_) => "integer",
             Json::Text(_) => "string",
             Json::Array(_) => "array",
             Json::Object(_) => "object",
@@ -741,9 +753,9 @@ pub fn normalized_differences(left: &[u8], right: &[u8]) -> Vec<String> {
                     }
                 }
             }
-            (Json::Number(left), Json::Number(right)) => {
-                if left.units() != right.units() {
-                    out.push(format!("{path}: {} != {}", left.lexeme(), right.lexeme()));
+            (Json::Integer(left), Json::Integer(right)) => {
+                if left != right {
+                    out.push(format!("{path}: {left} != {right}"));
                 }
             }
             (left, right) => {

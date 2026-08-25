@@ -57,17 +57,24 @@ pub mod codes {
     /// The catalog declares a primitive the compiler has no kind for, or a
     /// kind whose capability set contradicts its primitive.
     pub const CLASSIFICATION_UNSOUND: PlanCode = PlanCode("RP0201");
-    /// The presentation source violates a bounded-area invariant.
+    /// The presentation source violates a bounded-area invariant, or its shape
+    /// is not the one `nomos.presentation_source@1` declares.
     pub const AREA_INVALID: PlanCode = PlanCode("RP0202");
     /// A scenario did not reach its declared state.
     pub const SCENARIO_INCOMPLETE: PlanCode = PlanCode("RP0203");
     /// The facts directory and the runs directory disagree about the scenario
     /// set.
     pub const SCENARIO_SET_MISMATCH: PlanCode = PlanCode("RP0204");
-    /// A presentation number is outside the accepted decimal profile.
+    /// A presentation number is not a base-10 integer: it carries a fraction,
+    /// an exponent, a leading `+`, a redundant leading zero, or does not fit.
+    ///
+    /// `RUNTIME.md` section 5 R1-3 forbids a raw floating-point transform in
+    /// accepted content, so this fires on the lexeme, before any field is
+    /// interpreted, and at any depth in the file.
     pub const NUMBER_UNSUPPORTED: PlanCode = PlanCode("RP0205");
-    /// A field name is outside the plan document's accepted name profile.
-    pub const FIELD_NAME_UNSUPPORTED: PlanCode = PlanCode("RP0206");
+    /// An identifier in the presentation source is outside the grammar its
+    /// field declares.
+    pub const IDENTIFIER_UNSUPPORTED: PlanCode = PlanCode("RP0206");
 }
 
 /// A rejection, with the file that produced it when there is one.

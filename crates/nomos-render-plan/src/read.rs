@@ -1,6 +1,6 @@
 //! Reading kernel documents, and binding their schema identities.
 //!
-//! Every input except `area.json` is canonical bytes produced by the kernel, so
+//! Every input except the presentation source is canonical bytes produced by the kernel, so
 //! this module hands them to `nomos_core::canonical::read::parse_canonical`
 //! rather than to a reader of its own. That reader accepts bytes only if they
 //! are exactly what `CanonicalValue::to_canonical_bytes` would have produced,

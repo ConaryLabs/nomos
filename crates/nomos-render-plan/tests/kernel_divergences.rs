@@ -57,18 +57,16 @@ fn the_plan_carries_the_kernel_disposition_cost_and_reasons() {
     // 1. An active `blocks_ground` claim with `value: false` does not block.
     //    build-plan.mjs:114 filtered on `capability === "blocks_ground"` alone
     //    and would have emitted `blocked` with this claim as its reason.
-    let gate = movement.get("escape_gate").expect("the gate is a subject");
+    let gate = subject(movement, "escape_gate").expect("the gate is a subject");
     assert_eq!(disposition(gate), "traversable");
-    assert_eq!(cost(gate), Some(i128::from(BASE_COST) * 1_000_000));
+    assert_eq!(cost(gate), Some(i64::from(BASE_COST)));
     assert_eq!(reasons(gate), Vec::<String>::new());
 
     // 2. An active cost below `base_cost` is the cost. build-plan.mjs:118
     //    computed `Math.max(base_cost, ...costs)` and would have said 3.
-    let floor = movement
-        .get("sunken_floor")
-        .expect("the floor is a subject");
+    let floor = subject(movement, "sunken_floor").expect("the floor is a subject");
     assert_eq!(disposition(floor), "traversable");
-    assert_eq!(cost(floor), Some(1_000_000));
+    assert_eq!(cost(floor), Some(1));
     assert_eq!(
         reasons(floor),
         vec!["sunken_floor.region#traversal_cost_ground".to_owned()]
@@ -76,11 +74,9 @@ fn the_plan_carries_the_kernel_disposition_cost_and_reasons() {
 
     // 3. Two active costs of different value: the maximum wins and only the
     //    maximum-cost claim is a reason. build-plan.mjs:119 listed both.
-    let channel = movement
-        .get("deep_channel")
-        .expect("the channel is a subject");
+    let channel = subject(movement, "deep_channel").expect("the channel is a subject");
     assert_eq!(disposition(channel), "traversable");
-    assert_eq!(cost(channel), Some(5_000_000));
+    assert_eq!(cost(channel), Some(5));
     assert_eq!(
         reasons(channel),
         vec!["deep_channel.deep#traversal_cost_ground".to_owned()],
@@ -136,9 +132,7 @@ fn the_compiled_plan_matches_the_kernel_document_field_for_field() {
         else {
             panic!("disposition is an object")
         };
-        let planned = movement
-            .get(entity)
-            .expect("every subject reaches the plan");
+        let planned = subject(movement, entity).expect("every subject reaches the plan");
         let CanonicalValue::Text(kind) = &kernel[&nomos_core::FieldName::declared("kind")] else {
             panic!("kind is text")
         };
@@ -146,8 +140,8 @@ fn the_compiled_plan_matches_the_kernel_document_field_for_field() {
         let kernel_cost = kernel
             .get(&nomos_core::FieldName::declared("cost"))
             .map(|value| match value {
-                CanonicalValue::Uint(cost) => i128::from(*cost) * 1_000_000,
-                CanonicalValue::Int(cost) => i128::from(*cost) * 1_000_000,
+                CanonicalValue::Uint(cost) => i64::try_from(*cost).expect("a cost fits an i64"),
+                CanonicalValue::Int(cost) => *cost,
                 other => panic!("cost is an integer, found {other:?}"),
             });
         assert_eq!(cost(planned), kernel_cost);
@@ -249,6 +243,19 @@ fn kernel_facts() -> Vec<u8> {
     bytes
 }
 
+/// One movement subject, found by entity in the plan's stable-ID array.
+///
+/// `nomos.rendering_plan@2` spells `movement` the way
+/// `nomos.effective_facts@1` does — an array of `{entity, ...}` rows ordered
+/// by entity — rather than as an entity-keyed object, so that no object key
+/// comes from data.
+fn subject<'a>(movement: &'a Json, entity: &str) -> Option<&'a Json> {
+    movement
+        .as_array()?
+        .iter()
+        .find(|row| row.get("entity").and_then(Json::as_text) == Some(entity))
+}
+
 fn disposition(subject: &Json) -> &str {
     subject
         .get("disposition")
@@ -256,11 +263,11 @@ fn disposition(subject: &Json) -> &str {
         .expect("a movement subject carries a disposition")
 }
 
-fn cost(subject: &Json) -> Option<i128> {
+fn cost(subject: &Json) -> Option<i64> {
     match subject.get("cost").expect("cost is always present") {
         Json::Null => None,
-        Json::Number(value) => Some(value.units()),
-        other => panic!("cost is null or a number, found {other:?}"),
+        Json::Integer(value) => Some(*value),
+        other => panic!("cost is null or an integer, found {other:?}"),
     }
 }
 
@@ -340,14 +347,14 @@ impl Workspace {
         );
 
         write(&root.join("entity-catalog.json"), &catalog());
-        fs::write(root.join("area.json"), AREA).unwrap();
+        fs::write(root.join("presentation.json"), SOURCE).unwrap();
 
         let paths = common::Paths {
             catalog: root.join("entity-catalog.json"),
             facts: root.join("facts"),
             runs: root.join("runs"),
             world: root.join("world"),
-            area: root.join("area.json"),
+            source: root.join("presentation.json"),
         };
         Self { root, paths }
     }
@@ -488,24 +495,20 @@ fn catalog() -> CanonicalValue {
     ])
 }
 
-const AREA: &str = r#"{
-  "id": "divergence",
-  "label": "Divergence",
-  "start": true,
-  "primaryGate": "escape_gate",
-  "objective": { "kind": "exit_via", "target": "escape_gate" },
-  "pursuitLight": "watch_brazier",
-  "forensicScenario": "01-divergence",
-  "exit": { "gate": "escape_gate", "toArea": null },
+const SOURCE: &str = r#"{
+  "schema": "nomos.presentation_source@1",
+  "area": { "id": "divergence", "label": "Divergence", "start": true },
+  "route": { "exit": { "gate": "escape_gate", "to_area": null } },
+  "pursuit": { "light": "watch_brazier" },
   "architecture": {
     "bounds": { "width": 9, "height": 6 },
-    "wallHeight": 4.5,
-    "style": { "assembly": "visual/beveled_masonry", "materialFamily": "stone_bounded", "trimFamily": "broad_mortar" },
+    "wall_height_steps": 45,
+    "style": { "assembly": "visual/beveled_masonry", "material_family": "stone_bounded", "trim_family": "broad_mortar" },
     "masses": []
   },
   "actors": [
-    { "id": "player", "assembly": "visual/player_silhouette", "anchor": { "kind": "cell", "cell": { "x": 1, "y": 1, "z": 0 } } },
-    { "id": "gaoler", "assembly": "visual/gaoler_silhouette", "anchor": { "kind": "cell", "cell": { "x": 4, "y": 3, "z": 0 } } }
+    { "id": "player", "assembly": "visual/player_silhouette", "cell": { "x": 1, "y": 1, "z": 0 } },
+    { "id": "gaoler", "assembly": "visual/gaoler_silhouette", "cell": { "x": 4, "y": 3, "z": 0 } }
   ],
   "effects": []
 }

@@ -107,6 +107,29 @@ impl EntityKind {
         }
     }
 
+    /// The socket names an effect may attach to on this kind's assembly.
+    ///
+    /// Closed per kind, and checked by [`crate::source::read_source`]. This is
+    /// the *vocabulary* only: a socket's offset from the entity's anchor cell
+    /// is renderer-catalog data and appears nowhere in this crate, because
+    /// content selecting a socket and a renderer deciding where that socket is
+    /// are two different facts with two different owners. The offsets live in
+    /// the study's `src/renderer-catalog.mjs`, and its `src/verify.mjs` checks
+    /// that every socket a compiled plan carries resolves there, so a name
+    /// legal here but unknown to the renderer fails the build rather than a
+    /// frame.
+    ///
+    /// `RUNTIME.md` section 5 R1-3: "attachment is by named socket, which is
+    /// the audit's proposed repair for all twelve `presentationAnchor`
+    /// components".
+    #[must_use]
+    pub const fn sockets(self) -> &'static [&'static str] {
+        match self {
+            Self::Door => &["ward"],
+            Self::Water | Self::Light | Self::Unknown => &[],
+        }
+    }
+
     /// The primitive kind that declares this entity kind, if any.
     const fn primitive(self) -> Option<&'static str> {
         match self {
