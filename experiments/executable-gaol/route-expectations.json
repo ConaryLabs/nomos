@@ -1,0 +1,1 @@
+{"expected":{"areas":6,"commands":77,"moves":65,"traversal_cost":95},"route":[{"area":"cistern-walk","keys":"^^^<<<<<<^**>^"},{"area":"ember-vault","keys":"<<<<<^^^>^^**>^"},{"area":"gloam-bastion","keys":"^^^<<<v^^^**<^"},{"area":"drowned-stair","keys":"^<<>^^^**^^"},{"area":"ossuary-reach","keys":"^^>^^>>>^**>^"},{"area":"north-gaol","keys":"^^^^>>**>^"}]}

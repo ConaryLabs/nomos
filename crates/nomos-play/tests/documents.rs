@@ -120,9 +120,10 @@ fn a_play_state_from_another_world_is_refused_by_the_kernel() {
     // paired with semantics it was not produced under.
     let session = common::session();
     let bytes = session.live().state.to_canonical_bytes();
-    let other =
-        nomos_projection::SimulationPlan::from_canonical_bytes(&common::semantics("north-gaol"))
-            .unwrap();
+    let other = nomos_projection::SimulationPlan::from_canonical_bytes(&common::semantics(
+        &common::behavior_area(),
+    ))
+    .unwrap();
     let error = nomos_play::PlayState::decode(&bytes, &other).unwrap_err();
     assert_eq!(error.code(), nomos_play::codes::KERNEL_REFUSED);
     assert!(error.message().contains("EK0813"), "{}", error.message());
@@ -236,7 +237,7 @@ fn the_presentation_state_spells_movement_the_way_the_plan_does() {
     // Load-bearing: the viewer's scenario accessors read a presentation state
     // unchanged because the two documents spell these three collections
     // identically, including the `null` cost on a blocked subject.
-    let session = common::session_at("north-gaol");
+    let session = common::behavior_session();
     let value = presentation_state(session.live()).unwrap();
     let CanonicalValue::Object(fields) = &value else {
         panic!("a presentation state is an object");
@@ -384,7 +385,7 @@ fn the_direction_table_is_the_one_the_renderer_declares() {
 
 #[test]
 fn a_plan_without_a_player_is_refused() {
-    let bytes = common::plan("north-gaol");
+    let bytes = common::plan(&common::behavior_area());
     let text = String::from_utf8(bytes).unwrap();
     let broken = text.replacen(r#""role":"player""#, r#""role":"pursuer""#, 1);
     let error = nomos_play::AreaPlan::decode(broken.as_bytes()).unwrap_err();
@@ -393,7 +394,7 @@ fn a_plan_without_a_player_is_refused() {
 
 #[test]
 fn a_plan_at_the_retired_version_is_refused() {
-    let bytes = common::plan("north-gaol");
+    let bytes = common::plan(&common::behavior_area());
     let text = String::from_utf8(bytes).unwrap();
     let broken = text.replacen("nomos.rendering_plan@3", "nomos.rendering_plan@2", 1);
     let error = nomos_play::AreaPlan::decode(broken.as_bytes()).unwrap_err();
@@ -405,8 +406,14 @@ fn the_two_ticks_are_different_numbers() {
     // `play_state.tick` counts committed batches, which is inputs. The kernel's
     // tick counts committed kernel transactions. A refused input moves the
     // first and not the second, and neither is the other.
-    let mut session = common::session_at("north-gaol");
-    common::drive(&mut session, "^^^^>>");
+    let area = common::behavior_area();
+    let mut session = common::session_at(&area);
+    let keys = common::keys_for(&area);
+    let before_interaction = keys
+        .chars()
+        .take_while(|key| *key != '*')
+        .collect::<String>();
+    common::drive(&mut session, &before_interaction);
     common::drive(&mut session, "*");
     // Walk into the wall to the north of the gate cell: refused, tick advances.
     session
@@ -440,7 +447,7 @@ fn every_emitted_document_reparses_to_the_same_bytes() {
 fn the_actor_identities_are_free() {
     // The ownership audit's items 7 and 21: `player` and `gaoler` were magic
     // identities. Rename both and nothing changes but the names.
-    let text = String::from_utf8(common::plan("north-gaol")).unwrap();
+    let text = String::from_utf8(common::plan(&common::behavior_area())).unwrap();
     let renamed = text
         .replace(r#""id":"player""#, r#""id":"runner""#)
         .replace(r#""id":"gaoler""#, r#""id":"warden""#);

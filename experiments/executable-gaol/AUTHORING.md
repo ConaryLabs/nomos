@@ -158,7 +158,9 @@ Adding an area to the route is content, not code. The procedure:
    `target/executable-gaol/areas/<id>/rendering-plan.json` to that area's own
    `areas/<id>/rendering-plan.example.json`, and
    `target/executable-gaol/areas.json` to `area-collection.example.json`. It
-   prints every fixture it wrote.
+   also regenerates `route-expectations.json`, the content-side route and
+   counter fixture derived by the smoke solver. It prints every fixture it
+   wrote.
 5. **Prove it.**
    ```sh
    experiments/executable-gaol/gaol verify
@@ -171,10 +173,11 @@ Adding an area to the route is content, not code. The procedure:
 under `areas/<id>/`; the predecessor's `presentation.json` (the one
 `route.exit.to_area` edit) and its regenerated `rendering-plan.example.json`;
 and `area-collection.example.json`, which `gaol accept` also regenerates,
-because the route graph now has one more edge. Nothing under `src/`, `apps/`,
-or `crates/` changes. If a change to connect an area seems to require editing
-any of those, the area is not actually content — file it rather than route
-around it.
+because the route graph now has one more edge; and `route-expectations.json`,
+because the solved walk and its counters now include the new area. Nothing
+under `src/`, `apps/`, or `crates/` changes. If a change to connect an area
+seems to require editing any of those, the area is not actually content — file
+it rather than route around it.
 
 **Where the vocabulary lives.** `world.nomos` is written in the source
 language the compiler reads; its full vocabulary — primitives, credentials,

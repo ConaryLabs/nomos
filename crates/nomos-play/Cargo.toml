@@ -32,7 +32,7 @@ nomos-sim.workspace = true
 # `collection.rs` reads it from `plan.rs` rather than spelling it again.
 nomos-render-plan.workspace = true
 
-# Dev-only. `tests/semantics.rs` compiles the four committed area sources in
+# Dev-only. `tests/semantics.rs` compiles every committed area source in
 # memory and asserts that the simulation projection this crate decodes is the
 # value the compiler projected. Neither edge exists in the built library;
 # `cargo xtask boundary` counts dev-dependency edges, and both targets are

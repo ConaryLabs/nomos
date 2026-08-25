@@ -18,7 +18,7 @@ fn entity(id: &str) -> EntityId {
 
 #[test]
 fn a_step_onto_stone_costs_one() {
-    let mut session = common::session_at("north-gaol");
+    let mut session = common::behavior_session();
     let before = session.counters();
     session.step(&common::step(Direction::West)).unwrap();
     assert_eq!(session.counters().moves, before.moves + 1);
@@ -30,7 +30,7 @@ fn water_uses_the_projected_traversal_cost_at_the_live_state() {
     // `play.mjs:101-108` read this off a captured scenario. It now comes from
     // `resolve_movement` evaluated against the embedded kernel state, which is
     // the whole point of the slice.
-    let mut session = common::session_at("north-gaol");
+    let mut session = common::behavior_session();
     // (2, 4) -> (2, 3), the north edge of the flooded region (2,2)-(4,3).
     let before = session.counters();
     session.step(&common::step(Direction::North)).unwrap();
@@ -44,9 +44,9 @@ fn water_uses_the_projected_traversal_cost_at_the_live_state() {
 
 #[test]
 fn a_mass_blocks_the_cells_it_covers() {
-    // Ember Vault declares two piers. The rectangle is half-open, reproducing
+    // The two-mass fixture declares two piers. The rectangle is half-open, reproducing
     // `play.mjs:110-114`: `min <= x < max`.
-    let session = common::session_at("ember-vault");
+    let session = common::session_at(&common::mass_area());
     let plan = &session.live().plan;
     assert_eq!(plan.masses.len(), 2);
     let mass = &plan.masses[0];
@@ -57,9 +57,9 @@ fn a_mass_blocks_the_cells_it_covers() {
 
 #[test]
 fn a_move_into_masonry_is_refused_and_still_commits_a_batch() {
-    let mut session = common::session_at("ember-vault");
+    let mut session = common::session_at(&common::mass_area());
     let plan = session.live().plan.clone();
-    let mass = plan.masses.first().expect("ember-vault declares a pier");
+    let mass = plan.masses.first().expect("the fixture declares a pier");
     // Walk to the cell immediately south of the mass's minimum corner, then
     // step north into it.
     let target = (mass.min.0, mass.min.1);
@@ -102,7 +102,7 @@ fn a_move_into_masonry_is_refused_and_still_commits_a_batch() {
 
 #[test]
 fn the_baseline_gate_refuses_an_exit_and_names_the_resolver_reasons() {
-    let mut session = common::session_at("north-gaol");
+    let mut session = common::behavior_session();
     common::drive(&mut session, "^^^^>>>");
     assert_eq!(
         (
@@ -123,7 +123,7 @@ fn the_baseline_gate_refuses_an_exit_and_names_the_resolver_reasons() {
 
 #[test]
 fn the_breached_and_unsealed_gate_permits_an_exit() {
-    let mut session = common::session_at("north-gaol");
+    let mut session = common::behavior_session();
     common::drive(&mut session, "^^^^>>**>");
     let receipt = session
         .step(&common::step(Direction::North))
@@ -137,7 +137,7 @@ fn the_breached_and_unsealed_gate_permits_an_exit() {
 
 #[test]
 fn a_move_that_leaves_the_lattice_with_no_door_finds_masonry() {
-    let mut session = common::session_at("north-gaol");
+    let mut session = common::behavior_session();
     // (2, 4) is not on a door's cell; walking north-west to (0, 4) and stepping
     // west leaves the lattice through nothing.
     common::drive(&mut session, "<<");
@@ -156,8 +156,8 @@ fn a_move_that_leaves_the_lattice_with_no_door_finds_masonry() {
 
 #[test]
 fn the_unchanged_second_door_remains_blocked() {
-    // North Gaol declares two doors. Opening the first must not open the other.
-    let mut session = common::session_at("north-gaol");
+    // The behavior fixture declares two doors. Opening the first must not open the other.
+    let mut session = common::behavior_session();
     common::drive(&mut session, "^^^^>>**");
     let movement = batch::movement_facts(session.live()).unwrap();
     assert!(matches!(
@@ -176,7 +176,7 @@ fn an_exit_uses_the_doors_declared_direction() {
     // crossing is the door on the player's own cell facing the way the move is
     // heading. Every corpus door faces north, so the other three faces are the
     // negative case.
-    let mut session = common::session_at("north-gaol");
+    let mut session = common::behavior_session();
     common::drive(&mut session, "^^^^>>**>");
     for wrong in [Direction::East, Direction::West, Direction::South] {
         let mut probe = session.clone();
@@ -199,7 +199,7 @@ fn the_two_spellings_of_the_crossing_produce_the_same_receipt() {
     // One rule, two spellings. A lattice-leaving `move` derives the gate from
     // the declared face and calls the same function `cross` calls, so the only
     // difference between the receipts is the input that produced them.
-    let mut walked = common::session_at("north-gaol");
+    let mut walked = common::behavior_session();
     common::drive(&mut walked, "^^^^>>**>");
     let mut named = walked.clone();
 
@@ -225,7 +225,7 @@ fn the_two_spellings_of_the_crossing_produce_the_same_receipt() {
 fn crossing_a_sealed_gate_is_refused() {
     // Standing on the gate's own cell, so the refusal is about the ward and the
     // integrity rather than about where the player is.
-    let mut session = common::session_at("north-gaol");
+    let mut session = common::behavior_session();
     common::drive(&mut session, "^^^^>>>");
     let receipt = session
         .step(&PlayCommand::Cross {
@@ -238,7 +238,7 @@ fn crossing_a_sealed_gate_is_refused() {
 
 #[test]
 fn crossing_a_gate_that_is_not_underfoot_is_refused() {
-    let mut session = common::session_at("north-gaol");
+    let mut session = common::behavior_session();
     let receipt = session
         .step(&PlayCommand::Cross {
             gate: entity("north_gate"),
@@ -250,7 +250,7 @@ fn crossing_a_gate_that_is_not_underfoot_is_refused() {
 
 #[test]
 fn interaction_range_does_not_invent_remote_actions() {
-    let mut session = common::session_at("north-gaol");
+    let mut session = common::behavior_session();
     let receipt = session
         .step(&PlayCommand::Interact {
             entity: entity("north_gate"),
@@ -267,7 +267,7 @@ fn interaction_range_does_not_invent_remote_actions() {
 
 #[test]
 fn an_undeclared_action_is_the_kernels_refusal() {
-    let mut session = common::session_at("north-gaol");
+    let mut session = common::behavior_session();
     common::drive(&mut session, "^^^^>>");
     let receipt = session
         .step(&PlayCommand::Interact {
@@ -283,7 +283,7 @@ fn an_undeclared_action_is_the_kernels_refusal() {
 fn an_interaction_does_not_offer_the_pursuer_a_step() {
     // The pursuit rule counts accepted player moves, not ticks. An interaction
     // advances the tick and leaves `moves_since_step` where it was.
-    let mut session = common::session_at("north-gaol");
+    let mut session = common::behavior_session();
     common::drive(&mut session, "^^^^>>");
     let before = session.live().state.moves_since_step;
     common::drive(&mut session, "*");
@@ -292,7 +292,7 @@ fn an_interaction_does_not_offer_the_pursuer_a_step() {
 
 #[test]
 fn a_command_after_the_run_is_over_is_refused_and_still_ticks() {
-    let mut session = common::session_at("north-gaol");
+    let mut session = common::behavior_session();
     common::drive(&mut session, "^^^^>>**>^");
     assert_eq!(session.outcome(), SessionOutcome::Completed);
     let tick_before = session.live().state.tick;
@@ -310,7 +310,7 @@ fn a_malformed_command_produces_no_receipt_and_no_tick() {
     // not an input, so there is nothing to decide about. This walks the same
     // path `wasm::nomos_play_step` walks — decode, then step — so the claim is
     // about the runtime's front door and not about the decoder alone.
-    let mut session = common::session_at("north-gaol");
+    let mut session = common::behavior_session();
     common::drive(&mut session, "^^");
     let receipts = session.receipts().len();
     let tick = session.live().state.tick;
@@ -339,8 +339,8 @@ fn the_reducer_is_a_function_of_the_state_and_the_input() {
     // Two sessions, the same log, byte-identical receipts. Determinism is a
     // property of the code — nothing here reads a clock or a hash map — and this
     // is the smallest statement of it.
-    let mut left = common::session_at("north-gaol");
-    let mut right = common::session_at("north-gaol");
+    let mut left = common::behavior_session();
+    let mut right = common::behavior_session();
     for session in [&mut left, &mut right] {
         common::drive(session, "^^^^>>**");
     }

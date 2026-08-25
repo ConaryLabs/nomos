@@ -1,4 +1,4 @@
-//! The six committed areas, played.
+//! The committed area corpus, played.
 //!
 //! This is where the numbers live. `docs/review/nomos-viewer.md` section 5.3
 //! used to predict `moves` and `cost` in JavaScript inside the smoke harness,
@@ -8,20 +8,64 @@
 
 mod common;
 
+use std::fs;
+use std::path::{Path, PathBuf};
+
 use nomos_play::{SessionOutcome, batch};
 
+fn files_below(directory: &Path, files: &mut Vec<PathBuf>) {
+    for entry in fs::read_dir(directory).expect("a crate test directory is readable") {
+        let path = entry.expect("a crate test entry is readable").path();
+        if path.is_dir() {
+            files_below(&path, files);
+        } else {
+            files.push(path);
+        }
+    }
+}
+
 #[test]
-fn the_six_area_route_costs_what_the_record_says() {
+fn no_crate_test_names_a_corpus_area() {
+    let crates = Path::new(env!("CARGO_MANIFEST_DIR")).join("..");
+    let ids = common::area_ids();
+    let mut files = Vec::new();
+    for entry in fs::read_dir(crates).expect("the crates directory is readable") {
+        let tests = entry
+            .expect("a crate-directory entry is readable")
+            .path()
+            .join("tests");
+        if tests.is_dir() {
+            files_below(&tests, &mut files);
+        }
+    }
+    assert!(!files.is_empty(), "crate tests were discovered");
+    for path in files {
+        let bytes = fs::read(&path).expect("a crate test file is readable");
+        for id in &ids {
+            assert!(
+                !bytes
+                    .windows(id.len())
+                    .any(|window| window == id.as_bytes()),
+                "{} names corpus area `{id}`",
+                path.display()
+            );
+        }
+    }
+}
+
+#[test]
+fn the_committed_route_costs_what_the_content_fixture_says() {
+    let expected = common::route_expectations();
     let session = common::play_route();
     assert_eq!(session.outcome(), SessionOutcome::Completed);
-    assert_eq!(session.areas_cleared(), 6);
-    assert_eq!(session.counters().moves, 65);
-    assert_eq!(session.counters().traversal_cost, 95);
-    // 77 keys: 65 moves and 12 interactions. Every input is one batch and one
-    // tick, so the tick is the input count and not the move count.
-    assert_eq!(session.log().len(), 77);
-    assert_eq!(session.receipts().len(), 77);
-    assert_eq!(session.live().state.tick, 77);
+    assert_eq!(session.areas_cleared(), expected.areas);
+    assert_eq!(session.counters().moves, expected.moves);
+    assert_eq!(session.counters().traversal_cost, expected.traversal_cost);
+    // Every key is one batch and one tick, so the tick is the input count and
+    // not the move count.
+    assert_eq!(session.log().len() as u64, expected.commands);
+    assert_eq!(session.receipts().len() as u64, expected.commands);
+    assert_eq!(session.live().state.tick, expected.commands);
 }
 
 #[test]
@@ -55,14 +99,15 @@ fn every_input_the_route_sends_is_accepted() {
 /// objective gate is within reach.
 #[test]
 fn the_enumeration_offers_exactly_the_gate_the_route_uses() {
-    for (index, area_id) in common::ROUTE.iter().enumerate() {
+    for (index, leg) in common::route_expectations().route.iter().enumerate() {
+        let area_id = &leg.area;
         let mut session = common::session_at(area_id);
         if index > 0 {
             // Every area but the first is entered at its own `route.entry`;
             // opening it directly puts the player at the declared cell instead,
             // which is the same cell for this corpus. Walk the route either way.
         }
-        let keys = common::ROUTE_KEYS[index];
+        let keys = &leg.keys;
         let before_interaction: String = keys.chars().take_while(|key| *key != '*').collect();
         common::drive(&mut session, &before_interaction);
 
@@ -91,25 +136,32 @@ fn interacting_reaches_the_state_hash_the_captured_scenario_recorded() {
     // of the same kernel, so playing to the same point must reach the same
     // kernel state hash. This is the strongest single check that the runtime
     // and the capture agree.
-    let mut session = common::session_at("north-gaol");
-    common::drive(&mut session, "^^^^>>");
+    let area = common::behavior_area();
+    let mut session = common::session_at(&area);
+    let keys = common::keys_for(&area);
+    let before_interaction = keys
+        .chars()
+        .take_while(|key| *key != '*')
+        .collect::<String>();
+    common::drive(&mut session, &before_interaction);
     let baseline = session.live().state.kernel_state_hash().to_hex();
     assert_eq!(
-        baseline, "9d81ddaf8c3310a10399ce1c727d117f5385426f5e3fc0b1575d7ec042d3e49d",
+        baseline,
+        common::scenario_hash(&area, 0),
         "walking changes no kernel state, so this is still `01-baseline`"
     );
 
     common::drive(&mut session, "*");
     assert_eq!(
         session.live().state.kernel_state_hash().to_hex(),
-        "bc01b2f3427a95341e89c1a0cf9d4aca2190e20a90b7d38fd4a4ed1a8a0f5150",
+        common::scenario_hash(&area, 1),
         "`ignite` reaches the `02-breached-warded` state hash"
     );
 
     common::drive(&mut session, "*");
     assert_eq!(
         session.live().state.kernel_state_hash().to_hex(),
-        "0c0a573503282ec7b8f10dada7da267b96f04c089054936b84bece096b0ac7f2",
+        common::scenario_hash(&area, 2),
         "`unseal` reaches the `03-breached-unsealed` state hash"
     );
 }
@@ -120,10 +172,11 @@ fn the_initial_kernel_state_is_the_first_captured_scenario() {
     // `plan.scenarios[0]` as "the default" by array position; the initial state
     // is `SimulationState::initialize`, a kernel fact, and it happens to be the
     // state that convention was describing.
-    let session = common::session_at("north-gaol");
+    let area = common::behavior_area();
+    let session = common::session_at(&area);
     assert_eq!(
         session.live().state.kernel_state_hash().to_hex(),
-        "9d81ddaf8c3310a10399ce1c727d117f5385426f5e3fc0b1575d7ec042d3e49d"
+        common::scenario_hash(&area, 0)
     );
     assert_eq!(session.live().state.kernel.state().tick(), 0);
 }
@@ -135,8 +188,8 @@ fn only_one_entity_covers_any_cell_in_the_committed_corpus() {
     // two agree because no cell is covered twice; that is measured here rather
     // than assumed, so a content change that overlapped two water regions would
     // fail a test instead of quietly changing a cost.
-    for area_id in common::ROUTE {
-        let session = common::session_at(area_id);
+    for area_id in common::area_ids() {
+        let session = common::session_at(&area_id);
         let area = session.live();
         for y in 0..area.plan.height {
             for x in 0..area.plan.width {

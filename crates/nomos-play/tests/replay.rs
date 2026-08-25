@@ -84,7 +84,8 @@ fn a_tampered_receipt_is_caught_at_its_ordinal() {
         Some(6),
         "the seventh batch is ordinal 6"
     );
-    assert_eq!(divergence.area.as_deref(), Some("cistern-walk"));
+    let start = common::route_expectations().route[0].area.clone();
+    assert_eq!(divergence.area.as_deref(), Some(start.as_str()));
 }
 
 #[test]
@@ -92,17 +93,15 @@ fn a_replay_against_different_content_is_refused_not_reported_as_a_divergence() 
     // A content mismatch is a harness error. Reporting it as a runtime
     // difference would be a lie about what diverged.
     let (_, session) = recorded();
+    let start = common::route_expectations().route[0].area.clone();
+    let other = common::different_area(&start);
     let error = replay(&session, |area| {
-        let other = if area == "cistern-walk" {
-            "north-gaol"
-        } else {
-            area
-        };
-        Ok((common::plan(other), common::semantics(other)))
+        let selected = if area == start { other.as_str() } else { area };
+        Ok((common::plan(selected), common::semantics(selected)))
     })
     .unwrap_err();
     assert_eq!(error.code(), codes::CONTENT_MISMATCH);
-    assert!(error.message().contains("cistern-walk"));
+    assert!(error.message().contains(&start));
 }
 
 #[test]
@@ -110,8 +109,14 @@ fn the_recorded_log_carries_the_refusals_too() {
     // The reason a refused batch commits: the recorded log is what the smoke
     // lane replays, and a log with the refusals dropped could not show that the
     // browser refused the same inputs at the same ticks.
-    let mut session = common::session_at("north-gaol");
-    common::drive(&mut session, "^^^^>>");
+    let area = common::behavior_area();
+    let mut session = common::session_at(&area);
+    let keys = common::keys_for(&area);
+    let before_interaction = keys
+        .chars()
+        .take_while(|key| *key != '*')
+        .collect::<String>();
+    common::drive(&mut session, &before_interaction);
     session
         .step(&common::step(nomos_play::Direction::North))
         .unwrap();
@@ -130,15 +135,17 @@ fn the_recorded_log_carries_the_refusals_too() {
 
 #[test]
 fn a_replay_reproduces_the_final_kernel_state_hash() {
+    let expected = common::route_expectations();
+    let live = common::play_route();
     let (_, session) = recorded();
     let report = replay(&session, content).unwrap();
     assert_eq!(
-        report.final_kernel_state_hash.to_hex(),
-        "0c0a573503282ec7b8f10dada7da267b96f04c089054936b84bece096b0ac7f2",
-        "north-gaol at `03-breached-unsealed`, where the route leaves it"
+        report.final_kernel_state_hash,
+        live.live().state.kernel_state_hash(),
+        "replay reaches the recorded route's final kernel state"
     );
-    assert_eq!(report.areas, 6);
-    assert_eq!(report.commands, 77);
+    assert_eq!(report.areas, usize::try_from(expected.areas).unwrap());
+    assert_eq!(report.commands, usize::try_from(expected.commands).unwrap());
 }
 
 #[test]
