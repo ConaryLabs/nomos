@@ -2,11 +2,11 @@
 
 use std::collections::BTreeSet;
 
-use nomos_core::{Diagnostic, NamespaceId};
+use nomos_core::{Diagnostic, Ident, NamespaceId};
 use nomos_projection::{
     LightProjectionConsumer, MachineDefinition, MovementClaim, MovementConnectivity,
-    MovementDisposition, ProjectedActivation, ResolvedLight, ResolvedLightFacts, ResolvedMovement,
-    ResolvedMovementFacts, SimulationPlan,
+    MovementDisposition, ResolvedLight, ResolvedLightFacts, ResolvedMovement,
+    ResolvedMovementFacts, SimulationPlan, activation_is_true,
 };
 
 use crate::SimulationState;
@@ -36,13 +36,14 @@ pub fn resolve_movement(
         ));
     }
 
+    let state_equals = machine_state_lookup(plan, state);
     let mut facts = Vec::new();
     for subject in resolver.subjects() {
         validate_connectivity(subject.connectivity())?;
         let mut blockers = Vec::new();
         let mut active_costs = Vec::new();
         for claim in subject.claims() {
-            if !activation_is_true(claim.activation(), plan, state)? {
+            if !activation_is_true(claim.activation(), &state_equals)? {
                 continue;
             }
             match claim {
@@ -105,6 +106,7 @@ pub fn resolve_light(
         ));
     }
 
+    let state_equals = machine_state_lookup(plan, state);
     let mut facts = Vec::new();
     for subject in resolver.subjects() {
         let mut reasons = Vec::new();
@@ -118,7 +120,7 @@ pub fn resolve_light(
                     ),
                 ));
             }
-            if activation_is_true(claim.activation(), plan, state)? {
+            if activation_is_true(claim.activation(), &state_equals)? {
                 reasons.push(claim.id().clone());
             }
         }
@@ -152,55 +154,33 @@ fn validate_connectivity(connectivity: &MovementConnectivity) -> Result<(), Diag
     }
 }
 
-fn activation_is_true(
-    activation: &ProjectedActivation,
-    plan: &SimulationPlan,
-    state: &SimulationState,
-) -> Result<bool, Diagnostic> {
-    match activation {
-        ProjectedActivation::Always => Ok(true),
-        ProjectedActivation::StateEquals {
-            namespace,
-            state: required,
-        } => {
-            let machine = find_machine(plan, namespace).ok_or_else(|| {
-                missing_reference(format!(
-                    "claim activation namespace `{namespace}` is absent from the simulation plan"
-                ))
-            })?;
-            if !machine.states().contains(required) {
-                return Err(missing_reference(format!(
-                    "claim activation state `{required}` is absent from `{namespace}`"
-                )));
-            }
-            let current = state.machine(namespace).ok_or_else(|| {
-                missing_reference(format!(
-                    "claim activation namespace `{namespace}` is absent from current state"
-                ))
-            })?;
-            Ok(current == required)
+/// The runtime state lookup `nomos_projection::activation_is_true` consumes.
+///
+/// It owns the three diagnostics the runtime resolver has always emitted for a
+/// projection that names something it does not carry: a namespace absent from
+/// the plan, a state absent from that machine, and a namespace absent from the
+/// current state. Issue #136 moved the evaluator, not these messages.
+fn machine_state_lookup<'a>(
+    plan: &'a SimulationPlan,
+    state: &'a SimulationState,
+) -> impl Fn(&NamespaceId, &Ident) -> Result<bool, Diagnostic> + 'a {
+    move |namespace, required| {
+        let machine = find_machine(plan, namespace).ok_or_else(|| {
+            missing_reference(format!(
+                "claim activation namespace `{namespace}` is absent from the simulation plan"
+            ))
+        })?;
+        if !machine.states().contains(required) {
+            return Err(missing_reference(format!(
+                "claim activation state `{required}` is absent from `{namespace}`"
+            )));
         }
-        ProjectedActivation::Any(children) => {
-            if children.is_empty() {
-                return Err(invalid_group("any"));
-            }
-            let mut result = false;
-            for child in children {
-                result |= activation_is_true(child, plan, state)?;
-            }
-            Ok(result)
-        }
-        ProjectedActivation::All(children) => {
-            if children.is_empty() {
-                return Err(invalid_group("all"));
-            }
-            let mut result = true;
-            for child in children {
-                result &= activation_is_true(child, plan, state)?;
-            }
-            Ok(result)
-        }
-        ProjectedActivation::Not(child) => Ok(!activation_is_true(child, plan, state)?),
+        let current = state.machine(namespace).ok_or_else(|| {
+            missing_reference(format!(
+                "claim activation namespace `{namespace}` is absent from current state"
+            ))
+        })?;
+        Ok(current == required)
     }
 }
 
@@ -218,12 +198,5 @@ fn missing_reference(message: String) -> Diagnostic {
     Diagnostic::new(
         nomos_core::diagnostic::codes::RESOLVER_RUNTIME_REFERENCE_MISSING,
         message,
-    )
-}
-
-fn invalid_group(kind: &str) -> Diagnostic {
-    Diagnostic::new(
-        nomos_core::diagnostic::codes::RESOLVER_PLAN_INVALID,
-        format!("runtime received an empty `{kind}` activation group"),
     )
 }

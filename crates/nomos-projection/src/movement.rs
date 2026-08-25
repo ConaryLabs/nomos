@@ -159,6 +159,72 @@ fn activation_group(kind: &'static str, children: &[ProjectedActivation]) -> Can
     ])
 }
 
+/// Evaluates one projected activation against a caller-supplied state lookup.
+///
+/// This is the only evaluator of [`ProjectedActivation`] in the workspace. It
+/// lived twice — `nomos_sim`'s runtime resolver and `nomos_compiler`'s
+/// compile-time initial-movement shape each carried a private copy that nothing
+/// proved equal (issue #136). Neither crate may depend on the other, so the one
+/// function lives beside the type both already consume.
+///
+/// `state_equals` answers exactly one question — is `namespace` currently in
+/// `state`? — and owns the diagnostic for a namespace or state it cannot answer
+/// for. That is deliberate: the runtime resolver checks the simulation plan and
+/// the live state and reports which of the two is missing, while the compiler
+/// checks the world's initial states, and the two emit different stable codes
+/// and messages. Unifying the text would change accepted diagnostics; supplying
+/// it does not.
+///
+/// This evaluates one activation node. It composes no movement disposition and
+/// no light fact, so it is not a second resolver: effective facts still come
+/// from `nomos_sim::resolve_movement` and `nomos_sim::resolve_light`, which
+/// keep the projected-law flags in the path.
+///
+/// # Errors
+///
+/// Propagates whatever diagnostic `state_equals` returns, and returns `EK0907`
+/// for an empty `any` or `all` group, which no validly projected plan contains.
+pub fn activation_is_true<L>(
+    activation: &ProjectedActivation,
+    state_equals: &L,
+) -> Result<bool, Diagnostic>
+where
+    L: Fn(&NamespaceId, &Ident) -> Result<bool, Diagnostic>,
+{
+    match activation {
+        ProjectedActivation::Always => Ok(true),
+        ProjectedActivation::StateEquals { namespace, state } => state_equals(namespace, state),
+        ProjectedActivation::Any(children) => {
+            if children.is_empty() {
+                return Err(empty_activation_group("any"));
+            }
+            let mut result = false;
+            for child in children {
+                result |= activation_is_true(child, state_equals)?;
+            }
+            Ok(result)
+        }
+        ProjectedActivation::All(children) => {
+            if children.is_empty() {
+                return Err(empty_activation_group("all"));
+            }
+            let mut result = true;
+            for child in children {
+                result &= activation_is_true(child, state_equals)?;
+            }
+            Ok(result)
+        }
+        ProjectedActivation::Not(child) => Ok(!activation_is_true(child, state_equals)?),
+    }
+}
+
+fn empty_activation_group(kind: &str) -> Diagnostic {
+    Diagnostic::new(
+        nomos_core::diagnostic::codes::RESOLVER_PLAN_INVALID,
+        format!("runtime received an empty `{kind}` activation group"),
+    )
+}
+
 /// One typed movement claim projected from the compiler-owned catalog.
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub enum MovementClaim {
