@@ -1,23 +1,34 @@
 ---
 title: R1 clean-checkout offline and budget evidence
-status: Author and CI evidence; non-author candidate rerun pending
+status: Exact combined-candidate CI evidence; final disposition pending
 date: 2026-08-26
-candidate: bdd2229219bfb3b9efdf6c64f0d865f3202a4d82
-workflow_run: 32905965046
-artifact_id: 9584836533
-issue: 172
+candidate: bf9e11b25a37591401033d76b94ac875a1cb92c1
+candidate_tree: df7b1a9c023f5c9b4943b61f39c13f6b67668ead
+workflow_run: 32908589982
+workflow_job: 97997912940
+artifact_id: 9585756215
+artifact_sha256: 8180c7ee3e267e6ff9b371a982189a6161a3c308a092d59d215bc535aadf104d
+issue: 178
+originating_issue: 172
 ---
 
 # R1 clean-checkout offline and budget evidence
 
-This is the compact repository copy of the load-bearing receipt from the
-successful `nomos viewer` workflow run `32905965046`, job `R1 offline build,
-artifact, budgets`. The job checked out exact branch head
-`bdd2229219bfb3b9efdf6c64f0d865f3202a4d82`. GitHub artifact `9584836533`,
-`r1-adoption-evidence`, has archive SHA-256
-`8e17731c3db4fd2d9859430e8133fc3a3a11c7dfc0e7e63ef864d06837160c72`;
+This is the compact repository copy of the load-bearing receipt from successful
+`nomos viewer` workflow run `32908589982`, job `97997912940`, `R1 offline
+build, artifact, budgets`. The job checked out exact combined candidate
+`bf9e11b25a37591401033d76b94ac875a1cb92c1`, tree
+`df7b1a9c023f5c9b4943b61f39c13f6b67668ead`. GitHub artifact `9585756215`,
+`r1-adoption-evidence`, is 1 497 140 bytes and has archive SHA-256
+`8180c7ee3e267e6ff9b371a982189a6161a3c308a092d59d215bc535aadf104d`;
 its compact `receipt.txt` hashes to
-`be77b3b9652157575265cd3ae0a8c2de9edc740234763b2477c4fcfcf4089e0a`.
+`2e6b8fe887c33431ae99d186233a673d31e2bd55a87ad3b27562bfe7bc5d9228`.
+
+The earlier implementation-head receipt at
+`bdd2229219bfb3b9efdf6c64f0d865f3202a4d82`, run `32905965046`, artifact
+`9584836533`, remains immutable historical evidence. This record supersedes its
+transcription because the combined corrective merges changed the exact wasm
+and public-artifact bytes; it does not relabel or alter the earlier artifact.
 
 The artifact contains the environment, exact command ledger, build timing and
 disk samples, all operation samples, the compiled fixture and base run used by
@@ -51,7 +62,7 @@ output, that isolated process:
 The receipt reports `workspace_build_offline yes`, `workspace_test_offline
 yes`, `public_artifact_offline yes`, and clean state before and after. Its exact
 command ledger hashes to
-`60c423b6f9082873a9becfe70d85b7fa32630c7948cf61dd9c28d565d0958a96`.
+`b96dd69de3e3266efe4c404df5e6fddcc342360afdda2f3833ce943aaa36996f`.
 
 ## Measurements
 
@@ -61,14 +72,14 @@ the sum of regular-file bytes rather than allocated disk blocks.
 
 | Field | Observation |
 | --- | ---: |
-| Clean release workspace build | 17.344341824 s |
-| Validation | 9.783460 ms median; 9.988658 ms p95 |
-| Kernel replay | 349.668386 committed commands/s; five commands per replay |
-| Six-area play replay | 1 206.731111 committed commands/s; 63.476209 ms median; 65.063893 ms p95; 77 commands per replay |
+| Clean release workspace build | 22.224724296 s |
+| Validation | 15.692150 ms median; 15.904666 ms p95 |
+| Kernel replay | 226.912927 committed commands/s; five commands per replay |
+| Six-area play replay | 932.278176 committed commands/s; 82.272551 ms median; 83.615599 ms p95; 77 commands per replay |
 | Compiled accepted-fixture package | 20 492 bytes; 8 regular files |
-| Staged and scanned public artifact | 1 387 887 bytes; 24 regular files |
-| Authoritative wasm runtime | 422 432 bytes; SHA-256 `70addbe7662caab4af2d0147c09dc8e839dd282c617a99cd325ced026d0d3a0f` |
-| Cold edit-to-visible frame | 27 771 ms; navigation-to-first-frame component 2 056 ms |
+| Staged and scanned public artifact | 1 386 650 bytes; 24 regular files |
+| Authoritative wasm runtime | 421 195 bytes; SHA-256 `e8e03c125667ad937939f4a628b67df9ff813a88823fecd859784ed241673c97` |
+| Cold edit-to-visible frame | 27 740 ms; navigation-to-first-frame component 2 821 ms |
 
 The edit-to-visible interval starts before content compilation/capture, when no
 derived content, wasm runtime, or public artifact exists. It ends when the page
@@ -78,28 +89,31 @@ play and native replay. Proof-only viewer tests run before the interval and are
 also excluded.
 
 The raw Gate K operation samples hash to
-`ea6acad0b1fe99200c028b600e79c2b5ede9223fbd0dd515633ff2304041b500`;
+`e3fcdc45bfa71e49880decc4a7a70d2d4ac08dbacf3a2a67f79ddc1424ead22d`;
 the raw play-replay samples hash to
-`6b3d577af6e0771355a94b40adbf3811590fc245d11c6743e7151f76dcdb0cd8`.
+`90363f85056ee947d353dab5b4f83ecdbe1be2ed8baed4f8e22dd32489e7bd42`.
 The build, kernel-operation, kernel-throughput, and play-replay summary tables
 hash respectively to
-`e89b32e0bd3539b2035c4a27a590b0038c01c745fc2da6a75d5b7fbc8472290b`,
-`a3227157f08a598563e00c72bcffd8a29f745b457689c80fdf56887cab4cae7e`,
-`1d369235bb03463626ed16e4ec738866e6b807290606163cd01bd80658e55f66`,
-and `ad4d6cd5d257fd5193b41cd54b0cdaa4c114830f7c7f425d35806a1350c5c3aa`.
+`4de7a7f4c4026e38451bcaef9ea0cef152170b3699e1e05a2adaf56d89b769bc`,
+`2893bb2c4e6f32c526458b27c1b3619340d2d98ffa4fce246200a4eb6c21c762`,
+`11866c5d0a28497eaa89a28f35c4a428193e2d91c804c96e51c56155f2a7da59`,
+and `b6953e8ca961e3641ab0a0dca707e5e18273406087f5a51bb4c15677a668c68f`.
 The staged-build and browser receipts hash to
-`7ad93fc176ef6a7ebf6e8743051d7b069b947cdcd3602879d8257e379e959647`
-and `2962b70d487b6459ac1ff28f86457a519d40713bd030934dc07a7a4686d6be4a`.
+`2cbf870c5825d7e61cf2da6c7f8ec924db90f5a48e931dbfae6a6ddf1f77e0c7`
+and `e457726c2ae81f897c682275c5ad4d27eec1dc8b2649a5f2e2497883291cd7f5`.
 
 ## Environment and limits
 
-The runner was GitHub `ubuntu24` x86_64 image `20260823.283.1`, Linux
+The runner was GitHub `ubuntu24` x86_64 image `20260816.277.1`, Linux
 `6.17.0-1022-azure`, Rust and Cargo `1.98.0`, Node `22.23.2`, and Chrome
-`151.0.7922.173`. These are observations of that runner, not portable targets
+`151.0.7922.137`. These are observations of that runner, not portable targets
 or guarantees.
 
-This record is author and CI evidence. CI is not the non-author reviewer
-required by `AGENTS.md`; the frozen R1 candidate still needs its final
-different-author rerun before an adoption disposition can call it green. This
-follow-up documentation commit records the successful implementation-head
-measurement and does not rewrite its samples as measurements of a later tree.
+Independent reviewer `/root/final_r1_proof` downloaded this exact artifact,
+recomputed its load-bearing hashes, reproduced the wasm size and digest in a
+fresh local build, and passed the complete implementation proof on the same
+candidate. That review correctly kept the overall verdict incomplete because
+the prior repository copy did not yet bind these measurements and issue #176's
+contract-text contradiction remained open. This evidence refresh resolves only
+the former; it does not pre-approve the later combined candidate or decision
+0019.

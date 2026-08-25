@@ -1,12 +1,13 @@
 ---
 title: The R1 runtime contract
-status: Owner-authorized; revision 2 in force
+status: Owner-authorized; revision 3 in force
 epoch: R1
-contract_revision: 2
+contract_revision: 3
 authority: docs/decisions/0017-post-gate-k-runtime-epoch.md
 revision_2_authority: docs/decisions/0018-runtime-revision-2.md
+revision_3_authority: docs/decisions/0020-runtime-revision-3.md
 kernel_contract: KERNEL.md revision 7, frozen
-date: 2026-08-25
+date: 2026-08-26
 issue: 128
 ---
 
@@ -272,9 +273,11 @@ Accepted when:
   `crates/nomos-sim/src/effective_facts.rs`. It is not added to
   `docs/evaluation/SCHEMA_OWNERSHIP.md`, which is frozen Gate K evidence;
 - `experiments/executable-gaol/compare-effective-facts.sh` reports
-  `20 scenarios compared, 0 differences` against the committed
-  `rendering-plan.example.json` blocks, with the `"cost": null` spelling on a
-  blocked subject the only normalization;
+  `30 scenarios compared, 0 differences` against the committed
+  `rendering-plan.example.json` blocks — the original twenty scenarios plus
+  the ten from the two cold-authored areas in the quarantined experiment —
+  with the `"cost": null` spelling on a blocked subject the only
+  normalization;
 - byte identity holds across ten runs for the fixed triple of source bytes,
   source path, and runtime state — not for source bytes alone, because the
   source path appears in claim source spans and is therefore inside the hash
@@ -506,20 +509,24 @@ below is a target value, and no unmeasured claim of sufficiency satisfies
 acceptance.
 
 Unless a row names earlier cross-machine evidence, the current values are from
-commit `bdd2229219bfb3b9efdf6c64f0d865f3202a4d82`, workflow run `32905965046`,
-on the `ubuntu24` x86_64 runner image `20260823.283.1`; the compact receipt is
-`docs/evaluation/r1-adoption-evidence.md`.
+combined candidate `bf9e11b25a37591401033d76b94ac875a1cb92c1`, tree
+`df7b1a9c023f5c9b4943b61f39c13f6b67668ead`, workflow run `32908589982`, job
+`97997912940`, on the `ubuntu24` x86_64 runner image `20260816.277.1`; the
+compact receipt is `docs/evaluation/r1-adoption-evidence.md`. The prior values
+from implementation head `bdd2229219bfb3b9efdf6c64f0d865f3202a4d82` and run
+`32905965046` remain immutable historical evidence and are superseded here
+because they predate the final corrective merges.
 
 | Field | Unit | How measured | Value |
 | --- | --- | --- | --- |
-| Workspace build time | s | clean release build of the workspace, Cargo offline | 17.344 |
-| Validation latency | ms | `nomos validate` on the accepted fixture; three warmups, twenty process-level samples | 9.783 median; 9.989 p95 |
-| Replay throughput | commands/s | `nomos replay` over the accepted five-command log; three warmups, twenty process-level samples | 349.668 |
-| Play replay throughput | commands/s | release `nomos-play replay` over the recorded six-area, 77-command browser session; three warmups, twenty process-level samples, process start and six projection decodes included | 1 206.731; 63.476 ms median and 65.064 ms p95 per replay |
+| Workspace build time | s | clean release build of the workspace, Cargo offline | 22.225 |
+| Validation latency | ms | `nomos validate` on the accepted fixture; three warmups, twenty process-level samples | 15.692 median; 15.905 p95 |
+| Replay throughput | commands/s | `nomos replay` over the accepted five-command log; three warmups, twenty process-level samples | 226.913 |
+| Play replay throughput | commands/s | release `nomos-play replay` over the recorded six-area, 77-command browser session; three warmups, twenty process-level samples, process start and six projection decodes included | 932.278; 82.273 ms median and 83.616 ms p95 per replay |
 | Package size | bytes | sum of regular-file bytes in the compiled accepted-fixture package | 20 492 across 8 files |
-| Public artifact size | bytes | sum of regular-file bytes in the staged and scanned six-area public site | 1 387 887 across 24 files |
-| Play runtime size | bytes | `crates/nomos-play/build-wasm.sh`, `stat -c%s` | 422 432, sha256 `70addbe7662caab4af2d0147c09dc8e839dd282c617a99cd325ced026d0d3a0f`. The isolated run reproduced the value; two builds with the wasm target removed between them and CI run 32883772392 from another checkout path had already reproduced the same digest. The profile is measured rather than assumed — the same crate was 554 732 bytes under the plain release profile, and the four knobs `[profile.wasm]` sets are what closes the gap |
-| Edit-to-visible-frame latency | ms | cold content pipeline before compilation/capture through the browser's first completed WebGL render; proof-only tests excluded | 27 771 total, of which navigation to first frame was 2 056 |
+| Public artifact size | bytes | sum of regular-file bytes in the staged and scanned six-area public site | 1 386 650 across 24 files |
+| Play runtime size | bytes | `crates/nomos-play/build-wasm.sh`, `stat -c%s` | 421 195, sha256 `e8e03c125667ad937939f4a628b67df9ff813a88823fecd859784ed241673c97`. The isolated CI run and the different-author local rebuild reproduced the same value and digest. The profile is measured rather than assumed — the same crate was previously 554 732 bytes under the plain release profile, and the four knobs `[profile.wasm]` sets are what closes the gap |
+| Edit-to-visible-frame latency | ms | cold content pipeline before compilation/capture through the browser's first completed WebGL render; proof-only tests excluded | 27 740 total, of which navigation to first frame was 2 821 |
 
 ## 8. Contract repair
 
