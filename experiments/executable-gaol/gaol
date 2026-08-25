@@ -58,8 +58,12 @@ build() {
       "$area_output/rendering-plan.json" "$area_output/frames"
   done
 
-  node "$experiment_dir/src/build-collection.mjs" \
-    "$output_dir/areas" "$output_dir/areas.json"
+  # The route graph is the compiler's, not JavaScript's: `build-collection.mjs`
+  # was deleted by issue #152 and `nomos.area_collection@1` is declared by
+  # crates/nomos-render-plan/src/collection.rs.
+  target/debug/nomos-render-plan collection \
+    --plans "$output_dir/areas" \
+    --out "$output_dir/areas.json"
   node "$experiment_dir/src/capture-collection.mjs" \
     "$output_dir/areas.json" "$output_dir/areas" "$output_dir/frames"
 }
@@ -76,7 +80,10 @@ case "$mode" in
   verify)
     build
     node --test "$experiment_dir/src/"*.test.mjs
-    cmp "$output_dir/areas.json" "$experiment_dir/area-collection.example.json"
+    node "$experiment_dir/src/verify.mjs" --collection \
+      "$output_dir/areas.json" \
+      "$experiment_dir/area-collection.example.json" \
+      "$output_dir/areas"
     for area_dir in "$areas_dir"/*; do
       [[ -d $area_dir ]] || continue
       area_id=$(basename "$area_dir")

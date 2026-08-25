@@ -56,10 +56,23 @@ test("plan binds its identity and refuses a mismatch", () => {
 
 test("collection binds its identity and its route", () => {
   const collection = decodeCollection(collectionDocument());
-  assert.equal(collection.schema, "nomos.experiment.area_collection@2");
+  assert.equal(collection.schema, "nomos.area_collection@1");
   assert.deepEqual([...collection.order], ["test-hall", "test-yard"]);
+  // The identity issue #152 retired. It was declared by quarantined tooling, and
+  // an artifact still carrying it is refused by name rather than half-read.
+  const stale = refuses(CODES.SCHEMA_MISMATCH, () =>
+    decodeCollection(
+      edited(collectionDocument(), "schema", "nomos.experiment.area_collection@2"),
+      "areas.json",
+    ),
+  );
+  assert.match(
+    stale.message,
+    /expected schema `nomos\.area_collection@1`, found `nomos\.experiment\.area_collection@2`/,
+  );
+  assert.match(stale.message, /areas\.json/);
   refuses(CODES.SCHEMA_MISMATCH, () =>
-    decodeCollection(edited(collectionDocument(), "schema", "nomos.experiment.area_collection@1")),
+    decodeCollection(edited(collectionDocument(), "schema", "nomos.area_collection@2")),
   );
   // A route that does not reach every declared area is a broken run, not a
   // viewer that quietly plays three of four rooms.
@@ -233,15 +246,38 @@ test("loading joins only relative paths the collection declared", async () => {
   ]);
 });
 
-test("a plan path that is not the staged layout is refused", () => {
+test("a plan file name that is not the staged layout is refused", () => {
+  for (const name of [
+    "https://example.invalid/plan.json",
+    "../../etc/passwd",
+    "//example.invalid/plan.json",
+    "areas/test-hall.json",
+  ]) {
+    refuses(CODES.CONSTRAINT, () =>
+      decodeCollection(edited(collectionDocument(), "areas.0.plan.file", name)),
+    );
+  }
+  // The digest is a digest, and the app says so before it publishes one.
   refuses(CODES.CONSTRAINT, () =>
-    decodeCollection(edited(collectionDocument(), "areas.0.plan", "https://example.invalid/plan.json")),
+    decodeCollection(edited(collectionDocument(), "areas.0.plan.sha256", "not-a-digest")),
+  );
+});
+
+test("the collection's two halves must agree with each other", () => {
+  // The route is derived from the area rows by one emitter, so a document whose
+  // halves disagree is a broken emitter rather than a viewer's problem to
+  // reconcile.
+  refuses(CODES.CONSTRAINT, () =>
+    decodeCollection(edited(collectionDocument(), "route.0.gate", "yard_gate")),
   );
   refuses(CODES.CONSTRAINT, () =>
-    decodeCollection(edited(collectionDocument(), "areas.0.plan", "../../etc/passwd")),
+    decodeCollection(edited(collectionDocument(), "route.0.entry.x", 4)),
   );
   refuses(CODES.CONSTRAINT, () =>
-    decodeCollection(edited(collectionDocument(), "areas.0.plan", "//example.invalid/plan.json")),
+    decodeCollection(edited(collectionDocument(), "areas.0.start", false)),
+  );
+  refuses(CODES.CONSTRAINT, () =>
+    decodeCollection(edited(collectionDocument(), "areas.1.entry", null)),
   );
 });
 

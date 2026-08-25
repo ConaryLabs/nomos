@@ -28,11 +28,12 @@ import {
 
 export const PLAN_SCHEMA = "nomos.rendering_plan@2";
 
-// Declared by `experiments/executable-gaol/src/build-collection.mjs`, which is
-// quarantined tooling: the four plans are accepted output, the file that
-// stitches them into a route is not. Recorded in the design record as finding 2
-// and ruled acceptable for R1-4; issue #152 carries promoting it.
-export const COLLECTION_SCHEMA = "nomos.experiment.area_collection@2";
+// Declared by `crates/nomos-render-plan/src/collection.rs` and registered in
+// `docs/evaluation/R1_SCHEMA_OWNERSHIP.md`. It was
+// `nomos.experiment.area_collection@2`, declared by quarantined tooling, which
+// the design record raised as finding 2 and issue #152 closed: both identities
+// this app binds are now emitted by accepted code.
+export const COLLECTION_SCHEMA = "nomos.area_collection@1";
 
 /// A refusal. The code space is `NV####`, disjoint by prefix from the frozen
 /// Gate K `EK` space and from `nomos-render-plan`'s `RP` space.
@@ -697,7 +698,15 @@ function checkPlanReferences(plan, artifact) {
 // The area collection
 // ---------------------------------------------------------------------------
 
-/// Decodes one `nomos.experiment.area_collection@2` document.
+// A published plan's digest, as the collection spells one.
+const SHA256 = /^[0-9a-f]{64}$/;
+
+const sameCell = (left, right) =>
+  left === null
+    ? right === null
+    : right !== null && left.x === right.x && left.y === right.y && left.z === right.z;
+
+/// Decodes one `nomos.area_collection@1` document.
 export function decodeCollection(document, artifact = "the area collection") {
   bindSchema(document, COLLECTION_SCHEMA, artifact);
   refuseNonIntegerNumbers(document, artifact);
@@ -728,25 +737,63 @@ export function decodeCollection(document, artifact = "the area collection") {
   const areaIds = new Set();
   const areas = array(document.areas, "areas", artifact).map((one, at) => {
     const row = `areas[${at}]`;
-    object(one, row, ["id", "label", "plan"], artifact);
+    object(one, row, ["id", "label", "start", "exit", "entry", "plan"], artifact);
     const id = text(one.id, `${row}.id`, artifact);
     constrain(!areaIds.has(id), `areas declares \`${id}\` twice`, artifact);
     areaIds.add(id);
-    const planPath = text(one.plan, `${row}.plan`, artifact);
-    // The only path the app ever joins onto its own base. Anything that could
+
+    object(one.plan, `${row}.plan`, ["file", "sha256"], artifact);
+    const file = text(one.plan.file, `${row}.plan.file`, artifact);
+    // The one name the app ever joins onto its own base. Anything that could
     // reach another origin, or climb out of the staged tree, is refused here
     // rather than by the browser.
     constrain(
-      planPath === `areas/${id}.json`,
-      `${row}.plan is \`${planPath}\`, and the staged layout names it \`areas/${id}.json\``,
+      file === `${id}.json`,
+      `${row}.plan.file is \`${file}\`, and the staged layout names it \`${id}.json\``,
       artifact,
     );
-    return Object.freeze({ id, label: text(one.label, `${row}.label`, artifact), plan: planPath });
+    const sha256 = text(one.plan.sha256, `${row}.plan.sha256`, artifact);
+    constrain(SHA256.test(sha256), `${row}.plan.sha256 is not a SHA-256 digest`, artifact);
+
+    object(one.exit, `${row}.exit`, ["gate", "to_area"], artifact);
+    const start = bool(one.start, `${row}.start`, artifact);
+    const entry = one.entry === null ? null : Object.freeze(cell(one.entry, `${row}.entry`, artifact));
+    constrain(
+      start === (entry === null),
+      `${row} declares an arrival cell if and only if it is not the start area`,
+      artifact,
+    );
+    return Object.freeze({
+      id,
+      label: text(one.label, `${row}.label`, artifact),
+      start,
+      exit: Object.freeze({
+        gate: text(one.exit.gate, `${row}.exit.gate`, artifact),
+        to_area:
+          one.exit.to_area === null ? null : text(one.exit.to_area, `${row}.exit.to_area`, artifact),
+      }),
+      entry,
+      file,
+      sha256,
+      // Derived, not declared. The collection names the file; where the staged
+      // tree puts it is this app's own layout, and the compiler has no business
+      // knowing it.
+      plan: `areas/${file}`,
+    });
   });
+  const byId = new Map(areas.map((one) => [one.id, one]));
 
   const startArea = text(document.start_area, "start_area", artifact);
   reference(areaIds.has(startArea), `start_area names absent area \`${startArea}\``, artifact);
+  constrain(
+    byId.get(startArea).start === true,
+    `\`${startArea}\` is the start area, and its own row says it is not`,
+    artifact,
+  );
 
+  // The route is derived from the area rows by the emitting compiler, so the two
+  // halves of this document must agree. They are checked against each other
+  // here, not trusted because one file wrote both.
   const route = array(document.route, "route", artifact).map((one, at) => {
     const row = `route[${at}]`;
     object(one, row, ["from_area", "gate", "to_area", "entry"], artifact);
@@ -759,15 +806,27 @@ export function decodeCollection(document, artifact = "the area collection") {
     );
     const fromArea = text(one.from_area, `${row}.from_area`, artifact);
     reference(areaIds.has(fromArea), `${row}.from_area names absent area \`${fromArea}\``, artifact);
+    const gate = text(one.gate, `${row}.gate`, artifact);
+    const declared = byId.get(fromArea);
+    constrain(
+      declared.exit.gate === gate,
+      `${row} leaves by \`${gate}\`, and \`${fromArea}\` declares \`${declared.exit.gate}\``,
+      artifact,
+    );
+    constrain(
+      declared.exit.to_area === toArea,
+      `${row} leads to \`${toArea}\`, and \`${fromArea}\` declares \`${declared.exit.to_area}\``,
+      artifact,
+    );
     if (toArea !== null) {
       reference(areaIds.has(toArea), `${row}.to_area names absent area \`${toArea}\``, artifact);
+      constrain(
+        sameCell(entry, byId.get(toArea).entry),
+        `${row} carries an arrival cell \`${toArea}\` does not declare`,
+        artifact,
+      );
     }
-    return Object.freeze({
-      from_area: fromArea,
-      gate: text(one.gate, `${row}.gate`, artifact),
-      to_area: toArea,
-      entry,
-    });
+    return Object.freeze({ from_area: fromArea, gate, to_area: toArea, entry });
   });
 
   // One walk from the start, visiting every area exactly once and terminating.
@@ -838,6 +897,11 @@ export async function loadArtifacts(base, fetchImpl) {
     constrain(
       plan.area.label === area.label,
       `\`${area.plan}\` labels the area \`${plan.area.label}\`, and the collection says \`${area.label}\``,
+      area.plan,
+    );
+    constrain(
+      plan.area.start === area.start,
+      `\`${area.plan}\` says start is \`${plan.area.start}\`, and the collection says \`${area.start}\``,
       area.plan,
     );
     plans.set(area.id, plan);

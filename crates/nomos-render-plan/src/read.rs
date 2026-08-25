@@ -31,9 +31,23 @@ use crate::error::{PlanError, PlanResult, codes};
 pub fn read_document(path: &Path) -> PlanResult<CanonicalValue> {
     let bytes = std::fs::read(path)
         .map_err(|error| PlanError::new(codes::INPUT_UNREADABLE, error.to_string()).at(path))?;
+    parse_document(&bytes, path)
+}
+
+/// Parses one canonical kernel document already in memory.
+///
+/// Split out of [`read_document`] for the one caller that needs the file's
+/// bytes as well as its value: the area collection publishes a SHA-256 over each
+/// plan's bytes, and hashing them twice from disk would let the digest and the
+/// document come from two different reads.
+///
+/// # Errors
+///
+/// Returns `RP0102` when the bytes are not canonical.
+pub fn parse_document(bytes: &[u8], path: &Path) -> PlanResult<CanonicalValue> {
     let body = match bytes.split_last() {
         Some((b'\n', rest)) => rest,
-        _ => &bytes[..],
+        _ => bytes,
     };
     parse_canonical(body).map_err(|diagnostic| {
         PlanError::new(

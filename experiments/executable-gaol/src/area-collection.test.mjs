@@ -17,7 +17,13 @@ const north = readPlan("north-gaol");
 const cistern = readPlan("cistern-walk");
 const ember = readPlan("ember-vault");
 const ossuary = readPlan("ossuary-reach");
-const collection = JSON.parse(readFileSync(new URL("../area-collection.example.json", import.meta.url)));
+
+// The area collection itself is not read here any more. `nomos.area_collection@1`
+// is emitted by `crates/nomos-render-plan/src/collection.rs`, its route-graph and
+// visual-grammar refusals are proved by `crates/nomos-render-plan/tests/collection.rs`,
+// and the committed `area-collection.example.json` is compared byte for byte by
+// `verify.mjs --collection`, which also re-derives every plan digest it publishes.
+// What is left in this file is what it was always about: the four committed plans.
 
 const grammar = (plan) => ({
   architectureStyle: plan.architecture.style,
@@ -109,12 +115,6 @@ test("each area declares its own arrival cell, and only the start area declares 
   assert.deepEqual(ossuary.route.entry, { x: 1, y: 5, z: 0 });
   assert.deepEqual(north.route.entry, { x: 2, y: 4, z: 0 });
   assert.equal(north.route.to_area, null);
-  // And the collection's route reads each hop's arrival from the destination.
-  for (const edge of collection.route) {
-    if (edge.to_area === null) continue;
-    const target = [cistern, ember, ossuary, north].find((plan) => plan.area.id === edge.to_area);
-    assert.deepEqual(edge.entry, target.route.entry);
-  }
 });
 
 test("every added area is a distinct composition", () => {
