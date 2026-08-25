@@ -6,7 +6,7 @@
     "start": false
   },
   "route": {
-    "exit": { "gate": "bastion_gate", "to_area": "ossuary-reach" },
+    "exit": { "gate": "bastion_gate", "to_area": "drowned-stair" },
     "entry": { "x": 4, "y": 5, "z": 0 }
   },
   "pursuit": {
