@@ -45,8 +45,9 @@ Replace only that R1-1 bullet with:
 - `experiments/executable-gaol/compare-effective-facts.sh` reports
   `30 scenarios compared, 0 differences` against the committed
   `rendering-plan.example.json` blocks — the original twenty scenarios plus
-  the ten from the two accepted cold-authored areas — with the `"cost": null`
-  spelling on a blocked subject the only normalization;
+  the ten from the two cold-authored areas in the quarantined experiment —
+  with the `"cost": null` spelling on a blocked subject the only
+  normalization;
 ```
 
 No other acceptance wording changes.
@@ -68,7 +69,8 @@ weaken a semantic requirement or excuse a failed implementation.
 ## Effect on existing evidence
 
 No implementation, schema identity, source, package, runtime state, rendering
-plan, viewer artifact, hash, or recorded output changes. In particular:
+plan, viewer artifact, existing evidence hash, or recorded output changes. In
+particular:
 
 - `nomos.effective_facts@2` and decision 0018's schema-spelling repair are
   unchanged;
@@ -87,7 +89,7 @@ candidate before recording an R1 pass.
 **Pending.** Recommended authorization:
 
 > Authorize the quoted replacement and establish `RUNTIME.md` revision 3. The
-> repair aligns the stale R1-1 count with the already accepted thirty-scenario
-> proof, changes no implementation or evidence, weakens no semantic
+> repair aligns the stale R1-1 count with the already recorded thirty-scenario
+> comparison proof, changes no implementation or evidence, weakens no semantic
 > requirement, and authorizes no game adoption, Gate K retry, or later runtime
 > epoch.
