@@ -4,16 +4,19 @@
 //! cargo xtask boundary [--manifest-path <path/to/Cargo.toml>]
 //! ```
 //!
-//! `boundary` proves `KERNEL.md` section 10 (acceptance 15) against the
-//! resolved dependency graph. `--manifest-path` points the check at another
-//! workspace, which is how a planted-violation receipt is produced without
-//! disturbing this one.
+//! `boundary` proves `KERNEL.md` section 10 (acceptance 15) and the
+//! `RUNTIME.md` section 3 R1 workspace rules against the resolved dependency
+//! graph. `--manifest-path` points the check at another workspace, which is how
+//! a planted-violation receipt is produced without disturbing this one;
+//! `planted.rs` runs that pattern as tests.
 //!
 //! Exit codes follow `KERNEL.md` section 8: `0` clean, `1` violations found,
 //! `2` invalid usage, `3` the environment prevented the check.
 
 mod boundary;
 mod json;
+#[cfg(test)]
+mod planted;
 
 use std::process::{Command, ExitCode};
 
@@ -61,10 +64,11 @@ fn main() -> ExitCode {
 const HELP: &str = "\
 cargo xtask boundary [--manifest-path <path>]
 
-Proves the KERNEL.md section 10 dependency boundaries against the resolved
-cargo dependency graph: workspace membership, permitted edges, absence of
-cycles, forbidden renderer/windowing/audio/networking/watcher/hot-reload
-dependencies, and tooling isolation.
+Proves the KERNEL.md section 10 dependency boundaries and the RUNTIME.md
+section 3 R1 workspace rules against the resolved cargo dependency graph:
+workspace membership, permitted edges, absence of cycles, forbidden
+renderer/windowing/audio/networking/watcher/hot-reload dependencies, and
+tooling isolation.
 
 Exit codes: 0 clean, 1 violations, 2 invalid usage, 3 environment failure.";
 
@@ -73,7 +77,11 @@ fn usage(message: impl std::fmt::Display) -> ExitCode {
     ExitCode::from(2)
 }
 
-fn run_boundary(manifest_path: Option<&str>) -> ExitCode {
+/// Reads `cargo metadata` for a workspace and reduces it to a boundary graph.
+///
+/// The error is the operator-facing message for exit code 3: the environment
+/// prevented the check, rather than the check finding a violation.
+fn load_graph(manifest_path: Option<&str>) -> Result<Graph, String> {
     let mut command = Command::new(std::env::var("CARGO").unwrap_or_else(|_| "cargo".to_owned()));
     command
         .arg("metadata")
@@ -86,33 +94,28 @@ fn run_boundary(manifest_path: Option<&str>) -> ExitCode {
         command.arg("--manifest-path").arg(path);
     }
 
-    let output = match command.output() {
-        Ok(output) => output,
-        Err(error) => {
-            eprintln!("error: could not run `cargo metadata`: {error}");
-            return ExitCode::from(3);
-        }
-    };
+    let output = command
+        .output()
+        .map_err(|error| format!("could not run `cargo metadata`: {error}"))?;
     if !output.status.success() {
-        eprintln!(
-            "error: `cargo metadata` failed:\n{}",
+        return Err(format!(
+            "`cargo metadata` failed:\n{}",
             String::from_utf8_lossy(&output.stderr)
-        );
-        return ExitCode::from(3);
+        ));
     }
 
     let text = String::from_utf8_lossy(&output.stdout);
-    let metadata = match json::parse(&text) {
-        Ok(value) => value,
-        Err(error) => {
-            eprintln!("error: could not read `cargo metadata` output: {error}");
-            return ExitCode::from(3);
-        }
-    };
-    let graph = match Graph::from_metadata(&metadata) {
+    let metadata = json::parse(&text)
+        .map_err(|error| format!("could not read `cargo metadata` output: {error}"))?;
+    Graph::from_metadata(&metadata)
+        .map_err(|error| format!("could not build the dependency graph: {error}"))
+}
+
+fn run_boundary(manifest_path: Option<&str>) -> ExitCode {
+    let graph = match load_graph(manifest_path) {
         Ok(graph) => graph,
         Err(error) => {
-            eprintln!("error: could not build the dependency graph: {error}");
+            eprintln!("error: {error}");
             return ExitCode::from(3);
         }
     };
@@ -128,6 +131,7 @@ fn run_boundary(manifest_path: Option<&str>) -> ExitCode {
             "  tooling crates     {}",
             boundary::TOOLING_CRATES.join(", ")
         );
+        println!("  r1 members         {}", boundary::R1_CRATES.len());
         println!(
             "  rules checked      membership, permitted-edges, cycles, \
              forbidden-dependency, tooling-isolation"
@@ -149,7 +153,10 @@ fn run_boundary(manifest_path: Option<&str>) -> ExitCode {
 
 #[cfg(test)]
 mod tests {
-    use crate::boundary::{FORBIDDEN_NAMES, KERNEL_CRATES, PERMITTED_EDGES, forbidden_category};
+    use crate::boundary::{
+        FORBIDDEN_NAMES, KERNEL_CRATES, PERMITTED_EDGES, R1_CRATES, TOOLING_CRATES,
+        forbidden_category,
+    };
 
     #[test]
     fn permitted_edges_cover_every_kernel_crate_exactly_once() {
@@ -187,6 +194,16 @@ mod tests {
                     "`{crate_name}` -> `{dependency}` would make the declared table cyclic"
                 );
             }
+        }
+    }
+
+    #[test]
+    fn declared_r1_members_are_not_kernel_crates_or_tooling() {
+        // A name in two lists would make the rules disagree about which ones
+        // apply to it, so the declaration must partition the workspace.
+        for name in R1_CRATES {
+            assert!(!KERNEL_CRATES.contains(&name), "`{name}` is a kernel crate");
+            assert!(!TOOLING_CRATES.contains(&name), "`{name}` is tooling");
         }
     }
 

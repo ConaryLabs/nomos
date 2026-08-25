@@ -116,11 +116,17 @@ an R1 crate or the viewer parsing `.nomos` source, Canonical World IR, or
 compiler receipts; one canonical schema identity defined in more than one crate;
 an undeclared workspace member.
 
-Extending `cargo xtask boundary` to enforce R1 membership, edge direction,
-kernel purity, and viewer isolation is a target of the first R1 slice, not a
-present claim: today the checker knows only the Gate K list, and its
-`membership` rule fails closed on any new member until it is extended and this
-section names that member.
+### Declared R1 members
+
+None. `R1_CRATES` in `xtask/src/boundary.rs` mirrors this list, and `cargo xtask
+boundary` enforces it: a workspace member that is neither a kernel crate,
+declared tooling, nor named here fails its `membership` rule, and its report
+counts what is declared as `r1 members N`.
+
+The checker enforces R1 membership, edge direction, and kernel purity as of
+issue #137; the planted-violation tests in `xtask/src/planted.rs` prove each of
+those rules refuses. Viewer isolation is not enforced yet — no `apps/` member
+exists — and joins the checker with R1-4.
 
 ## 4. Dependency policy
 
