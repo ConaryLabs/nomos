@@ -64,9 +64,11 @@ AI-authored areas can share one coherent visual grammar.
   further checker or audit launches
 - **R1 contract status:** [RUNTIME.md](RUNTIME.md) revision 1 is a **draft
   awaiting owner authorization** under issue #128. It is the R1 epoch's own
-  acceptance contract under decision 0017; `KERNEL.md` revision 7 stays frozen
-  and unamended, and no R1 work is accepted until the owner records a
-  disposition
+  acceptance contract under decision 0017, reconciled with the merged ownership
+  audit (#125, PR #129) and the effective-facts spike (#126, PR #130); it flags
+  one open owner decision in section 3 on whether R1 surface may enter the
+  kernel crates. `KERNEL.md` revision 7 stays frozen and unamended, and no R1
+  work is accepted until the owner records a disposition
 - **Scope:** greenfield / vacuum architecture exercise
 - **Effect on other projects:** none unless separately adopted by an explicit
   decision in that project's own authority records

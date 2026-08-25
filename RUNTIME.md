@@ -72,6 +72,41 @@ The six kernel crates named in `KERNEL.md` section 10 are unchanged: their
 membership, their permitted edges, and their zero third-party dependencies.
 `cargo xtask boundary` continues to fail closed on them.
 
+**Owner decision required:** the #126 spike (PR #130,
+`docs/review/effective-facts-spike.md`) places R1-1 *inside* the kernel crates —
+a new `crates/nomos-sim/src/effective_facts.rs`, a `nomos effective-facts`
+subcommand in `crates/nomos-cli/src/command.rs`, and public canonical accessors
+in `crates/nomos-projection`. That contradicts the sentence above as written, so
+this contract must say which reading holds before R1-1 can be accepted.
+**(a)** Kernel crates may gain R1 surface — new read-only projections and CLI
+subcommands — provided no Gate K command, artifact, hash, or diagnostic changes,
+proved by the existing determinism and verify lanes; that membership, permitted
+edges, and zero third-party dependencies stay exactly as `KERNEL.md` section 10
+declares; and that each such addition is listed below. **(b)** R1 code never
+enters the six kernel crates, and R1-1 is re-homed into a new
+`crates/nomos-facts` or similar, depending on `nomos-sim` — which requires
+making `resolve_movement` and `resolve_light` public anyway, so the new crate
+would mostly re-export.
+**This document recommends (a):** the resolvers already live in `nomos-sim`,
+whose section 10 charter is effective-fact resolution, and `explain-entity`
+already composes that exact pair at
+`crates/nomos-cli/src/explanation.rs:25-27`; a separate crate would add a
+workspace member and an edge without moving any logic. The list below is written
+on that recommendation, and is empty if the owner chooses (b).
+
+### R1 surface added to kernel crates, under option (a)
+
+Pending acceptance of the slice that adds it. No row changes an existing Gate K
+command, artifact, hash, or diagnostic.
+
+| Crate | R1 surface | Slice |
+| --- | --- | --- |
+| `nomos-sim` | `effective_facts.rs`, the `nomos.effective_facts@1` document builder over the existing resolvers | R1-1 |
+| `nomos-projection` | public canonical accessors on the resolved movement and light fact types | R1-1 |
+| `nomos-cli` | the `effective-facts` subcommand | R1-1 |
+
+The workspace layout under R1:
+
 ```text
 crates/nomos-*      the six existing kernel crates; unchanged, zero third-party
 crates/<r1 crate>   new R1 projection and compilation crates, declared below
@@ -81,7 +116,8 @@ experiments/        quarantined study; non-authoritative
 ```
 
 No R1 crate exists yet, so the declared R1 member list is empty; each new member
-joins that list in the change that creates it.
+joins that list in the change that creates it. Under option (a), R1-1 adds no
+member at all — only the surface tabled above.
 
 Permitted new edges: an R1 crate may depend on any kernel crate, and on another
 declared R1 crate while the graph stays acyclic; `apps/nomos-viewer/` consumes
@@ -130,38 +166,55 @@ None. No third-party dependency has entered the accepted tree under R1.
 
 Five targets in decision 0017's order. The order is a dependency order, not a
 schedule, and each is a separately falsifiable issue with its own evidence. This
-document declares no schema identity: where a target emits a versioned artifact,
-the identity and version are declared by the emitting code and named in that
-target's evidence.
+document declares no schema: identities are declared by the emitting code, and
+where a landed design already fixes one it is cited here by name.
 
 ### R1-1 Kernel effective-facts projection
 
-Issue #126. Given a strictly verified world package and a runtime state, emit a
-read-only composed effective movement disposition, cost, ordered reasons, and
-effective light for every resolver subject. The sizing spike on #126 has no pull
-request yet, so this acceptance is written from the issue text; the spike's
-design may make these criteria more specific and may not weaken them.
+Issue #126, prototyped by the spike on PR #130 and designed in
+`docs/review/effective-facts-spike.md`. Given a strictly verified world package
+and a runtime state, emit a read-only composed effective movement disposition,
+cost, ordered reasons, and effective light for every resolver subject. The
+criteria below follow that landed design; a non-author rerun of its four kernel
+commands and its comparison harness is recorded on PR #130.
 
 Accepted when:
 
-- a source-review receipt names each reused Rust resolver entry point and its
-  crate, and the output introduces no new resolution logic;
-- the output carries the schema identity and version declared by the emitting
-  code, and a consumer refuses a mismatch with a stable diagnostic;
-- for all twenty gaol scenarios the output equals what
-  `experiments/executable-gaol/src/build-plan.mjs:89-127` computes today, or
-  every difference is recorded with its cause;
-- the same package and runtime state give byte-identical canonical output across
-  ten runs; the output is derived, so it stays outside the state-hash domain and
-  mutates no input package or state file;
-- the four kernel commands in section 6 pass.
+- the command is `nomos effective-facts <world/> --state <state.json>`:
+  read-only, writing no artifact, mutating no input package or state file, and
+  adding no file to a run bundle;
+- all resolution comes from `nomos_sim::resolve_movement` and
+  `nomos_sim::resolve_light` (`crates/nomos-sim/src/resolver.rs:21,82`), with
+  `activation_is_true` (`resolver.rs:155`) staying private so the projected law
+  flags stay in the path;
+- the document carries schema identity `nomos.effective_facts@1` declared in
+  `nomos-sim`, is canonical entity-sorted bytes, and stays outside the
+  state-hash domain because it is derived;
+- a source-review receipt names that reused pair and adds the acceptance-15 row
+  for the new identity: `nomos.effective_facts@1` / `nomos-sim` /
+  `crates/nomos-sim/src/effective_facts.rs`;
+- `experiments/executable-gaol/compare-effective-facts.sh` reports
+  `20 scenarios compared, 0 differences` against the committed
+  `rendering-plan.example.json` blocks, with the `"cost": null` spelling on a
+  blocked subject the only normalization;
+- the same package and runtime state give byte-identical output across ten runs.
+  **Not proved by the spike:** PR #130's six tests cover schema and inputs,
+  subject coverage, `explain-entity` agreement, input immutability, argument
+  grammar, and cross-world rejection; none reruns the command for byte identity.
+  R1-1 closes that gap before acceptance;
+- the four kernel commands in section 6 pass, and no Gate K command, artifact,
+  hash, or diagnostic changes.
 
 Must not: add a second implementation of activation evaluation or of movement
-and light composition anywhere in the accepted tree; add a third-party
-dependency to a kernel crate; edit `KERNEL.md`.
+and light composition anywhere in the accepted tree — the spike instead deletes
+`explanation.rs`'s byte-identical copy of the disposition renderer; add a
+third-party dependency to a kernel crate; edit `KERNEL.md`; write a seventh file
+into a run bundle, whose strict reopener fails closed on extra entries.
 
-Evidence: the reused-entry-point receipt; the twenty-scenario comparison; the
-four command outputs; the exact `build-plan.mjs` lines that become deletable.
+Evidence: the source-review receipt and its new schema row; the twenty-scenario
+comparison output; the four command outputs; the ten-run byte-identity result;
+`build-plan.mjs` lines 86–95 and 111–128 named as deletable, with 134–135
+re-sourced from the document's `tick` and `state_hash`.
 
 ### R1-2 Rust rendering-plan compilation
 
@@ -172,6 +225,12 @@ Accepted when:
 
 - it consumes the R1-1 output and presentation source only, proved by a test
   that it never reads `.nomos` source, World IR, or compiler receipts;
+- as the first accepted consumer of `nomos.effective_facts@1` it binds that
+  identity and version, and refuses a mismatch with a stable diagnostic;
+- its equivalence fixture exercises the three divergences issue #132 records —
+  an active `blocks_ground` claim with `value: false`, an active cost below
+  `base_cost`, and two active cost claims of different value — and the kernel
+  output, not the JavaScript, is the expected result in each;
 - doors, water, and light are classified from typed declarations: a test renames
   a machine and an entity identifier and the classification is unchanged;
 - the plan is canonical bytes under the schema identity declared by the emitting
@@ -194,30 +253,35 @@ prior file and line.
 ### R1-3 Typed presentation source
 
 A versioned, typed presentation source replacing the unversioned `area.json`,
-with exactly one owner per field. The ownership audit on issue #125 has no pull
-request yet, so this acceptance is written from the issue text; its owner
-categories — World IR, runtime state, a kernel projection, presentation source,
-renderer catalog, area or gameplay graph, test fixture — become the owner column
-when the audit lands under `docs/review/`.
+with exactly one owner per field. The merged audit at
+`docs/review/executable-gaol-ownership-audit.md` (issue #125, PR #129) is the
+checklist: 69 field paths each assigned one owner, 9 double authorities, 26
+convention-derived facts, and 26 raw floating-point values. Its owner categories
+— World IR, runtime state, kernel projection, presentation source, renderer
+catalog, area or gameplay graph, test fixture, tooling only — are the owner
+column.
 
 Accepted when:
 
-- every field of the four `area.json` files, `area-collection.example.json`, and
-  one rendering plan appears in the ownership table with exactly one owner;
+- every row of the audit's section 1 ownership table has exactly one owner in
+  the accepted source;
+- every row of the audit's "Double authorities" (9), "Derived by convention"
+  (26), and "Raw floating-point presentation values" (26) sections — 61 rows —
+  is either resolved in the accepted tree or explicitly deferred with a recorded
+  reason;
 - the accepted source is versioned, and a version mismatch is refused with a
   stable diagnostic;
-- no field has two authorities, and each former double authority is listed with
-  its resolution and its prior file and line;
 - positions and extents in content are integer lattice units, orientations are
-  discrete steps, and attachment is by named socket;
+  discrete steps, and attachment is by named socket, which is the audit's
+  proposed repair for all twelve `presentationAnchor` components;
 - a schema test rejects a source file carrying a raw floating-point transform.
 
 Must not: admit raw floating-point transforms in content; leave any fact whose
 only authority is the JavaScript that happens to read it; reintroduce an
 unversioned second content language into the accepted tree.
 
-Evidence: the ownership table under `docs/review/`; the refusal test outputs;
-the resolved double authorities.
+Evidence: the resolved-or-deferred disposition for each of those 61 audit rows;
+the refusal test outputs; the accepted source's owner column against section 1.
 
 ### R1-4 Promoted viewer
 
@@ -341,8 +405,9 @@ R1 does not claim that Gate K passed, that any failed attempt is repaired or
 relabelled, that Gate 0 or Gate 1 is satisfied, that the renderer or
 presentation semantics in `experiments/` are accepted, that the executable study
 is production art or deterministic across GPUs, or that Nomos has been adopted
-by any project. This document declares no schema; schema identities are declared
-by the code that emits them.
+by any project. This document declares no schema; the identities it cites,
+including `nomos.effective_facts@1`, are declared by the code that emits them
+and are not accepted until the slice that emits them is.
 
 ## 10. Owner disposition
 
