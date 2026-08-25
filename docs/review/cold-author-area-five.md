@@ -109,6 +109,16 @@ Bastion"), not either subject's own authoring, and neither subject's
 `AUTHOR_NOTES.md` was edited to produce it. `gaol verify` is green for all six
 areas; the renderer, camera, palette, and viewer received no change.
 
+**Corpus pins under `crates/`.** Connecting the two areas required one further
+commit (`f1e85e8`) editing `crates/nomos-play/tests/{common/mod.rs, corpus.rs,
+replay.rs, semantics.rs, session.rs}` and `crates/nomos-render-plan/tests/source.rs`,
+which enumerate the four areas and pin the four-area route's counters. Neither
+subject touched them — the harness did, after both areas were in — and they are
+tests, not renderer or compiler source, so `RUNTIME.md` §1 criterion 5 holds.
+But it is the same hazard #163 removed from the JavaScript collection test
+before the run, and it is recorded here as a finding rather than folded into
+the connection commit: issue #167.
+
 ## Owner visual verdict
 
 `[ ]` rejected — `[ ]` promising — `[ ]` compelling
