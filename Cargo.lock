@@ -33,6 +33,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "nomos-render-plan"
+version = "0.0.0"
+dependencies = [
+ "nomos-core",
+ "nomos-projection",
+ "nomos-sim",
+]
+
+[[package]]
 name = "nomos-schema"
 version = "0.0.0"
 dependencies = [

@@ -7,6 +7,7 @@ members = [
     "crates/nomos-compiler",
     "crates/nomos-sim",
     "crates/nomos-cli",
+    "crates/nomos-render-plan",
     "xtask",
 ]
 
@@ -29,6 +30,10 @@ nomos-schema = { path = "crates/nomos-schema" }
 nomos-projection = { path = "crates/nomos-projection" }
 nomos-compiler = { path = "crates/nomos-compiler" }
 nomos-sim = { path = "crates/nomos-sim" }
+
+# RUNTIME.md section 3: declared R1 members. An R1 crate may depend on any
+# kernel crate and on another declared R1 crate while the graph stays acyclic.
+nomos-render-plan = { path = "crates/nomos-render-plan" }
 
 # Lean build profile: KERNEL.md acceptance 16 measures peak disk, so debug
 # builds carry line tables only instead of full DWARF.

@@ -1,0 +1,38 @@
+[package]
+name = "nomos-render-plan"
+description = "R1 rendering-plan compiler: kernel projections and typed presentation source to nomos.rendering_plan@1."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+# RUNTIME.md section 3: an R1 crate may depend on any kernel crate. This one
+# needs exactly one — nomos-core, for canonical bytes, SHA-256, and the strict
+# canonical reader. It deliberately does not depend on nomos-schema or
+# nomos-compiler: both would put Canonical World IR and compiler receipts
+# inside its reach, and RUNTIME.md section 5 R1-2 forbids reading either.
+#
+# RUNTIME.md section 4: zero third-party dependencies. Nothing is recorded in
+# section 4's addition table by this crate.
+[dependencies]
+nomos-core.workspace = true
+
+# Dev-only. Issue #132's three kernel/JavaScript divergences are proved by
+# building a SimulationPlan directly and running the real resolver pair, which
+# needs the projection types and nomos_sim::effective_facts. Neither edge
+# exists in the built library; `cargo xtask boundary` counts dev-dependency
+# edges, and both targets are kernel crates, which RUNTIME.md section 3
+# permits.
+[dev-dependencies]
+nomos-projection.workspace = true
+nomos-sim.workspace = true
+
+[lib]
+name = "nomos_render_plan"
+path = "src/lib.rs"
+
+[[bin]]
+name = "nomos-render-plan"
+path = "src/bin/nomos-render-plan.rs"

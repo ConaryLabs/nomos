@@ -17,6 +17,7 @@ build() {
 
   cd "$repo_root"
   cargo build --quiet --locked -p nomos-cli --bin nomos
+  cargo build --quiet --locked -p nomos-render-plan --bin nomos-render-plan
   local area_dir
   for area_dir in "$areas_dir"/*; do
     [[ -d $area_dir ]] || continue
@@ -25,7 +26,7 @@ build() {
     area_output="$output_dir/areas/$area_id"
     area_rel="$output_rel/areas/$area_id"
     source_rel=${area_dir#"$repo_root/"}/world.nomos
-    mkdir -p "$area_output/runs" "$area_output/frames"
+    mkdir -p "$area_output/runs" "$area_output/facts" "$area_output/frames"
     target/debug/nomos compile "$source_rel" --out "$area_rel/world"
 
     for scenario in "$area_dir"/scenarios/*.commands; do
@@ -36,11 +37,24 @@ build() {
         --commands "$commands_rel" --out "$area_rel/runs/$name"; then
         [[ $name == 01-baseline ]] || return 1
       fi
+      target/debug/nomos effective-facts "$area_rel/world" \
+        --state "$area_rel/runs/$name/final-state.json" \
+        >"$area_output/facts/$name.json"
     done
 
-    node "$experiment_dir/src/build-plan.mjs" \
-      "$area_output/world" "$area_output/runs" "$area_dir/area.json" \
-      "$area_output/rendering-plan.json"
+    # The kernel's read-only entity catalog is the only source of entity kind;
+    # the effective-fact documents are the only source of movement disposition,
+    # cost, reasons, and light. The compiler reads those documents and never
+    # the package's World IR, receipts, or source.
+    target/debug/nomos entity-catalog "$area_rel/world" \
+      >"$area_output/entity-catalog.json"
+    target/debug/nomos-render-plan \
+      --catalog "$area_output/entity-catalog.json" \
+      --facts "$area_output/facts" \
+      --runs "$area_output/runs" \
+      --world "$area_output/world" \
+      --area "$area_dir/area.json" \
+      --out "$area_output/rendering-plan.json"
     node "$experiment_dir/src/capture.mjs" \
       "$area_output/rendering-plan.json" "$area_output/frames"
   done

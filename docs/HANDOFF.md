@@ -58,6 +58,14 @@ with their source spans. It classifies nothing and reads no `.nomos` source, so
 a downstream compiler no longer has to infer an entity's kind from a naming
 convention.
 
+`nomos-render-plan --catalog <entity-catalog.json> --facts <dir> --runs <dir>
+--world <world/> --area <area.json> --out <plan.json>` is the R1-2 compiler: it
+turns those two read-only projections, the per-scenario run bundles, the four
+projection members' identities and digests, and the presentation source into
+`nomos.rendering_plan@1` as canonical bytes. It is the first declared R1 member,
+depends on `nomos-core` alone, and replaces
+`experiments/executable-gaol/src/build-plan.mjs`.
+
 The executable study provides:
 
 - Cistern Walk, Ember Vault, Ossuary Reach, and North Gaol as separately
@@ -107,13 +115,25 @@ issue #124. Its contract document `RUNTIME.md` is owner-authorized under issue
 #128 and now governs what R1 accepts. R1-1 is accepted on PR #130 (issue #126),
 and its identity is the first row of `docs/evaluation/R1_SCHEMA_OWNERSHIP.md`.
 
-**R1-2, Rust rendering-plan compilation, is next**: a Rust compiler consuming
-`nomos.effective_facts@1` and typed presentation source, replacing
-`experiments/executable-gaol/src/build-plan.mjs`. As the first accepted consumer
-of that identity it binds it and refuses a version mismatch. Issue #125's
-merged presentation-boundary ownership audit is its checklist for what content
-still owns which fact, and issue #132 records the three JavaScript divergences
-its equivalence fixture must exercise.
+R1-2, Rust rendering-plan compilation, is accepted under issue #139.
+`crates/nomos-render-plan` is the first declared R1 member: it compiles
+`nomos.rendering_plan@1` from `nomos.entity_catalog@1`, one
+`nomos.effective_facts@1` document per scenario, the run bundles, four
+projection members, and `area.json`, and it opens no `.nomos` source, World IR,
+or compiler receipt. `experiments/executable-gaol/src/build-plan.mjs` is
+deleted, and `experiments/executable-gaol/gaol` runs the Rust binary. For all
+four areas the Rust plan equalled the JavaScript fixtures under one documented
+normalization — `experiments/executable-gaol/compare-rendering-plan.sh` reports
+`4 areas compared, 0 differences` — and every SVG frame and `contact-sheet.png`
+is byte-identical across the switch except the four `forensic.svg` overlays,
+which print the plan's own identity. `docs/review/rendering-plan-compiler.md` is
+its design record.
+
+**R1-3, typed presentation source, is next**: a versioned, typed replacement for
+`area.json` with exactly one owner per field. Issue #125's merged
+presentation-boundary ownership audit is its checklist; R1-2's design record
+lists which of that audit's convention-derived rows it removed and which it
+carried through unchanged for R1-3 to resolve.
 
 Simulation-boundary expansion remains deferred while the visual grammar is
 being established. Do not reopen Gate K evaluation work or add proof machinery

@@ -56,7 +56,13 @@ AI-authored areas can share one coherent visual grammar.
   `nomos entity-catalog <world/>` (issue #138) adds the register's second row,
   `nomos.entity_catalog@1`: the read-only entity kind, capability set, binding,
   machines, and resolver claims R1-2 needs in order to classify doors, water,
-  and lights from typed declarations instead of naming conventions
+  and lights from typed declarations instead of naming conventions.
+  **R1-2, Rust rendering-plan compilation (issue #139), is the second accepted
+  slice**: the R1 crate `crates/nomos-render-plan` compiles
+  `nomos.rendering_plan@1` — the register's third row — from those two documents
+  plus the run bundles and presentation source, and
+  `experiments/executable-gaol/src/build-plan.mjs`, which classified by naming
+  convention and reimplemented the resolvers in JavaScript, is deleted
 - **Contract revision:** 7, owner-authorized in decision 0009
 - **Cold-agent protocol revision:** 6, owner-authorized in decision 0015;
   revision-6 packet, boundary, record, adjudication, and finalization tooling is
@@ -75,7 +81,9 @@ AI-authored areas can share one coherent visual grammar.
   merged ownership audit (#125, PR #129); its section 3 permits read-only R1
   surface inside the kernel crates under stated conditions. R1-1, the kernel
   effective-facts projection prototyped on PR #130, is the first slice under
-  acceptance. `KERNEL.md` revision 7 stays frozen and unamended
+  acceptance, and R1-2, the Rust rendering-plan compiler, is the second; its
+  crate is the first declared R1 member in `RUNTIME.md` §3 and in
+  `cargo xtask boundary`. `KERNEL.md` revision 7 stays frozen and unamended
 - **Scope:** greenfield / vacuum architecture exercise
 - **Effect on other projects:** none unless separately adopted by an explicit
   decision in that project's own authority records

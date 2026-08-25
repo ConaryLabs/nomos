@@ -27,6 +27,15 @@ crates/nomos-cli         the `nomos` command surface and orchestration
 xtask                     workspace tooling; the boundary checker
 ```
 
+The declared R1 members of `RUNTIME.md` section 3, which are not section 10
+kernel crates and are not Gate K evidence:
+
+```text
+crates/nomos-render-plan  the R1-2 rendering-plan compiler: the
+                          `nomos.rendering_plan@1` document and the
+                          `nomos-render-plan` binary
+```
+
 Edges, verbatim from section 10:
 
 ```text
@@ -37,8 +46,16 @@ nomos-sim         -> nomos-core, nomos-projection
 nomos-cli         -> nomos-core, nomos-compiler, nomos-sim, nomos-projection
 ```
 
+R1 edges, under `RUNTIME.md` section 3:
+
+```text
+nomos-render-plan -> nomos-core
+nomos-render-plan -> nomos-projection, nomos-sim   (dev-dependencies only,
+                     for the issue #132 divergence fixture)
+```
+
 No crate in the workspace has a third-party dependency. `Cargo.lock` contains
-seven entries, all of them local. Decision 0005 makes that a deliberate,
+eight entries, all of them local. Decision 0005 makes that a deliberate,
 temporary Gate K constraint: it protects the offline proof and audit surface
 while the semantic kernel is small, but it is not a permanent repository
 constitution. Later gates may admit a dependency only through a separate
@@ -89,7 +106,8 @@ Exit codes follow `KERNEL.md` section 8: `0` clean, `1` violations, `2` invalid
 usage, `3` environment failure. It reads `cargo metadata --all-features` and
 enforces five rules over the six kernel crates, the declared tooling, and the R1
 crates `RUNTIME.md` section 3 declares — `R1_CRATES` in
-`xtask/src/boundary.rs`, empty today, reported as `r1 members N`:
+`xtask/src/boundary.rs`, `["nomos-render-plan"]` today, reported as
+`r1 members N`:
 
 | Rule | What it refuses |
 | --- | --- |
@@ -108,9 +126,12 @@ section 4, not this list, governs an R1 crate's third-party dependencies.
 `--manifest-path` points the check at a copy of the workspace, which is how the
 planted-violation receipt is produced without disturbing this one.
 `xtask/src/planted.rs` runs that pattern as tests: it copies the workspace to a
-temporary directory, plants `crates/nomos-render-plan` undeclared, declared,
-depended on by `nomos-sim`, and in a cycle with a second R1 crate, and asserts
-the rule each case must fail.
+temporary directory, plants `crates/nomos-planted-r1` undeclared, declared,
+depended on by `nomos-sim`, and in a cycle with `crates/nomos-planted-peer`, and
+asserts the rule each case must fail. The planted names are ones the workspace
+will never use, so declaring a real R1 member cannot turn a planted violation
+into an accepted graph; where a case needs its planted member declared it passes
+the shipped `R1_CRATES` plus the planted names.
 
 ### What the checker cannot see
 

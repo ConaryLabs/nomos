@@ -14,11 +14,22 @@ experiments/executable-gaol/gaol capture
 ```
 
 That diagnostic command compiles all four area sources, executes twenty real
-Nomos command scripts, derives four `nomos.experiment.rendering_plan@1`
-artifacts only from subsystem projections and runtime state, checks their exact
-shared visual grammar, emits deterministic SVG frames, and rasterizes a
-cross-area PNG contact sheet with `rsvg-convert` when available. SVG is retained
-as exact semantic/capture evidence; it is no longer the playable presentation.
+Nomos command scripts, and then hands the result to the accepted Rust compiler
+`nomos-render-plan` (issue #139), which derives four `nomos.rendering_plan@1`
+artifacts from `nomos entity-catalog`, one `nomos effective-facts` document per
+scenario, the run bundles, the four projection members, and `area.json` — and
+from nothing else. It then checks their exact shared visual grammar, emits
+deterministic SVG frames, and rasterizes a cross-area PNG contact sheet with
+`rsvg-convert` when available. SVG is retained as exact semantic/capture
+evidence; it is no longer the playable presentation.
+
+The plan compiler is the one part of this pipeline that is not quarantined:
+`crates/nomos-render-plan` is a declared R1 member under `RUNTIME.md` section 3.
+Its predecessor `src/build-plan.mjs` classified doors by
+`machine.endsWith(".access")` and recomputed the movement and light resolvers in
+JavaScript; it is deleted, and
+`experiments/executable-gaol/compare-rendering-plan.sh` is the harness that
+proved the replacement equal on all four areas before it was removed.
 
 To use the interactive state and forensic-overlay controls:
 
