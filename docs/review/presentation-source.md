@@ -92,22 +92,22 @@ graph**, **test fixture**, **tooling only**.
 | `area.id` | string | `AreaId`; must equal the containing directory name | area/gameplay graph |
 | `area.label` | string | `Label` | presentation source |
 | `area.start` | boolean | declared `true`/`false`; no truthiness. Exactly one area in the collection may be `true` (`build-collection.mjs`) | area/gameplay graph |
-| `route` | object | exactly `{exit}` when `to_area` is `null`, exactly `{exit, entry}` otherwise | — |
+| `route` | object | exactly `{exit}` for the start area, exactly `{exit, entry}` for every other area | — |
 | `route.exit.gate` | string | `EntityId`; must name a compiled entity whose `nomos.entity_catalog@1` kind is `door` | area/gameplay graph |
-| `route.exit.to_area` | string or null | `AreaId`, or `null` for the final area; a non-null value must name a declared area (`build-collection.mjs`) | area/gameplay graph |
-| `route.entry` | object | exactly `{x, y, z}`; present **iff** `to_area` is non-null | area/gameplay graph |
-| `route.entry.x` | integer | `0 ≤ x < 9` | area/gameplay graph |
-| `route.entry.y` | integer | `0 ≤ y < 6` | area/gameplay graph |
-| `route.entry.z` | integer | `z == 0` | area/gameplay graph |
+| `route.exit.to_area` | string or null | `AreaId`, or `null` for the route's terminal area; a non-null value must name a declared area that itself declares an `entry` (`build-collection.mjs`) | area/gameplay graph |
+| `route.entry` | object | exactly `{x, y, z}` — **this area's own arrival cell**; present **iff** `area.start` is `false` | area/gameplay graph |
+| `route.entry.x` | integer | `0 ≤ x < bounds.width` | area/gameplay graph |
+| `route.entry.y` | integer | `0 ≤ y < bounds.height` | area/gameplay graph |
+| `route.entry.z` | integer | `z == 0`; the cell must not lie inside one of this area's own `masses` | area/gameplay graph |
 | `pursuit` | object | exactly `{light}` | — |
 | `pursuit.light` | string | `EntityId`; must name a compiled entity whose catalog kind is `light` | area/gameplay graph |
 | `architecture` | object | exactly `{bounds, wall_height_steps, style, masses}` | — |
-| `architecture.bounds.width` | integer | `1 ≤ width ≤ 9` | presentation source (see §6 finding 2) |
-| `architecture.bounds.height` | integer | `1 ≤ height ≤ 6` | presentation source (see §6 finding 2) |
+| `architecture.bounds.width` | integer | `1 ≤ width ≤ 9` | presentation source — deliberate deviation from the audit's World IR, §6 finding 2 |
+| `architecture.bounds.height` | integer | `1 ≤ height ≤ 6` | presentation source — deliberate deviation from the audit's World IR, §6 finding 2 |
 | `architecture.wall_height_steps` | integer | `1 ≤ steps ≤ 50`, in `vertical_step` units of 1/10 lattice cell | presentation source |
-| `architecture.style.assembly` | string | `AssemblyName` | renderer catalog (see §6 finding 1) |
-| `architecture.style.material_family` | string | `FamilyName` | renderer catalog (see §6 finding 1) |
-| `architecture.style.trim_family` | string | `FamilyName` | renderer catalog (see §6 finding 1) |
+| `architecture.style.assembly` | string | `AssemblyName`; member of the catalog's `ASSEMBLIES` | renderer catalog defines, source selects |
+| `architecture.style.material_family` | string | `FamilyName`; member of `MATERIAL_FAMILIES` | renderer catalog defines, source selects |
+| `architecture.style.trim_family` | string | `FamilyName`; member of `TRIM_FAMILIES` | renderer catalog defines, source selects |
 | `architecture.masses` | array | 0–8 entries, ordered as authored; ids unique within the area | presentation source |
 | `architecture.masses[].id` | string | `EntityId` | presentation source |
 | `architecture.masses[].min` | object | exactly `{x, y}`; `0 ≤ x < max.x ≤ bounds.width`, `0 ≤ y < max.y ≤ bounds.height` | presentation source |
@@ -115,11 +115,11 @@ graph**, **test fixture**, **tooling only**.
 | `architecture.masses[].height_steps` | integer | `1 ≤ steps ≤ 40`, in `vertical_step` units | presentation source |
 | `actors` | array | exactly two entries; ids exactly `{player, gaoler}` — §4.3 item 7, whose remainder is deferred to R1-5 | — |
 | `actors[].id` | string | `EntityId` | presentation source |
-| `actors[].assembly` | string | `AssemblyName` | renderer catalog (see §6 finding 1) |
+| `actors[].assembly` | string | `AssemblyName`; member of `ACTOR_ASSEMBLIES` | renderer catalog defines, source selects |
 | `actors[].cell` | object | exactly `{x, y, z}`; `0 ≤ x < bounds.width`, `0 ≤ y < bounds.height`, `z == 0`; not inside a declared mass | presentation source |
 | `effects` | array | 0–8 entries, ordered as authored; ids unique within the area | — |
 | `effects[].id` | string | `EntityId` | presentation source |
-| `effects[].assembly` | string | `AssemblyName` | renderer catalog (see §6 finding 1) |
+| `effects[].assembly` | string | `AssemblyName`; member of `EFFECT_ASSEMBLIES` | renderer catalog defines, source selects |
 | `effects[].anchor` | object | exactly `{entity, socket}`; **no coordinate of any kind** | — |
 | `effects[].anchor.entity` | string | `EntityId`; must name a compiled entity | presentation source |
 | `effects[].anchor.socket` | string | `SocketName`; must be a socket the anchor entity's kind declares (§3.3) | presentation source |
@@ -130,6 +130,29 @@ graph**, **test fixture**, **tooling only**.
 `objective` is derived, not authored: the compiler emits
 `{"kind": "exit_via", "gate": route.exit.gate}`, which is what collapses the
 `primaryGate` / `objective.target` / `exit.gate` triple to one authored string.
+
+**`route.entry` is this area's own arrival cell, not the destination's.** Owner
+ruling 3, replacing the `exit.entry` of `area.json`: the exiting area used to
+author a cell in the *destination* area, which is cross-area authority, and
+`build-collection.mjs:44-51` was the only thing checking it — against a global
+9×6 rather than against the destination's own bounds and masses. Flipped, each
+area owns the one cell a player arrives on, validates it against its own
+`bounds` and its own `masses` inside `source.rs`, and the start area declares
+none because nothing arrives there. `build-collection.mjs` keeps one cross-area
+check that is now purely referential: every non-null `to_area` names a declared
+area, and that area declares an `entry`.
+
+**Assembly and family names: the renderer catalog defines, the source selects.**
+Owner ruling 1, and the same definition/selection split as socket names.
+`architecture.style.{assembly, material_family, trim_family}`,
+`actors[].assembly`, and `effects[].assembly` stay in content; the *closed sets*
+they draw from are renderer-catalog data. `source.rs` checks the grammar and
+`verify.mjs` checks membership in the renderer's closed sets, exactly as for
+sockets, so a name that is well-formed but not in the catalog fails the build
+rather than a frame. Audit §1 rows 14, 15, 16, 21, and 25 are **resolved** under
+that split, not deferred: each fact has one owner, and it is the renderer
+catalog that owns what the legal values are. R1-4 turns the JavaScript closed
+sets into a Rust-side catalog.
 
 ### 1.4 North Gaol, converted
 
@@ -144,7 +167,8 @@ graph**, **test fixture**, **tooling only**.
     "start": false
   },
   "route": {
-    "exit": { "gate": "north_gate", "to_area": null }
+    "exit": { "gate": "north_gate", "to_area": null },
+    "entry": { "x": 2, "y": 4, "z": 0 }
   },
   "pursuit": {
     "light": "brazier_02"
@@ -173,18 +197,24 @@ graph**, **test fixture**, **tooling only**.
 }
 ```
 
-A connected area differs only in `route` and in carrying masses; Cistern Walk's
-route is:
+North Gaol is not the start area, so it declares the cell a player arrives on —
+`{2, 4, 0}`, the cell Ossuary Reach's `exit.entry` used to name from the outside
+— and its `to_area` is `null` because it is the route's terminal. Cistern Walk,
+the start area, is the mirror image: it declares no `entry` at all, because
+nothing arrives there.
 
 ```json
   "route": {
-    "exit": { "gate": "sluice_gate", "to_area": "ember-vault" },
-    "entry": { "x": 7, "y": 5, "z": 0 }
+    "exit": { "gate": "sluice_gate", "to_area": "ember-vault" }
   },
 ```
 
 and its one mass is
 `{ "id": "channel_buttress", "min": { "x": 4, "y": 0 }, "max": { "x": 5, "y": 1 }, "height_steps": 26 }`.
+
+The four `entry` cells after the flip: Cistern Walk none (start), Ember Vault
+`{7, 5, 0}`, Ossuary Reach `{1, 5, 0}`, North Gaol `{2, 4, 0}` — the same three
+cells `area.json` authored, each now declared by the area it belongs to.
 
 The whole corpus after conversion contains **no `.` in any number**: the ten
 former decimals become `wall_height_steps` 45 / 45 / 50 / 48 and `height_steps`
@@ -209,7 +239,7 @@ order below is reading order, not byte order.
 | `schema` | `"nomos.rendering_plan@2"` | this file |
 | `area` | `{id, label, start}` | presentation source |
 | `objective` | `{kind: "exit_via", gate}` | derived from `route.exit.gate` |
-| `route` | `{to_area, entry?}` | presentation source |
+| `route` | `{to_area, entry?}` — `entry` is this area's own arrival cell | presentation source |
 | `pursuit` | `{light}` | presentation source |
 | `projection_schemas` | `[{name, version}]`, four members in declared order | the world package's four projection members |
 | `projection_digests` | `[{file, digest}]`, same four members, same order | SHA-256 over the members' raw bytes |
@@ -229,7 +259,7 @@ order below is reading order, not byte order.
 | 3 | `palette: "gaol_bounded_01"` | removed | Never dereferenced by any consumer; each renderer already holds its own table (audit §2 item 9). |
 | 4 | `uiAnchors: [...]` | removed | Fully dead: the four strings appear nowhere else in the tree (audit §1 row 43). |
 | 5 | `presentation.primaryGate`, `presentation.objective.{kind,target}`, `presentation.exit.gate` | one `objective: {kind, gate}` | Three fields forced equal collapse to one (audit §2 item 5). `route` keeps only where the gate leads. |
-| 6 | `presentation.exit.{toArea,entry}` | `route.{to_area,entry}` | snake_case; the `presentation` wrapper had no members left worth wrapping. |
+| 6 | `presentation.exit.{toArea,entry}` | `route.{to_area,entry}` | snake_case; the `presentation` wrapper had no members left worth wrapping. `entry` also changes meaning under owner ruling 3: it is now the area's *own* arrival cell rather than a cell the previous area named inside it. |
 | 7 | `presentation.pursuitLight` | `pursuit.light` | snake_case; grouped with the other pursuit facts R1-5 will add. |
 | 8 | `presentation.forensicScenario` | removed | Test-fixture constant, identical in all four areas; moves to capture tooling (§3.5). |
 | 9 | `architecture.wallHeight: 4.5` | `architecture.wall_height_steps: 45` | Integer tenths of a cell; removes 4 of the 26 floats and fixes the unit in the schema instead of in two renderers. |
@@ -435,6 +465,7 @@ costs nothing and closes the note.
 | Constant | Home | Replaces |
 | --- | --- | --- |
 | `LOOK_PROFILE_IDS = ["baseline", "procedural"]` | `renderer-catalog.mjs` | `collection.lookProfile.id`, and `viewer.html:196-201`'s bare `"procedural"`/`"baseline"` literals |
+| `ASSEMBLIES`, `MATERIAL_FAMILIES`, `TRIM_FAMILIES`, `ACTOR_ASSEMBLIES`, `EFFECT_ASSEMBLIES` | `renderer-catalog.mjs` | the closed sets audit §1 rows 14, 15, 16, 21, 25 name; content selects from them, `verify.mjs` checks membership (owner ruling 1) |
 | `machineState(scenario, entity, machine)` | `renderer-catalog.mjs` | the two independent lookups with their own fallbacks at `render-core.mjs:67` and `webgl-renderer.mjs:89-90`; throws when the namespace is absent |
 | `doorState(scenario, entity)` → `{access, integrity, ward}` | `renderer-catalog.mjs` | the four `"sealed"`, two `"intact"`, and two `"locked"` literal fallbacks |
 | `wardSealed(scenario, entity)` | `renderer-catalog.mjs` | the four independent `=== "sealed"` re-derivations |
@@ -462,21 +493,21 @@ after this slice.
 | 8 | `forensicScenario` | `capture.mjs` `FORENSIC_SCENARIO` | test fixture | Identical in all four areas and read only by capture tooling. |
 | 9 | `exit.gate` | `presentation.json` `route.exit.gate` | area/gameplay graph | The one surviving spelling of the triple. |
 | 10 | `exit.toArea` | `presentation.json` `route.exit.to_area` | area/gameplay graph | Graph edge target, cross-checked against declared area ids. |
-| 11 | `exit.entry` | `presentation.json` `route.entry` | area/gameplay graph | Integer landing cell; present iff `to_area` is non-null. |
-| 12 | `architecture.bounds.width`/`.height` | `presentation.json` `architecture.bounds` | presentation source | Audit proposes World IR; `nomos.source@1` has no lattice-extent syntax, so it is unreachable in R1 — §6 finding 2. |
+| 11 | `exit.entry` | `presentation.json` `route.entry` | area/gameplay graph | Owner ruling 3: each area declares its own arrival cell, validated against its own bounds and masses; the start area declares none. Cross-area authority removed. |
+| 12 | `architecture.bounds.width`/`.height` | `presentation.json` `architecture.bounds` | presentation source (deliberate deviation) | Audit proposes World IR; `nomos.source@1` has no lattice-extent syntax, so it is unreachable in R1. Owner-approved deviation with the remedy recorded — §6 finding 2. |
 | 13 | `architecture.wallHeight` | `presentation.json` `architecture.wall_height_steps` | presentation source | Integer tenths of a cell; the unit is now in the schema, not in two renderers. |
-| 14 | `architecture.style.assembly` | `presentation.json` `architecture.style.assembly` | renderer catalog | Kept in content by the issue's Scope; §6 finding 1, deferred to R1-4. |
-| 15 | `architecture.style.materialFamily` | `presentation.json` `architecture.style.material_family` | renderer catalog | Same. |
-| 16 | `architecture.style.trimFamily` | `presentation.json` `architecture.style.trim_family` | renderer catalog | Same. |
+| 14 | `architecture.style.assembly` | `presentation.json`, selected from `ASSEMBLIES` | renderer catalog defines the closed set; presentation source selects from it | Owner ruling 1: same definition/selection split as socket names. `source.rs` checks the grammar, `verify.mjs` checks membership. Resolved. |
+| 15 | `architecture.style.materialFamily` | `presentation.json`, selected from `MATERIAL_FAMILIES` | renderer catalog defines the closed set; presentation source selects from it | Same. |
+| 16 | `architecture.style.trimFamily` | `presentation.json`, selected from `TRIM_FAMILIES` | renderer catalog defines the closed set; presentation source selects from it | Same. |
 | 17 | `architecture.masses[].id` | `presentation.json` | presentation source | Presentation-only collision mass; unique per area. |
 | 18 | `architecture.masses[].min`/`.max` | `presentation.json` | presentation source | Integer lattice rectangle, validated against `bounds`. |
 | 19 | `architecture.masses[].height` | `presentation.json` `height_steps` | presentation source | Integer tenths of a cell. |
 | 20 | `actors[].id` | `presentation.json` `actors[].id` | presentation source | Still required to be `player` and `gaoler`; §4.3 item 21 defers the role to R1-5. |
-| 21 | `actors[].assembly` | `presentation.json` `actors[].assembly` | renderer catalog | Kept in content by the issue's Scope; §6 finding 1, deferred to R1-4. |
+| 21 | `actors[].assembly` | `presentation.json`, selected from `ACTOR_ASSEMBLIES` | renderer catalog defines the closed set; presentation source selects from it | Owner ruling 1. Resolved. |
 | 22 | `actors[].anchor.kind` | removed | presentation source | Single-valued enum; the field is now literally `cell`. |
 | 23 | `actors[].anchor.cell` | `presentation.json` `actors[].cell` | presentation source | Sole authority: `play-state.mjs`'s duplicate defaults are deleted. |
 | 24 | `effects[].id` | `presentation.json` | presentation source | Stable effect identity. |
-| 25 | `effects[].assembly` | `presentation.json` | renderer catalog | Kept in content by the issue's Scope; §6 finding 1, deferred to R1-4. |
+| 25 | `effects[].assembly` | `presentation.json`, selected from `EFFECT_ASSEMBLIES` | renderer catalog defines the closed set; presentation source selects from it | Owner ruling 1. Resolved. |
 | 26 | `effects[].anchorEntity` | `presentation.json` `effects[].anchor.entity` | presentation source | Binds the effect to a compiled entity, unchanged in meaning. |
 | 27 | `effects[].presentationAnchor` | removed | presentation source | Replaced by `anchor.socket`; the audit's proposed repair. |
 | 28 | `schema` (plan) | plan `schema`, from `plan.rs` | tooling only | Declared by the emitting code; now `nomos.rendering_plan@2`. |
@@ -513,7 +544,7 @@ after this slice.
 | 59 | `lookProfile.grammar.projectionSchemas` | collection `visual_grammar.projection_schemas` | kernel projection | Same. |
 | 60 | `lookProfile.grammar.camera` | removed | renderer catalog | The plan no longer carries a camera to copy. |
 | 61 | `lookProfile.grammar.palette` | removed | renderer catalog | Same. |
-| 62 | `lookProfile.grammar.architectureStyle` | collection `visual_grammar.architecture_style` | renderer catalog | Still checked equal across areas while style stays in content (§6 finding 1). |
+| 62 | `lookProfile.grammar.architectureStyle` | collection `visual_grammar.architecture_style` | renderer catalog | Still checked equal across areas; membership in the catalog's closed sets is checked per area by `verify.mjs` (owner ruling 1). |
 | 63 | `lookProfile.grammar.entityAssemblies` | collection `visual_grammar.entity_assemblies` | renderer catalog | Still derived from the plan while rows 38–39 stay in the compiler. |
 | 64 | `lookProfile.grammar.actorAssemblies` | collection `visual_grammar.actor_assemblies` | renderer catalog | Same, from content-declared actor assemblies. |
 | 65 | `lookProfile.grammar.effectAssemblies` | collection `visual_grammar.effect_assemblies` | renderer catalog | Same, from content-declared effect assemblies. |
@@ -525,7 +556,11 @@ after this slice.
 Every row has exactly one owner, and no row's only authority is JavaScript:
 rows 1–27 are decoded and validated by `source.rs`, rows 28–53 are emitted by
 `plan.rs`, rows 32–34 and 56 are declared renderer constants, and rows 54–69 are
-computed by `build-collection.mjs` from the first two groups.
+computed by `build-collection.mjs` from the first two groups. Rows 14, 15, 16,
+21, and 25 hold under the definition/selection split of owner ruling 1: the
+renderer catalog defines the closed set, the source selects a member, and both
+halves are checked — grammar in Rust, membership in `verify.mjs`. Row 12 is the
+one recorded deviation from the audit's proposed owner (§6 finding 2).
 
 ### 4.2 §2 "Double authorities" — 9 rows
 
@@ -647,13 +682,13 @@ is open-ended.**
 
 | File | Edit |
 | --- | --- |
-| `src/renderer-catalog.mjs` | New: `VERTICAL_STEP`, `SOCKETS`, `LOOK_PROFILE_IDS`, `machineState`, `doorState`, `wardSealed`, `isHunting`. |
+| `src/renderer-catalog.mjs` | New: `VERTICAL_STEP`, `SOCKETS`, `LOOK_PROFILE_IDS`, the five closed sets, `machineState`, `doorState`, `wardSealed`, `isHunting`. |
 | `src/render-core.mjs` | Camera constants and `CELL_HEIGHT_PIXELS` declared and exported; `steps * VERTICAL_STEP`; socket-resolved crescent; fallbacks removed; `plan.objective.gate`; array lookups for `movement`/`effective_light`/`machine_states`. |
 | `src/webgl-renderer.mjs` | `VERTICAL_SCALE`, `ORTHO_HALF_HEIGHT`, `CAMERA_OFFSET` declared; socket-resolved upright crescent; `anchor.direction === "north"`; fallbacks removed; renamed fields. |
-| `src/play-state.mjs` | Actor fallbacks deleted; `plan.objective.gate`, `plan.pursuit.light`; `isHunting`; array lookups. |
+| `src/play-state.mjs` | Actor fallbacks deleted; `plan.objective.gate`, `plan.pursuit.light`; `isHunting`; array lookups; `enterArea` places the player at the destination plan's own `route.entry`. |
 | `viewer.html` | `isHunting`; look ids from `LOOK_PROFILE_IDS`; number keys index `plan.scenarios`; `collection.visual_grammar.digest`; `connection.to_area`. |
-| `src/build-collection.mjs` | Collection `@2`; grammar without camera/palette/ui anchors; route from `plan.objective.gate` and `plan.route`; snake_case output. |
-| `src/verify.mjs` | `@2`; renamed fields; the socket-resolves-in-`SOCKETS` assertion. |
+| `src/build-collection.mjs` | Collection `@2`; grammar without camera/palette/ui anchors; route walked from `plan.objective.gate` and `plan.route.to_area`, with each hop's `entry` read from the destination plan; every non-null `to_area` must name a declared area that declares an `entry`; snake_case output. |
+| `src/verify.mjs` | `@2`; renamed fields; membership assertions against the renderer catalog's closed sets — sockets in `SOCKETS`, and assemblies and families in `ASSEMBLIES`/`MATERIAL_FAMILIES`/`TRIM_FAMILIES`/`ACTOR_ASSEMBLIES`/`EFFECT_ASSEMBLIES` (owner ruling 1). |
 | `src/capture.mjs` | `FORENSIC_SCENARIO`; camera imported from `render-core.mjs`. |
 | `src/capture-collection.mjs` | Camera imported from `render-core.mjs`. |
 | `src/area-collection.test.mjs`, `src/play-state.test.mjs`, `src/webgl-viewer.test.mjs` | Renamed fields; the `steps/10` exactness assertion; no `presentationAnchor` anywhere; no bare look-id literals. |
@@ -732,54 +767,52 @@ forensic overlays, the cross-area sheet, and its PNG).
 
 ---
 
-## 6. Findings against the issue
+## 6. Findings against the issue, and the owner's rulings
 
-Three, recorded rather than worked around, per `AGENTS.md`. None makes the
-issue's settled decisions impossible; two ask for an owner's eye.
+Three findings were raised in phase 1. All three are decided; the rulings are
+applied above and are what ships.
 
-### Finding 1 — four content fields whose audited owner is the renderer catalog
+### Finding 1 — five content fields whose audited owner is the renderer catalog — RULED
 
-The issue's Scope keeps `architecture.style.{assembly, material_family,
-trim_family}`, `actors[].assembly`, and `effects[].assembly` in
-`presentation.json`. The audit assigns all five to **renderer catalog** (§1 rows
-14, 15, 16, 21, 25), on the evidence that every one of them holds a single value
-across the entire corpus and that `build-collection.mjs:36-38` already enforces
-cross-area equality — i.e. they are constants that four content files re-declare.
+`architecture.style.{assembly, material_family, trim_family}`,
+`actors[].assembly`, and `effects[].assembly` hold one value each across the
+whole corpus, and `build-collection.mjs:36-38` already enforced cross-area
+equality: four content files were re-declaring constants. The audit assigns all
+five to *renderer catalog* (§1 rows 14, 15, 16, 21, 25); the issue's Scope keeps
+them in content.
 
-This is not a contradiction with the issue: "what leaves content" is settled and
-this list is not in it. It is a limit on what R1-3 can claim. The design keeps
-them in content, records their owner honestly as renderer catalog, and defers
-the move to **R1-4**, which creates the accepted renderer that can hold them
-and whose criterion "adding an area edits no file under `apps/nomos-viewer/`"
-is what a renderer-owned style table would make structurally true. If the owner
-would rather they move now, the change is small — three constants in
-`renderer-catalog.mjs`, five fewer fields in the source, and `visual_grammar`
-loses `architecture_style` — and it removes five rows from the deferred list.
+**Ruling: keep them in content, under the definition/selection split.** The
+renderer catalog defines the closed set a field may draw from; the presentation
+source selects one member of it. That is exactly the split already adopted for
+socket names (§3.3), and it gives each fact one owner: the catalog owns *what
+is legal*, content owns *which one this area uses*. `source.rs` checks the
+grammar; `verify.mjs` checks membership in `ASSEMBLIES`, `MATERIAL_FAMILIES`,
+`TRIM_FAMILIES`, `ACTOR_ASSEMBLIES`, and `EFFECT_ASSEMBLIES`, so a well-formed
+name outside the catalog fails the build rather than a frame. The five rows are
+**resolved**, not deferred. R1-4 turns the JavaScript closed sets into a
+Rust-side catalog when it promotes the viewer.
 
-### Finding 2 — the audit's proposed owner for `architecture.bounds` is unreachable in R1
+### Finding 2 — the audit's proposed owner for `architecture.bounds` is unreachable in R1 — APPROVED
 
-Audit §1 row 12 assigns `architecture.bounds.width`/`.height` to **World IR**,
-citing `THESIS.md:280` (`spatial.boundary -> lattice`), and notes that the value
-"is never cross-checked against the compiled `world.nomos` extent at all".
+Audit §1 row 12 assigns `bounds.width`/`.height` to *World IR*, citing
+`THESIS.md:280` (`spatial.boundary -> lattice`), and notes the value "is never
+cross-checked against the compiled `world.nomos` extent". The extent it would be
+checked against does not exist: `nomos.source@1` has no lattice-boundary syntax
+— all four `experiments/executable-gaol/areas/*/world.nomos` declare only
+`schema`, `catalog`, and `entity` blocks, and
+`grep -c 'lattice\|extent\|bounds\|boundary'` returns `0` for each of the four.
+Giving World IR the extent needs new source grammar plus a World IR field plus a
+projection field, touching `nomos.source@1` and `nomos.world_ir@2` — two of the
+twenty frozen Gate K identities.
 
-The extent it would be checked against does not exist. `nomos.source@1` has no
-syntax for a lattice boundary: `experiments/executable-gaol/areas/*/world.nomos`
-declares `schema`, `catalog`, and `entity` blocks and nothing else, and
-`grep -n 'lattice\|extent\|bounds\|boundary'` over those files is empty. Giving
-World IR the extent therefore requires new source grammar plus a World IR field
-plus a projection field — a change to `nomos.source@1` and `nomos.world_ir@2`,
-which are two of the twenty frozen Gate K identities, and which `RUNTIME.md` §3
-admits only as read-only additions that change no Gate K artifact.
+**Ruling: approved as written.** `bounds` stays a presentation-source field in
+R1, recorded in the owner column as a **deliberate deviation** from the audit's
+proposal rather than as agreement with it. The remedy is named for a later owner
+decision and is not R1-4 or R1-5 work: declare a `boundary` in `.nomos`, carry
+it into World IR, publish it on `nomos.entity_catalog@1`, and cross-check
+`bounds` against it in `source.rs` with `RP0202` on disagreement.
 
-So `bounds` stays a presentation-source field in R1, and the owner column above
-records it as such with this reason rather than claiming a World IR owner the
-tree cannot supply. The concrete remedy, when a later decision opens the source
-grammar, is: declare a `boundary` in `.nomos`, carry it into World IR, publish
-it on `nomos.entity_catalog@1`, and have `source.rs` cross-check `bounds`
-against it with `RP0202` on disagreement. That is a kernel-schema change, not
-R1-4 or R1-5 work, and it is named here so the row is not silently closed.
-
-### Finding 3 — the audit's internal section cross-references are off by one in three places
+### Finding 3 — the audit's internal section cross-references are off by one
 
 `docs/review/executable-gaol-ownership-audit.md` heads its double-authority list
 "## 2. Double authorities" but refers to it as "§3 (Double authorities)" in
@@ -789,6 +822,27 @@ therefore maps the audit by heading name — "Double authorities" (9), "Derived 
 convention" (26), "Raw floating-point presentation values" (26) — so no
 mis-numbered pointer can mis-route a row. The audit itself is owner-reviewed
 evidence at its commit and is left untouched.
+
+### Correction 3 — `route.entry` changes hands — RULED
+
+Not a phase-1 finding; an owner correction to the design. `area.json` had the
+*exiting* area author `exit.entry`, a cell inside the *destination* area. That
+is cross-area authority — an area declaring a fact about a room it does not own
+— and the only validation was `build-collection.mjs:44-51` checking it against a
+global 9×6 rather than against the destination's own bounds and masses.
+
+**Ruling: flip it.** `route.exit` carries `{gate, to_area}` only. Every area
+with `area.start == false` declares its own `route.entry`, the one cell a player
+arrives on, validated by `source.rs` against *that area's* `bounds` and refused
+if it lies inside *that area's* `masses`. The start area declares no `entry`,
+because nothing arrives there. `to_area` is non-null exactly when the area is
+not the route's terminal. `play-state.mjs` places the player at the destination
+area's own `route.entry` on transition, and `build-collection.mjs` keeps one
+purely referential cross-area check: every non-null `to_area` names a declared
+area, and that area declares an `entry`.
+
+The three cells are unchanged in value, only in owner: Ember Vault `{7, 5, 0}`,
+Ossuary Reach `{1, 5, 0}`, North Gaol `{2, 4, 0}`, Cistern Walk none.
 
 ### Nothing in the issue is impossible
 
