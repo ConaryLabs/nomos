@@ -924,22 +924,40 @@ Plan:
    derived, not typed.
 6. Record `git diff --stat` against the branch point in the PR body.
 
-**What the diff will actually touch**, stated in advance so the claim is
-falsifiable:
+**What the diff touched**, measured on `scratch/issue-148-area-proof` — twelve
+files, 116 insertions, 4 deletions:
 
 ```text
-experiments/executable-gaol/areas/warden-stair/**            (new)
-experiments/executable-gaol/areas/north-gaol/presentation.json          (1 line)
+experiments/executable-gaol/areas/warden-stair/**            (new: source,
+    presentation, five command scripts, compiled plan)
+experiments/executable-gaol/areas/north-gaol/presentation.json           (1 line)
 experiments/executable-gaol/areas/north-gaol/rendering-plan.example.json (regenerated)
 experiments/executable-gaol/area-collection.example.json                (regenerated)
+experiments/executable-gaol/src/area-collection.test.mjs                 (7 lines)
 ```
 
 and **nothing** under `apps/`, `crates/`, `xtask/`, or `.github/`. That is the
-criterion `RUNTIME.md` states. The issue's parenthetical — "the diff touches
-only `experiments/executable-gaol/areas/<new>/`" — is not reachable for a
-*connected* area, because `src/build-collection.mjs:70-85` requires the route to
-visit every declared area, so the new area must be named by an existing one.
-§10 finding 7.
+criterion `RUNTIME.md` §5 R1-4 states, and §1 criterion 5's "no edit to renderer
+or compiler source" with it.
+
+The twelfth file is the one this record did not predict: the study's own
+collection test enumerates the corpus — it names the terminal area and iterates
+a fixed list of four plans — so a fifth area is a seven-line edit to it. It is a
+quarantined test fixture, neither renderer nor compiler source, and it is
+recorded here rather than quietly absorbed. The viewer's own 105 tests are
+untouched.
+
+The issue's parenthetical — "the diff touches only
+`experiments/executable-gaol/areas/<new>/`" — is not reachable for a *connected*
+area, because `src/build-collection.mjs:64-85` requires the route to visit every
+declared area, so the new area must be named by an existing one. §10 finding 7.
+
+**What it proved.** `gaol verify` green with five `EXECUTABLE_GAOL_VERIFY`
+receipts and the visual-grammar digest unchanged at `e3f338b1`; the staged
+artifact one plan larger at 15 files and 904 520 bytes; and the browser lane
+playing **five** areas to the final escape with no edit to the harness — 51
+moves, 71 traversal cost, zero console errors — because the solver reads the
+artifacts rather than a walk written down anywhere.
 
 ---
 
