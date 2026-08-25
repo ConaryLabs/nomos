@@ -83,17 +83,23 @@ depending on `nomos-sim`, was considered and declined by the owner on
 
 ### R1 surface added to kernel crates
 
-Pending acceptance of the slice that adds it. No row changes an existing Gate K
-command, artifact, hash, or diagnostic.
+A row is accepted when the section 5 slice that consumes it is; the Status
+column records where each stands. No row changes an existing Gate K command,
+artifact, hash, or diagnostic.
 
-| Crate | R1 surface | Slice |
-| --- | --- | --- |
-| `nomos-sim` | `effective_facts.rs`, the `nomos.effective_facts@1` document builder over the existing resolvers | R1-1 |
-| `nomos-projection` | public canonical accessors on the resolved movement and light fact types | R1-1 |
-| `nomos-cli` | the `effective-facts` subcommand | R1-1 |
-| `nomos-compiler` | `entity_catalog.rs`, the `nomos.entity_catalog@1` document builder over the decoded stable World IR and the four verified plans | #138, an R1-2 input |
-| `nomos-cli` | the `entity-catalog` subcommand | #138, an R1-2 input |
-| `nomos-core` | `SourceSpan::to_canonical`, the one rendering of a source span; it replaces five byte-identical private copies in `nomos-core`, `nomos-schema`, `nomos-projection`, and `nomos-cli` | #138, an R1-2 input |
+| Crate | R1 surface | Slice | Status |
+| --- | --- | --- | --- |
+| `nomos-sim` | `effective_facts.rs`, the `nomos.effective_facts@1` document builder over the existing resolvers | R1-1 | accepted |
+| `nomos-projection` | public canonical accessors on the resolved movement and light fact types | R1-1 | accepted |
+| `nomos-cli` | the `effective-facts` subcommand | R1-1 | accepted |
+| `nomos-compiler` | `entity_catalog.rs`, the `nomos.entity_catalog@1` document builder over the decoded stable World IR and the four verified plans | #138, an R1-2 input | accepted with R1-2 |
+| `nomos-cli` | the `entity-catalog` subcommand | #138, an R1-2 input | accepted with R1-2 |
+| `nomos-core` | `SourceSpan::to_canonical`, the one rendering of a source span; it replaces five byte-identical private copies in `nomos-core`, `nomos-schema`, `nomos-projection`, and `nomos-cli` | #138, an R1-2 input | accepted with R1-2 |
+
+The three R1-1 rows are accepted: `nomos.effective_facts@1` is registered in
+`docs/evaluation/R1_SCHEMA_OWNERSHIP.md`, its comparison harness reports
+`20 scenarios compared, 0 differences`, and R1-2 is now its first accepted
+consumer, binding the identity and version and refusing a mismatch.
 
 The workspace layout under R1:
 
@@ -105,9 +111,9 @@ xtask/              workspace tooling; the dependency-boundary check
 experiments/        quarantined study; non-authoritative
 ```
 
-No R1 crate exists yet, so the declared R1 member list is empty; each new member
-joins that list in the change that creates it. R1-1 adds no member at all —
-only the surface tabled above.
+Each new R1 crate joins the declared member list below in the change that
+creates it. R1-1 adds no member at all — only the surface tabled above; R1-2
+adds `nomos-render-plan`.
 
 Permitted new edges: an R1 crate may depend on any kernel crate, and on another
 declared R1 crate while the graph stays acyclic; `apps/nomos-viewer/` consumes

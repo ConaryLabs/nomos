@@ -25,6 +25,14 @@ water should create a legible route choice, and the brazier must light a useful
 landmark. Change composition and traversal, not the bounded look. Do not edit
 either renderer implementation for an area.
 
-Run `experiments/executable-gaol/gaol verify` to compile every area, compare its
-committed rendering plan, check the shared visual grammar, and capture the
-cross-area sheet.
+Run `experiments/executable-gaol/gaol verify` to compile every area, project its
+entity catalog and per-scenario effective facts, compile its rendering plan with
+`nomos-render-plan`, compare that plan against the committed one, check the
+shared visual grammar, and capture the cross-area sheet.
+
+Nothing an area declares reaches the plan by convention. An entity's kind comes
+from its `primitive/...` declaration by way of `nomos entity-catalog`, and its
+movement disposition, cost, reasons, and light come from `nomos effective-facts`
+— so renaming an entity or a machine cannot change how it is drawn, and a
+primitive the compiler has no kind for is refused rather than drawn as a
+marker.
