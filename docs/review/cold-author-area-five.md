@@ -119,6 +119,15 @@ But it is the same hazard #163 removed from the JavaScript collection test
 before the run, and it is recorded here as a finding rather than folded into
 the connection commit: issue #167.
 
+**A pin under `apps/` — an R1-4 criterion regression.**
+`apps/nomos-viewer/test/runtime.test.mjs` hardcoded the four-area route as
+key strings (`ROUTE_KEYS`), so two viewer tests failed once a fifth area
+existed, and fixing them required an edit under `apps/nomos-viewer/` — which
+`RUNTIME.md` §5 R1-4 says adding an area must never require. The pin arrived
+with R1-5's test, after R1-4's area-addition proof, so the proof could not
+have caught it. The repair here makes the test derive its route from the
+smoke lane's solver, the same way the lane does; #167 covers the class.
+
 ## Owner visual verdict
 
 `[ ]` rejected — `[ ]` promising — `[ ]` compelling
