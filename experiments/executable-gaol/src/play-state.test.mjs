@@ -1,7 +1,16 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { attemptInteraction, createPlayState, attemptMove, interactionAt, terrainAt } from "./play-state.mjs";
+import {
+  attemptInteraction,
+  attemptMove,
+  completeRun,
+  completionSummary,
+  createPlayState,
+  guidanceFor,
+  interactionAt,
+  terrainAt,
+} from "./play-state.mjs";
 
 const plan = JSON.parse(readFileSync(new URL("../areas/north-gaol/rendering-plan.example.json", import.meta.url)));
 
@@ -59,6 +68,43 @@ test("interaction range does not invent remote actions", () => {
   const result = attemptInteraction(plan, "01-baseline", state);
   assert.equal(result.changed, false);
   assert.equal(result.scenarioId, "01-baseline");
+});
+
+test("guidance derives the objective and nearby prompt from plan data", () => {
+  const initial = createPlayState(plan);
+  assert.deepEqual(guidanceFor(plan, "01-baseline", initial), {
+    objective: "Exit via North Gate",
+    prompt: "Reach North Gate",
+    tone: "neutral",
+  });
+
+  const besideGate = { ...initial, player: { x: 5, y: 1, z: 0 } };
+  assert.deepEqual(guidanceFor(plan, "01-baseline", besideGate), {
+    objective: "Exit via North Gate",
+    prompt: "E · Ignite North Gate",
+    tone: "action",
+  });
+
+  assert.deepEqual(guidanceFor(plan, "03-breached-unsealed", initial), {
+    objective: "Exit via North Gate",
+    prompt: "The way through North Gate is open",
+    tone: "success",
+  });
+});
+
+test("completion guidance and summary report cumulative run state", () => {
+  const completed = completeRun({
+    ...createPlayState(plan),
+    areasCleared: 2,
+    moves: 41,
+    movementCost: 57,
+  });
+  assert.deepEqual(guidanceFor(plan, "04-breached-unsealed-dark", completed), {
+    objective: "Escape complete",
+    prompt: "R · Begin a new run",
+    tone: "success",
+  });
+  assert.equal(completionSummary(completed, 3), "3 areas · 41 moves · 57 traversal cost");
 });
 
 test("the brazier interaction follows the verified extinguish receipt", () => {

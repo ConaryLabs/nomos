@@ -51,6 +51,12 @@ door whose selected Nomos runtime state resolves to `traversable`. Keys 1–5
 switch the real runtime scenarios for inspection, and the viewer interpolates
 movement without placing fractional positions into Nomos authoritative state.
 
+Each area declares one bounded `exit_via` objective referencing its compiled
+primary gate. The viewer derives the visible objective, nearby `E` prompt, and
+open-passage guidance from that plan data and the verified interaction edges;
+it contains no room-specific prompt text. Area arrivals identify route progress,
+and the final escape reports cumulative areas, moves, and traversal cost.
+
 The default run begins in Cistern Walk. Crossing its declared, traversable
 sluice enters Ember Vault; crossing Ember's vault gate enters North Gaol; the
 North Gate is the final escape. Area transitions preserve cumulative moves,

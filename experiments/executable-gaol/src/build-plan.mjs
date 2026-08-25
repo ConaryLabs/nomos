@@ -51,8 +51,16 @@ const entities = simulation.entities.map((entity) => {
 });
 
 const entityIds = new Set(entities.map((entity) => entity.id));
+const entityById = new Map(entities.map((entity) => [entity.id, entity]));
 if (!area.id || !area.label) throw new Error("area identity is required");
 if (!entityIds.has(area.primaryGate)) throw new Error(`primary gate ${area.primaryGate} is not a compiled entity`);
+if (JSON.stringify(Object.keys(area.objective ?? {}).sort()) !== JSON.stringify(["kind", "target"])) {
+  throw new Error("area objective must contain exactly kind and target");
+}
+if (area.objective?.kind !== "exit_via") throw new Error("area objective must use the bounded exit_via kind");
+if (!entityIds.has(area.objective.target)) throw new Error(`objective target ${area.objective.target} is not a compiled entity`);
+if (entityById.get(area.objective.target).kind !== "door") throw new Error("exit_via objective must target a compiled door");
+if (area.objective.target !== area.primaryGate) throw new Error("exit_via objective must target the primary gate");
 if (!entityIds.has(area.pursuitLight)) throw new Error(`pursuit light ${area.pursuitLight} is not a compiled entity`);
 if (area.exit.gate !== area.primaryGate) throw new Error("declared exit must use the primary gate");
 if (!area.actors.some((actor) => actor.id === "player") || !area.actors.some((actor) => actor.id === "gaoler")) {
@@ -174,6 +182,7 @@ const plan = {
   effects: area.effects,
   presentation: {
     primaryGate: area.primaryGate,
+    objective: area.objective,
     pursuitLight: area.pursuitLight,
     forensicScenario: area.forensicScenario,
     exit: area.exit,

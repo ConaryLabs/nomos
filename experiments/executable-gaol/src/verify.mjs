@@ -14,6 +14,9 @@ if (plan.interactions.length !== 3) fail("expected three verified in-world inter
 if (plan.interactions.some((interaction) => interaction.inputStateHash !== plan.scenarios.find((scenario) => scenario.id === interaction.fromScenario)?.stateHash)) fail("interaction input hash is not scenario-bound");
 if (plan.interactions.some((interaction) => interaction.resultingStateHash !== plan.scenarios.find((scenario) => scenario.id === interaction.toScenario)?.stateHash)) fail("interaction result hash is not scenario-bound");
 if (plan.scenarios.some((scenario) => !scenario.stateHash)) fail("scenario is not runtime-bound");
+if (plan.presentation.objective?.kind !== "exit_via") fail("bounded area objective missing");
+if (plan.presentation.objective.target !== plan.presentation.primaryGate) fail("objective does not target primary gate");
+if (plan.entities.find((entity) => entity.id === plan.presentation.objective.target)?.kind !== "door") fail("objective does not target a compiled door");
 if (plan.scenarios[0].movement[plan.presentation.primaryGate].disposition !== "blocked") fail("baseline gate must be blocked");
 if (plan.scenarios[2].movement[plan.presentation.primaryGate].disposition !== "traversable") fail("breached/unsealed gate must be traversable");
 if (plan.scenarios[3].effectiveLight[plan.presentation.pursuitLight] !== false) fail("breached dark scenario must extinguish the pursuit light");

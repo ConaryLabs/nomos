@@ -14,8 +14,24 @@
   button { color:#d7ddd9; background:#202d35; border:1px solid #4c6068; border-radius:5px; padding:7px 11px; cursor:pointer }
   button[aria-pressed="true"] { color:#10161d; background:#8ee6e3; border-color:#bfffff }
   main { display:grid; place-items:center; padding:18px }
-  #frame { width:min(100%,1200px); aspect-ratio:20/9; box-shadow:0 28px 80px #0009; border:1px solid #3c4a51; line-height:0; background:#090e13 }
+  #stage { position:relative; width:min(100%,1200px); aspect-ratio:20/9 }
+  #frame { width:100%; height:100%; box-shadow:0 28px 80px #0009; border:1px solid #3c4a51; line-height:0; background:#090e13 }
   #frame canvas { width:100%; height:100%; display:block }
+  #play-hud { position:absolute; z-index:2; top:18px; left:18px; padding:11px 14px; background:#091117dc; border-left:3px solid #4d9f9f; box-shadow:0 8px 28px #0008; pointer-events:none }
+  #progress { color:#6f8288; font:10px ui-monospace,monospace; letter-spacing:.16em; text-transform:uppercase }
+  #objective { margin-top:3px; font-weight:650; letter-spacing:.04em }
+  #prompt { margin-top:5px; color:#9baaad; font:12px ui-monospace,monospace }
+  #prompt[data-tone="action"] { color:#f0bf73 } #prompt[data-tone="success"] { color:#8ee6e3 } #prompt[data-tone="danger"] { color:#d47158 }
+  #arrival { position:absolute; z-index:3; top:14%; left:50%; translate:-50% -8px; padding:13px 26px; text-align:center; background:#091117e8; border-top:1px solid #4d9f9f; border-bottom:1px solid #4d9f9f; opacity:0; transition:opacity .3s,translate .3s; pointer-events:none }
+  #arrival.active { opacity:1; translate:-50% 0 }
+  #arrival-kicker { color:#8ee6e3; font:10px ui-monospace,monospace; letter-spacing:.18em; text-transform:uppercase }
+  #arrival-title { margin-top:4px; font-size:19px; letter-spacing:.08em; text-transform:uppercase }
+  #completion { position:absolute; z-index:4; inset:0; display:grid; place-items:center; background:#071016c9; backdrop-filter:blur(3px) }
+  #completion[hidden] { display:none }
+  #completion-card { min-width:min(360px,calc(100vw - 60px)); padding:28px; text-align:center; background:#101b22; border:1px solid #659b9b; box-shadow:0 30px 90px #000 }
+  #completion-kicker { color:#8ee6e3; font:11px ui-monospace,monospace; letter-spacing:.2em; text-transform:uppercase }
+  #completion h2 { margin:8px 0 10px; font-size:27px; letter-spacing:.1em; text-transform:uppercase }
+  #completion-summary { margin:0 0 20px; color:#9baaad }
   footer { display:flex; flex-wrap:wrap; justify-content:center; gap:8px 24px; padding:11px 18px 15px; color:#8e9b9c; background:#0a1016dd; border-top:1px solid #26343b }
   #message[data-tone="blocked"], #message[data-tone="danger"] { color:#d47158 } #message[data-tone="success"] { color:#8ee6e3 } #message[data-tone="water"] { color:#70909a }
   @media (max-width:700px) {
@@ -25,15 +41,26 @@
     #states { order:3; flex-wrap:wrap }
     #forensic { order:4 }
     main { padding:10px }
+    #play-hud { top:9px; left:9px; padding:8px 10px }
+    #progress { display:none }
+    #objective { font-size:12px }
+    #prompt { font-size:10px }
     footer { justify-content:flex-start; font-size:12px }
   }
 </style>
 <header><h1>Nomos // executable gaol</h1><span id="look"></span><span id="areas"></span><span id="states"></span><button id="forensic" aria-pressed="false">Forensics</button></header>
-<main><div id="frame"></div></main>
+<main>
+  <div id="stage">
+    <div id="play-hud"><div id="progress"></div><div id="objective"></div><div id="prompt"></div></div>
+    <div id="arrival" aria-live="polite"><div id="arrival-kicker"></div><div id="arrival-title"></div></div>
+    <div id="frame"></div>
+    <div id="completion" hidden><div id="completion-card"><div id="completion-kicker">Run complete</div><h2>Gaol escaped</h2><p id="completion-summary"></p><button id="restart">Begin again</button></div></div>
+  </div>
+</main>
 <footer><span>Move: WASD / arrows · Interact: E · Forensic areas: [ ] · States: 1–5 · Reset run: R</span><span id="message"></span><span id="meter"></span></footer>
 <script type="module">
   import { createGaolRenderer } from "./webgl-renderer.mjs";
-  import { attemptInteraction, attemptMove, completeRun, createPlayState, enterArea, movementKeys } from "./play-state.mjs";
+  import { attemptInteraction, attemptMove, completeRun, completionSummary, createPlayState, enterArea, guidanceFor, movementKeys } from "./play-state.mjs";
   const collection = await fetch("./areas.json").then((response) => response.json());
   const plans = new Map(await Promise.all(collection.areas.map(async (area) => [
     area.id,
@@ -47,6 +74,15 @@
   const message = document.querySelector("#message");
   const meter = document.querySelector("#meter");
   const gpu = createGaolRenderer(frame);
+  const progress = document.querySelector("#progress");
+  const objective = document.querySelector("#objective");
+  const prompt = document.querySelector("#prompt");
+  const arrival = document.querySelector("#arrival");
+  const arrivalKicker = document.querySelector("#arrival-kicker");
+  const arrivalTitle = document.querySelector("#arrival-title");
+  const completion = document.querySelector("#completion");
+  const completionSummaryElement = document.querySelector("#completion-summary");
+  const restart = document.querySelector("#restart");
   let areaId = collection.startArea;
   let plan = plans.get(areaId);
   let selected = plan.scenarios[0].id;
@@ -54,6 +90,7 @@
   let visualPlayer = { ...play.player };
   let visualGaoler = { ...play.gaoler };
   let animating = false;
+  let arrivalTimer;
   const selectScenario = (scenarioId) => {
     selected = scenarioId;
     for (const child of states.children) child.ariaPressed = String(child.dataset.scenario === selected);
@@ -76,6 +113,21 @@
     const pursuitLight = plan.presentation.pursuitLight;
     const pursuit = play.caught ? "caught" : plan.scenarios.find((scenario) => scenario.id === selected)?.effectiveLight[pursuitLight] === false ? "hunting" : "dormant";
     meter.textContent = `areas ${play.areasCleared}/${collection.areas.length} · moves ${play.moves} · cost ${play.movementCost} · gaoler ${pursuit}`;
+    const guidance = guidanceFor(plan, selected, play);
+    progress.textContent = `Area ${Math.min(play.areasCleared + 1, collection.areas.length)} / ${collection.areas.length} · ${plan.area.label}`;
+    objective.textContent = guidance.objective;
+    prompt.textContent = guidance.prompt;
+    prompt.dataset.tone = guidance.tone;
+    completion.hidden = !play.completed;
+    if (play.completed) completionSummaryElement.textContent = completionSummary(play, collection.areas.length);
+  };
+  const showArrival = () => {
+    clearTimeout(arrivalTimer);
+    arrivalKicker.textContent = `Area ${Math.min(play.areasCleared + 1, collection.areas.length)} of ${collection.areas.length}`;
+    arrivalTitle.textContent = plan.area.label;
+    arrival.classList.remove("active");
+    requestAnimationFrame(() => arrival.classList.add("active"));
+    arrivalTimer = setTimeout(() => arrival.classList.remove("active"), 1400);
   };
   const reset = () => selectArea(collection.startArea, false);
   const selectArea = (nextAreaId, forensicJump = true) => {
@@ -90,6 +142,7 @@
     for (const child of areas.children) child.ariaPressed = String(child.dataset.area === areaId);
     buildScenarioButtons();
     draw();
+    showArrival();
   };
   const enterConnectedArea = (connection, previousState) => {
     areaId = connection.toArea;
@@ -101,6 +154,7 @@
     for (const child of areas.children) child.ariaPressed = String(child.dataset.area === areaId);
     buildScenarioButtons();
     draw();
+    showArrival();
   };
   const animateMove = (from, to, gaolerFrom, gaolerTo, cost, onComplete) => {
     const started = performance.now();
@@ -135,6 +189,7 @@
   }
   buildScenarioButtons();
   forensic.onclick = () => { forensic.ariaPressed = String(forensic.ariaPressed !== "true"); draw(); };
+  restart.onclick = reset;
   addEventListener("keydown", (event) => {
     if (event.code === "KeyR") { event.preventDefault(); reset(); return; }
     if ((event.code === "BracketLeft" || event.code === "BracketRight") && !animating) {
@@ -174,5 +229,6 @@
     else draw();
   });
   draw();
+  showArrival();
 </script>
 </html>
