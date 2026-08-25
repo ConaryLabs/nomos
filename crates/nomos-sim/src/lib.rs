@@ -40,6 +40,7 @@ use nomos_core::id::SchemaId;
 
 mod command_language;
 mod commit;
+mod effective_facts;
 mod execution;
 mod receipt;
 mod replay;
@@ -51,6 +52,7 @@ mod transaction;
 
 pub use command_language::{CommandRequest, CommandScript, resolve_command};
 pub use commit::{CommittedTransaction, commit_transaction, commit_transaction_with_budget};
+pub use effective_facts::{effective_facts, effective_facts_schema};
 pub use execution::{RunExecution, execute_requests, validate_committed_evidence};
 pub use receipt::{CausalReceipt, EffectiveFactRef, EffectiveFactValue, ProjectionDelta};
 pub use replay::ReplayLog;
@@ -144,8 +146,8 @@ mod tests {
 
     use super::{
         causal_receipt_schema, causal_receipt_sequence_schema, command_log_schema,
-        command_script_schema, persisted_runtime_state_schema, replay_log_schema,
-        run_result_schema, runtime_state_schema, state_hash_sequence_schema,
+        command_script_schema, effective_facts_schema, persisted_runtime_state_schema,
+        replay_log_schema, run_result_schema, runtime_state_schema, state_hash_sequence_schema,
     };
 
     #[test]
@@ -160,6 +162,7 @@ mod tests {
             run_result_schema(),
             causal_receipt_schema(),
             replay_log_schema(),
+            effective_facts_schema(),
         ];
         assert_eq!(
             runtime_schemas
