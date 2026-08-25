@@ -50,7 +50,10 @@ pub fn effective_facts(
             "runtime_semantics_digest",
             CanonicalValue::text(state.runtime_semantics_digest().to_hex()),
         ),
-        ("schema", effective_facts_schema().to_canonical()),
+        (
+            "schema",
+            CanonicalValue::text(effective_facts_schema().to_string()),
+        ),
         (
             "state_hash",
             CanonicalValue::text(state.state_hash().to_hex()),
@@ -82,6 +85,6 @@ pub fn effective_facts(
 /// tests rule out.
 #[must_use]
 pub fn effective_facts_schema() -> nomos_core::id::SchemaId {
-    nomos_core::id::SchemaId::new("nomos.effective_facts", 1)
+    nomos_core::id::SchemaId::new("nomos.effective_facts", 2)
         .expect("the effective-facts schema id is a valid literal")
 }

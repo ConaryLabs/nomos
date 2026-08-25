@@ -46,7 +46,7 @@ explanations.
 
 `nomos effective-facts <world/> --state <state.json>` adds the R1-1 read-only
 projection: given a strictly verified package and a runtime state it emits
-`nomos.effective_facts@1`, the composed movement disposition, cost, ordered
+`nomos.effective_facts@2`, the composed movement disposition, cost, ordered
 reasons, and effective light for every resolver subject, resolved entirely by
 the existing `resolve_movement` and `resolve_light` rather than by new logic.
 
@@ -155,7 +155,7 @@ and its identity is the first row of `docs/evaluation/R1_SCHEMA_OWNERSHIP.md`.
 R1-2, Rust rendering-plan compilation, is accepted under issue #139.
 `crates/nomos-render-plan` is the first declared R1 member: it compiles
 `nomos.rendering_plan@1` from `nomos.entity_catalog@1`, one
-`nomos.effective_facts@1` document per scenario, the run bundles, four
+`nomos.effective_facts@2` document per scenario, the run bundles, four
 projection members, and `presentation.json`, and it opens no `.nomos` source, World IR,
 or compiler receipt. `experiments/executable-gaol/src/build-plan.mjs` is
 deleted, and `experiments/executable-gaol/gaol` runs the Rust binary. For all

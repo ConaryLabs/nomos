@@ -39,11 +39,12 @@ pub enum Identity {
 
 impl Identity {
     fn spell(self, name: &str, version: u64) -> CanonicalValue {
-        match self {
-            Self::Correct => schema(name, version),
-            Self::WrongVersion => schema(name, version + 1),
-            Self::WrongName => schema("nomos.not_the_catalog", version),
-        }
+        let spelled = match self {
+            Self::Correct => format!("{name}@{version}"),
+            Self::WrongVersion => format!("{name}@{}", version + 1),
+            Self::WrongName => format!("nomos.not_the_catalog@{version}"),
+        };
+        CanonicalValue::text(spelled)
     }
 }
 
@@ -514,7 +515,7 @@ impl Fixture {
                 ),
                 (
                     "schema",
-                    options.facts_identity.spell("nomos.effective_facts", 1),
+                    options.facts_identity.spell("nomos.effective_facts", 2),
                 ),
                 ("state_hash", CanonicalValue::text(state_hash)),
                 ("status", CanonicalValue::text("completed")),

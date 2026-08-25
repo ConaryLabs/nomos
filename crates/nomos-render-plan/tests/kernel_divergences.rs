@@ -246,7 +246,7 @@ fn kernel_facts() -> Vec<u8> {
 /// One movement subject, found by entity in the plan's stable-ID array.
 ///
 /// `nomos.rendering_plan@3` spells `movement` the way
-/// `nomos.effective_facts@1` does — an array of `{entity, ...}` rows ordered
+/// `nomos.effective_facts@2` does — an array of `{entity, ...}` rows ordered
 /// by entity — rather than as an entity-keyed object, so that no object key
 /// comes from data.
 fn subject<'a>(movement: &'a Json, entity: &str) -> Option<&'a Json> {

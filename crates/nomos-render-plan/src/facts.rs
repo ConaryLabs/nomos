@@ -1,6 +1,6 @@
 //! The R1-1 effective-fact projection, as this compiler consumes it.
 //!
-//! Input identity is `nomos.effective_facts@1`, declared by
+//! Input identity is `nomos.effective_facts@2`, declared by
 //! `crates/nomos-sim/src/effective_facts.rs` and accepted as R1-1. This module
 //! decodes it and nothing else: it evaluates no activation expression, applies
 //! no blocker-before-cost rule, and takes no maximum. `RUNTIME.md` section 5
@@ -44,7 +44,7 @@ use crate::read::{self, Shape};
 /// rule out.
 #[must_use]
 pub fn effective_facts_schema() -> SchemaId {
-    SchemaId::parse("nomos.effective_facts@1").expect("the effective-facts schema id is a literal")
+    SchemaId::parse("nomos.effective_facts@2").expect("the effective-facts schema id is a literal")
 }
 
 /// One subject's resolved ground-movement fact.
@@ -77,7 +77,7 @@ impl EffectiveFacts {
     /// # Errors
     ///
     /// Returns `RP0104` when the document's identity is not
-    /// `nomos.effective_facts@1` and `RP0105` when a required field is absent,
+    /// `nomos.effective_facts@2` and `RP0105` when a required field is absent,
     /// mis-shaped, or repeats a subject.
     pub fn decode(document: &CanonicalValue, path: &Path) -> PlanResult<Self> {
         read::require_completed(document, path)?;

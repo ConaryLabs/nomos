@@ -103,23 +103,14 @@ pub fn require_completed(document: &CanonicalValue, path: &Path) -> PlanResult<(
 
 /// Binds a document's `schema` field to an expected identity and version.
 ///
-/// Two spellings are accepted, and both are compared as `name@version`:
-///
-/// - the object `{"name": "...", "version": N}` that `SchemaId::to_canonical`
-///   produces, which is what every Gate K artifact and `nomos effective-facts`
-///   writes;
-/// - the string `"name@version"`, which is how the entity-catalog document in
-///   issue #138 spells its own identity.
-///
-/// Accepting both is deliberate: R1-2 must bind #138's document before #138
-/// lands, and the discrepancy between its example and the kernel convention is
-/// recorded in `docs/review/rendering-plan-compiler.md` rather than guessed at.
-/// A mismatch fails closed, naming both sides.
+/// R1 documents spell the identity as the single string `name@version`, as
+/// required by `RUNTIME.md` section 3. Gate K package and run artifacts keep
+/// their object spelling, but none reaches this R1 document reader.
 ///
 /// # Errors
 ///
-/// Returns `RP0104` when the field is absent, has neither accepted shape, or
-/// names a different identity or version.
+/// Returns `RP0104` when the field is absent, is not text, or names a different
+/// identity or version.
 pub fn bind_schema(document: &CanonicalValue, expected: &SchemaId, path: &Path) -> PlanResult<()> {
     let mismatch = |found: String| {
         PlanError::new(
@@ -131,23 +122,13 @@ pub fn bind_schema(document: &CanonicalValue, expected: &SchemaId, path: &Path) 
     let found = document
         .get("schema")
         .ok_or_else(|| mismatch("no `schema` field".to_owned()))?;
-    let spelled = match found {
-        CanonicalValue::Text(text) => text.clone(),
-        _ => {
-            let name = found.get("name").and_then(CanonicalValue::as_text);
-            let version = found.get("version").and_then(CanonicalValue::as_uint);
-            match (name, version) {
-                (Some(name), Some(version)) => format!("{name}@{version}"),
-                _ => {
-                    return Err(mismatch(
-                        "a `schema` field that is neither `name@version` nor `{name, version}`"
-                            .to_owned(),
-                    ));
-                }
-            }
-        }
+    let CanonicalValue::Text(spelled) = found else {
+        return Err(mismatch(
+            "a non-string `schema` field; R1 requires `name@version`".to_owned(),
+        ));
     };
-    if spelled != expected.to_string() {
+    let expected_spelling = expected.to_string();
+    if spelled != &expected_spelling {
         return Err(mismatch(format!("`{spelled}`")));
     }
     Ok(())

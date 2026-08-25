@@ -90,7 +90,7 @@ artifact, hash, or diagnostic.
 
 | Crate | R1 surface | Slice | Status |
 | --- | --- | --- | --- |
-| `nomos-sim` | `effective_facts.rs`, the `nomos.effective_facts@1` document builder over the existing resolvers | R1-1 | accepted |
+| `nomos-sim` | `effective_facts.rs`, the `nomos.effective_facts@2` document builder over the existing resolvers; `@1` was retired by the revision-2 spelling alignment authorized in decision 0018 | R1-1 | accepted |
 | `nomos-projection` | public canonical accessors on the resolved movement and light fact types | R1-1 | accepted |
 | `nomos-cli` | the `effective-facts` subcommand | R1-1 | accepted |
 | `nomos-compiler` | `entity_catalog.rs`, the `nomos.entity_catalog@1` document builder over the decoded stable World IR and the four verified plans | #138, an R1-2 input | accepted with R1-2 |
@@ -99,10 +99,11 @@ artifact, hash, or diagnostic.
 | `nomos-projection` | `activation_is_true`, the one evaluator of `ProjectedActivation`, taking the activation and a caller-supplied state lookup that owns its own diagnostic; it replaces the private copies in `nomos-compiler` and `nomos-sim`, which cannot share code as placed | #136 | accepted |
 | `nomos-projection` | `decode.rs`, `SimulationPlan::from_canonical_bytes`, the strict inverse of the encoder it sits beside; it refuses unless the reconstructed plan re-encodes to the exact input bytes, and no Gate K command reaches it — every kernel command still recompiles its plan from the packaged World IR and checks the stored member against it | R1-5 | accepted with R1-5 |
 
-The three R1-1 rows are accepted: `nomos.effective_facts@1` is registered in
+The three R1-1 rows are accepted: `nomos.effective_facts@2` is registered in
 `docs/evaluation/R1_SCHEMA_OWNERSHIP.md`, its comparison harness reports
-`20 scenarios compared, 0 differences`, and R1-2 is now its first accepted
-consumer, binding the identity and version and refusing a mismatch.
+`30 scenarios compared, 0 differences` — the original twenty plus the ten from
+the two cold-authored areas — and R1-2 is now its first accepted consumer,
+binding the identity and version and refusing a mismatch.
 
 The workspace layout under R1:
 
@@ -261,13 +262,13 @@ Accepted when:
   `nomos-projection` (`crates/nomos-projection/src/movement.rs`, issue #136,
   pull request #149), so effective facts still come only from that resolver
   pair with the projected law flags in the path;
-- the document carries schema identity `nomos.effective_facts@1` declared in
+- the document carries schema identity `nomos.effective_facts@2` declared in
   `nomos-sim`, is canonical entity-sorted bytes, and stays outside the
   state-hash domain because it is derived;
 - a source-review receipt names that reused pair, and the new identity is
   registered in `docs/evaluation/R1_SCHEMA_OWNERSHIP.md` — the R1 register
   created under issue #133, "R1 schema-ownership lane" — as
-  `nomos.effective_facts@1` / `nomos-sim` /
+  `nomos.effective_facts@2` / `nomos-sim` /
   `crates/nomos-sim/src/effective_facts.rs`. It is not added to
   `docs/evaluation/SCHEMA_OWNERSHIP.md`, which is frozen Gate K evidence;
 - `experiments/executable-gaol/compare-effective-facts.sh` reports
@@ -305,7 +306,7 @@ Accepted when:
 
 - it consumes the R1-1 output and presentation source only, proved by a test
   that it never reads `.nomos` source, World IR, or compiler receipts;
-- as the first accepted consumer of `nomos.effective_facts@1` it binds that
+- as the first accepted consumer of `nomos.effective_facts@2` it binds that
   identity and version, and refuses a mismatch with a stable diagnostic;
 - its equivalence fixture exercises the three divergences issue #132 records —
   an active `blocks_ground` claim with `value: false`, an active cost below
@@ -521,7 +522,7 @@ relabelled, that Gate 0 or Gate 1 is satisfied, that the renderer or
 presentation semantics in `experiments/` are accepted, that the executable study
 is production art or deterministic across GPUs, or that Nomos has been adopted
 by any project. This document declares no schema; the identities it cites,
-including `nomos.effective_facts@1`, are declared by the code that emits them
+including `nomos.effective_facts@2`, are declared by the code that emits them
 and are not accepted until the slice that emits them is.
 
 ## 10. Owner disposition

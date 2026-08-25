@@ -156,10 +156,7 @@ fn the_projection_names_its_schema_world_and_state() {
 
     assert_eq!(text(field(&document, "command")), "effective-facts");
     assert_eq!(text(field(&document, "status")), "completed");
-    assert_eq!(
-        json(field(&document, "schema")),
-        r#"{"name":"nomos.effective_facts","version":1}"#
-    );
+    assert_eq!(text(field(&document, "schema")), "nomos.effective_facts@2");
     assert_eq!(json(field(&document, "tick")), "5");
 
     // The document binds the exact package and runtime semantics it resolved
@@ -419,7 +416,7 @@ fn the_same_world_and_state_produce_byte_identical_output() {
     );
     assert_eq!(first.last(), Some(&b'\n'));
     assert!(
-        String::from_utf8_lossy(first).contains(r#""schema":{"name":"nomos.effective_facts""#),
+        String::from_utf8_lossy(first).contains(r#""schema":"nomos.effective_facts@2""#),
         "stdout does not carry the projection: {}",
         String::from_utf8_lossy(first)
     );

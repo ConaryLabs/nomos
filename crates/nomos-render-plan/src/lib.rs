@@ -19,7 +19,7 @@
 //!
 //! - [`plan::Inputs::catalog`] — one `nomos.entity_catalog@1` document, the
 //!   only source of entity kind.
-//! - [`plan::Inputs::facts`] — one `nomos.effective_facts@1` document per
+//! - [`plan::Inputs::facts`] — one `nomos.effective_facts@2` document per
 //!   scenario, the only source of movement disposition, cost, reasons, and
 //!   effective light.
 //! - [`plan::Inputs::runs`] — the per-scenario run bundles, read for machine

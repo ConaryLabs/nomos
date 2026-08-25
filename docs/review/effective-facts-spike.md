@@ -5,11 +5,27 @@ date: 2026-08-25
 issue: 126
 branch: spike/issue-126-effective-facts
 accepts_against: RUNTIME.md §5 R1-1 (revision 1)
-registers: docs/evaluation/R1_SCHEMA_OWNERSHIP.md (nomos.effective_facts@1)
+registers: docs/evaluation/R1_SCHEMA_OWNERSHIP.md (nomos.effective_facts@2; @1 retired by issue 159)
 applies_to: RUNTIME.md §5, §6; KERNEL.md sections 3, 8, 10; docs/movement.md; docs/runtime.md
 ---
 
 # Kernel effective-facts projection at a runtime state
+
+## Active schema successor
+
+R1-1 was accepted with `nomos.effective_facts@1`. Decision 0018 subsequently
+required every R1 document to spell `schema` as the single string
+`name@version`; issue #159 implemented that authorized repair as
+`nomos.effective_facts@2` and retired `@1`. The semantic fields, resolver entry
+points, hash-domain boundary, and evidence mapped below did not change. This
+record retains `@1` where it describes the exact original R1-1 evidence and
+names `@2` where it describes the active interface.
+
+The comparison harness now reports `30 scenarios compared, 0 differences`:
+the original twenty recorded below plus ten from Gloam Bastion and Drowned
+Stair. Issue #159 repaired the harness's retired camelCase field reads while
+making the schema-spelling change; the comparison itself still asserts the
+same movement, cost, reasons, light, tick, and state-hash equality.
 
 ## Problem
 
@@ -37,11 +53,11 @@ names are in `crates/nomos-cli/tests/effective_facts.rs`.
 | Adds no file to a run bundle | `the_projection_mutates_no_input` — asserts the run bundle is the six-file set before and byte-identical after | ✅ |
 | All resolution from `resolve_movement` / `resolve_light` | [Rust entry points reused](#rust-entry-points-reused) is the source-review receipt; `the_projection_agrees_with_explain_entity_at_the_initial_state` forces two surfaces to one answer | ✅ |
 | `activation_is_true` stays private | `crates/nomos-sim/src/resolver.rs:155` is unexported: `grep activation_is_true` over `nomos-sim/src/lib.rs` and `nomos-cli/src` returns zero hits | ✅ |
-| Schema identity `nomos.effective_facts@1` declared in `nomos-sim` | `the_projection_names_its_schema_world_and_state`; declared at `crates/nomos-sim/src/effective_facts.rs` | ✅ |
+| Schema identity declared in `nomos-sim`: `nomos.effective_facts@1` at original acceptance, active successor `@2` after issue #159 | `the_projection_names_its_schema_world_and_state`; declared at `crates/nomos-sim/src/effective_facts.rs` | ✅ |
 | Canonical entity-sorted bytes | `every_resolver_subject_is_composed_at_the_supplied_state` asserts the exact canonical byte string of the `effective_facts` subtree at two states | ✅ |
 | Stays outside the state-hash domain | The command writes nothing, and the reported `state_hash` equals the input state's — asserted in `the_projection_names_its_schema_world_and_state` | ✅ |
 | Source-review receipt names the reused pair | [Rust entry points reused](#rust-entry-points-reused) in this record | ✅ |
-| Identity registered in `docs/evaluation/R1_SCHEMA_OWNERSHIP.md` as `nomos.effective_facts@1` / `nomos-sim` / `crates/nomos-sim/src/effective_facts.rs` | Registered; `docs/evaluation/r1-schema-ownership.sh` reports `schema_identities_r1 1` | ✅ |
+| Identity registered in `docs/evaluation/R1_SCHEMA_OWNERSHIP.md` as active `nomos.effective_facts@2` / `nomos-sim` / `crates/nomos-sim/src/effective_facts.rs` | Registered; `docs/evaluation/r1-schema-ownership.sh` reports `schema_identities_r1 10` in the current tree | ✅ |
 | Not added to the frozen `docs/evaluation/SCHEMA_OWNERSHIP.md` | `git diff origin/main HEAD -- docs/evaluation/SCHEMA_OWNERSHIP.md` is empty | ✅ |
 | `compare-effective-facts.sh` reports `20 scenarios compared, 0 differences` | [Comparison](#comparison-against-the-four-areas-committed-plans), with `"cost": null` the only normalization | ✅ |
 | Byte identity across ten runs for the fixed triple | `the_same_world_and_state_produce_byte_identical_output`, with three anti-vacuous guards | ✅ |
@@ -502,10 +518,10 @@ boundary-clean change that reuses the existing resolvers exactly and deletes a
 first is settled and the other two remain open:
 
 1. **Schema identity — settled and registered.** `RUNTIME.md` §5 R1-1
-   requires `nomos.effective_facts@1`, declared in `nomos-sim`. The Gate K
-   receipt stays frozen; the identity is registered in
-   `docs/evaluation/R1_SCHEMA_OWNERSHIP.md` and the lane reports
-   `schema_identities_r1 1`. See [CI](#ci-all-lanes-green).
+   originally required `nomos.effective_facts@1`, declared in `nomos-sim`.
+   Decision 0018's spelling repair and issue #159 replace it with active `@2`.
+   The Gate K receipt stays frozen; the active identity is registered in
+   `docs/evaluation/R1_SCHEMA_OWNERSHIP.md`. See [CI](#ci-all-lanes-green).
 2. **`machine_states` in the document.** Include it and the plan builder stops
    reading `final-state.json`; exclude it and the document stays purely
    composed facts.
