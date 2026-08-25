@@ -85,7 +85,8 @@ steps and masonry masses `1..=40`. The renderer divides by ten.
 **Positions are lattice cells.** `0 ≤ x < bounds.width`, `0 ≤ y < bounds.height`,
 `z == 0`. A mass is a positive rectangle, `min` inclusive and `max` exclusive,
 inside the bounds. An actor may not start inside a mass, and neither may the
-arrival cell.
+arrival cell. In a non-start area, `route.entry` and the sole player-role
+actor's `cell` are the same arrival fact and must be equal.
 
 **Effects attach by socket, never by coordinate.** `anchor` is exactly
 `{ entity, socket }`. The entity must be compiled, and the socket must be one
@@ -99,7 +100,8 @@ authored spelling of the gate this area leaves by; the compiler derives the
 `objective.target` to keep in agreement. `route.entry` is *this* area's own
 arrival cell — the cell a player lands on when another area's gate leads here —
 validated against this area's own bounds and masses. The start area declares no
-`entry`, because nothing arrives there; every other area declares one.
+`entry`, because nothing arrives there; every other area declares one equal to
+the player-role actor's starting `cell`.
 `to_area` is `null` exactly at the route's terminal.
 
 **Names come from closed sets.** The decoder checks that an id, assembly, or

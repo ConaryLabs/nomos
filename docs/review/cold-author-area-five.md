@@ -83,6 +83,8 @@ the session lead committed its unedited output under a Codex author identity.
   convention rather than risk diverging from it, though nothing in `gaol
   verify` checks the relationship directly. Filed as issue #165,
   "Presentation source: route.entry duplicates the player actor's cell."
+  Issue #165 makes the equality an authored rule and an `RP0202` decoder
+  invariant, so a later author cannot make the two spellings diverge.
 - **The read boundary hid three of five comparison axes from Codex.** Its
   note records that the permitted presentations exposed the other areas'
   masonry masses but not their gate columns, water regions, or brazier
