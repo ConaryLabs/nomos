@@ -7,10 +7,10 @@ experiments/executable-gaol/gaol capture
 experiments/executable-gaol/gaol verify
 ```
 
-- AreaCollection SHA-256: `12a9173db5f49a0fd7fc852cb4cbb723f69a08d74d620a5faaf69f8e0501a4bd`
-- North Gaol RenderingPlan SHA-256: `330cd85444308d45e2f4a2ea62dca8aa814e5da923baaa160d14c2b389253b10`
-- Cistern Walk RenderingPlan SHA-256: `fb29e110f6afdbe9ab22ca847b2c2ad1ee4acda14e48ce1b2ca021041f3fddca`
-- Ember Vault RenderingPlan SHA-256: `85aaf45e940afa6fd60d84c564b00c2e63fb7c1eb5bb76c73dc6f6b3146329cd`
+- AreaCollection SHA-256: `09fed4ea297406719fb17c3bce8129bc0258eb763c2e93811a78a5efe53a2d34`
+- North Gaol RenderingPlan SHA-256: `a140e32adc0d655030c8d88adf276ba1d8e2078f3c5953ea36edd7594841baf5`
+- Cistern Walk RenderingPlan SHA-256: `49efd6ce16f4cf0fa926a5442e5a46f4a7d08cb51ea1c75d358c51596c506599`
+- Ember Vault RenderingPlan SHA-256: `948a452f4a343067badb83f48943005178942f4e0cddb239bc20290ce2912970`
 - cross-area contact-sheet.svg SHA-256: `04b706f067db4dd2464f557246b868cb53161925aacae6be270b81f60b2341e5`
 - cross-area contact-sheet.png SHA-256: `26273aba009f5228e63d2c0b8100857b0aae8bc15d493894fdb87de9861a5175`
 - verification: `EXECUTABLE_GAOL_VERIFY PASS`

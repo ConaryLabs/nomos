@@ -86,6 +86,7 @@ case "$mode" in
   verify)
     build
     node --test "$experiment_dir/src/"*.test.mjs
+    cmp "$output_dir/areas.json" "$experiment_dir/area-collection.example.json"
     for area_dir in "$areas_dir"/*; do
       [[ -d $area_dir ]] || continue
       area_id=$(basename "$area_dir")

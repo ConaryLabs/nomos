@@ -3,7 +3,8 @@
   "deterministic": true,
   "area": {
     "id": "ember-vault",
-    "label": "Ember Vault"
+    "label": "Ember Vault",
+    "start": false
   },
   "projectionSchemas": [
     {
@@ -255,7 +256,16 @@
   "presentation": {
     "primaryGate": "vault_gate",
     "pursuitLight": "ember_brazier",
-    "forensicScenario": "03-breached-unsealed"
+    "forensicScenario": "03-breached-unsealed",
+    "exit": {
+      "gate": "vault_gate",
+      "toArea": "north-gaol",
+      "entry": {
+        "x": 2,
+        "y": 4,
+        "z": 0
+      }
+    }
   },
   "uiAnchors": [
     "vitals",

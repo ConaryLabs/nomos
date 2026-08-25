@@ -34,21 +34,26 @@ masonry masses, and composition come from separate area content.
 See [AUTHORING.md](AUTHORING.md) for the intentionally small LLM authoring
 packet.
 
-Use WASD or the arrow keys to cross the room. Walk beside `north_gate`, press
-`E` to ignite it, press `E` again to unseal it, and cross the resulting opening.
-After unsealing, walk beside `brazier_02` and press `E` to extinguish its bounded
-amber light pool.
+Use WASD or the arrow keys to cross each room. Walk beside its primary gate,
+press `E` to ignite it, press `E` again to unseal it, and cross the resulting
+opening. After unsealing, walk beside the room's brazier and press `E` to
+extinguish its bounded amber light pool.
 Darkness wakes the gaoler: it advances by a deterministic presentation-only
 rule every second successful move and catches the player on contact. Reach the
 open gate before it does.
 Those interaction edges are derived from consecutive, state-hash-bound Nomos
 command logs rather than interpreted by the browser. Shallow water consumes the
 projected movement cost of `3`; stone costs `1`. The north edge opens only at a
-door whose selected Nomos runtime state resolves to `traversable`. The area
-buttons or bracket keys switch rooms, keys 1–5 switch the real runtime
-scenarios, `R` resets the run, and the
-viewer interpolates movement without placing fractional positions into Nomos
-authoritative state.
+door whose selected Nomos runtime state resolves to `traversable`. Keys 1–5
+switch the real runtime scenarios for inspection, and the viewer interpolates
+movement without placing fractional positions into Nomos authoritative state.
+
+The default run begins in Cistern Walk. Crossing its declared, traversable
+sluice enters Ember Vault; crossing Ember's vault gate enters North Gaol; the
+North Gate is the final escape. Area transitions preserve cumulative moves,
+water cost, and cleared-area count while resetting area-local actors and runtime
+scenario selection. The area buttons and bracket keys are forensic shortcuts
+that reset run progress; `R` returns to the Cistern start.
 
 The internet build is the same static viewer staged without a running process:
 

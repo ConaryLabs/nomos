@@ -11,7 +11,8 @@ Required files:
   `primitive/extinguishable_light`.
 - `area.json`: stable area identity, primary exit gate, pursuit light, player
   and gaoler cell anchors, one `visual/cyan_crescent` presentation anchor, and
-  bounded architecture data.
+  bounded architecture data. Connected runs additionally declare whether this
+  is the start area and where its primary gate leads.
 - `scenarios/*.commands`: five ordered scenarios. Each of scenarios 2–4 adds
   exactly one command to the preceding script so browser interactions can be
   derived from real input and resulting state hashes.

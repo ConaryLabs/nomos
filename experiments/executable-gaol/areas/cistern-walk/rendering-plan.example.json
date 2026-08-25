@@ -3,7 +3,8 @@
   "deterministic": true,
   "area": {
     "id": "cistern-walk",
-    "label": "Cistern Walk"
+    "label": "Cistern Walk",
+    "start": true
   },
   "projectionSchemas": [
     {
@@ -243,7 +244,16 @@
   "presentation": {
     "primaryGate": "sluice_gate",
     "pursuitLight": "watch_brazier",
-    "forensicScenario": "03-breached-unsealed"
+    "forensicScenario": "03-breached-unsealed",
+    "exit": {
+      "gate": "sluice_gate",
+      "toArea": "ember-vault",
+      "entry": {
+        "x": 7,
+        "y": 5,
+        "z": 0
+      }
+    }
   },
   "uiAnchors": [
     "vitals",

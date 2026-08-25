@@ -21,10 +21,10 @@
 </style>
 <header><h1>Nomos // executable gaol</h1><span id="look"></span><span id="areas"></span><span id="states"></span><button id="forensic" aria-pressed="false">Forensics</button></header>
 <main><div id="frame"></div></main>
-<footer><span>Move: WASD / arrows · Interact: E · Areas: [ ] · States: 1–5 · Reset: R</span><span id="message"></span><span id="meter"></span></footer>
+<footer><span>Move: WASD / arrows · Interact: E · Forensic areas: [ ] · States: 1–5 · Reset run: R</span><span id="message"></span><span id="meter"></span></footer>
 <script type="module">
   import { renderSvg } from "./render-core.mjs";
-  import { attemptInteraction, attemptMove, createPlayState, movementKeys } from "./play-state.mjs";
+  import { attemptInteraction, attemptMove, completeRun, createPlayState, enterArea, movementKeys } from "./play-state.mjs";
   const collection = await fetch("./areas.json").then((response) => response.json());
   const plans = new Map(await Promise.all(collection.areas.map(async (area) => [
     area.id,
@@ -37,7 +37,7 @@
   const look = document.querySelector("#look");
   const message = document.querySelector("#message");
   const meter = document.querySelector("#meter");
-  let areaId = collection.areas[0].id;
+  let areaId = collection.startArea;
   let plan = plans.get(areaId);
   let selected = plan.scenarios[0].id;
   let play = createPlayState(plan);
@@ -65,14 +65,15 @@
     message.dataset.tone = play.tone;
     const pursuitLight = plan.presentation.pursuitLight;
     const pursuit = play.caught ? "caught" : plan.scenarios.find((scenario) => scenario.id === selected)?.effectiveLight[pursuitLight] === false ? "hunting" : "dormant";
-    meter.textContent = `moves ${play.moves} · cost ${play.movementCost} · gaoler ${pursuit}`;
+    meter.textContent = `areas ${play.areasCleared}/${collection.areas.length} · moves ${play.moves} · cost ${play.movementCost} · gaoler ${pursuit}`;
   };
-  const reset = () => { selectScenario(plan.scenarios[0].id); play = createPlayState(plan); visualPlayer = { ...play.player }; visualGaoler = { ...play.gaoler }; animating = false; draw(); };
-  const selectArea = (nextAreaId) => {
+  const reset = () => selectArea(collection.startArea, false);
+  const selectArea = (nextAreaId, forensicJump = true) => {
     areaId = nextAreaId;
     plan = plans.get(areaId);
     selected = plan.scenarios[0].id;
     play = createPlayState(plan);
+    if (forensicJump) play = { ...play, message: `Forensic jump to ${plan.area.label}` };
     visualPlayer = { ...play.player };
     visualGaoler = { ...play.gaoler };
     animating = false;
@@ -80,7 +81,18 @@
     buildScenarioButtons();
     draw();
   };
-  const animateMove = (from, to, gaolerFrom, gaolerTo, cost) => {
+  const enterConnectedArea = (connection, previousState) => {
+    areaId = connection.toArea;
+    plan = plans.get(areaId);
+    selected = plan.scenarios[0].id;
+    play = enterArea(plan, previousState, connection.entry);
+    visualPlayer = { ...play.player };
+    visualGaoler = { ...play.gaoler };
+    for (const child of areas.children) child.ariaPressed = String(child.dataset.area === areaId);
+    buildScenarioButtons();
+    draw();
+  };
+  const animateMove = (from, to, gaolerFrom, gaolerTo, cost, onComplete) => {
     const started = performance.now();
     const duration = 105 * cost;
     animating = true;
@@ -91,7 +103,13 @@
       visualGaoler = { x: gaolerFrom.x + (gaolerTo.x - gaolerFrom.x) * eased, y: gaolerFrom.y + (gaolerTo.y - gaolerFrom.y) * eased, z: 0 };
       draw();
       if (t < 1) requestAnimationFrame(step);
-      else { visualPlayer = { ...to }; visualGaoler = { ...gaolerTo }; animating = false; draw(); }
+      else {
+        visualPlayer = { ...to };
+        visualGaoler = { ...gaolerTo };
+        animating = false;
+        draw();
+        onComplete?.();
+      }
     };
     requestAnimationFrame(step);
   };
@@ -99,9 +117,10 @@
   for (const area of collection.areas) {
     const button = document.createElement("button");
     button.textContent = area.label;
+    button.title = "Forensic shortcut — resets run progress";
     button.dataset.area = area.id;
     button.ariaPressed = String(area.id === areaId);
-    button.onclick = () => selectArea(area.id);
+    button.onclick = () => { if (!animating) selectArea(area.id); };
     areas.append(button);
   }
   buildScenarioButtons();
@@ -132,7 +151,16 @@
     const gaolerFrom = { ...play.gaoler };
     const result = attemptMove(plan, selected, play, ...delta);
     play = result.state;
-    if (result.moved) animateMove(from, play.player, gaolerFrom, play.gaoler, result.cost);
+    if (result.moved) {
+      const connection = result.exitGate
+        ? collection.route.find((edge) => edge.fromArea === areaId && edge.gate === result.exitGate)
+        : null;
+      animateMove(from, play.player, gaolerFrom, play.gaoler, result.cost, () => {
+        if (!result.exitGate) return;
+        if (connection?.toArea) enterConnectedArea(connection, play);
+        else { play = completeRun(play); draw(); }
+      });
+    }
     else draw();
   });
   draw();
