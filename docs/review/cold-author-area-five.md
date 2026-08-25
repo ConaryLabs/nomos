@@ -121,6 +121,12 @@ But it is the same hazard #163 removed from the JavaScript collection test
 before the run, and it is recorded here as a finding rather than folded into
 the connection commit: issue #167.
 
+Issue #167 closes the class: crate tests now discover the area directories,
+and a planted scan refuses any corpus area id under `crates/*/tests/`. The
+solver writes the route keys and cumulative counters to the content-side
+`route-expectations.json`; `gaol accept` regenerates it and `gaol verify`
+compares it byte-for-byte.
+
 **A pin under `apps/` — an R1-4 criterion regression.**
 `apps/nomos-viewer/test/runtime.test.mjs` hardcoded the four-area route as
 key strings (`ROUTE_KEYS`), so two viewer tests failed once a fifth area

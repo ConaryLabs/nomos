@@ -12,6 +12,8 @@
 //! what to expect; the command itself never opens it, which
 //! `the_catalog_reads_no_source` proves by deleting it.
 
+mod common;
+
 use std::collections::{BTreeMap, BTreeSet};
 use std::ffi::OsStr;
 use std::fs;
@@ -27,28 +29,6 @@ static COUNTER: AtomicU32 = AtomicU32::new(0);
 
 const GAOL: &str = include_str!("../../../fixtures/gaol.nomos");
 const COMMANDS: &[u8] = include_bytes!("../../../fixtures/gaol.commands");
-
-/// The fixture plus the four committed gaol areas, which the acceptance
-/// criterion names explicitly.
-const WORLDS: [(&str, &str); 5] = [
-    ("fixtures/gaol.nomos", GAOL),
-    (
-        "experiments/executable-gaol/areas/cistern-walk/world.nomos",
-        include_str!("../../../experiments/executable-gaol/areas/cistern-walk/world.nomos"),
-    ),
-    (
-        "experiments/executable-gaol/areas/ember-vault/world.nomos",
-        include_str!("../../../experiments/executable-gaol/areas/ember-vault/world.nomos"),
-    ),
-    (
-        "experiments/executable-gaol/areas/north-gaol/world.nomos",
-        include_str!("../../../experiments/executable-gaol/areas/north-gaol/world.nomos"),
-    ),
-    (
-        "experiments/executable-gaol/areas/ossuary-reach/world.nomos",
-        include_str!("../../../experiments/executable-gaol/areas/ossuary-reach/world.nomos"),
-    ),
-];
 
 fn fresh_workspace(label: &str) -> PathBuf {
     let index = COUNTER.fetch_add(1, Ordering::Relaxed);
@@ -217,12 +197,12 @@ fn the_catalog_names_its_schema_and_the_world_it_catalogued() {
 
 #[test]
 fn every_entity_carries_its_declared_primitive_and_world_ir_capabilities() {
-    for (path, source) in WORLDS {
-        let root = compiled("primitives", source);
+    for (path, source) in common::worlds() {
+        let root = compiled("primitives", &source);
         let document = catalog(&root);
         let entities = array(field(&document, "entities"));
 
-        let declared = declared_primitives(source);
+        let declared = declared_primitives(&source);
         assert!(
             !declared.is_empty(),
             "`{path}` declares no entity; the assertion below would be vacuous"

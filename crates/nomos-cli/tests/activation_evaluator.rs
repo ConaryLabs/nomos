@@ -14,40 +14,18 @@
 //! what `resolve_movement` resolves at the initial simulation state, subject by
 //! subject, for the fixture and every committed gaol area.
 
+mod common;
+
 use nomos_core::SourcePath;
 use nomos_projection::MovementDisposition;
 use nomos_sim::{SimulationState, resolve_movement};
 
-/// The fixture plus the four committed gaol areas, which the acceptance
-/// criterion names explicitly.
-const WORLDS: [(&str, &str); 5] = [
-    (
-        "fixtures/gaol.nomos",
-        include_str!("../../../fixtures/gaol.nomos"),
-    ),
-    (
-        "experiments/executable-gaol/areas/cistern-walk/world.nomos",
-        include_str!("../../../experiments/executable-gaol/areas/cistern-walk/world.nomos"),
-    ),
-    (
-        "experiments/executable-gaol/areas/ember-vault/world.nomos",
-        include_str!("../../../experiments/executable-gaol/areas/ember-vault/world.nomos"),
-    ),
-    (
-        "experiments/executable-gaol/areas/north-gaol/world.nomos",
-        include_str!("../../../experiments/executable-gaol/areas/north-gaol/world.nomos"),
-    ),
-    (
-        "experiments/executable-gaol/areas/ossuary-reach/world.nomos",
-        include_str!("../../../experiments/executable-gaol/areas/ossuary-reach/world.nomos"),
-    ),
-];
-
 #[test]
 fn compile_time_initial_movement_equals_the_resolver_at_the_initial_state() {
     let mut subjects_compared = 0_usize;
-    for (path, source) in WORLDS {
-        let stable = nomos_compiler::compile_world(source, SourcePath::new(path).unwrap()).unwrap();
+    for (path, source) in common::worlds() {
+        let stable =
+            nomos_compiler::compile_world(&source, SourcePath::new(&path).unwrap()).unwrap();
         let plan = nomos_compiler::compile_simulation_plan(&stable).unwrap();
         let initial = SimulationState::initialize(&plan).unwrap();
         let resolved = resolve_movement(&plan, &initial).unwrap();
@@ -110,8 +88,9 @@ fn compile_time_initial_movement_equals_the_resolver_at_the_initial_state() {
 fn every_world_carries_a_state_dependent_activation_for_the_evaluator_to_decide() {
     // Without this the equivalence above could pass on worlds whose every claim
     // is `always`, which would exercise no state lookup at all.
-    for (path, source) in WORLDS {
-        let stable = nomos_compiler::compile_world(source, SourcePath::new(path).unwrap()).unwrap();
+    for (path, source) in common::worlds() {
+        let stable =
+            nomos_compiler::compile_world(&source, SourcePath::new(&path).unwrap()).unwrap();
         let plan = nomos_compiler::compile_simulation_plan(&stable).unwrap();
         let mut state_predicates = 0_usize;
         for subject in plan.movement_resolver().subjects() {

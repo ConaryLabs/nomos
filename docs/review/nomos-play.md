@@ -1346,6 +1346,14 @@ ossuary-reach  ↑↑→↑↑→→→↑ E E →↑     36 moves  48 cost   1,
 north-gaol     ↑↑↑↑→→ E E →↑        44 moves  60 cost   2,4 → … → 5,0 → out
 ```
 
+That table is the original R1-5 measurement. The active corpus is discovered
+from `experiments/executable-gaol/areas/*/`, and issue #167 moves the solver's
+current route keys and counter pins to the content-side
+`route-expectations.json`. `gaol accept` regenerates it, `gaol verify` compares
+it byte-for-byte, and the native tests drive it through the authoritative
+runtime; adding an area therefore edits content and generated fixtures rather
+than a crate test.
+
 No leg's path enters the pursuer's cell — `4,3`, `1,3`, `7,3`, `5,3`
 respectively — which is what makes §3.2 rule 4 free. Note that
 `docs/review/nomos-viewer.md` §5.3's prose says "the lane dispatches 60 keys"
