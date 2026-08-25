@@ -44,6 +44,12 @@ simulation/navigation/persistence/diagnostic projections, immutable runtime
 transactions, hash-verified packages, replay and migration, and package-bound
 explanations.
 
+`nomos effective-facts <world/> --state <state.json>` adds the R1-1 read-only
+projection: given a strictly verified package and a runtime state it emits
+`nomos.effective_facts@1`, the composed movement disposition, cost, ordered
+reasons, and effective light for every resolver subject, resolved entirely by
+the existing `resolve_movement` and `resolve_light` rather than by new logic.
+
 The executable study provides:
 
 - Cistern Walk, Ember Vault, Ossuary Reach, and North Gaol as separately
@@ -90,10 +96,16 @@ epoch.
 That separate decision is now owner-authorized:
 `docs/decisions/0017-post-gate-k-runtime-epoch.md` opens the R1 epoch under
 issue #124. Its contract document `RUNTIME.md` is owner-authorized under issue
-#128 and now governs what R1 accepts; issue #125's presentation-boundary
-ownership audit is merged and issue #126 sizes the kernel effective-facts
-projection that is R1's first target. The next slices are R1-1's acceptance,
-prototyped on PR #130, then R1-2.
+#128 and now governs what R1 accepts. R1-1 is accepted on PR #130 (issue #126),
+and its identity is the first row of `docs/evaluation/R1_SCHEMA_OWNERSHIP.md`.
+
+**R1-2, Rust rendering-plan compilation, is next**: a Rust compiler consuming
+`nomos.effective_facts@1` and typed presentation source, replacing
+`experiments/executable-gaol/src/build-plan.mjs`. As the first accepted consumer
+of that identity it binds it and refuses a version mismatch. Issue #125's
+merged presentation-boundary ownership audit is its checklist for what content
+still owns which fact, and issue #132 records the three JavaScript divergences
+its equivalence fixture must exercise.
 
 Simulation-boundary expansion remains deferred while the visual grammar is
 being established. Do not reopen Gate K evaluation work or add proof machinery

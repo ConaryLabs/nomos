@@ -49,7 +49,10 @@ AI-authored areas can share one coherent visual grammar.
   issue #124 and the **R1 epoch is open**: an explicit epoch break, not a Gate K
   pass, with promotion by clean implementation only. Its contract document
   `RUNTIME.md` is now owner-authorized under issue #128 and governs what R1
-  accepts
+  accepts. **R1-1, the kernel effective-facts projection (`nomos
+  effective-facts`, PR #130), is the first accepted R1 slice**: it meets every
+  `RUNTIME.md` §5 R1-1 criterion, and its identity `nomos.effective_facts@1` is
+  the first row of the R1 register `docs/evaluation/R1_SCHEMA_OWNERSHIP.md`
 - **Contract revision:** 7, owner-authorized in decision 0009
 - **Cold-agent protocol revision:** 6, owner-authorized in decision 0015;
   revision-6 packet, boundary, record, adjudication, and finalization tooling is

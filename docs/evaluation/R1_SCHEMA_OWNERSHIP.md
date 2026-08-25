@@ -35,9 +35,16 @@ relative.
 
 | Canonical identity | Owner | Owner file | Authoritative type set | Encoder | Strict reader / verifier | Persisted boundary | Primary consumers | Status |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `nomos.effective_facts@1` | `nomos-sim` | `crates/nomos-sim/src/effective_facts.rs` | the `effective_facts()` document, embedding the `ResolvedMovementFacts` and `ResolvedLightFacts` renderings it composes | `nomos_sim::effective_facts` composes the `CanonicalValue`; canonical entity-sorted bytes written to stdout by `nomos effective-facts` | none in-tree: derived read-only output, never re-read by the kernel and with no strict package reader; its first consumer binds identity and version | none: stdout only, never written into a run bundle or package, and outside the state-hash domain because it is derived | R1-2 Rust rendering-plan compilation; today `experiments/executable-gaol/compare-effective-facts.sh` | active R1-1 |
 
-No R1 identity has entered the accepted tree yet; the register is empty by
-design.
+One R1 identity has entered the accepted tree. `nomos.effective_facts@1` is the
+read-only effective-fact projection accepted as R1-1 under `RUNTIME.md` §5
+(issue #126, PR #130): given a strictly verified world package and a runtime
+state it composes, for every resolver subject, the effective movement
+disposition, cost, ordered reason claim IDs, and effective light. It resolves
+nothing itself — `nomos_sim::resolve_movement` and `nomos_sim::resolve_light`
+do that — and it is derived output, so it is persisted nowhere and enters no
+hash domain.
 
 ## How a row is added
 
