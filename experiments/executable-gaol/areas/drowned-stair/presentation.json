@@ -1,0 +1,59 @@
+{
+  "schema": "nomos.presentation_source@2",
+  "area": {
+    "id": "drowned-stair",
+    "label": "Drowned Stair",
+    "start": false
+  },
+  "route": {
+    "exit": { "gate": "stair_gate", "to_area": "ossuary-reach" },
+    "entry": { "x": 4, "y": 5, "z": 0 }
+  },
+  "pursuit": {
+    "light": "sconce_light"
+  },
+  "architecture": {
+    "bounds": { "width": 9, "height": 6 },
+    "wall_height_steps": 40,
+    "style": {
+      "assembly": "visual/beveled_masonry",
+      "material_family": "stone_bounded",
+      "trim_family": "broad_mortar"
+    },
+    "masses": [
+      {
+        "id": "stairwell_shelf",
+        "min": { "x": 1, "y": 3 },
+        "max": { "x": 3, "y": 4 },
+        "height_steps": 15
+      },
+      {
+        "id": "landing_plinth",
+        "min": { "x": 6, "y": 1 },
+        "max": { "x": 8, "y": 2 },
+        "height_steps": 20
+      }
+    ]
+  },
+  "actors": [
+    {
+      "id": "player",
+      "role": "player",
+      "assembly": "visual/player_silhouette",
+      "cell": { "x": 4, "y": 5, "z": 0 }
+    },
+    {
+      "id": "gaoler",
+      "role": "pursuer",
+      "assembly": "visual/gaoler_silhouette",
+      "cell": { "x": 1, "y": 1, "z": 0 }
+    }
+  ],
+  "effects": [
+    {
+      "id": "stair_ward_crescent",
+      "assembly": "visual/cyan_crescent",
+      "anchor": { "entity": "stair_gate", "socket": "ward" }
+    }
+  ]
+}

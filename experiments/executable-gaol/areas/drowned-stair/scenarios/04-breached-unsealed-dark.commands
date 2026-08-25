@@ -1,0 +1,4 @@
+schema nomos.command_script@1
+ignite stair_gate
+unseal stair_gate
+extinguish sconce_light

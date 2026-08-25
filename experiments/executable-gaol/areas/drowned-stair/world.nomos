@@ -1,0 +1,20 @@
+schema nomos.source@1
+catalog credential/stair_key
+
+entity stair_gate primitive/iron_barred_door
+  anchor face 3 0 0 north
+  credential credential/stair_key
+end
+
+entity landing_gate primitive/iron_barred_door
+  anchor face 0 0 0 north
+  credential credential/stair_key
+end
+
+entity flood_stair primitive/shallow_water_region
+  anchor region 2 4 0 7 5 0
+end
+
+entity sconce_light primitive/extinguishable_light
+  anchor cell 5 2 0
+end
