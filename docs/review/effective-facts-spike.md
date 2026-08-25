@@ -139,6 +139,8 @@ Two consequences an owner must dispose of before this leaves spike status:
 
 ## Divergence found in the existing shadow resolver
 
+**These three divergences are now recorded as issue #132.**
+
 The JavaScript is not merely duplicated — it is **wrong by the documented law**
 in three ways the gaol corpus happens not to exercise. `docs/movement.md:43`
 says `Traversable` "contains the positive maximum active cost and the sorted
@@ -223,7 +225,7 @@ $ cargo clippy --workspace --all-targets --locked -- -D warnings
     Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.66s
 
 $ cargo test --workspace --locked
-total passed: 213  total failed: 0
+total passed: 214  total failed: 0
 
 $ cargo xtask boundary
 boundary: clean
@@ -234,24 +236,44 @@ boundary: clean
 EXIT=0
 ```
 
-The six new tests in `crates/nomos-cli/tests/effective_facts.rs`:
+The seven tests in `crates/nomos-cli/tests/effective_facts.rs`:
 
 ```console
-running 6 tests
-test every_resolver_subject_is_composed_at_the_supplied_state ... ok
-test the_projection_names_its_schema_world_and_state ... ok
-test the_projection_agrees_with_explain_entity_at_the_initial_state ... ok
-test the_projection_mutates_no_input ... ok
+running 7 tests
 test the_argument_grammar_is_exact ... ok
+test the_projection_mutates_no_input ... ok
+test the_projection_names_its_schema_world_and_state ... ok
+test every_resolver_subject_is_composed_at_the_supplied_state ... ok
 test a_state_from_another_world_is_rejected_rather_than_resolved ... ok
+test the_projection_agrees_with_explain_entity_at_the_initial_state ... ok
+test the_same_world_and_state_produce_byte_identical_output ... ok
 
-test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.41s
 ```
 
-`the_projection_agrees_with_explain_entity_at_the_initial_state` is the load-
-bearing one: it forces the new command and `explain-entity` — two independently
-composed surfaces — to produce identical dispositions and reasons for every
-subject. A future shadow resolver in either path breaks it.
+Two are load-bearing.
+
+`the_projection_agrees_with_explain_entity_at_the_initial_state` forces the new
+command and `explain-entity` — two independently composed surfaces — to produce
+identical dispositions and reasons for every subject. A future shadow resolver
+in either path breaks it.
+
+`the_same_world_and_state_produce_byte_identical_output` covers **`RUNTIME.md`
+§5 R1-1**: it invokes the command ten times against one package and one state
+and asserts all ten stdout byte strings are identical, then asserts a second
+freshly compiled copy of the same source produces the same bytes, so nothing
+about the package's location on disk reaches canonical output. Three guards
+keep it from passing vacuously — a length floor, a trailing-newline check, and
+a schema-substring check — and the assertion was mutation-checked: recompiling
+the copy from a *different* source path makes it fail.
+
+That last point is worth stating precisely, because it constrains what R1-1 can
+claim. "The same source" means the same bytes **at the same source path**. The
+path appears in claim source spans and is therefore inside the hash domain, so
+a state fails closed against a world compiled from elsewhere — the observed
+failure is `EK0813 persisted state belongs to different simulation semantics`,
+exit 1, not a silent byte difference. Byte identity is a property of a fixed
+(source bytes, source path, state) triple, not of source bytes alone.
 
 ### Build time
 
@@ -355,8 +377,8 @@ resolver. Three items need an owner decision before any of it is promoted:
 2. **`machine_states` in the document.** Include it and the plan builder stops
    reading `final-state.json`; exclude it and the document stays purely
    composed facts.
-3. **The three latent JavaScript bugs.** They are unreachable today. If the
-   gaol experiment is going to keep its own resolver for any period, they
-   should be filed; if it is going to consume this command, they evaporate.
+3. **The three latent JavaScript bugs.** Filed as issue #132. They are
+   unreachable today; if the gaol experiment consumes this command, they
+   evaporate rather than needing a JavaScript fix.
 
 This branch is a spike. It is not to be merged before decision 0017.

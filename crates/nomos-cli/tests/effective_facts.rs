@@ -353,3 +353,73 @@ fn the_argument_grammar_is_exact() {
         3,
     );
 }
+
+#[test]
+fn the_same_world_and_state_produce_byte_identical_output() {
+    let root = compiled_run("determinism");
+
+    // R1-1: ten invocations against one package and one state must agree on
+    // every byte of stdout, not merely on the facts they encode.
+    let mut outputs = Vec::new();
+    for _ in 0..10 {
+        let output = run(
+            &root,
+            [
+                "effective-facts",
+                "gaol.world",
+                "--state",
+                "runs/gaol/final-state.json",
+            ],
+        );
+        assert_exit(&output, 0);
+        outputs.push(output.stdout);
+    }
+
+    // Guard against a vacuous pass: ten empty stdouts are also "identical".
+    let first = &outputs[0];
+    assert!(
+        first.len() > 512,
+        "stdout is implausibly short: {}",
+        first.len()
+    );
+    assert_eq!(first.last(), Some(&b'\n'));
+    assert!(
+        String::from_utf8_lossy(first).contains(r#""schema":{"name":"nomos.effective_facts""#),
+        "stdout does not carry the projection: {}",
+        String::from_utf8_lossy(first)
+    );
+
+    for (index, output) in outputs.iter().enumerate().skip(1) {
+        assert_eq!(
+            String::from_utf8_lossy(output),
+            String::from_utf8_lossy(first),
+            "run {index} diverged from the first run"
+        );
+    }
+
+    // A second freshly compiled copy of the same source must produce the same
+    // bytes, so nothing about the package's location on disk reaches canonical
+    // output. "Same source" means the same bytes at the same source path: the
+    // path appears in claim source spans and is therefore inside the hash
+    // domain, which is what makes a state fail closed against a world compiled
+    // from elsewhere (see the foreign-world test above).
+    assert_exit(
+        &run(&root, ["compile", "gaol.nomos", "--out", "copy.world"]),
+        0,
+    );
+    let copy = run(
+        &root,
+        [
+            "effective-facts",
+            "copy.world",
+            "--state",
+            "runs/gaol/final-state.json",
+        ],
+    );
+    assert_exit(&copy, 0);
+    assert_eq!(
+        String::from_utf8_lossy(&copy.stdout),
+        String::from_utf8_lossy(first),
+        "a second compilation of the same source produced different bytes"
+    );
+}
