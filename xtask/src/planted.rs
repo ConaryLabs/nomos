@@ -1,0 +1,255 @@
+//! Planted workspace-boundary violations.
+//!
+//! `docs/workspace.md` records the receipt pattern: copy the workspace, plant
+//! the violation in the copy, and point `--manifest-path` at the copy, so the
+//! real workspace is never disturbed. These tests run that pattern in a
+//! temporary directory and read the violations directly, which is the same
+//! evidence the command prints, without a nested build.
+//!
+//! The planted cases are the ones `RUNTIME.md` section 3 turns into rules: an
+//! undeclared member, a declared member depending on a kernel crate, a kernel
+//! crate depending back, an R1 crate depending on an undeclared member, and a
+//! cycle between two R1 crates. Only the copy ever contains those crates; the
+//! accepted workspace declares none.
+
+use std::fs;
+use std::path::{Path, PathBuf};
+use std::time::{SystemTime, UNIX_EPOCH};
+
+use crate::boundary::{Graph, Violation};
+use crate::load_graph;
+
+/// The crate R1-2 will add for real (issue #139); planted here, never accepted.
+const RENDER_PLAN: &str = "nomos-render-plan";
+
+/// A second planted R1 member: a cycle needs two crates.
+const PRESENTATION: &str = "nomos-presentation";
+
+/// A copy of this workspace in a temporary directory, removed on drop.
+struct Planted {
+    root: PathBuf,
+}
+
+impl Planted {
+    /// Copies the manifests, the lock file, and the member trees — everything
+    /// `cargo metadata` reads — into a fresh temporary directory.
+    fn copy_of_the_workspace(label: &str) -> Self {
+        let source = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .expect("xtask is a member of the workspace it checks")
+            .to_owned();
+        let nanos = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("the clock is after the epoch")
+            .as_nanos();
+        let root = std::env::temp_dir().join(format!(
+            "nomos-boundary-{label}-{}-{nanos}",
+            std::process::id()
+        ));
+
+        fs::create_dir_all(&root).expect("create the copy");
+        for file in ["Cargo.toml", "Cargo.lock"] {
+            fs::copy(source.join(file), root.join(file)).expect("copy a workspace file");
+        }
+        for tree in ["crates", "xtask"] {
+            copy_tree(&source.join(tree), &root.join(tree));
+        }
+        Self { root }
+    }
+
+    fn manifest(&self) -> PathBuf {
+        self.root.join("Cargo.toml")
+    }
+
+    /// Writes a new crate under `crates/` and adds it to the member list.
+    fn plant_crate(&self, name: &str, dependencies: &[&str], dev_dependencies: &[&str]) {
+        let directory = self.root.join("crates").join(name);
+        fs::create_dir_all(directory.join("src")).expect("create the planted crate");
+        let section = |names: &[&str]| {
+            names
+                .iter()
+                .map(|dependency| format!("{dependency} = {}\n", path_dependency(dependency)))
+                .collect::<String>()
+        };
+        let manifest = format!(
+            "[package]\n\
+             name = \"{name}\"\n\
+             version.workspace = true\n\
+             edition.workspace = true\n\
+             rust-version.workspace = true\n\
+             license.workspace = true\n\
+             repository.workspace = true\n\
+             publish.workspace = true\n\
+             \n\
+             [dependencies]\n{}\n[dev-dependencies]\n{}",
+            section(dependencies),
+            section(dev_dependencies),
+        );
+        fs::write(directory.join("Cargo.toml"), manifest).expect("write the planted manifest");
+        fs::write(
+            directory.join("src/lib.rs"),
+            "//! Planted by a boundary test. Never built.\n",
+        )
+        .expect("write the planted source");
+
+        let manifest = self.manifest();
+        let text = fs::read_to_string(&manifest).expect("read the copied workspace manifest");
+        let planted = text.replacen(
+            "    \"xtask\",\n",
+            &format!("    \"xtask\",\n    \"crates/{name}\",\n"),
+            1,
+        );
+        assert_ne!(
+            planted, text,
+            "the workspace manifest no longer lists `xtask` as a member"
+        );
+        fs::write(&manifest, planted).expect("write the copied workspace manifest");
+    }
+
+    /// Adds one dependency line to a member of the copy.
+    fn plant_dependency(&self, member: &str, dependency: &str) {
+        let manifest = self.root.join("crates").join(member).join("Cargo.toml");
+        let text = fs::read_to_string(&manifest).expect("read a member manifest");
+        let planted = text.replacen(
+            "[dependencies]\n",
+            &format!(
+                "[dependencies]\n{dependency} = {}\n",
+                path_dependency(dependency)
+            ),
+            1,
+        );
+        assert_ne!(
+            planted, text,
+            "`{member}` has no `[dependencies]` section to plant into"
+        );
+        fs::write(&manifest, planted).expect("write a member manifest");
+    }
+
+    fn graph(&self) -> Graph {
+        load_graph(Some(&self.manifest().to_string_lossy())).expect("read the planted metadata")
+    }
+}
+
+impl Drop for Planted {
+    fn drop(&mut self) {
+        let _ = fs::remove_dir_all(&self.root);
+    }
+}
+
+/// A path dependency on another crate of the copy, from a crate in `crates/`.
+fn path_dependency(name: &str) -> String {
+    format!("{{ path = \"../{name}\" }}")
+}
+
+fn copy_tree(from: &Path, to: &Path) {
+    fs::create_dir_all(to).expect("create a directory in the copy");
+    for entry in fs::read_dir(from).expect("read a directory of the workspace") {
+        let entry = entry.expect("read a directory entry");
+        // A build directory is not part of what `cargo metadata` reads.
+        if entry.file_name() == "target" {
+            continue;
+        }
+        let target = to.join(entry.file_name());
+        if entry.file_type().expect("read a file type").is_dir() {
+            copy_tree(&entry.path(), &target);
+        } else {
+            fs::copy(entry.path(), &target).expect("copy a file");
+        }
+    }
+}
+
+/// Asserts one violation of `rule` and returns its detail, printed as a receipt.
+fn only_violation(violations: &[Violation], rule: &str) -> String {
+    assert_eq!(
+        violations.len(),
+        1,
+        "expected exactly one violation, found {violations:?}"
+    );
+    assert_eq!(violations[0].rule, rule, "{violations:?}");
+    println!("PLANTED [{}] {}", violations[0].rule, violations[0].detail);
+    violations[0].detail.clone()
+}
+
+#[test]
+fn an_undeclared_r1_member_fails_membership() {
+    let planted = Planted::copy_of_the_workspace("undeclared");
+    planted.plant_crate(RENDER_PLAN, &["nomos-sim"], &[]);
+
+    // `check` uses the shipped `R1_CRATES`, which declares nothing.
+    let detail = only_violation(&planted.graph().check(), "membership");
+    assert!(detail.contains(&format!("`{RENDER_PLAN}`")), "{detail}");
+}
+
+#[test]
+fn a_declared_r1_member_may_depend_on_a_kernel_crate() {
+    let planted = Planted::copy_of_the_workspace("declared");
+    planted.plant_crate(RENDER_PLAN, &["nomos-sim"], &[]);
+
+    let violations = planted.graph().check_with(&[RENDER_PLAN]);
+    println!(
+        "PLANTED [declared] {RENDER_PLAN} -> nomos-sim: {} violation(s)",
+        violations.len()
+    );
+    assert!(violations.is_empty(), "{violations:?}");
+}
+
+#[test]
+fn a_kernel_crate_depending_on_an_r1_member_fails_permitted_edges() {
+    let planted = Planted::copy_of_the_workspace("kernel-edge");
+    planted.plant_crate(RENDER_PLAN, &[], &[]);
+    planted.plant_dependency("nomos-sim", RENDER_PLAN);
+
+    let detail = only_violation(
+        &planted.graph().check_with(&[RENDER_PLAN]),
+        "permitted-edges",
+    );
+    assert!(
+        detail.contains(&format!("`nomos-sim` depends on `{RENDER_PLAN}`")),
+        "{detail}"
+    );
+}
+
+#[test]
+fn an_r1_member_depending_on_an_undeclared_member_fails_twice() {
+    // The only workspace members an R1 crate can reach that are neither kernel
+    // crates nor declared R1 crates are undeclared ones and, once R1-4 lands,
+    // `apps/`: Cargo drops a dependency on `xtask`, which has no lib target.
+    let planted = Planted::copy_of_the_workspace("undeclared-peer");
+    planted.plant_crate(RENDER_PLAN, &[PRESENTATION], &[]);
+    planted.plant_crate(PRESENTATION, &[], &[]);
+
+    let violations = planted.graph().check_with(&[RENDER_PLAN]);
+    for violation in &violations {
+        println!("PLANTED [{}] {}", violation.rule, violation.detail);
+    }
+    let rules: Vec<&str> = violations.iter().map(|violation| violation.rule).collect();
+    assert_eq!(rules, ["membership", "permitted-edges"], "{violations:?}");
+    assert!(
+        violations[0].detail.contains(PRESENTATION),
+        "{violations:?}"
+    );
+    assert!(
+        violations[1].detail.contains(&format!(
+            "R1 crate `{RENDER_PLAN}` depends on workspace member `{PRESENTATION}`"
+        )),
+        "{violations:?}"
+    );
+}
+
+#[test]
+fn a_cycle_between_two_r1_members_fails_cycles() {
+    let planted = Planted::copy_of_the_workspace("r1-cycle");
+    // Cargo refuses a cycle of normal dependencies outright, so the return edge
+    // is a dev-dependency — the kind Cargo allows and this rule still refuses.
+    planted.plant_crate(RENDER_PLAN, &[PRESENTATION], &[]);
+    planted.plant_crate(PRESENTATION, &[], &[RENDER_PLAN]);
+
+    let detail = only_violation(
+        &planted.graph().check_with(&[RENDER_PLAN, PRESENTATION]),
+        "cycles",
+    );
+    assert!(
+        detail.contains(&format!("{RENDER_PLAN} -> {PRESENTATION} -> {RENDER_PLAN}")),
+        "{detail}"
+    );
+}

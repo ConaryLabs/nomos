@@ -5,15 +5,24 @@
 //! `Cargo.toml` files and hoping. This module reads `cargo metadata` and
 //! refuses:
 //!
-//! 1. a workspace member that is not a declared kernel crate or declared
-//!    tooling;
-//! 2. an edge between kernel crates that section 10 does not permit — including
+//! 1. a workspace member that is not a declared kernel crate, declared tooling,
+//!    or a declared R1 crate;
+//! 2. an edge between kernel crates that section 10 does not permit, or an edge
+//!    out of an R1 crate that `RUNTIME.md` section 3 does not permit — including
 //!    dev-dependency edges, because a dev-dependency also lets a crate name the
 //!    other's types;
-//! 3. a cycle among kernel crates;
+//! 3. a cycle among the kernel and R1 crates;
 //! 4. a forbidden dependency — renderer, windowing, audio, networking, watcher,
 //!    or hot-reload — anywhere reachable from a kernel crate, transitively;
 //! 5. tooling reaching into the kernel graph it checks.
+//!
+//! Rules 1 to 3 carry `RUNTIME.md` section 3 as well as section 10. An R1 crate
+//! may depend on any kernel crate and on another declared R1 crate; a kernel
+//! crate may not depend on an R1 crate, on `xtask`, or on `apps/`; and the
+//! declared list `R1_CRATES` is empty until a slice adds a member, so an
+//! undeclared member still fails rule 1. Rule 4 stays scoped to what a kernel
+//! crate reaches: R1's own third-party policy is `RUNTIME.md` section 4, not
+//! this list.
 //!
 //! Rule 5 is why the checker is a separate workspace member rather than a
 //! subcommand of `nomos-cli`. If it lived inside the kernel, its own JSON and
@@ -44,6 +53,13 @@ pub const KERNEL_CRATES: [&str; 6] = [
     "nomos-sim",
     "nomos-cli",
 ];
+
+/// The declared R1 members, mirroring the list in `RUNTIME.md` section 3.
+///
+/// Empty: no R1 crate exists yet. A crate joins this list in the change that
+/// creates it, and `RUNTIME.md` section 3 names the same members, or the
+/// `membership` rule refuses the workspace.
+pub const R1_CRATES: [&str; 0] = [];
 
 /// Workspace members that are tooling rather than kernel crates.
 pub const TOOLING_CRATES: [&str; 1] = ["xtask"];
@@ -264,21 +280,32 @@ impl Graph {
         seen.iter().map(|id| self.name_of(id)).collect()
     }
 
-    /// Runs every boundary rule, returning the violations found.
+    /// Runs every boundary rule against the declared lists, returning the
+    /// violations found.
     pub fn check(&self) -> Vec<Violation> {
+        self.check_with(&R1_CRATES)
+    }
+
+    /// Runs every boundary rule with an explicitly declared R1 member list.
+    ///
+    /// `check` passes `R1_CRATES`. The declaration is a parameter of the rules
+    /// so a planted-violation test can copy this workspace, plant a member, and
+    /// check it both undeclared and declared without a second copy of the rules.
+    pub fn check_with<'a>(&'a self, r1_crates: &[&'a str]) -> Vec<Violation> {
         let mut violations = Vec::new();
-        self.check_membership(&mut violations);
-        self.check_permitted_edges(&mut violations);
-        self.check_cycles(&mut violations);
+        self.check_membership(r1_crates, &mut violations);
+        self.check_permitted_edges(r1_crates, &mut violations);
+        self.check_cycles(r1_crates, &mut violations);
         self.check_forbidden(&mut violations);
         self.check_tooling_isolation(&mut violations);
         violations
     }
 
-    fn check_membership(&self, violations: &mut Vec<Violation>) {
+    fn check_membership(&self, r1_crates: &[&str], violations: &mut Vec<Violation>) {
         let declared: BTreeSet<&str> = KERNEL_CRATES
             .iter()
             .chain(TOOLING_CRATES.iter())
+            .chain(r1_crates.iter())
             .copied()
             .collect();
         for member in &self.members {
@@ -287,7 +314,7 @@ impl Graph {
                     "membership",
                     format!(
                         "workspace member `{member}` is neither a KERNEL.md section 10 kernel \
-                         crate nor declared tooling"
+                         crate, declared tooling, nor a RUNTIME.md section 3 declared R1 crate"
                     ),
                 ));
             }
@@ -300,9 +327,20 @@ impl Graph {
                 ));
             }
         }
+        for expected in r1_crates {
+            if !self.members.contains(*expected) {
+                violations.push(Violation::new(
+                    "membership",
+                    format!(
+                        "declared R1 crate `{expected}` is missing from the workspace; \
+                         RUNTIME.md section 3 declares a member that does not exist"
+                    ),
+                ));
+            }
+        }
     }
 
-    fn check_permitted_edges(&self, violations: &mut Vec<Violation>) {
+    fn check_permitted_edges(&self, r1_crates: &[&str], violations: &mut Vec<Violation>) {
         for (crate_name, permitted) in PERMITTED_EDGES {
             if !self.members.contains(crate_name) {
                 continue;
@@ -320,11 +358,39 @@ impl Graph {
                 }
             }
         }
+
+        // RUNTIME.md section 3: an R1 crate may depend on any kernel crate and
+        // on another declared R1 crate. Third-party edges are section 4's
+        // business, so only workspace members are judged here.
+        for crate_name in r1_crates {
+            if !self.members.contains(*crate_name) {
+                continue;
+            }
+            for dependency in self.direct_dependency_names(crate_name) {
+                if !self.members.contains(dependency)
+                    || KERNEL_CRATES.contains(&dependency)
+                    || r1_crates.contains(&dependency)
+                {
+                    continue;
+                }
+                violations.push(Violation::new(
+                    "permitted-edges",
+                    format!(
+                        "R1 crate `{crate_name}` depends on workspace member `{dependency}`, \
+                         which RUNTIME.md section 3 does not permit"
+                    ),
+                ));
+            }
+        }
     }
 
-    fn check_cycles(&self, violations: &mut Vec<Violation>) {
+    fn check_cycles<'a>(&'a self, r1_crates: &[&'a str], violations: &mut Vec<Violation>) {
         let mut state: BTreeMap<&str, u8> = BTreeMap::new();
-        for crate_name in KERNEL_CRATES {
+        for crate_name in KERNEL_CRATES
+            .iter()
+            .copied()
+            .chain(r1_crates.iter().copied())
+        {
             if self.members.contains(crate_name) {
                 self.visit(crate_name, &mut state, &mut Vec::new(), violations);
             }

@@ -87,7 +87,9 @@ cargo xtask boundary [--manifest-path <path/to/Cargo.toml>]
 
 Exit codes follow `KERNEL.md` section 8: `0` clean, `1` violations, `2` invalid
 usage, `3` environment failure. It reads `cargo metadata --all-features` and
-enforces five rules:
+enforces five rules over the six kernel crates, the declared tooling, and the R1
+crates `RUNTIME.md` section 3 declares — `R1_CRATES` in
+`xtask/src/boundary.rs`, empty today, reported as `r1 members N`:
 
 | Rule | What it refuses |
 | --- | --- |
@@ -96,9 +98,19 @@ enforces five rules:
 | `cycles` | a dependency cycle among kernel crates — including the dev-dependency cycles that Cargo itself allows |
 | `forbidden-dependency` | a renderer, windowing, engine, audio, networking, watcher, or hot-reload crate anywhere transitively reachable from a kernel crate |
 | `tooling-isolation` | `xtask` reaching a kernel crate |
+| `membership` (R1) | a workspace member that `RUNTIME.md` section 3 does not declare as an R1 crate; a declared R1 crate that has gone missing |
+| `permitted-edges` (R1) | an R1 crate depending on a workspace member that is neither a kernel crate nor another declared R1 crate; a kernel crate depending on an R1 crate is already refused by the row above |
+| `cycles` (R1) | a dependency cycle among the kernel and R1 crates, R1 to R1 included |
+
+`forbidden-dependency` stays scoped to what a kernel crate reaches: `RUNTIME.md`
+section 4, not this list, governs an R1 crate's third-party dependencies.
 
 `--manifest-path` points the check at a copy of the workspace, which is how the
 planted-violation receipt is produced without disturbing this one.
+`xtask/src/planted.rs` runs that pattern as tests: it copies the workspace to a
+temporary directory, plants `crates/nomos-render-plan` undeclared, declared,
+depended on by `nomos-sim`, and in a cycle with a second R1 crate, and asserts
+the rule each case must fail.
 
 ### What the checker cannot see
 
