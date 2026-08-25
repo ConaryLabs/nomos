@@ -52,14 +52,17 @@ apps/nomos-viewer/
   vendor/three/LICENSE               MIT, verbatim, 1 081 bytes
   vendor/MANIFEST.json               provenance, digests, imports, external-URL counts
   build.mjs                     stages dist/ from published artifacts; runs the scan
-  test/fixtures.mjs             hand-authored plans and collections, written fresh
+    test/fixtures.mjs             hand-authored plans and collections, written fresh
+  test/three-stub.mjs           a recording stand-in for the Three.js namespace
   test/plan.test.mjs            decoder: identity, shape, refusals, accessors
   test/catalog.test.mjs         units, sockets, closed sets, palette, prose rule
   test/play.test.mjs            the ported play rules and the winnable route
-  test/render.test.mjs          scene graph against a recording Three.js stub
+  test/render.test.mjs          scene graph against the recording stub
   test/ui.test.mjs              the pure readout and scenario selection
-  test/vendor.test.mjs          recomputes both vendored digests
+  test/vendor.test.mjs          recomputes every vendored digest
+  test/origins.test.mjs         every external URL under apps/, accounted for
   test/scan.test.mjs            the dist scan, on a good dist and on planted bad ones
+  test/route.test.mjs           the route solver, on fixtures it has never seen
   smoke/smoke.mjs               the lane: launch, drive, assert, write the receipt
   smoke/chrome.mjs              binary discovery, flag sets, launch, DevTools port
   smoke/cdp.mjs                 dependency-free CDP client over global WebSocket
@@ -68,24 +71,28 @@ apps/nomos-viewer/
   README.md                     what it is, how to build, run, and smoke it
 ```
 
-| File | Responsibility | Lines (est.) |
-| --- | --- | --- |
-| `index.html` | Document, stylesheet, and a three-line inline module that imports `start` from `src/ui.mjs` and calls it. Every colour is `var(--nomos-<role>)`; the custom properties are written at boot from the catalog palette, so no colour value exists here. `<link rel="icon" href="data:,">` so the page issues no favicon request. | ~120 |
-| `src/plan.mjs` | Binds `nomos.rendering_plan@2` and `nomos.experiment.area_collection@2`; refuses a mismatch, an unknown field, a missing field, a non-integer number, a name outside the catalog, and a broken cross-reference, each with a stable `NV####` code. Exports `loadArtifacts(base, fetchImpl)` — the only place a URL is constructed — and the typed accessors (`movementOf`, `lightOf`, `machineState`, `doorState`, `wardSealed`, `initialScenario`, `interactionsFrom`). | ~300 |
-| `src/catalog.mjs` | The one renderer catalog: units, scales, camera, sockets, closed sets, entity assemblies and material families, palette, look profiles, and the prose tables keyed by closed sets. Pure data plus pure resolution functions; imports nothing. | ~280 |
-| `src/play.mjs` | Play state over a decoded plan: movement keys, terrain cost, masonry, the declared-face exit, gaoler pursuit, interaction adjacency, area arrival, completion, and guidance. No DOM, no renderer, no fetch. | ~260 |
-| `src/render.mjs` | `createGaolRenderer(container, three, catalog)`: floor, walls, masses, water, doors, braziers, socket-placed effects, actors, lights, look profiles, and the frame loop. Dispatches on catalog entries only — no entity id, no assembly string literal, no area name. Three.js arrives as a parameter, which is what makes the scene graph testable in node. | ~470 |
-| `src/ui.mjs` | `start(document, three)` wires the DOM; `readout(collection, plan, play, scenario)` is a pure function returning every visible string, so the presentation model is node-tested and only the wiring depends on a browser. Writes the palette custom properties and the machine-readable run readout the smoke lane reads. | ~260 |
-| `build.mjs` | Stages `dist/` from published artifacts and the app, then runs `scanDist` and fails closed. Exports `stage` and `scanDist` so the tests can drive both; the CLI entry is guarded by `pathToFileURL(process.argv[1]).href === import.meta.url`, not `import.meta.main`, because CI pins Node 22. | ~300 |
-| `smoke/smoke.mjs` | Serves `dist/`, launches Chrome, subscribes, navigates, drives the solved route, asserts, screenshots, writes the receipt, exits 0/1, or skips with an explicit message. | ~300 |
-| `smoke/chrome.mjs` | `CHROME_BIN`, then PATH names, then the Playwright cache as a last resort; the two flag sets and the retry; reads `DevToolsActivePort` from the throwaway user-data dir. | ~140 |
-| `smoke/cdp.mjs` | `connect(wsUrl)` → `send(method, params)` promise map, `on(event, handler)`, and a `waitFor(predicate, timeout)`; nothing but global `WebSocket`. | ~150 |
-| `smoke/server.mjs` | `node:http` static server on `127.0.0.1:0`, path-traversal refusal, a fixed extension→type table, `no-store`, and a request log for the receipt. | ~90 |
-| `smoke/route.mjs` | The solver: decodes the plans, walks the route graph, and emits the key sequence plus the expected counters. Test tooling; it never ships in `dist/`. | ~170 |
-| `test/*.test.mjs`, `test/fixtures.mjs` | Node's built-in test runner; fixtures are written fresh in this record's own vocabulary, never copied from `experiments/`. | ~1 000 total |
+Line counts below are the shipped ones: the table was written with estimates in
+phase 1 and corrected here to what landed.
 
-Nothing in `apps/nomos-viewer/` is over 1 000 lines, and the two largest files
-(`render.mjs`, `plan.mjs`) are the two with the most declared data.
+| File | Responsibility | Lines |
+| --- | --- | --- |
+| `index.html` | Document, stylesheet, and a three-line inline module that imports `start` from `src/ui.mjs` and calls it. Every colour is `var(--nomos-<role>)`; the custom properties are written at boot from the catalog palette, so no colour value exists here. `<link rel="icon" href="data:,">` so the page issues no favicon request. | 96 |
+| `src/plan.mjs` | Binds `nomos.rendering_plan@2` and `nomos.experiment.area_collection@2`; refuses a mismatch, an unknown field, a missing field, a non-integer number, a name outside the catalog, and a broken cross-reference, each with a stable `NV####` code. Exports `loadArtifacts(base, fetchImpl)` — the only place a URL is constructed — and the typed accessors (`movementOf`, `lightOf`, `machineState`, `doorState`, `wardSealed`, `initialScenario`, `interactionsFrom`). | 922 |
+| `src/catalog.mjs` | The one renderer catalog: units, scales, camera, sockets, closed sets, entity assemblies and material families, palette, look profiles, and the prose tables keyed by closed sets. Pure data plus pure resolution functions; imports nothing. | 295 |
+| `src/play.mjs` | Play state over a decoded plan: movement keys, terrain cost, masonry, the declared-face exit, gaoler pursuit, interaction adjacency, area arrival, completion, and guidance. No DOM, no renderer, no fetch. | 316 |
+| `src/render.mjs` | `createGaolRenderer(container, three, host)`: floor, walls, masses, water, doors, braziers, socket-placed effects, actors, lights, look profiles, and the frame loop. Dispatches on catalog entries only — no entity id, no assembly string literal, no area name. Three.js arrives as a parameter, which is what makes the scene graph testable in node. | 623 |
+| `src/ui.mjs` | `start(document, three)` wires the DOM; `readout(collection, plan, play, scenario)` is a pure function returning every visible string, so the presentation model is node-tested and only the wiring depends on a browser. Writes the palette custom properties and the machine-readable run readout the smoke lane reads. | 352 |
+| `build.mjs` | Stages `dist/` from published artifacts and the app, then runs `scanDist` and fails closed. Exports `stage` and `scanDist` so the tests can drive both; the CLI entry is guarded by `pathToFileURL(process.argv[1]).href === import.meta.url`, not `import.meta.main`, because CI pins Node 22. | 371 |
+| `smoke/smoke.mjs` | Serves `dist/`, launches Chrome, subscribes, navigates, drives the solved route, asserts, screenshots, writes the receipt, exits 0/1, or skips with an explicit message. | 359 |
+| `smoke/chrome.mjs` | `CHROME_BIN`, then PATH names, then the Playwright cache as a last resort; the two flag sets and the retry; reads `DevToolsActivePort` from the throwaway user-data dir. | 209 |
+| `smoke/cdp.mjs` | `connect(wsUrl)` → `send(method, params)` promise map, `on(event, handler)`, and a `waitFor(predicate, timeout)`; nothing but global `WebSocket`. | 116 |
+| `smoke/server.mjs` | `node:http` static server on `127.0.0.1:0`, path-traversal refusal, a fixed extension→type table, `no-store`, and a request log for the receipt. | 56 |
+| `smoke/route.mjs` | The solver: decodes the plans, walks the route graph, and emits the key sequence plus the expected counters. Test tooling; it never ships in `dist/`. | 163 |
+| `test/*.test.mjs`, `test/fixtures.mjs`, `test/three-stub.mjs` | Node's built-in test runner; fixtures are written fresh in this record's own vocabulary, never copied from `experiments/`. 105 tests. | 1 968 total |
+
+Nothing in `apps/nomos-viewer/` is over 1 000 lines. `plan.mjs` at 922 is the
+closest, and it is the file the shop rule would decompose next: it is one strict
+decoder plus its accessors, and the shape checks are most of it.
 
 **Dependency direction inside the app.** `catalog.mjs` imports nothing.
 `plan.mjs` imports `catalog.mjs` (to refuse a name outside the closed sets).
