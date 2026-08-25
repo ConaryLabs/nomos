@@ -7,7 +7,7 @@ const sheetBytes = readFileSync(sheetPath);
 const plan = JSON.parse(planBytes);
 const fail = (message) => { throw new Error(message); };
 
-if (plan.schema !== "nomos.experiment.rendering_plan@1") fail("wrong plan schema");
+if (plan.schema !== "nomos.rendering_plan@1") fail("wrong plan schema");
 if (plan.entities.filter((entity) => entity.kind === "door").length !== 2) fail("second content-driven door absent");
 if (plan.scenarios.length !== 5) fail("expected five scenarios");
 if (plan.interactions.length !== 3) fail("expected three verified in-world interactions");
