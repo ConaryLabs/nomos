@@ -47,9 +47,10 @@ apps/nomos-viewer/
   src/play.mjs                  play state: movement, cost, interaction, pursuit, transition
   src/render.mjs                the WebGL renderer, over an injected Three.js namespace
   src/ui.mjs                    DOM binding, the pure readout, key handling
-  vendor/three/three.module.min.js   three@0.185.1, verbatim, 365 552 bytes
+    vendor/three/three.module.min.js   three@0.185.1, verbatim, 365 552 bytes
+  vendor/three/three.core.min.js     its sibling, verbatim, 385 386 bytes (finding 8)
   vendor/three/LICENSE               MIT, verbatim, 1 081 bytes
-  vendor/MANIFEST.json               name, version, provenance, sha256 per file
+  vendor/MANIFEST.json               provenance, digests, imports, external-URL counts
   build.mjs                     stages dist/ from published artifacts; runs the scan
   test/fixtures.mjs             hand-authored plans and collections, written fresh
   test/plan.test.mjs            decoder: identity, shape, refusals, accessors
@@ -720,7 +721,8 @@ node apps/nomos-viewer/build.mjs --from target/executable-gaol --out apps/nomos-
 dist/
   index.html
   src/{plan,catalog,play,render,ui}.mjs
-  vendor/three/three.module.min.js
+    vendor/three/three.module.min.js
+  vendor/three/three.core.min.js
   vendor/three/LICENSE
   areas.json
   areas/{cistern-walk,ember-vault,north-gaol,ossuary-reach}.json
@@ -794,11 +796,11 @@ requires.
 | --- | --- |
 | **name** | `three` |
 | **version** | `0.185.1` |
-| **provenance** | Vendored at `apps/nomos-viewer/vendor/three/three.module.min.js`, extracted from the npm registry tarball `https://registry.npmjs.org/three/-/three-0.185.1.tgz`. Registry `dist.integrity` `sha512-5aojFCXKwnjBRZvUnt3WFfEcvUJgkN5LlijRFN95hMy8WVkG4I0QNcJE+OuWvuJ0bOdStrbfXn0pkd6/QyiAlg==`; the same tarball as sha256 `a2143f5bf978bd3470a51024b2b6bdd581913ba8f36ff1538d433f3a95adf2df`. Vendored file sha256 `86bcee248b64f44bcfc23c331ae74619061957d59cab040171dcb6fb5900beb6`, 365 552 bytes. Upstream `git+https://github.com/mrdoob/three.js.git`. All of it recorded in `apps/nomos-viewer/vendor/MANIFEST.json`. |
+| **provenance** | Vendored under `apps/nomos-viewer/vendor/three/`, extracted from the npm registry tarball `https://registry.npmjs.org/three/-/three-0.185.1.tgz`. Registry `dist.integrity` `sha512-5aojFCXKwnjBRZvUnt3WFfEcvUJgkN5LlijRFN95hMy8WVkG4I0QNcJE+OuWvuJ0bOdStrbfXn0pkd6/QyiAlg==`; the same tarball as sha256 `a2143f5bf978bd3470a51024b2b6bdd581913ba8f36ff1538d433f3a95adf2df`. Two files, because the build is two files (finding 8): `three.module.min.js` sha256 `86bcee248b64f44bcfc23c331ae74619061957d59cab040171dcb6fb5900beb6`, 365 552 bytes, and its sibling `three.core.min.js` sha256 `05b2609338c76cd65daf74f3ac515bc9a5045e1b3b33edc07d8c9bd55250fa90`, 385 386 bytes. Upstream `https://github.com/mrdoob/three.js`. All of it recorded in `apps/nomos-viewer/vendor/MANIFEST.json`. |
 | **license** | MIT, preserved verbatim at `apps/nomos-viewer/vendor/three/LICENSE`, sha256 `8b378ebe60e2fe500158cb0ac71cb5e8b7d92953c2abcc63a0eb90499653b5bc`, 1 081 bytes ("Copyright © 2010-2026 three.js authors"). |
 | **why not local** | A WebGL2 scene graph with material and shader compilation, orthographic camera math, shadow maps, and generated geometry — extrusion with bevels, torus, cone, icosahedron, cylinder, plane. A local implementation would be a second renderer to maintain and would not be more trustworthy for being ours; `RUNTIME.md` §4 admits exactly this case outside the six kernel crates, and `AGENTS.md` states the zero-dependency rule "was never a permanent claim that later epochs should reimplement mature libraries". |
 | **determinism** | Cannot affect authoritative state, hashes, or receipts. It is loaded only by `apps/nomos-viewer/`, which consumes published artifacts and writes none. No kernel crate, no R1 crate, no `xtask` target, and no step that produces a canonical artifact links or executes it; the plans and their digests are produced by `nomos-render-plan` before `build.mjs` runs. Bounded by: `cargo xtask boundary` (§10 finding 4 adds the `apps/` isolation rule `RUNTIME.md` §3 promises), the scan's file-shape rule, and the smoke lane, which hashes no GPU output — `RUNTIME.md` §9 already states the pixels are not deterministic across GPUs, and no receipt depends on them. |
-| **offline proof** | The file is committed; there is no `npm install`, no lockfile to resolve, and no bundler. `node --test apps/nomos-viewer/test/vendor.test.mjs` recomputes both sha256 digests from the working tree and compares them to `vendor/MANIFEST.json`. `build.mjs` re-checks them while copying, and the scan refuses any external origin in `dist/`. The smoke lane runs Chrome with `--host-resolver-rules="MAP * ~NOTFOUND, EXCLUDE localhost"`, records every request in the receipt, requires the external list to be empty, and proves the rule is in force with a negative-control probe that must fail. |
+| **offline proof** | The file is committed; there is no `npm install`, no lockfile to resolve, and no bundler. `node --test apps/nomos-viewer/test/vendor.test.mjs` recomputes every sha256 and byte count from the working tree, compares them to `vendor/MANIFEST.json`, and asserts that the only module specifier either file carries is the relative sibling. `build.mjs` re-checks them while copying, and the scan refuses any external origin in `dist/`. The smoke lane runs Chrome with `--host-resolver-rules="MAP * ~NOTFOUND, EXCLUDE localhost"`, records every request in the receipt, requires the external list to be empty, and proves the rule is in force with a negative-control probe that must fail. |
 | **added by** | Issue #148, pull request #151. |
 
 `RUNTIME.md` §3 gains one sentence noting `apps/nomos-viewer/` is present and
@@ -1113,6 +1115,25 @@ one line in the predecessor's `presentation.json`, and two regenerated fixtures
 `apps/nomos-viewer/`" — is met exactly, and §1 criterion 5's "no edit to
 renderer or compiler source" is met exactly. §9 states the precise claim the
 proof will make.
+
+### Finding 8 — the file the issue names is half of a two-file build — FIXED IN THIS SLICE
+
+Raised in phase 2, by the test rather than by a browser.
+`three@0.185.1`'s `build/three.module.min.js` is **not** self-contained: it
+carries `from"./three.core.min.js"` twice — one import and one re-export — so
+vendoring only the file the issue names would have published a page whose first
+module request 404s. `build/three.core.min.js` is 385 386 bytes, imports
+nothing, and contains one URL of its own: `http://www.w3.org/1999/xhtml`, the
+XML namespace identifier passed to `document.createElementNS`, which is a name
+and not a fetch target.
+
+Both files are vendored, both are digest-pinned in `MANIFEST.json`, both are
+staged by `build.mjs`, and `the_vendored_modules_import_only_their_own_siblings`
+asserts that every specifier either file carries is relative and resolves to a
+vendored file. The constraint is unchanged — the specifier between them is a
+same-origin relative URL — and the acceptance grep still returns only the two
+documentation strings above. Recorded because the issue names one file and the
+tree now holds two.
 
 ### Nothing in the issue is impossible
 
