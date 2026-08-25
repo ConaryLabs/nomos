@@ -41,7 +41,7 @@ artifact that proves it.
 | Consumes the R1-1 output and presentation source only; never reads `.nomos` source, World IR, or compiler receipts | `tests/inputs.rs::world_ir_compiler_receipts_and_source_are_never_opened` compiles against a world directory whose `world-ir.json`, `compiler-receipts.json`, `manifest.json`, `schemas.json`, and `world.nomos` are unreadable bytes; `tests/inputs.rs::no_code_path_names_a_forbidden_input` greps the crate's source with comments stripped |
 | Input-boundary: a temp directory of only the allowed inputs compiles | `tests/inputs.rs::a_directory_of_only_the_declared_inputs_compiles` |
 | No dependency on `nomos-schema` or `nomos-compiler` | `tests/inputs.rs::the_build_dependency_graph_is_nomos_core_only` parses the manifest's declarations; `cargo xtask boundary` reports `r1 members 1`, clean |
-| Binds `nomos.effective_facts@1` identity and version, refusing a mismatch with a stable diagnostic | `tests/schema_binding.rs::the_effective_facts_identity_and_version_are_bound`; the diagnostic is `RP0104` and names expected and found |
+| Binds the active `nomos.effective_facts@2` identity and version (`@1` at original R1-2 acceptance), refusing a mismatch with a stable diagnostic | `tests/schema_binding.rs::the_effective_facts_identity_and_version_are_bound`; the diagnostic is `RP0104` and names expected and found |
 | Same for `nomos.entity_catalog@1` | `tests/schema_binding.rs::the_catalog_identity_and_version_are_bound` |
 | Doors, water, and light classified from typed declarations; renaming a machine and an entity identifier changes nothing | `tests/classification.rs::renaming_every_entity_and_machine_leaves_the_kinds_unchanged` renames *every* entity id and machine namespace consistently across catalog, facts, and run bundles |
 | Issue #132's three divergences, with the kernel output as the expected result | `tests/kernel_divergences.rs`, which builds a `SimulationPlan` directly and runs the real `nomos_sim::effective_facts` — no test double |
@@ -61,7 +61,7 @@ World IR, or receipts, and no code path constructs such a path.
 | Input | Identity | What it supplies |
 | --- | --- | --- |
 | `--catalog <entity-catalog.json>` | `nomos.entity_catalog@1` | the only source of entity kind: `primitive`, the typed `capabilities` set, `binding`, `machines`, and the resolver `claims` |
-| `--facts <dir>` | `nomos.effective_facts@1`, one `<scenario>.json` per scenario | the only source of movement disposition, cost, reasons, effective light, `tick`, and `state_hash` |
+| `--facts <dir>` | active `nomos.effective_facts@2`, one `<scenario>.json` per scenario | the only source of movement disposition, cost, reasons, effective light, `tick`, and `state_hash` |
 | `--runs <dir>` | run bundles | `final-state.json` machine states, `result.json` status, `command-log.json` rows |
 | `--world <world/>` | four projection members | their `schema` values, republished, and SHA-256 over their raw bytes |
 | `--area <area.json>` | unversioned presentation source | everything R1-3 will replace |
@@ -82,7 +82,7 @@ requires.
 | 2 | `build-plan.mjs:26` | light classification via membership in the persistence light-resolver subject set | the same `primitive` table |
 | 3 | `build-plan.mjs:27` | water classification via presence of a `traversal_cost_ground` navigation claim | the same `primitive` table |
 | 4 | `build-plan.mjs:28` | silent `"unknown"` / `visual/marker` fallback when no heuristic matched | `EntityKind::Unknown` remains a kind, but a primitive the compiler has no kind for that nevertheless carries another kind's full capability signature is now refused with `RP0201` rather than drawn as a marker |
-| 10 | `build-plan.mjs:86-95` | `activationIsActive`, a second `state_equals`/`not`/`any`/`all` evaluator | nothing: `nomos.effective_facts@1` carries the resolved facts |
+| 10 | `build-plan.mjs:86-95` | `activationIsActive`, a second `state_equals`/`not`/`any`/`all` evaluator | nothing: `nomos.effective_facts@2` carries the resolved facts |
 | 11 | `build-plan.mjs:106` | the literal scenario directory name `"01-baseline"` special-cased as a permitted rejection | the condition that carries the meaning: a declared rejection commits zero commands (`crates/nomos-render-plan/src/runs.rs`, `read_run`). The corpus behaves identically — `01-baseline` is its only rejected scenario and it commits nothing |
 | 12 | `build-plan.mjs:111-121` | movement disposition, cost, and reasons recomputed in JavaScript from raw navigation claims | the kernel document's `ground_movement` facts, copied |
 | 13 | `build-plan.mjs:123-128` | effective light recomputed from raw light-resolver claims | the kernel document's `light_emission` facts, copied |
@@ -186,13 +186,14 @@ without asking #138 to move.
    the kernel's own reason, so `read::require_completed` checks `status` first
    and carries the kernel's `EK####` codes into the `RP0105` rejection. The two
    envelope fields are otherwise ignored: the issue's shape is a subset.
-2. **The identity spelling.** The catalog spells its `schema` as the string
-   `"nomos.entity_catalog@1"`, while every Gate K artifact and `nomos
-   effective-facts` spell theirs as the object `{"name": …, "version": N}`.
-   `read::bind_schema` accepts both and compares them as `name@version`, so
-   neither convention has to move for the other. This is a real inconsistency in
-   the tree's document conventions and is worth one owner decision at R1-3 or
-   R1-4; it is not worth blocking R1-2.
+2. **The identity spelling.** At R1-2 acceptance, the catalog spelled its
+   `schema` as the string `"nomos.entity_catalog@1"`, while every Gate K
+   artifact and `nomos effective-facts` spelled theirs as the object
+   `{"name": …, "version": N}`. The reader temporarily accepted both. Decision
+   0018 settled the R1 spelling, and issue #159 completed the repair:
+   `nomos.effective_facts@2` uses the string form and `read::bind_schema`
+   refuses the object form. Gate K artifacts retain their frozen spelling and
+   do not reach this reader.
 
 Nothing else in #138's shape was insufficient. `primitive` plus `capabilities`
 is exactly what classification needs, and the `claims` array's `resolver` field

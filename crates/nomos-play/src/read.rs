@@ -176,37 +176,17 @@ pub fn bind_schema(
     label: &str,
 ) -> PlayResult<()> {
     let value = field(fields, "schema", label)?;
-    let declared = match value {
-        // Every R1 document spells `schema` as the string `name@version`, which
-        // is the rule `RUNTIME.md` section 3 states and what all five
-        // identities this crate declares emit. The object form is read too,
-        // because `nomos.effective_facts@1` still writes it and issue #159 owns
-        // that alignment; a reader that refused it would refuse a kernel
-        // document for a spelling this crate does not own.
-        CanonicalValue::Text(text) => SchemaId::parse(text).map_err(|error| {
-            PlayError::new(
-                codes::DOCUMENT_SHAPE,
-                format!("{label} schema is malformed: {}", error.message()),
-            )
-        })?,
-        CanonicalValue::Object(inner) => {
-            require_fields(inner, &["name", "version"], "schema identity")?;
-            let name = text(field(inner, "name", "schema identity")?, "schema name")?;
-            let version = uint(
-                field(inner, "version", "schema identity")?,
-                "schema version",
-            )?;
-            let version = u32::try_from(version)
-                .map_err(|_| PlayError::new(codes::DOCUMENT_VALUE, "schema version exceeds u32"))?;
-            SchemaId::new(name, version).map_err(|error| {
-                PlayError::new(
-                    codes::DOCUMENT_SHAPE,
-                    format!("{label} schema is malformed: {}", error.message()),
-                )
-            })?
-        }
-        _ => return Err(shape(format!("{label} schema is neither text nor object"))),
+    let CanonicalValue::Text(text) = value else {
+        return Err(shape(format!(
+            "{label} schema is not a string; R1 requires `name@version`"
+        )));
     };
+    let declared = SchemaId::parse(text).map_err(|error| {
+        PlayError::new(
+            codes::DOCUMENT_SHAPE,
+            format!("{label} schema is malformed: {}", error.message()),
+        )
+    })?;
     if &declared == expected {
         Ok(())
     } else {
@@ -219,4 +199,33 @@ pub fn bind_schema(
 
 fn shape(message: String) -> PlayError {
     PlayError::new(codes::DOCUMENT_SHAPE, message)
+}
+
+#[cfg(test)]
+mod tests {
+    use nomos_core::CanonicalValue;
+    use nomos_core::id::SchemaId;
+
+    use super::{bind_schema, object};
+
+    #[test]
+    fn r1_schema_binding_refuses_the_gate_k_object_spelling() {
+        let document = CanonicalValue::object_declared([(
+            "schema",
+            CanonicalValue::object_declared([
+                ("name", CanonicalValue::text("nomos.play_state")),
+                ("version", CanonicalValue::Uint(1)),
+            ]),
+        )]);
+        let fields = object(&document, "play state").expect("fixture is an object");
+        let expected = SchemaId::parse("nomos.play_state@1").expect("fixture schema is valid");
+
+        let error = bind_schema(fields, &expected, "play state").unwrap_err();
+        assert_eq!(error.code(), "PL0104");
+        assert!(
+            error.message().contains("R1 requires `name@version`"),
+            "{}",
+            error.message()
+        );
+    }
 }

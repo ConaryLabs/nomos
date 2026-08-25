@@ -244,7 +244,7 @@ fn inconsistent(message: String) -> Diagnostic {
 
 /// Canonical schema for the read-only entity catalog.
 ///
-/// Like `nomos.effective_facts@1` this document exists to be consumed by a
+/// Like `nomos.effective_facts@2` this document exists to be consumed by a
 /// downstream compiler rather than read by a human, so it carries a versioned
 /// identity to bind against. It is declared here, in the crate that owns World
 /// IR decoding and projection generation and is therefore the only kernel crate

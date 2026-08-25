@@ -1,7 +1,7 @@
 //! Identity binding fails closed, naming expected and found.
 //!
 //! `RUNTIME.md` section 5 R1-2: "as the first accepted consumer of
-//! `nomos.effective_facts@1` it binds that identity and version, and refuses a
+//! `nomos.effective_facts@2` it binds that identity and version, and refuses a
 //! mismatch with a stable diagnostic". Issue #139 extends the same requirement
 //! to `nomos.entity_catalog@1`.
 
@@ -50,33 +50,35 @@ fn the_effective_facts_identity_and_version_are_bound() {
     let error = nomos_render_plan::compile(fixture.inputs()).unwrap_err();
     assert_eq!(error.code().as_str(), "RP0104");
     assert!(
-        error.message().contains("nomos.effective_facts@1"),
+        error.message().contains("nomos.effective_facts@2"),
         "{}",
         error.message()
     );
     assert!(
-        error.message().contains("nomos.effective_facts@2"),
+        error.message().contains("nomos.effective_facts@3"),
         "{}",
         error.message()
     );
 }
 
 #[test]
-fn both_kernel_spellings_of_an_identity_are_accepted() {
-    // `nomos effective-facts` writes `{"name": ..., "version": N}`; the
-    // entity-catalog document in issue #138 writes `"name@version"`. Both are
-    // the same identity and both bind.
-    let fixture = Fixture::new("catalog-string-identity");
+fn the_gate_k_object_spelling_is_refused_for_an_r1_document() {
+    let fixture = Fixture::new("catalog-object-identity");
     let path = fixture.catalog();
     let text = std::fs::read_to_string(&path).unwrap();
     let rewritten = text.replace(
-        r#""schema":{"name":"nomos.entity_catalog","version":1}"#,
         r#""schema":"nomos.entity_catalog@1""#,
+        r#""schema":{"name":"nomos.entity_catalog","version":1}"#,
     );
-    assert_ne!(rewritten, text, "the object spelling was not found");
+    assert_ne!(rewritten, text, "the string spelling was not found");
     std::fs::write(&path, rewritten).unwrap();
-    nomos_render_plan::compile(fixture.inputs())
-        .expect("the string spelling of the identity binds too");
+    let error = nomos_render_plan::compile(fixture.inputs()).unwrap_err();
+    assert_eq!(error.code().as_str(), "RP0104");
+    assert!(
+        error.message().contains("R1 requires `name@version`"),
+        "{}",
+        error.message()
+    );
 }
 
 #[test]

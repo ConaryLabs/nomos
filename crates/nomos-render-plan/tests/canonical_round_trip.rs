@@ -120,6 +120,6 @@ fn the_schema_identity_literals_are_valid() {
     );
     assert_eq!(
         nomos_render_plan::effective_facts_schema().to_string(),
-        "nomos.effective_facts@1"
+        "nomos.effective_facts@2"
     );
 }
