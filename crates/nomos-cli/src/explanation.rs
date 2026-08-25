@@ -155,9 +155,6 @@ pub(crate) fn transition_report(
         .difference(&after)
         .map(StableId::to_canonical)
         .collect();
-    let span = entity_record.source_span();
-    let (byte_start, byte_end) = span.byte_range();
-    let (line, column) = span.position();
 
     Ok(CanonicalValue::object_declared([
         ("claims_added", CanonicalValue::Array(claims_added)),
@@ -175,16 +172,7 @@ pub(crate) fn transition_report(
             "run_result_digest",
             CanonicalValue::text(run.result_digest().to_hex()),
         ),
-        (
-            "source_mapping",
-            CanonicalValue::object_declared([
-                ("byte_end", CanonicalValue::Uint(u64::from(byte_end))),
-                ("byte_start", CanonicalValue::Uint(u64::from(byte_start))),
-                ("column", CanonicalValue::Uint(u64::from(column))),
-                ("line", CanonicalValue::Uint(u64::from(line))),
-                ("path", CanonicalValue::text(span.path().as_str())),
-            ]),
-        ),
+        ("source_mapping", entity_record.source_span().to_canonical()),
         ("status", CanonicalValue::text("completed")),
         ("tick", CanonicalValue::Uint(tick)),
     ]))

@@ -12,6 +12,7 @@
 
 mod catalog;
 pub mod diagnostics;
+mod entity_catalog;
 mod inspect;
 mod linker;
 mod opened;
@@ -25,6 +26,7 @@ use nomos_core::{Diagnostic, SchemaId, SourcePath};
 pub use nomos_projection::{DiagnosticsPlan, NavigationPlan, PersistencePlan, SimulationPlan};
 use nomos_schema::{LegacyStableWorldIrV1, SourceDocument, StableWorldIr, WorldIr};
 
+pub use entity_catalog::{entity_catalog, entity_catalog_schema};
 pub use inspect::inspect_compiled_package;
 pub use opened::{OpenedCompiledWorld, open_compiled_package, validate_compiled_package};
 pub use package::{

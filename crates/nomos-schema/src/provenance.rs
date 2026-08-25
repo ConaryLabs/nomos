@@ -11,7 +11,6 @@ use nomos_core::{
 };
 
 use crate::Binding;
-use crate::ir::span_to_canonical;
 
 /// Canonical owner of a fact class.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
@@ -524,7 +523,7 @@ impl FactOwnershipReceipt {
                         .collect(),
                 ),
             ),
-            ("declared_at", span_to_canonical(&self.declared_at)),
+            ("declared_at", self.declared_at.to_canonical()),
             (
                 "derivation",
                 CanonicalValue::Array(

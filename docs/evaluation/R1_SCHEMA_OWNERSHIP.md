@@ -36,15 +36,29 @@ relative.
 | Canonical identity | Owner | Owner file | Authoritative type set | Encoder | Strict reader / verifier | Persisted boundary | Primary consumers | Status |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `nomos.effective_facts@1` | `nomos-sim` | `crates/nomos-sim/src/effective_facts.rs` | the `effective_facts()` document, embedding the `ResolvedMovementFacts` and `ResolvedLightFacts` renderings it composes | `nomos_sim::effective_facts` composes the `CanonicalValue`; canonical entity-sorted bytes written to stdout by `nomos effective-facts` | none in-tree: derived read-only output, never re-read by the kernel and with no strict package reader; its first consumer binds identity and version | none: stdout only, never written into a run bundle or package, and outside the state-hash domain because it is derived | R1-2 Rust rendering-plan compilation; today `experiments/executable-gaol/compare-effective-facts.sh` | active R1-1 |
+| `nomos.entity_catalog@1` | `nomos-compiler` | `crates/nomos-compiler/src/entity_catalog.rs` | the `entity_catalog()` document, joining the stable World IR `IrEntity` records with the `ProjectedEntity`, `MachineDefinition`, `MovementSubject`, and `LightSubject` values of the verified plans | `nomos_compiler::entity_catalog` composes the `CanonicalValue`; canonical entity-sorted bytes written to stdout by `nomos entity-catalog` | none in-tree: derived read-only output, never re-read by the kernel and with no strict package reader; its first consumer binds identity and version | none: stdout only, never written into a package or a run bundle, and outside the state-hash domain because it is derived | R1-2 Rust rendering-plan compilation, which needs the entity kind and capability set the four projections do not carry | active R1-2 input |
 
-One R1 identity has entered the accepted tree. `nomos.effective_facts@1` is the
-read-only effective-fact projection accepted as R1-1 under `RUNTIME.md` §5
+Two R1 identities have entered the accepted tree. `nomos.effective_facts@1` is
+the read-only effective-fact projection accepted as R1-1 under `RUNTIME.md` §5
 (issue #126, PR #130): given a strictly verified world package and a runtime
 state it composes, for every resolver subject, the effective movement
 disposition, cost, ordered reason claim IDs, and effective light. It resolves
 nothing itself — `nomos_sim::resolve_movement` and `nomos_sim::resolve_light`
 do that — and it is derived output, so it is persisted nowhere and enters no
 hash domain.
+
+`nomos.entity_catalog@1` is the read-only entity catalog added under issue #138:
+given a strictly verified world package it emits, for every entity, the World IR
+primitive kind and `expansion.capabilities` beside the simulation projection's
+binding and machines and the movement and light resolver claims whose subject
+that entity is. It classifies nothing and resolves nothing; every field is
+copied from typed evidence the package opener has already verified, so that no
+downstream compiler has to infer an entity's kind from a naming convention. It
+is declared in `nomos-compiler` because that crate owns World IR decoding and
+projection generation and is the only kernel crate that can see both halves of
+the join: `nomos-sim` has no edge to `nomos-schema` and therefore cannot name an
+entity's primitive kind at all. Like the effective-fact projection it is derived
+output, persisted nowhere, and outside every hash domain.
 
 ## How a row is added
 

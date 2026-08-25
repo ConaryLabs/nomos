@@ -91,6 +91,9 @@ command, artifact, hash, or diagnostic.
 | `nomos-sim` | `effective_facts.rs`, the `nomos.effective_facts@1` document builder over the existing resolvers | R1-1 |
 | `nomos-projection` | public canonical accessors on the resolved movement and light fact types | R1-1 |
 | `nomos-cli` | the `effective-facts` subcommand | R1-1 |
+| `nomos-compiler` | `entity_catalog.rs`, the `nomos.entity_catalog@1` document builder over the decoded stable World IR and the four verified plans | #138, an R1-2 input |
+| `nomos-cli` | the `entity-catalog` subcommand | #138, an R1-2 input |
+| `nomos-core` | `SourceSpan::to_canonical`, the one rendering of a source span; it replaces five byte-identical private copies in `nomos-core`, `nomos-schema`, `nomos-projection`, and `nomos-cli` | #138, an R1-2 input |
 
 The workspace layout under R1:
 

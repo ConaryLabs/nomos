@@ -463,7 +463,7 @@ impl IrEntity {
             ("expansion", self.expansion.to_canonical()),
             ("id", self.id.to_canonical()),
             ("primitive", self.primitive.to_canonical()),
-            ("source", span_to_canonical(&self.source_span)),
+            ("source", self.source_span.to_canonical()),
         ])
     }
 }
@@ -511,7 +511,7 @@ impl IrRelation {
         CanonicalValue::object_declared([
             ("kind", CanonicalValue::text(self.kind.as_str())),
             ("object", self.object.to_canonical()),
-            ("source", span_to_canonical(&self.source_span)),
+            ("source", self.source_span.to_canonical()),
             ("subject", self.subject.to_canonical()),
         ])
     }
@@ -743,16 +743,4 @@ fn require_unique_with_code<T: Ord>(
         }
     }
     Ok(())
-}
-
-pub(crate) fn span_to_canonical(span: &SourceSpan) -> CanonicalValue {
-    let (byte_start, byte_end) = span.byte_range();
-    let (line, column) = span.position();
-    CanonicalValue::object_declared([
-        ("byte_end", CanonicalValue::Uint(u64::from(byte_end))),
-        ("byte_start", CanonicalValue::Uint(u64::from(byte_start))),
-        ("column", CanonicalValue::Uint(u64::from(column))),
-        ("line", CanonicalValue::Uint(u64::from(line))),
-        ("path", CanonicalValue::text(span.path().as_str())),
-    ])
 }

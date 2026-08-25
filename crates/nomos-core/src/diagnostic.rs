@@ -258,6 +258,27 @@ impl SourceSpan {
     pub fn position(&self) -> (u32, u32) {
         (self.line, self.column)
     }
+
+    /// The span as the canonical `byte_end`/`byte_start`/`column`/`line`/`path`
+    /// object every artifact and report already spells.
+    ///
+    /// This crate owns [`SourceSpan`], so it owns the one rendering of it.
+    /// Before this accessor the same five fields were written out separately in
+    /// `nomos-core`, `nomos-schema`, `nomos-projection` (twice), and
+    /// `nomos-cli`; each of those now calls here and the bytes are unchanged.
+    #[must_use]
+    pub fn to_canonical(&self) -> CanonicalValue {
+        CanonicalValue::object_declared([
+            ("byte_end", CanonicalValue::Uint(u64::from(self.byte_end))),
+            (
+                "byte_start",
+                CanonicalValue::Uint(u64::from(self.byte_start)),
+            ),
+            ("column", CanonicalValue::Uint(u64::from(self.column))),
+            ("line", CanonicalValue::Uint(u64::from(self.line))),
+            ("path", CanonicalValue::text(self.path.as_str())),
+        ])
+    }
 }
 
 impl fmt::Display for SourceSpan {
@@ -355,16 +376,7 @@ impl Diagnostic {
             ),
         ];
         if let Some(span) = &self.span {
-            let (byte_start, byte_end) = span.byte_range();
-            let (line, column) = span.position();
-            let span_value = CanonicalValue::object_declared([
-                ("byte_end", CanonicalValue::Uint(u64::from(byte_end))),
-                ("byte_start", CanonicalValue::Uint(u64::from(byte_start))),
-                ("column", CanonicalValue::Uint(u64::from(column))),
-                ("line", CanonicalValue::Uint(u64::from(line))),
-                ("path", CanonicalValue::text(span.path().as_str())),
-            ]);
-            fields.push((FieldName::declared("span"), span_value));
+            fields.push((FieldName::declared("span"), span.to_canonical()));
         }
         CanonicalValue::object(fields)
             .expect("diagnostic construction supplies each canonical field once")
