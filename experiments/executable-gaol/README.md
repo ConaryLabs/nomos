@@ -1,9 +1,9 @@
 # Executable gaol experiment
 
-This is the deliberately quarantined answer to issues #101, #103, and #105:
-three independently authored areas, one bounded look, one renderer, and visible
-semantic state. It is not Gate K or Gate 1 evidence and it does not change the
-accepted workspace.
+This is the deliberately quarantined answer to issues #101, #103, #105, #107,
+and #110: three independently authored areas, one bounded look, one WebGL
+renderer, a connected run, and visible semantic state. It is not Gate K or
+Gate 1 evidence and it does not change the accepted workspace.
 
 **Play online:** <https://conarylabs.github.io/nomos/>
 
@@ -13,11 +13,12 @@ Run:
 experiments/executable-gaol/gaol capture
 ```
 
-That command compiles all three area sources, executes fifteen real Nomos
-command scripts, derives three `nomos.experiment.rendering_plan@1` artifacts only from
-subsystem projections and runtime state, checks their exact shared visual
-grammar, emits deterministic SVG frames, and rasterizes a cross-area PNG contact
-sheet with `rsvg-convert` when available.
+That diagnostic command compiles all three area sources, executes fifteen real
+Nomos command scripts, derives three `nomos.experiment.rendering_plan@1`
+artifacts only from subsystem projections and runtime state, checks their exact
+shared visual grammar, emits deterministic SVG frames, and rasterizes a
+cross-area PNG contact sheet with `rsvg-convert` when available. SVG is retained
+as exact semantic/capture evidence; it is no longer the playable presentation.
 
 To use the interactive state and forensic-overlay controls:
 
@@ -25,9 +26,11 @@ To use the interactive state and forensic-overlay controls:
 experiments/executable-gaol/gaol serve
 ```
 
-Open the printed local URL. The renderer receives only `areas.json` and the three
-selected rendering plans; it does not parse `.nomos`, World IR, or compiler
-receipts. North Gaol, Cistern Walk, and Ember Vault use the same camera, bounded
+Open the printed local URL. The WebGL renderer receives only `areas.json`, the
+three selected rendering plans, and presentation-only actor deltas; it does not
+parse `.nomos`, World IR, or compiler receipts. Its pinned Three.js backend
+supplies meshes, depth, shadows, fog, real point lights, and animated shader
+water. North Gaol, Cistern Walk, and Ember Vault use the same camera, bounded
 palette, materials, assemblies, actor silhouettes, beveled masonry vocabulary,
 effect language, and renderer. Their doors, water, light, actors, wall height,
 masonry masses, and composition come from separate area content.
@@ -65,9 +68,10 @@ The GitHub Pages workflow publishes that directory. No dev-machine port,
 repository checkout, `.nomos` source, World IR, or credential enters the public
 artifact.
 
-Known limits: this is stylized deterministic SVG rather than a GPU renderer;
-actor positions, masonry-mass collision, and the gaoler pursuit rule are
-presentation-only because Gate K has no dynamic actor or architecture state;
-audio, combat, networking, and persistence beyond the existing Gate K state are
+Known limits: this is a procedural WebGL visual proof rather than production
+art; its pixels are not deterministic across GPU/driver combinations. Actor
+positions, masonry-mass collision, and the gaoler pursuit rule are
+presentation-only because Gate K has no dynamic actor or architecture state.
+Audio, combat, networking, and persistence beyond the existing Gate K state are
 absent. Its job is to test whether independently authored rooms can remain
 visually coherent and playable through the same semantic bridge.

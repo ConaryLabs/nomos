@@ -22,7 +22,7 @@ declared `visual/beveled_masonry` style and axis-aligned rectangular masses no
 higher than 4 cells. The primary gate must be reachable from the player anchor,
 water should create a legible route choice, and the brazier must light a useful
 landmark. Change composition and traversal, not the bounded look. Do not edit
-`render-core.mjs` for an area.
+either renderer implementation for an area.
 
 Run `experiments/executable-gaol/gaol verify` to compile every area, compare its
 committed rendering plan, check the shared visual grammar, and capture the
