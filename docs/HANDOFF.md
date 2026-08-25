@@ -2,40 +2,47 @@
 
 ## Current state
 
-Nomos now has two deliberately separate bodies of work:
+Gate K is closed. Decision 0013 remains its controlling verdict: **failed**.
+Decision 0016 terminates the separately governed round two incomplete, with no
+round-two verdict and no remaining checker, audit, retry, or evidence-assembly
+work authorized.
 
-- The kernel workspace implements the renderer-free semantic kernel through
-  SW-N. Gate K's round-one result remains **failed** under decision 0013.
-- `experiments/executable-gaol/` is a quarantined visual and playability study.
-  Four independently authored areas use one projection-only WebGL renderer,
-  one bounded procedural look, and a connected playable route. It is not Gate
-  K or Gate 1 evidence.
+The kernel workspace implements the renderer-free semantic system through
+SW-N. The active product direction is the owner-authorized quarantined study at
+`experiments/executable-gaol/`: four independently authored areas, one
+projection-only WebGL renderer, one bounded procedural look, and a connected
+playable route. It is not Gate K or Gate 1 evidence.
 
-The public executable is <https://conarylabs.github.io/nomos/>.
+**Play online:** <https://conarylabs.github.io/nomos/>
 
-The frozen round-two candidate remains annotated tag `gate-k-rc2`, commit
-`53db236d397b3db0779f0d2aab23180d926e55a5`. Round two is unfinished:
+## Gate K record
 
-- issue #93 completed the one formal Gemini author subject. Its authenticated
-  transport result is `eligible-for-checker`; issue #95 has not adjudicated it;
-- issue #94 and draft PR #100 preserve the one DeepSeek debugger subject. Its
-  required non-author audit is unresolved, issue #96 has not adjudicated it,
-  and the PR claims no pass;
-- issues #95–#97 retain the independent checks, evidence assembly, and explicit
-  owner disposition;
-- therefore round two has no Gate K verdict and no acceptance tag.
+- Round one is preserved at annotated tag `gate-k-rc1`; its exact 1–19 matrix
+  is in `docs/decisions/0013-gate-k-disposition.md`.
+- Round two's mechanically proven candidate is preserved at annotated tag
+  `gate-k-rc2`, commit
+  `53db236d397b3db0779f0d2aab23180d926e55a5`.
+- The round-two Gemini author subject completed with subject-stage outcome
+  `eligible-for-checker`, but no checker adjudicated it.
+- The round-two DeepSeek debugger subject is preserved, unmerged, at annotated
+  tag `gate-k-rc2-debug-subject-incomplete`, commit
+  `55bb77bf4221c2c5600cd20bb781c0018a6d40a8`. Its non-author audit and checker
+  did not complete.
+- Neither round-two subject is a formal pass. Round two has no acceptance tag,
+  criteria matrix, or overall verdict.
+- No protocol revision 7, Gate K retry, or round three is authorized.
 
-Do not infer a formal pass from either subject's apparent semantic work or from
-the executable study. The exact round-one 1–19 matrix remains in
-`docs/decisions/0013-gate-k-disposition.md`; the prospective round-two rules
-remain in `docs/decisions/0015-gate-k-round-two.md`.
+The large `docs/evaluation/runs/` tree and archival tags intentionally preserve
+the exact packets, transcripts, receipts, binaries, rehearsals, blocked audits,
+and failed attempts behind historical claims. They are evidence, not active
+product work or disposable build output.
 
 ## What works
 
-The semantic workspace provides source parsing, stable World IR, deterministic
+The kernel provides source parsing, stable World IR, deterministic
 simulation/navigation/persistence/diagnostic projections, immutable runtime
 transactions, hash-verified packages, replay and migration, and package-bound
-explanations. The kernel crates remain dependency-free under the Gate K policy.
+explanations.
 
 The executable study provides:
 
@@ -45,28 +52,14 @@ The executable study provides:
   effects, water, lighting, and minimal UI;
 - content-derived doors, movement cost, effective light, objectives, and a
   connected escape route;
-- deterministic semantic/SVG capture evidence plus a WebGL presentation layer;
-- forensic overlays and a procedural-versus-baseline look toggle;
-- a static GitHub Pages build containing no source, World IR, credentials, or
+- deterministic semantic/SVG evidence plus a WebGL presentation layer;
+- forensic overlays and a procedural-versus-baseline comparison;
+- a static public build containing no source, World IR, credentials, or
   dependency on the development machine.
 
-Actor movement and gaoler pursuit are presentation-only because Gate K has no
-dynamic actor state. Audio, combat, networking, and the later cross-system Gate
-1 contract remain absent. See `experiments/executable-gaol/README.md` for the
-controls, authoring boundary, and complete limitations.
-
-## Evidence boundary
-
-The large `docs/evaluation/runs/` tree is intentional. It preserves exact
-formal and rehearsal packets, transcripts, receipts, binaries, rejected audits,
-and failed attempts needed to authenticate historical claims. It is not a build
-cache and should not be removed during routine repository cleanup. New proof
-machinery is not current product work; formal evaluation should resume only
-through the already-filed issues and existing decision-0015 procedure.
-
-Round-one candidate evidence is bound to annotated tag `gate-k-rc1`. Round-two
-candidate evidence is bound to `gate-k-rc2`. Neither the executable experiment
-nor this status update mutates those candidates.
+Actor movement and gaoler pursuit remain presentation-only because Gate K has
+no dynamic actor state. Audio, combat, networking, and the later cross-system
+Gate 1 contract remain absent.
 
 ## How to verify
 
@@ -86,25 +79,14 @@ experiments/executable-gaol/gaol verify
 experiments/executable-gaol/gaol site
 ```
 
-The exact Gate K evaluation tooling additionally has its own offline tests:
-
-```text
-docs/evaluation/test-pi-cold-agent-preflight.sh
-docs/evaluation/test-gate-k-eval-tooling.sh
-```
-
 ## What is next
 
-The active product direction is visual coherence and presentation: improve the
-shared look and prove that new content-authored areas can fit it without
-renderer-specific edits. Keep that work inside the quarantined executable study
-until an explicit decision promotes a boundary into the accepted runtime.
+Improve the shared look and presentation, then prove that additional
+content-authored areas fit it without renderer-specific edits. Keep those
+iterations inside the quarantined executable study until concrete evidence
+justifies a separate decision to promote a boundary into a post-Gate-K runtime
+epoch.
 
-Simulation-boundary expansion is intentionally deferred while the visual
-grammar is being established. Avoid broad architecture work, new capability
-families, or another evaluation-protocol revision unless a concrete executable
-slice forces the question.
-
-PR #100 remains draft because its required audit is unresolved. It should not
-be merged merely to make the repository look tidy. Issues #95–#97 likewise stay
-open until the owner chooses to resume formal round-two disposition work.
+Simulation-boundary expansion remains deferred while the visual grammar is
+being established. Do not reopen Gate K evaluation work or add proof machinery
+unless the owner explicitly reverses decision 0016.
