@@ -94,6 +94,35 @@ provenance line, and substituting `nomos.rendering_plan@1` back for
 `nomos.rendering_plan@2` reproduces each old digest exactly. The PNG is
 `rsvg-convert` over the cross-area SVG and follows it.
 
+## R1-5: three identities move, and the drawn output does not
+
+Issue #154 moved `nomos.presentation_source@1` to `@2`,
+`nomos.rendering_plan@2` to `@3`, and `nomos.area_collection@1` to `@2`, all in
+one change so the four fixtures are regenerated once. The plan gained
+`actors[].role` and lost `entities[].visual_assembly` and
+`entities[].material_family`, which are renderer-catalog data; the collection's
+`visual_grammar` publishes `entity_kinds` in place of `entity_assemblies`.
+
+Every plan hash and the collection hash moved, because their fields did.
+`RUNTIME.md` revision 2 is what makes that permissible: the criterion holds the
+*drawn* artifacts fixed, not the plan digests. Measured across the bump, with
+the pre-bump digests recorded before the regeneration:
+
+- all twenty per-area frames — `01-baseline` through `05-open-dark`, four areas
+  — byte-identical;
+- all four per-area `contact-sheet.svg` files byte-identical;
+- the cross-area `contact-sheet.svg` byte-identical;
+- the four `forensic.svg` overlays changed, and substituting
+  `nomos.rendering_plan@2` back for `nomos.rendering_plan@3` in each reproduces
+  its prior digest exactly, with a zero byte delta. That is the same one-string
+  delta the `@1` to `@2` bump had, and for the same reason: the overlay prints
+  the plan identity in its own provenance line.
+
+`render-core.mjs` also stopped selecting the player's silhouette with
+`actor.id === "player"` and now reads `actor.role`, which is what `@3` added the
+field for. It draws the same actor in this corpus, so it changes no byte; the
+ownership audit's item 21 is closed by it.
+
 The committed PNG and example plans are review conveniences; the command
 regenerates them from the content, subsystem projections, and real runtime
 states.

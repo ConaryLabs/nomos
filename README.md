@@ -64,13 +64,24 @@ AI-authored areas can share one coherent visual grammar.
   `experiments/executable-gaol/src/build-plan.mjs`, which classified by naming
   convention and reimplemented the resolvers in JavaScript, is deleted.
   **R1-3, typed presentation source (issue #146), is the third accepted slice**:
-  each area's `presentation.json` carries `nomos.presentation_source@1`,
-  versioned and integer-only, and the plan is `nomos.rendering_plan@2`.
+  each area's `presentation.json` is versioned and integer-only.
   **R1-4, the promoted viewer (issue #148), is the fourth**: `apps/nomos-viewer/`
   is an accepted app with a vendored Three.js, a strict decoder, a scanned public
   artifact, and a headless Chromium lane that plays the four-area route to the
   final escape and fails on a single console error. The study's own viewer,
-  which imported Three.js from a CDN and had no browser test, is deleted
+  which imported Three.js from a CDN and had no browser test, is deleted.
+  **R1-5, authoritative movement and pursuit (issue #154), is the fifth**: the
+  R1 crate `crates/nomos-play` takes the player's cell, the cost of a step,
+  collision, the gaoler's pursuit, capture, the area transition, and the
+  counters away from JavaScript and layers them over the kernel's own
+  transactions, and the same crate compiled to `wasm32-unknown-unknown` is what
+  the browser plays. The smoke lane records the whole session the browser
+  produced and replays it through the native runtime: identical receipts and an
+  identical chain head, which is the claim the slice exists to make. The
+  content versions move together — `nomos.presentation_source@2`,
+  `nomos.rendering_plan@3`, `nomos.area_collection@2` — and the drawn artifacts
+  do not: every SVG frame and every contact sheet is byte-identical across the
+  bump
 - **Contract revision:** 7, owner-authorized in decision 0009
 - **Cold-agent protocol revision:** 6, owner-authorized in decision 0015;
   revision-6 packet, boundary, record, adjudication, and finalization tooling is
@@ -92,9 +103,10 @@ AI-authored areas can share one coherent visual grammar.
   PR #129); its section 3 permits read-only R1 surface inside the kernel crates
   under stated conditions. R1-1, the kernel
   effective-facts projection prototyped on PR #130, is the first slice under
-  acceptance, and R1-2, the Rust rendering-plan compiler, is the second; its
-  crate is the first declared R1 member in `RUNTIME.md` §3 and in
-  `cargo xtask boundary`. `KERNEL.md` revision 7 stays frozen and unamended
+  acceptance, and R1-2 through R1-5 follow it. Two crates are declared R1
+  members in `RUNTIME.md` §3 and in `cargo xtask boundary`:
+  `nomos-render-plan` and `nomos-play`. `KERNEL.md` revision 7 stays frozen and
+  unamended
 - **Scope:** greenfield / vacuum architecture exercise
 - **Effect on other projects:** none unless separately adopted by an explicit
   decision in that project's own authority records

@@ -7,6 +7,7 @@ members = [
     "crates/nomos-compiler",
     "crates/nomos-sim",
     "crates/nomos-cli",
+    "crates/nomos-play",
     "crates/nomos-render-plan",
     "xtask",
 ]
@@ -33,6 +34,7 @@ nomos-sim = { path = "crates/nomos-sim" }
 
 # RUNTIME.md section 3: declared R1 members. An R1 crate may depend on any
 # kernel crate and on another declared R1 crate while the graph stays acyclic.
+nomos-play = { path = "crates/nomos-play" }
 nomos-render-plan = { path = "crates/nomos-render-plan" }
 
 # Lean build profile: KERNEL.md acceptance 16 measures peak disk, so debug
@@ -42,3 +44,22 @@ debug = "line-tables-only"
 
 [profile.release]
 debug = false
+
+# The wasm32 build of nomos-play (RUNTIME.md section 5 R1-5). A separate profile
+# rather than settings on [profile.release], because Cargo profiles are
+# workspace-global and lto, panic, and strip have no per-package override:
+# putting them on the release profile would change every native release build in
+# the workspace, including giving native binaries panic = "abort". Nothing
+# selects this profile except the wasm build, and no Gate K command uses it.
+#
+# Measured on the R1-5 branch: 211 650 bytes here against 554 732 with the plain
+# release profile. panic = "abort" buys no bytes on wasm32-unknown-unknown,
+# whose std is built without unwinding; it is declared so the intent is written
+# down rather than inferred.
+[profile.wasm]
+inherits = "release"
+opt-level = "z"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true

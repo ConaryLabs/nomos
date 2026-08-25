@@ -80,6 +80,11 @@
     <div id="frame"></div>
     <div id="completion" hidden><div id="completion-card"><div id="completion-kicker">Run complete</div><h2>Gaol escaped</h2><p id="completion-summary"></p><button id="restart">Begin again</button></div></div>
     <div id="failure" hidden></div>
+    <!-- The whole nomos.play_session@1 document the runtime holds, refreshed on
+         every tick. It is page state, not a test hook: the smoke lane reads it,
+         writes it out, and replays it natively, which is what proves the
+         browser ran the same authority. -->
+    <script type="application/json" id="session">{}</script>
   </div>
 </main>
 <footer>

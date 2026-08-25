@@ -1,16 +1,24 @@
 // The DOM binding, and the presentation model it paints.
 //
-// `readout` is a pure function of the decoded artifacts and the play state: it
-// returns every visible string, so the presentation model is tested in node and
-// only the wiring below needs a browser. The wiring also writes the readout onto
-// the root element as `data-` attributes, which is the contract the smoke lane
-// reads — the same state the HUD paints, not a test hook bolted on beside it.
+// `readout` is a pure function of the decoded artifacts and one
+// `nomos.presentation_state@1` document: it returns every visible string, so
+// the presentation model is tested in node and only the wiring below needs a
+// browser. The wiring also writes the readout onto the root element as `data-`
+// attributes, which is the contract the smoke lane reads — the same state the
+// HUD paints, not a test hook bolted on beside it.
+//
+// Nothing here decides anything about the run. Every authoritative fact comes
+// from `crates/nomos-play` through `runtime.mjs`: where the actors are, what a
+// step cost, which interaction `E` sends, whether a gate opened, whether the
+// gaoler caught anyone. This module turns a key into a command document, hands
+// it over, and paints what comes back.
 //
 // Authoritative state advances synchronously on the key event. The tween is
-// presentation-only, between authoritative endpoints, and gates nothing: the
-// study held input and the area transition inside a `requestAnimationFrame`
-// completion callback, which RUNTIME.md section 5 R1-5 forbids for state and
-// which would make a headless lane depend on frames being scheduled.
+// presentation-only, between two authoritative endpoints, and gates nothing:
+// the study held input and the area transition inside a
+// `requestAnimationFrame` completion callback, which `RUNTIME.md` section 5
+// R1-5 forbids for state and which would make a headless lane depend on frames
+// being scheduled.
 
 import {
   DEFAULT_LOOK_PROFILE,
@@ -23,42 +31,56 @@ import {
   initialScenario,
   loadArtifacts,
   scenarioOf,
+  semanticsFile,
 } from "./plan.mjs";
 import {
-  attemptInteraction,
-  attemptMove,
-  completeRun,
   completionSummary,
-  createPlayState,
-  enterArea,
+  firstInteraction,
   guidanceFor,
-  isHunting,
+  interactCommand,
+  messageFor,
+  moveCommand,
   movementKeys,
 } from "./play.mjs";
 import { createGaolRenderer } from "./render.mjs";
+import { loadRuntime } from "./runtime.mjs";
+
+/// The staged name of the authoritative runtime.
+export const RUNTIME_FILE = "nomos_play.wasm";
 
 const TWEEN_MS_PER_COST = 105;
 
-/// Every visible string, from the artifacts and the play state alone.
-export function readout(collection, plan, play, scenarioId) {
-  const scenario = scenarioOf(plan, scenarioId);
+/// Every visible string, from the artifacts and one presentation state alone.
+///
+/// `view` is a `nomos.presentation_state@1` document. `session` is the two
+/// facts that belong to the run rather than to the area: how many areas have
+/// been cleared and whether the route is finished.
+export function readout(collection, plan, view, session, message) {
   const total = collection.areas.length;
-  const guidance = guidanceFor(plan, scenarioId, play);
-  const pursuit = play.caught ? "caught" : isHunting(plan, scenario) ? "hunting" : "dormant";
+  const guidance = guidanceFor(plan, view, session.completed);
+  const pursuit =
+    view.outcome === "caught" ? "caught" : view.pursuit.hunting ? "hunting" : "dormant";
   return {
-    area: plan.area.id,
-    scenario: scenarioId,
-    progress: `Area ${Math.min(play.areasCleared + 1, total)} / ${total} · ${plan.area.label}`,
+    area: view.area,
+    tick: view.tick,
+    kernelStateHash: view.kernel_state_hash,
+    outcome: session.completed ? "completed" : view.outcome,
+    progress: `Area ${Math.min(session.areasCleared + 1, total)} / ${total} · ${plan.area.label}`,
     objective: guidance.objective,
     prompt: guidance.prompt,
     tone: guidance.tone,
-    message: play.message,
-    messageTone: play.tone,
-    meter: `areas ${play.areasCleared}/${total} · moves ${play.moves} · cost ${play.movementCost} · gaoler ${pursuit}`,
+    message: message.text,
+    messageTone: message.tone,
+    meter:
+      `areas ${session.areasCleared}/${total} · moves ${view.counters.moves} · ` +
+      `cost ${view.counters.traversal_cost} · gaoler ${pursuit}`,
     pursuit,
-    completed: play.completed,
-    summary: completionSummary(play, total),
-    arrival: `Area ${Math.min(play.areasCleared + 1, total)} of ${total}`,
+    moves: view.counters.moves,
+    cost: view.counters.traversal_cost,
+    areasCleared: session.areasCleared,
+    completed: session.completed,
+    summary: completionSummary(view, total),
+    arrival: `Area ${Math.min(session.areasCleared + 1, total)} of ${total}`,
     title: plan.area.label,
   };
 }
@@ -103,8 +125,12 @@ export async function start(document, three, host = globalThis) {
 
   let collection;
   let plans;
+  let runtimeInputs;
+  let runtime;
   try {
-    ({ collection, plans } = await loadArtifacts(document.baseURI, host.fetch.bind(host)));
+    const fetchImpl = host.fetch.bind(host);
+    ({ collection, plans, runtimeInputs } = await loadArtifacts(document.baseURI, fetchImpl));
+    runtime = await loadRuntime(new URL(RUNTIME_FILE, document.baseURI).href, fetchImpl);
   } catch (error) {
     showFailure(document, error);
     throw error;
@@ -128,50 +154,85 @@ export async function start(document, three, host = globalThis) {
   const completion = element("#completion");
   const completionSummaryElement = element("#completion-summary");
   const restart = element("#restart");
+  const sessionElement = element("#session");
 
   const renderer = createGaolRenderer(frame, three, host);
 
-  let areaId = collection.start_area;
-  let plan = plans.get(areaId);
-  let selected = initialScenario(plan).id;
-  let play = createPlayState(plan);
-  let visualPlayer = { ...play.player };
-  let visualGaoler = { ...play.gaoler };
+  // Everything below is either a copy of what the runtime last said, or a
+  // presentation-only value the runtime has no opinion about.
+  let areaId;
+  let plan;
+  let view;
+  let run = { areasCleared: 0, completed: false };
+  let note = { text: "", tone: "neutral" };
+  let sessionDocument;
+  let sessionText = "{}";
+  // A captured scenario the number keys put on screen instead of the live
+  // state. Forensic only: it changes nothing authoritative and the next input
+  // clears it.
+  let inspecting = null;
+  let visualActors = new Map();
   let tween = null;
   let arrivalTimer;
   let lookId = DEFAULT_LOOK_PROFILE;
 
+  const inputsFor = (id) => runtimeInputs.get(id);
+  const actorCells = (from) =>
+    new Map(from.actors.map((actor) => [actor.id, { ...actor.cell }]));
+  const positions = () => Object.fromEntries(visualActors);
+
+  const adopt = (next) => {
+    view = next;
+    areaId = view.area;
+    plan = plans.get(areaId);
+  };
+
+  const refreshSession = () => {
+    // Kept as text as well as parsed: the text is the runtime's own canonical
+    // bytes, and that is what the smoke lane writes out and replays natively.
+    sessionText = runtime.sessionText();
+    sessionDocument = JSON.parse(sessionText);
+    run = {
+      areasCleared: sessionDocument.areas_cleared,
+      completed: sessionDocument.outcome === "completed",
+    };
+  };
+
   const draw = () => {
-    renderer.present(plan, selected, forensic.ariaPressed === "true", {
-      actorPositions: { player: visualPlayer, gaoler: visualGaoler },
+    renderer.present(plan, inspecting ?? view, forensic.ariaPressed === "true", {
+      actorPositions: positions(),
     });
-    const view = readout(collection, plan, play, selected);
-    message.textContent = view.message;
-    message.dataset.tone = view.messageTone;
-    meter.textContent = view.meter;
-    progress.textContent = view.progress;
-    paintSegments(document, objective, view.objective);
-    paintSegments(document, prompt, view.prompt);
-    prompt.dataset.tone = view.tone;
-    completion.hidden = !view.completed;
-    if (view.completed) completionSummaryElement.textContent = view.summary;
-    root.dataset.area = view.area;
-    root.dataset.scenario = view.scenario;
-    root.dataset.moves = String(play.moves);
-    root.dataset.cost = String(play.movementCost);
-    root.dataset.areasCleared = String(play.areasCleared);
-    root.dataset.completed = String(play.completed);
-    root.dataset.caught = String(play.caught);
-    root.dataset.pursuit = view.pursuit;
-    root.dataset.message = view.message;
+    const seen = readout(collection, plan, view, run, note);
+    message.textContent = seen.message;
+    message.dataset.tone = seen.messageTone;
+    meter.textContent = seen.meter;
+    progress.textContent = seen.progress;
+    paintSegments(document, objective, seen.objective);
+    paintSegments(document, prompt, seen.prompt);
+    prompt.dataset.tone = seen.tone;
+    completion.hidden = !seen.completed;
+    if (seen.completed) completionSummaryElement.textContent = seen.summary;
+    root.dataset.area = seen.area;
+    root.dataset.tick = String(seen.tick);
+    root.dataset.kernelStateHash = seen.kernelStateHash;
+    root.dataset.outcome = seen.outcome;
+    root.dataset.moves = String(seen.moves);
+    root.dataset.cost = String(seen.cost);
+    root.dataset.areasCleared = String(seen.areasCleared);
+    root.dataset.pursuit = seen.pursuit;
+    root.dataset.message = seen.message;
     root.dataset.ready = "true";
+    // The whole `nomos.play_session@1` document, as page state. The smoke lane
+    // reads it, writes it out, and replays it through `nomos-play replay`; that
+    // is what proves the browser ran the same authority as the native runtime.
+    if (sessionElement) sessionElement.textContent = sessionText;
   };
 
   const showArrival = () => {
-    const view = readout(collection, plan, play, selected);
+    const seen = readout(collection, plan, view, run, note);
     host.clearTimeout?.(arrivalTimer);
-    arrivalKicker.textContent = view.arrival;
-    arrivalTitle.textContent = view.title;
+    arrivalKicker.textContent = seen.arrival;
+    arrivalTitle.textContent = seen.title;
     arrival.classList.remove("active");
     host.requestAnimationFrame?.(() => arrival.classList.add("active"));
     arrivalTimer = host.setTimeout?.(() => arrival.classList.remove("active"), 1400);
@@ -183,51 +244,61 @@ export async function start(document, three, host = globalThis) {
       const button = document.createElement("button");
       button.textContent = scenario.label;
       button.dataset.scenario = scenario.id;
-      button.ariaPressed = String(scenario.id === selected);
-      button.onclick = () => selectScenario(scenario.id);
-      statesBar.append(button);
+      button.ariaPressed = String(scenario.id === inspecting?.id);
+      button.onclick = () => inspect(scenario.id);
+    statesBar.append(button);
     }
   };
 
-  const selectScenario = (scenarioId) => {
-    selected = scenarioId;
+  // A captured scenario, drawn instead of the live state. The plan's scenarios
+  // are the SVG capture ladder and the evidence that the compiler consumed
+  // committed run bundles; after R1-5 they are not gameplay, and looking at one
+  // moves nothing.
+  const inspect = (scenarioId) => {
+    inspecting = scenarioOf(plan, scenarioId);
     for (const child of statesBar.children) {
-      child.ariaPressed = String(child.dataset.scenario === selected);
+      child.ariaPressed = String(child.dataset.scenario === scenarioId);
     }
-    play = { ...play, message: `Loaded ${scenarioOf(plan, scenarioId).label}`, tone: "neutral" };
+    note = { text: `Inspecting ${inspecting.label}`, tone: "neutral" };
     draw();
   };
 
-  const enterPlan = (nextPlan, nextPlay) => {
-    areaId = nextPlan.area.id;
-    plan = nextPlan;
-    selected = initialScenario(plan).id;
-    play = nextPlay;
-    visualPlayer = { ...play.player };
-    visualGaoler = { ...play.gaoler };
+  const clearInspection = () => {
+    if (!inspecting) return;
+    inspecting = null;
+    for (const child of statesBar.children) child.ariaPressed = "false";
+  };
+
+  const settle = (next, cost) => {
+    const from = visualActors;
+    adopt(next);
+    refreshSession();
+    startTween(from, actorCells(view), cost);
+    for (const child of areasBar.children) {
+      child.ariaPressed = String(child.dataset.area === areaId);
+    }
+  };
+
+  const arrive = (next) => {
+    adopt(next);
+    refreshSession();
+    visualActors = actorCells(view);
     tween = null;
-    for (const child of areasBar.children) child.ariaPressed = String(child.dataset.area === areaId);
+    clearInspection();
+    for (const child of areasBar.children) {
+      child.ariaPressed = String(child.dataset.area === areaId);
+    }
     buildScenarioButtons();
     draw();
     showArrival();
   };
 
-  const selectArea = (nextAreaId, forensicJump = true) => {
-    const nextPlan = plans.get(nextAreaId);
-    const fresh = createPlayState(nextPlan);
-    enterPlan(nextPlan, forensicJump ? { ...fresh, message: `Forensic jump to ${nextPlan.area.label}` } : fresh);
-  };
-
-  const reset = () => selectArea(collection.start_area, false);
-
   // The tween interpolates between two authoritative endpoints and is read only
   // by the renderer. If frames never come, the run still completes.
-  const startTween = (fromPlayer, fromGaoler, cost) => {
+  const startTween = (from, to, cost) => {
     tween = {
-      fromPlayer,
-      fromGaoler,
-      toPlayer: { ...play.player },
-      toGaoler: { ...play.gaoler },
+      from,
+      to,
       started: host.performance?.now?.() ?? 0,
       duration: TWEEN_MS_PER_COST * Math.max(cost, 1),
     };
@@ -236,19 +307,19 @@ export async function start(document, three, host = globalThis) {
       const now = host.performance?.now?.() ?? tween.started + tween.duration;
       const t = Math.min(1, (now - tween.started) / tween.duration);
       const eased = 1 - (1 - t) ** 3;
-      visualPlayer = {
-        x: tween.fromPlayer.x + (tween.toPlayer.x - tween.fromPlayer.x) * eased,
-        y: tween.fromPlayer.y + (tween.toPlayer.y - tween.fromPlayer.y) * eased,
-        z: Math.sin(Math.PI * t) * 0.08,
-      };
-      visualGaoler = {
-        x: tween.fromGaoler.x + (tween.toGaoler.x - tween.fromGaoler.x) * eased,
-        y: tween.fromGaoler.y + (tween.toGaoler.y - tween.fromGaoler.y) * eased,
-        z: 0,
-      };
+      const hop = Math.sin(Math.PI * t) * 0.08;
+      const at = new Map();
+      for (const [id, target] of tween.to) {
+        const origin = tween.from.get(id) ?? target;
+        at.set(id, {
+          x: origin.x + (target.x - origin.x) * eased,
+          y: origin.y + (target.y - origin.y) * eased,
+          z: id === playerId() ? hop : 0,
+        });
+      }
+      visualActors = at;
       if (t >= 1) {
-        visualPlayer = { ...tween.toPlayer };
-        visualGaoler = { ...tween.toGaoler };
+        visualActors = new Map(tween.to);
         tween = null;
       }
       draw();
@@ -257,31 +328,54 @@ export async function start(document, three, host = globalThis) {
     host.requestAnimationFrame?.(step);
   };
 
-  const move = (delta) => {
-    const fromPlayer = { ...play.player };
-    const fromGaoler = { ...play.gaoler };
-    const result = attemptMove(plan, selected, play, delta.dx, delta.dy);
-    play = result.state;
-    if (!result.moved) {
-      draw();
+  // The declared role, not an identity. `@3` added it precisely so no consumer
+  // has to know that the player happens to be called `player`.
+  const playerId = () => view.actors.find((actor) => actor.role === "player")?.id;
+
+  const commit = (command) => {
+    clearInspection();
+    const before = view.counters;
+    let next;
+    try {
+      next = runtime.step(command);
+    } catch (error) {
+      // A shape refusal: the runtime declined to treat this as an input at all,
+      // so nothing moved and there is no receipt. Report it and stop.
+      showFailure(document, error);
+      throw error;
+    }
+    refreshSession();
+    const receipt = sessionDocument.receipts.at(-1);
+    note = messageFor(next, receipt, before, run.completed);
+    const cost = receipt.counters_after.traversal_cost - before.traversal_cost;
+    settle(next, cost);
+
+    if (next.outcome === "escaped" && plan.route.to_area !== null) {
+      const destination = plans.get(plan.route.to_area);
+      const bytes = inputsFor(destination.area.id);
+      arrive(runtime.enter(bytes.plan, bytes.semantics));
       return;
     }
-    if (result.exitGate) {
-      const edge = collection.route.find(
-        (one) => one.from_area === areaId && one.gate === result.exitGate,
-      );
-      if (edge?.to_area) {
-        const destination = plans.get(edge.to_area);
-        enterPlan(destination, enterArea(destination, play));
-      } else {
-        play = completeRun(play);
-        draw();
-      }
-      return;
-    }
-    startTween(fromPlayer, fromGaoler, result.cost);
     draw();
   };
+
+  const begin = (id, message_) => {
+    const bytes = inputsFor(id);
+    adopt(runtime.start(bytes.plan, bytes.semantics));
+    refreshSession();
+    note = message_ ?? { text: `Reach ${plan.objective.gate}`, tone: "neutral" };
+    visualActors = actorCells(view);
+    tween = null;
+    clearInspection();
+    for (const child of areasBar.children) {
+      child.ariaPressed = String(child.dataset.area === areaId);
+    }
+    buildScenarioButtons();
+    draw();
+    showArrival();
+  };
+
+  const reset = () => begin(collection.start_area, null);
 
   grammar.textContent = `GRAMMAR ${collection.visual_grammar.digest.slice(0, 8)}`;
   for (const area of collection.areas) {
@@ -289,11 +383,10 @@ export async function start(document, three, host = globalThis) {
     button.textContent = area.label;
     button.title = "Forensic shortcut — resets run progress";
     button.dataset.area = area.id;
-    button.ariaPressed = String(area.id === areaId);
-    button.onclick = () => selectArea(area.id);
+    button.onclick = () =>
+      begin(area.id, { text: `Forensic jump to ${area.label}`, tone: "neutral" });
     areasBar.append(button);
   }
-  buildScenarioButtons();
 
   forensic.onclick = () => {
     forensic.ariaPressed = String(forensic.ariaPressed !== "true");
@@ -321,32 +414,37 @@ export async function start(document, three, host = globalThis) {
       const direction = event.code === "BracketLeft" ? -1 : 1;
       const index = collection.areas.findIndex((one) => one.id === areaId);
       const next = (index + direction + collection.areas.length) % collection.areas.length;
-      selectArea(collection.areas[next].id);
+      const area = collection.areas[next];
+      begin(area.id, { text: `Forensic jump to ${area.label}`, tone: "neutral" });
       return;
     }
     if (event.code === "KeyE") {
       event.preventDefault();
-      const result = attemptInteraction(plan, selected, play);
-      play = result.state;
-      if (result.changed) selected = result.scenarioId;
-      for (const child of statesBar.children) {
-        child.ariaPressed = String(child.dataset.scenario === selected);
+      const offered = firstInteraction(view);
+      if (!offered) {
+        note = { text: "Nothing responds here", tone: "neutral" };
+        clearInspection();
+        draw();
+        return;
       }
-      draw();
+      commit(interactCommand(offered.entity, offered.action));
       return;
     }
     const scenario = scenarioByIndex(plan, Number(event.key));
     if (scenario) {
-      selectScenario(scenario.id);
+      inspect(scenario.id);
       return;
     }
-    const delta = movementKeys[event.code];
-    if (!delta) return;
+    const direction = movementKeys[event.code];
+    if (!direction) return;
     event.preventDefault();
-    move(delta);
+    commit(moveCommand(direction));
   });
 
-  draw();
-  showArrival();
-  return { readout: () => readout(collection, plan, play, selected) };
+  begin(collection.start_area, null);
+  return {
+    readout: () => readout(collection, plan, view, run, note),
+    session: () => sessionDocument,
+    sessionText: () => sessionText,
+  };
 }

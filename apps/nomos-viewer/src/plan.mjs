@@ -19,6 +19,7 @@ import {
   ENTITY_KIND_IDS,
   OBJECTIVE_KINDS,
   ACTOR_ASSEMBLIES,
+  ACTOR_ROLES,
   ARCHITECTURE_ASSEMBLIES,
   EFFECT_ASSEMBLIES,
   MATERIAL_FAMILIES,
@@ -26,14 +27,14 @@ import {
   TRIM_FAMILIES,
 } from "./catalog.mjs";
 
-export const PLAN_SCHEMA = "nomos.rendering_plan@2";
+export const PLAN_SCHEMA = "nomos.rendering_plan@3";
 
 // Declared by `crates/nomos-render-plan/src/collection.rs` and registered in
 // `docs/evaluation/R1_SCHEMA_OWNERSHIP.md`. It was
 // `nomos.experiment.area_collection@2`, declared by quarantined tooling, which
 // the design record raised as finding 2 and issue #152 closed: both identities
 // this app binds are now emitted by accepted code.
-export const COLLECTION_SCHEMA = "nomos.area_collection@1";
+export const COLLECTION_SCHEMA = "nomos.area_collection@2";
 
 /// A refusal. The code space is `NV####`, disjoint by prefix from the frozen
 /// Gate K `EK` space and from `nomos-render-plan`'s `RP` space.
@@ -54,6 +55,11 @@ export const CODES = Object.freeze({
   NUMBER_UNSUPPORTED: "NV0203",
   CATALOG_UNKNOWN: "NV0301",
   REFERENCE_UNRESOLVED: "NV0401",
+  // The authoritative runtime declined an input, or could not be loaded. The
+  // `PL####` code the runtime itself refused with is carried inside the
+  // message, because the refusal belongs to `crates/nomos-play` and this
+  // viewer is only reporting it.
+  RUNTIME_REFUSED: "NV0501",
 });
 
 const fail = (code, message, artifact) => {
@@ -225,15 +231,7 @@ function entity(value, index, artifact) {
   object(
     value,
     where,
-    [
-      "id",
-      "kind",
-      "anchor",
-      "visual_assembly",
-      "material_family",
-      "machine_namespaces",
-      "provenance",
-    ],
+    ["id", "kind", "anchor", "machine_namespaces", "provenance"],
     artifact,
   );
   const id = text(value.id, `${where}.id`, artifact);
@@ -250,19 +248,11 @@ function entity(value, index, artifact) {
       artifact,
     );
   }
+  // The catalog is the only authority for what a kind is drawn as. `@2` carried
+  // `visual_assembly` and `material_family` on every entity and this decoder
+  // checked that the plan agreed with the catalog; `@3` drops both fields
+  // (issue #153), so there is one table and nothing left to disagree.
   const declared = ENTITY_KINDS[kind];
-  constrain(
-    value.visual_assembly === declared.visualAssembly,
-    `entity \`${id}\` is a \`${kind}\` but names assembly \`${value.visual_assembly}\`, ` +
-      `and the catalog draws that kind as \`${declared.visualAssembly}\``,
-    artifact,
-  );
-  constrain(
-    value.material_family === declared.materialFamily,
-    `entity \`${id}\` is a \`${kind}\` but names material family \`${value.material_family}\`, ` +
-      `and the catalog gives that kind \`${declared.materialFamily}\``,
-    artifact,
-  );
   const namespaces = array(value.machine_namespaces, `${where}.machine_namespaces`, artifact).map(
     (one, at) => text(one, `${where}.machine_namespaces[${at}]`, artifact),
   );
@@ -402,7 +392,7 @@ function architecture(value, artifact) {
   });
 }
 
-/// Decodes one `nomos.rendering_plan@2` document.
+/// Decodes one `nomos.rendering_plan@3` document.
 export function decodePlan(document, artifact = "the rendering plan") {
   bindSchema(document, PLAN_SCHEMA, artifact);
   refuseNonIntegerNumbers(document, artifact);
@@ -493,11 +483,15 @@ export function decodePlan(document, artifact = "the rendering plan") {
 
   const actors = array(document.actors, "actors", artifact).map((one, at) => {
     const row = `actors[${at}]`;
-    object(one, row, ["id", "assembly", "cell"], artifact);
+    object(one, row, ["id", "assembly", "cell", "role"], artifact);
     return Object.freeze({
       id: text(one.id, `${row}.id`, artifact),
       assembly: member(ACTOR_ASSEMBLIES, one.assembly, `${row}.assembly`, artifact),
       cell: Object.freeze(cell(one.cell, `${row}.cell`, artifact)),
+      // The declared role, which `@3` added and `crates/nomos-play` reads to
+      // decide which actor a command moves. The renderer reads it to pick a
+      // silhouette; nothing anywhere reads the identity string any more.
+      role: member(ACTOR_ROLES, one.role, `${row}.role`, artifact),
     });
   });
 
@@ -621,12 +615,12 @@ function checkPlanReferences(plan, artifact) {
       `effect \`${effect.id}\` anchors to absent entity \`${effect.anchor.entity}\``,
       artifact,
     );
-    const declared = SOCKETS[host.visual_assembly];
+    const declared = SOCKETS[host.kind];
     if (!declared?.[effect.anchor.socket]) {
       fail(
         CODES.CATALOG_UNKNOWN,
         `effect \`${effect.id}\` names socket \`${effect.anchor.socket}\`, which ` +
-          `\`${host.visual_assembly}\` does not declare`,
+          `kind \`${host.kind}\` does not declare`,
         artifact,
       );
     }
@@ -706,7 +700,7 @@ const sameCell = (left, right) =>
     ? right === null
     : right !== null && left.x === right.x && left.y === right.y && left.z === right.z;
 
-/// Decodes one `nomos.area_collection@1` document.
+/// Decodes one `nomos.area_collection@2` document.
 export function decodeCollection(document, artifact = "the area collection") {
   bindSchema(document, COLLECTION_SCHEMA, artifact);
   refuseNonIntegerNumbers(document, artifact);
@@ -721,7 +715,7 @@ export function decodeCollection(document, artifact = "the area collection") {
       "rendering_plan_schema",
       "projection_schemas",
       "architecture_style",
-      "entity_assemblies",
+      "entity_kinds",
       "actor_assemblies",
       "effect_assemblies",
     ],
@@ -861,7 +855,13 @@ export function decodeCollection(document, artifact = "the area collection") {
 // Loading
 // ---------------------------------------------------------------------------
 
-async function readJson(fetchImpl, base, relative) {
+/// Fetches one staged file as bytes.
+///
+/// The bytes matter and not only the parsed value: `crates/nomos-play` is
+/// handed the exact bytes it hashes, and the digests the runtime checks — the
+/// plan's `projection_digests` entry and the kernel's `runtime_semantics_digest`
+/// — are over these bytes and not over a re-serialization of them.
+async function readBytes(fetchImpl, base, relative) {
   const url = new URL(relative, base);
   let response;
   try {
@@ -872,13 +872,24 @@ async function readJson(fetchImpl, base, relative) {
   if (!response.ok) {
     throw new ViewerError(CODES.UNREADABLE, `\`${relative}\` responded ${response.status}`, relative);
   }
-  const body = await response.text();
+  return new Uint8Array(await response.arrayBuffer());
+}
+
+const DECODER = new TextDecoder();
+
+async function readJson(fetchImpl, base, relative) {
+  const body = DECODER.decode(await readBytes(fetchImpl, base, relative));
   try {
     return JSON.parse(body);
   } catch (cause) {
     throw new ViewerError(CODES.UNREADABLE, `\`${relative}\` is not well-formed JSON: ${cause.message}`, relative);
   }
 }
+
+/// The name a staged simulation projection is published under, beside the plan
+/// it belongs to. `build.mjs` stages it and `test/scan.test.mjs` pins the
+/// layout; the runtime refuses any bytes whose digest the plan did not publish.
+export const semanticsFile = (areaId) => `areas/${areaId}.simulation.json`;
 
 /// Loads and decodes the collection and every plan it names, relative to `base`.
 ///
@@ -887,8 +898,14 @@ async function readJson(fetchImpl, base, relative) {
 export async function loadArtifacts(base, fetchImpl) {
   const collection = decodeCollection(await readJson(fetchImpl, base, "areas.json"), "areas.json");
   const plans = new Map();
+  // What the authoritative runtime is handed: the plan's own bytes and the
+  // simulation projection's, per area, exactly as they were staged.
+  const runtimeInputs = new Map();
   for (const area of collection.areas) {
-    const plan = decodePlan(await readJson(fetchImpl, base, area.plan), area.plan);
+    const planBytes = await readBytes(fetchImpl, base, area.plan);
+    const semanticsBytes = await readBytes(fetchImpl, base, semanticsFile(area.id));
+    runtimeInputs.set(area.id, Object.freeze({ plan: planBytes, semantics: semanticsBytes }));
+    const plan = decodePlan(JSON.parse(DECODER.decode(planBytes)), area.plan);
     reference(
       plan.area.id === area.id,
       `\`${area.plan}\` carries area \`${plan.area.id}\`, and the collection lists it as \`${area.id}\``,
@@ -932,14 +949,14 @@ export async function loadArtifacts(base, fetchImpl) {
     `\`${collection.start_area}\` is the collection's start area but its plan does not say so`,
     "areas.json",
   );
-  return { collection, plans };
+  return { collection, plans, runtimeInputs };
 }
 
 // ---------------------------------------------------------------------------
 // Accessors
 // ---------------------------------------------------------------------------
 //
-// `nomos.rendering_plan@2` spells its stable-ID collections as arrays of
+// `nomos.rendering_plan@3` spells its stable-ID collections as arrays of
 // `{entity, ...}` or `{namespace, ...}` rows rather than as objects keyed by
 // data, so every lookup goes through one of these. None of them has a fallback:
 // the study's four independent machine-state lookups each invented their own
@@ -949,13 +966,21 @@ export const entityOf = (plan, id) => plan.entities.find((one) => one.id === id)
 
 export const scenarioOf = (plan, id) => plan.scenarios.find((one) => one.id === id) ?? null;
 
+/// The identity of a state to draw.
+///
+/// A plan scenario names itself; a `nomos.presentation_state@1` document does
+/// not, and does not need to — it carries the kernel state hash, which is what
+/// the drawn world is actually a function of. Both spellings are a stable
+/// string, so a renderer can cache on it without knowing which it holds.
+export const viewKey = (view) => view.id ?? view.kernel_state_hash;
+
 export function machineState(scenario_, entity_, machine) {
   const namespace = `${entity_}.${machine}`;
   const row = scenario_.machine_states.find((one) => one.namespace === namespace);
   if (!row) {
     throw new ViewerError(
       CODES.REFERENCE_UNRESOLVED,
-      `scenario \`${scenario_.id}\` carries no machine \`${namespace}\``,
+      `state \`${viewKey(scenario_)}\` carries no machine \`${namespace}\``,
     );
   }
   return row.state;

@@ -25,7 +25,7 @@
 //! - [`plan::Inputs::runs`] — the per-scenario run bundles, read for machine
 //!   states, declared status, and the committed command log.
 //! - [`plan::Inputs::world`] — four projection members, hashed and republished.
-//! - [`plan::Inputs::source`] — one `nomos.presentation_source@1` document, the
+//! - [`plan::Inputs::source`] — one `nomos.presentation_source@2` document, the
 //!   typed presentation source R1-3 landed in place of `area.json`.
 //!
 //! # What it does not do
@@ -38,7 +38,7 @@
 //! # The second command
 //!
 //! `nomos-render-plan collection --plans <dir-or-plan> --out <areas.json>`
-//! stitches the compiled plans into `nomos.area_collection@1`: the route chain,
+//! stitches the compiled plans into `nomos.area_collection@2`: the route chain,
 //! the visual grammar every area shares, and one row per area naming the plan
 //! file and its SHA-256. It replaces
 //! `experiments/executable-gaol/src/build-collection.mjs`, which was the only
@@ -46,8 +46,8 @@
 //! study lines it reproduces.
 //!
 //! It also holds no floating-point value and writes no canonical bytes of its
-//! own. `nomos.presentation_source@1` is integer-only by the type its reader
-//! parses into, and `nomos.rendering_plan@2` is emitted through
+//! own. `nomos.presentation_source@2` is integer-only by the type its reader
+//! parses into, and `nomos.rendering_plan@3` is emitted through
 //! `nomos_core::CanonicalValue`, so the private encoder R1-2 needed
 //! (`src/doc.rs`, issue #144) and its decimal type are both gone.
 

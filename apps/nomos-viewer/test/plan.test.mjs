@@ -24,6 +24,7 @@ import {
   edited,
   fetchFrom,
   hallPlan,
+  simulationProjection,
   stagedFiles,
   yardPlan,
 } from "./fixtures.mjs";
@@ -45,18 +46,18 @@ const refuses = (code, run) => {
 };
 
 test("plan binds its identity and refuses a mismatch", () => {
-  assert.equal(decodePlan(hallPlan()).schema, "nomos.rendering_plan@2");
+  assert.equal(decodePlan(hallPlan()).schema, "nomos.rendering_plan@3");
   const error = refuses(CODES.SCHEMA_MISMATCH, () =>
-    decodePlan(edited(hallPlan(), "schema", "nomos.rendering_plan@1"), "areas/test-hall.json"),
+    decodePlan(edited(hallPlan(), "schema", "nomos.rendering_plan@2"), "areas/test-hall.json"),
   );
-  assert.match(error.message, /expected schema `nomos\.rendering_plan@2`, found `nomos\.rendering_plan@1`/);
+  assert.match(error.message, /expected schema `nomos\.rendering_plan@3`, found `nomos\.rendering_plan@2`/);
   assert.match(error.message, /areas\/test-hall\.json/);
   refuses(CODES.SCHEMA_MISMATCH, () => decodePlan(edited(hallPlan(), "schema", undefined)));
 });
 
 test("collection binds its identity and its route", () => {
   const collection = decodeCollection(collectionDocument());
-  assert.equal(collection.schema, "nomos.area_collection@1");
+  assert.equal(collection.schema, "nomos.area_collection@2");
   assert.deepEqual([...collection.order], ["test-hall", "test-yard"]);
   // The identity issue #152 retired. It was declared by quarantined tooling, and
   // an artifact still carrying it is refused by name rather than half-read.
@@ -68,11 +69,11 @@ test("collection binds its identity and its route", () => {
   );
   assert.match(
     stale.message,
-    /expected schema `nomos\.area_collection@1`, found `nomos\.experiment\.area_collection@2`/,
+    /expected schema `nomos\.area_collection@2`, found `nomos\.experiment\.area_collection@2`/,
   );
   assert.match(stale.message, /areas\.json/);
   refuses(CODES.SCHEMA_MISMATCH, () =>
-    decodeCollection(edited(collectionDocument(), "schema", "nomos.area_collection@2")),
+    decodeCollection(edited(collectionDocument(), "schema", "nomos.area_collection@1")),
   );
   // A route that does not reach every declared area is a broken run, not a
   // viewer that quietly plays three of four rooms.
@@ -80,8 +81,31 @@ test("collection binds its identity and its route", () => {
     decodeCollection(edited(collectionDocument(), "route.0.to_area", null)),
   );
   refuses(CODES.CONSTRAINT, () =>
-    decodeCollection(edited(collectionDocument(), "visual_grammar.rendering_plan_schema", "nomos.rendering_plan@1")),
+    decodeCollection(edited(collectionDocument(), "visual_grammar.rendering_plan_schema", "nomos.rendering_plan@2")),
   );
+});
+
+test("the collection names the entity kinds, not what they are drawn as", () => {
+  // `@1` carried `entity_assemblies`: one row per kind naming an assembly and a
+  // material family, which was the compiler's copy of a mapping this app's
+  // catalog held as well. `@2` replaces those rows with the bare kind list,
+  // because issue #153 left the catalog as the only place the mapping lives.
+  assert.deepEqual(collectionDocument().visual_grammar.entity_kinds, ["door", "light", "water"]);
+  assert.equal(decodeCollection(collectionDocument()).schema, "nomos.area_collection@2");
+  const missing = refuses(CODES.DOCUMENT_SHAPE, () =>
+    decodeCollection(edited(collectionDocument(), "visual_grammar.entity_kinds", undefined)),
+  );
+  assert.match(missing.message, /missing field `entity_kinds` at visual_grammar/);
+  // A grammar still carrying the retired rows is refused by name, so a document
+  // emitted against `@1` cannot be read as though it were `@2`.
+  const stale = refuses(CODES.DOCUMENT_SHAPE, () =>
+    decodeCollection(
+      edited(collectionDocument(), "visual_grammar.entity_assemblies", [
+        { kind: "door", material_family: "iron_oxidized", visual_assembly: "visual/iron_barred_door" },
+      ]),
+    ),
+  );
+  assert.match(stale.message, /unknown field `entity_assemblies` at visual_grammar/);
 });
 
 test("plan refuses an unknown field", () => {
@@ -89,6 +113,18 @@ test("plan refuses an unknown field", () => {
   assert.match(error.message, /unknown field `camera`/);
   refuses(CODES.DOCUMENT_SHAPE, () => decodePlan(edited(hallPlan(), "area.palette", "gaol_bounded_01")));
   refuses(CODES.DOCUMENT_SHAPE, () => decodePlan(edited(hallPlan(), "entities.0.anchor.socket", "ward")));
+  // `@2` carried `visual_assembly` and `material_family` on every entity, and
+  // this decoder refused a plan whose pair disagreed with the catalog row for
+  // the kind. `@3` drops both fields (issue #153), so there is one table and
+  // that disagreement can no longer be spelled; what is left to prove is that a
+  // plan still emitting either is refused outright rather than half-read.
+  const retired = refuses(CODES.DOCUMENT_SHAPE, () =>
+    decodePlan(edited(hallPlan(), "entities.0.visual_assembly", "visual/iron_barred_door")),
+  );
+  assert.match(retired.message, /unknown field `visual_assembly` at entities\[0\]/);
+  refuses(CODES.DOCUMENT_SHAPE, () =>
+    decodePlan(edited(hallPlan(), "entities.0.material_family", "iron_oxidized")),
+  );
   // And an anchor whose kind is not the one its entity kind uses is a
   // constraint, not an unknown field.
   refuses(CODES.CONSTRAINT, () => decodePlan(edited(hallPlan(), "entities.0.anchor.kind", "cell")));
@@ -98,6 +134,11 @@ test("plan refuses a missing field", () => {
   const error = refuses(CODES.DOCUMENT_SHAPE, () => decodePlan(edited(hallPlan(), "pursuit", undefined)));
   assert.match(error.message, /missing field `pursuit`/);
   refuses(CODES.DOCUMENT_SHAPE, () => decodePlan(edited(hallPlan(), "scenarios.0.state_hash", undefined)));
+  // `actors[].role` is `@3`'s, and both the runtime and the renderer read it, so
+  // an actor that declares none is refused rather than inferred from the
+  // identity string the study dispatched on.
+  const role = refuses(CODES.DOCUMENT_SHAPE, () => decodePlan(edited(hallPlan(), "actors.0.role", undefined)));
+  assert.match(role.message, /missing field `role` at actors\[0\]/);
 });
 
 test("plan refuses a fractional number, at any depth", () => {
@@ -111,15 +152,12 @@ test("plan refuses a fractional number, at any depth", () => {
 });
 
 test("an unclassified entity is refused", () => {
-  // `EntityKind::Unknown` reaches a plan as `visual/marker`. The study drew a
-  // marker; this refuses to pretend.
+  // `EntityKind::Unknown` reaches a plan as the kind `unknown`, for a primitive
+  // the compiler has no visual kind for. The study drew a marker; this refuses
+  // to pretend, and it is the last refusal standing between the two catalogs
+  // now that `@3` carries no assembly name of its own.
   const document = structuredClone(hallPlan());
-  document.entities[1] = {
-    ...document.entities[1],
-    kind: "unknown",
-    visual_assembly: "visual/marker",
-    material_family: "stone",
-  };
+  document.entities[1] = { ...document.entities[1], kind: "unknown" };
   const error = refuses(CODES.CATALOG_UNKNOWN, () => decodePlan(document));
   assert.match(error.message, /kind `unknown`, which the renderer catalog does not declare/);
 });
@@ -132,9 +170,10 @@ test("a name outside a closed set is refused", () => {
   refuses(CODES.CATALOG_UNKNOWN, () => decodePlan(edited(hallPlan(), "entities.0.anchor.direction", "up")));
   // The socket vocabulary is the catalog's, not the compiler's.
   refuses(CODES.CATALOG_UNKNOWN, () => decodePlan(edited(hallPlan(), "effects.0.anchor.socket", "lintel")));
-  // An assembly that disagrees with the kind the compiler classified is a
-  // disagreement between the two tables, and the catalog wins.
-  refuses(CODES.CONSTRAINT, () => decodePlan(edited(hallPlan(), "entities.0.visual_assembly", "visual/brazier")));
+  // A declared role is drawn from `ACTOR_ROLES`, so the identity string the
+  // study told the two silhouettes apart by is not itself a role a plan may
+  // name.
+  refuses(CODES.CATALOG_UNKNOWN, () => decodePlan(edited(hallPlan(), "actors.1.role", "gaoler")));
 });
 
 test("movement and light are indexed by entity", () => {
@@ -225,13 +264,21 @@ test("every scenario answers for every subject", () => {
 });
 
 test("loading joins only relative paths the collection declared", async () => {
-  const { collection, plans } = await loadArtifacts(
+  const { collection, plans, runtimeInputs } = await loadArtifacts(
     "http://127.0.0.1:8080/",
     fetchFrom(stagedFiles()),
   );
   assert.equal(collection.start_area, "test-hall");
   assert.deepEqual([...plans.keys()], ["test-hall", "test-yard"]);
   assert.equal(plans.get("test-hall").objective.gate, "hall_gate");
+  // The bytes the authoritative runtime is handed, per area, as they were
+  // staged: the app carries them rather than a re-serialization, because the
+  // digests the runtime checks are over exactly these.
+  assert.deepEqual([...runtimeInputs.keys()], ["test-hall", "test-yard"]);
+  assert.deepEqual(
+    JSON.parse(new TextDecoder().decode(runtimeInputs.get("test-hall").semantics)),
+    simulationProjection("test-hall"),
+  );
 
   const requested = [];
   const recording = fetchFrom(stagedFiles());
@@ -242,7 +289,9 @@ test("loading joins only relative paths the collection declared", async () => {
   assert.deepEqual(requested, [
     "http://127.0.0.1:8080/areas.json",
     "http://127.0.0.1:8080/areas/test-hall.json",
+    "http://127.0.0.1:8080/areas/test-hall.simulation.json",
     "http://127.0.0.1:8080/areas/test-yard.json",
+    "http://127.0.0.1:8080/areas/test-yard.simulation.json",
   ]);
 });
 
@@ -302,12 +351,15 @@ test("an artifact that cannot be read is refused with its name", async () => {
     () => loadArtifacts("http://127.0.0.1:8080/", fetchFrom({})),
     (error) => error instanceof ViewerError && error.code === CODES.UNREADABLE,
   );
+  // Served, and not a document: the app decodes the bytes it fetched, so the
+  // malformed artifact is handed over the way a server would hand it over.
+  const malformed = new TextEncoder().encode("{not json");
   await assert.rejects(
     () =>
       loadArtifacts("http://127.0.0.1:8080/", async () => ({
         ok: true,
         status: 200,
-        text: async () => "{not json",
+        arrayBuffer: async () => malformed.buffer,
       })),
     (error) => error instanceof ViewerError && /not well-formed JSON/.test(error.message),
   );

@@ -31,16 +31,21 @@ const KEYS = {
 
 const PROBE = "https://example.invalid/nomos-viewer-probe";
 
+/// How long the whole lane may take before it is a failure rather than a wait.
+const DEADLINE_MS = 300_000;
+
 const parseArguments = (argv) => {
   const options = {
     dist: join(here, "..", "dist"),
     out: "target/nomos-viewer-smoke",
     requireChrome: false,
+    deadlineMs: DEADLINE_MS,
   };
   for (let index = 0; index < argv.length; index += 1) {
     if (argv[index] === "--dist") options.dist = argv[index + 1];
     else if (argv[index] === "--out") options.out = argv[index + 1];
     else if (argv[index] === "--require-chrome") options.requireChrome = true;
+    else if (argv[index] === "--deadline-ms") options.deadlineMs = Number(argv[index + 1]);
   }
   return options;
 };
@@ -68,6 +73,28 @@ const gitHead = () => {
 };
 
 class Failure extends Error {}
+
+/// Replays a recorded session through the native runtime.
+///
+/// `nomos-play` is built by the lane that runs this, so a missing binary is a
+/// harness failure and is reported as one rather than skipped: the identity
+/// assertion is the point of the extension, and a lane that quietly stopped
+/// making it would be worse than a lane that failed.
+function replayNatively(sessionPath) {
+  const binary = process.env.NOMOS_PLAY_BIN ?? join(here, "..", "..", "..", "target", "debug", "nomos-play");
+  const areas = process.env.NOMOS_PLAY_AREAS ?? join(here, "..", "..", "..", "target", "executable-gaol", "areas");
+  const argv = ["replay", areas, "--session", sessionPath];
+  try {
+    const output = execFileSync(binary, argv, { encoding: "utf8" });
+    return { command: `${binary} ${argv.join(" ")}`, ok: output.startsWith("NOMOS_PLAY_REPLAY PASS"), output };
+  } catch (error) {
+    return {
+      command: `${binary} ${argv.join(" ")}`,
+      ok: false,
+      output: `${error.stdout ?? ""}${error.stderr ?? ""}${error.message}`,
+    };
+  }
+}
 
 const fail = (message) => {
   throw new Failure(message);
@@ -116,7 +143,7 @@ async function run(options) {
   let browser = null;
   try {
     for (const [name, flags] of Object.entries(FLAG_SETS)) {
-      if (browser) browser.kill();
+      if (browser) await browser.kill();
       browser = await launch({ binary: chrome.binary, flags });
       receipt.chrome.flag_set = name;
       receipt.chrome.product = browser.version.Browser;
@@ -132,7 +159,11 @@ async function run(options) {
     return fail("unreachable");
   } finally {
     receipt.duration_ms = Date.now() - started;
-    browser?.kill();
+    // Issue #160: PASS printed and the process still alive is a hung job. Every
+    // handle the lane opened is closed here, in the order that lets each one
+    // finish: the browser first, because killing it drops the CDP socket, then
+    // the socket, then the server and the connections Chrome left open.
+    await browser?.kill();
     await server.close();
     receipt.requests = server.requests;
     receipt.request_count = server.requests.length;
@@ -223,7 +254,7 @@ async function drive({ browser, server, route, collection, out, receipt }) {
     };
   })()`);
   if (!webgl.ok) {
-    page.close();
+    await page.close();
     return { webgl: false, reason: webgl.reason };
   }
   receipt.webgl = webgl;
@@ -257,11 +288,12 @@ async function drive({ browser, server, route, collection, out, receipt }) {
     for (const name of leg.keys.slice(0, -1)) {
       const previous = await dataset();
       await press(name);
-      const after = await page.until(
-        dataset,
-        (state) => state.moves !== previous.moves || state.scenario !== previous.scenario,
-        { wait: 5_000 },
-      );
+      // The tick, not the move count. Every input is one batch and one tick,
+      // including one the runtime refuses — and a refusal is exactly the case a
+      // move-count barrier would wait through until it timed out.
+      const after = await page.until(dataset, (state) => state.tick !== previous.tick, {
+        wait: 5_000,
+      });
       if (after.error) await guard();
     }
 
@@ -277,7 +309,7 @@ async function drive({ browser, server, route, collection, out, receipt }) {
     await press(leg.keys.at(-1));
     const after = await page.until(
       dataset,
-      (state) => state.area !== leg.area || state.completed === "true",
+      (state) => state.area !== leg.area || state.outcome === "completed",
       { wait: 5_000 },
     );
     await guard();
@@ -293,7 +325,7 @@ async function drive({ browser, server, route, collection, out, receipt }) {
   }
 
   const final = await guard();
-  if (final.completed !== "true") fail(`the run did not complete: ${JSON.stringify(final)}`);
+  if (final.outcome !== "completed") fail(`the run did not complete: ${JSON.stringify(final)}`);
   if (Number(final.areasCleared) !== route.areas) {
     fail(`the page cleared ${final.areasCleared} areas, the collection declares ${route.areas}`);
   }
@@ -318,6 +350,28 @@ async function drive({ browser, server, route, collection, out, receipt }) {
     fail(`the page requested ${external.length} external URL(s): ${external[0].url}`);
   }
 
+  // What the browser actually did, and the proof that it was the same
+  // authority. The page carries the whole `nomos.play_session@1` document the
+  // runtime holds — its own canonical bytes, not a re-serialization — and the
+  // harness replays that log through the native `nomos-play replay`. Identical
+  // receipts and an identical chain head is the strongest statement this lane
+  // can make: not that the browser reached the same counters, but that every
+  // batch it committed, refusals included, matches what the native runtime
+  // produces from the same inputs.
+  const sessionText = await page.evaluate(
+    "document.querySelector('#session').textContent",
+  );
+  writeFileSync(join(out, "session.json"), sessionText);
+  const session = JSON.parse(sessionText);
+  if (session.schema !== "nomos.play_session@1") {
+    fail(`the page published \`${session.schema}\` where a play session was expected`);
+  }
+  const replay = replayNatively(join(out, "session.json"));
+  receipt.native_replay = replay;
+  if (!replay.ok) {
+    fail(`the native replay of the browser's session did not agree: ${replay.output.trim()}`);
+  }
+
   Object.assign(receipt, {
     navigation: { url: `${server.origin}/`, load_event: true },
     browser_requests: requests,
@@ -327,21 +381,41 @@ async function drive({ browser, server, route, collection, out, receipt }) {
     exceptions,
     log_errors: logErrors,
     screenshots,
+    session: {
+      file: "session.json",
+      commands: session.log.length,
+      receipts: session.receipts.length,
+      chain_head: session.receipt_chain_head,
+      areas_cleared: session.areas_cleared,
+      outcome: session.outcome,
+    },
     result: {
       areas_cleared: Number(final.areasCleared),
       moves: Number(final.moves),
       cost: Number(final.cost),
+      tick: Number(final.tick),
+      kernel_state_hash: final.kernelStateHash,
       message: final.message,
       summary,
     },
     outcome: "pass",
   });
 
-  page.close();
+  await page.close();
   return { webgl: true, screenshots, final, summary };
 }
 
 const options = parseArguments(process.argv.slice(2));
+
+// Issue #160: a hard deadline, so a lane that wedges anywhere fails in minutes
+// with a message rather than in half an hour with a job timeout. Unreferenced,
+// so it is not itself a handle that keeps the process alive.
+const deadline = setTimeout(() => {
+  process.stderr.write(`NOMOS_VIEWER_SMOKE FAIL the lane exceeded ${options.deadlineMs}ms\n`);
+  process.exit(1);
+}, options.deadlineMs);
+deadline.unref();
+
 try {
   const result = await run(options);
   if (!result.skipped) {
@@ -357,3 +431,11 @@ try {
   if (!(error instanceof Failure)) process.stderr.write(`${error.stack}\n`);
   process.exitCode = 1;
 }
+
+clearTimeout(deadline);
+// The receipt is written in `run`'s `finally`, so by here it is on disk. Issue
+// #160: exit rather than wait for the event loop to drain. A handle this lane
+// failed to close is a bug to fix — the closing above is that fix — but it must
+// not also be a job that runs to its timeout after the result is known.
+process.stdout.write("");
+process.exit(process.exitCode ?? 0);

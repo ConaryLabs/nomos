@@ -526,16 +526,21 @@ impl Fixture {
     /// Writes the hand-authored presentation source.
     ///
     /// Pretty-printed, snake_case, integer-only, and socket-anchored: this is
-    /// `nomos.presentation_source@1` as a human writes it. There is no decimal
+    /// `nomos.presentation_source@2` as a human writes it. There is no decimal
     /// anywhere, which is the property `tests/source.rs` proves is enforced
     /// rather than merely observed.
+    ///
+    /// Each actor declares a `role`, which is what `@2` reads. The two ids
+    /// below are ordinary names the decoder never looks at; `@1` required the
+    /// pair `player` and `gaoler` by identity, and `tests/source.rs` renames
+    /// both to prove the requirement is gone.
     fn write_source(&self, options: Options) {
         let rename = options.rename;
         let gate = rename("north_gate");
         let brazier = rename("watch_brazier");
         let text = format!(
             r#"{{
-  "schema": "nomos.presentation_source@1",
+  "schema": "nomos.presentation_source@2",
   "area": {{
     "id": "test-area",
     "label": "Test Area",
@@ -560,8 +565,8 @@ impl Fixture {
     ]
   }},
   "actors": [
-    {{ "id": "player", "assembly": "visual/player_silhouette", "cell": {{ "x": 7, "y": 4, "z": 0 }} }},
-    {{ "id": "gaoler", "assembly": "visual/gaoler_silhouette", "cell": {{ "x": 4, "y": 3, "z": 0 }} }}
+    {{ "id": "player", "role": "player", "assembly": "visual/player_silhouette", "cell": {{ "x": 7, "y": 4, "z": 0 }} }},
+    {{ "id": "gaoler", "role": "pursuer", "assembly": "visual/gaoler_silhouette", "cell": {{ "x": 4, "y": 3, "z": 0 }} }}
   ],
   "effects": [
     {{

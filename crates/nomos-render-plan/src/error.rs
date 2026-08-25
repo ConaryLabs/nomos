@@ -58,7 +58,7 @@ pub mod codes {
     /// kind whose capability set contradicts its primitive.
     pub const CLASSIFICATION_UNSOUND: PlanCode = PlanCode("RP0201");
     /// The presentation source violates a bounded-area invariant, or its shape
-    /// is not the one `nomos.presentation_source@1` declares.
+    /// is not the one `nomos.presentation_source@2` declares.
     pub const AREA_INVALID: PlanCode = PlanCode("RP0202");
     /// A scenario did not reach its declared state.
     pub const SCENARIO_INCOMPLETE: PlanCode = PlanCode("RP0203");

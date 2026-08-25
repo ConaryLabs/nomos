@@ -5,18 +5,21 @@ import assert from "node:assert/strict";
 
 import { PALETTE, hex } from "../src/catalog.mjs";
 import { decodeCollection, decodePlan } from "../src/plan.mjs";
-import { completeRun, createPlayState } from "../src/play.mjs";
 import { applyPalette, readout, scenarioByIndex } from "../src/ui.mjs";
 import { collectionDocument, hallPlan } from "./fixtures.mjs";
+import { darkHallView, hallView } from "./views.mjs";
 
 const collection = decodeCollection(collectionDocument());
 const hall = decodePlan(hallPlan());
 const flatten = (segments) => segments.map((one) => one.text).join("");
+const playing = { areasCleared: 0, completed: false };
+const quiet = { text: "", tone: "neutral" };
 
 test("the readout reports area progress and cumulative counters", () => {
-  const view = readout(collection, hall, createPlayState(hall), "01-sealed");
+  const view = readout(collection, hall, hallView(), playing, quiet);
   assert.equal(view.area, "test-hall");
-  assert.equal(view.scenario, "01-sealed");
+  assert.equal(view.tick, 0);
+  assert.equal(view.outcome, "playing");
   assert.equal(view.progress, "Area 1 / 2 · Test Hall");
   assert.equal(view.meter, "areas 0/2 · moves 0 · cost 0 · gaoler dormant");
   assert.equal(flatten(view.objective), "Exit via hall_gate");
@@ -25,23 +28,37 @@ test("the readout reports area progress and cumulative counters", () => {
   assert.equal(view.title, "Test Hall");
 });
 
-test("the readout names the pursuit state the plan implies", () => {
-  const play = createPlayState(hall);
-  assert.equal(readout(collection, hall, play, "01-sealed").pursuit, "dormant");
-  assert.equal(readout(collection, hall, play, "03-dark").pursuit, "hunting");
-  assert.equal(readout(collection, hall, { ...play, caught: true }, "03-dark").pursuit, "caught");
+test("the readout names the pursuit state the runtime reported", () => {
+  // The runtime resolved this from the light facts at the live kernel state.
+  // The viewer reads `pursuit.hunting`; it does not look at a light itself.
+  assert.equal(readout(collection, hall, hallView(), playing, quiet).pursuit, "dormant");
+  assert.equal(readout(collection, hall, darkHallView(), playing, quiet).pursuit, "hunting");
+  assert.equal(
+    readout(collection, hall, darkHallView({ outcome: "caught" }), playing, quiet).pursuit,
+    "caught",
+  );
 });
 
 test("the readout carries the completion summary", () => {
-  const done = completeRun({ ...createPlayState(hall), areasCleared: 1, moves: 44, movementCost: 60 });
-  const view = readout(collection, hall, done, "03-dark");
+  const done = { areasCleared: 2, completed: true };
+  const view = readout(
+    collection,
+    hall,
+    darkHallView({ counters: { moves: 44, traversal_cost: 60 }, outcome: "escaped" }),
+    done,
+    { text: "Escaped the gaol", tone: "success" },
+  );
   assert.equal(view.completed, true);
+  assert.equal(view.outcome, "completed");
   assert.equal(view.summary, "2 areas · 44 moves · 60 traversal cost");
   assert.equal(view.meter, "areas 2/2 · moves 44 · cost 60 · gaoler hunting");
   assert.equal(view.message, "Escaped the gaol");
 });
 
 test("number keys select by scenario identity", () => {
+  // The plan's scenarios are the SVG capture ladder, and after R1-5 they are
+  // forensic rather than gameplay: selecting one draws a captured state and
+  // moves nothing authoritative.
   assert.equal(scenarioByIndex(hall, 1).id, "01-sealed");
   assert.equal(scenarioByIndex(hall, 3).id, "03-dark");
   assert.equal(scenarioByIndex(hall, 0), null);
@@ -70,9 +87,22 @@ test("the palette reaches the page as custom properties", () => {
 test("the readout is the page's data contract", () => {
   // The smoke lane reads `data-` attributes off the root element. They are the
   // readout, so a change here is a change there, and `ui.mjs` writes no state
-  // the HUD does not also paint.
-  const source = readout(collection, hall, createPlayState(hall), "01-sealed");
-  for (const key of ["area", "scenario", "message", "completed", "pursuit"]) {
+  // the HUD does not also paint. `tick`, `outcome`, and the kernel state hash
+  // joined the contract with R1-5: the lane keys its barrier on the tick,
+  // because a refused input advances the tick and not the move count.
+  const source = readout(collection, hall, hallView(), playing, quiet);
+  for (const key of [
+    "area",
+    "tick",
+    "kernelStateHash",
+    "outcome",
+    "moves",
+    "cost",
+    "areasCleared",
+    "message",
+    "pursuit",
+  ]) {
     assert.ok(key in source, `the readout carries ${key}`);
   }
+  assert.match(source.kernelStateHash, /^[0-9a-f]{64}$/);
 });

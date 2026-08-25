@@ -245,7 +245,7 @@ fn kernel_facts() -> Vec<u8> {
 
 /// One movement subject, found by entity in the plan's stable-ID array.
 ///
-/// `nomos.rendering_plan@2` spells `movement` the way
+/// `nomos.rendering_plan@3` spells `movement` the way
 /// `nomos.effective_facts@1` does — an array of `{entity, ...}` rows ordered
 /// by entity — rather than as an entity-keyed object, so that no object key
 /// comes from data.
@@ -496,7 +496,7 @@ fn catalog() -> CanonicalValue {
 }
 
 const SOURCE: &str = r#"{
-  "schema": "nomos.presentation_source@1",
+  "schema": "nomos.presentation_source@2",
   "area": { "id": "divergence", "label": "Divergence", "start": true },
   "route": { "exit": { "gate": "escape_gate", "to_area": null } },
   "pursuit": { "light": "watch_brazier" },
@@ -507,8 +507,8 @@ const SOURCE: &str = r#"{
     "masses": []
   },
   "actors": [
-    { "id": "player", "assembly": "visual/player_silhouette", "cell": { "x": 1, "y": 1, "z": 0 } },
-    { "id": "gaoler", "assembly": "visual/gaoler_silhouette", "cell": { "x": 4, "y": 3, "z": 0 } }
+    { "id": "player", "role": "player", "assembly": "visual/player_silhouette", "cell": { "x": 1, "y": 1, "z": 0 } },
+    { "id": "gaoler", "role": "pursuer", "assembly": "visual/gaoler_silhouette", "cell": { "x": 4, "y": 3, "z": 0 } }
   ],
   "effects": []
 }

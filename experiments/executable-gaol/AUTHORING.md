@@ -17,14 +17,14 @@ Required files:
 
 ## `presentation.json`
 
-Schema `nomos.presentation_source@1`, declared and decoded by
+Schema `nomos.presentation_source@2`, declared and decoded by
 `crates/nomos-render-plan/src/source.rs`. Every rule below is enforced by that
 decoder with a stable `RP####` diagnostic — none of it is convention, and none
 of it is a check some consumer happens to perform.
 
 ```json
 {
-  "schema": "nomos.presentation_source@1",
+  "schema": "nomos.presentation_source@2",
   "area": { "id": "north-gaol", "label": "North Gaol", "start": false },
   "route": {
     "exit": { "gate": "north_gate", "to_area": null },
@@ -42,8 +42,18 @@ of it is a check some consumer happens to perform.
     "masses": []
   },
   "actors": [
-    { "id": "player", "assembly": "visual/player_silhouette", "cell": { "x": 2, "y": 4, "z": 0 } },
-    { "id": "gaoler", "assembly": "visual/gaoler_silhouette", "cell": { "x": 5, "y": 3, "z": 0 } }
+    {
+      "id": "player",
+      "role": "player",
+      "assembly": "visual/player_silhouette",
+      "cell": { "x": 2, "y": 4, "z": 0 }
+    },
+    {
+      "id": "gaoler",
+      "role": "pursuer",
+      "assembly": "visual/gaoler_silhouette",
+      "cell": { "x": 5, "y": 3, "z": 0 }
+    }
   ],
   "effects": [
     {
@@ -54,6 +64,14 @@ of it is a check some consumer happens to perform.
   ]
 }
 ```
+
+**An actor declares a role, and its identity is free.** `role` is `player` or
+`pursuer`, and it is what `crates/nomos-play` reads to decide which actor a
+command moves and which one the pursuit rule steps. Exactly one actor declares
+`player`; at most one declares `pursuer`. `@1` required the two identities to be
+spelled `player` and `gaoler` — name an actor whatever the area calls it and
+nothing will notice, which is what `renaming_both_actors_changes_nothing`
+proves.
 
 **Numbers are integers.** There is no decimal anywhere in the file, at any
 depth, in any field — including one the schema does not know. A lexeme carrying

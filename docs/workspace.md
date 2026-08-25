@@ -36,9 +36,19 @@ crates/nomos-render-plan  the R1-2 rendering-plan compiler, the R1-3
                           collection: the `nomos_render_plan` library plus
                           the `nomos-render-plan` binary and its
                           `collection` mode. Declares
-                          `nomos.presentation_source@1`,
-                          `nomos.rendering_plan@2`, and
-                          `nomos.area_collection@1`
+                          `nomos.presentation_source@2`,
+                          `nomos.rendering_plan@3`, and
+                          `nomos.area_collection@2`
+crates/nomos-play         the R1-5 authoritative play runtime: actors, the
+                          command batch, occupancy, pursuit, receipts, and
+                          replay over the kernel's own transactions. The
+                          `nomos_play` library, the `nomos-play` binary and
+                          its `replay` mode, and the same library built for
+                          `wasm32-unknown-unknown` and loaded by the viewer.
+                          Declares `nomos.play_state@1`,
+                          `nomos.play_command@1`, `nomos.play_receipt@1`,
+                          `nomos.play_session@1`, and
+                          `nomos.presentation_state@1`
 ```
 
 Edges, verbatim from section 10:
@@ -57,10 +67,20 @@ R1 edges, under `RUNTIME.md` section 3:
 nomos-render-plan -> nomos-core
 nomos-render-plan -> nomos-projection, nomos-sim   (dev-dependencies only,
                      for the issue #132 divergence fixture)
+nomos-play        -> nomos-core, nomos-projection, nomos-sim
+nomos-play        -> nomos-render-plan             (one constant: the
+                     rendering plan's identity, bound from the crate that
+                     declares it)
+nomos-play        -> nomos-compiler, nomos-schema  (dev-dependencies only,
+                     to compile the four committed areas in memory and
+                     compare the projection the runtime decodes)
 ```
 
 No crate in the workspace has a third-party dependency. `Cargo.lock` contains
-eight entries, all of them local. Decision 0005 makes that a deliberate,
+nine entries, all of them local. `nomos-play` also builds for
+`wasm32-unknown-unknown`, where the linked standard library brings its own
+allocator; that is the pinned toolchain's `std` and not a Cargo dependency, and
+`cargo tree --target wasm32-unknown-unknown` shows the same local graph. Decision 0005 makes that a deliberate,
 temporary Gate K constraint: it protects the offline proof and audit surface
 while the semantic kernel is small, but it is not a permanent repository
 constitution. Later gates may admit a dependency only through a separate
@@ -111,7 +131,7 @@ Exit codes follow `KERNEL.md` section 8: `0` clean, `1` violations, `2` invalid
 usage, `3` environment failure. It reads `cargo metadata --all-features` and
 enforces five rules over the six kernel crates, the declared tooling, and the R1
 crates `RUNTIME.md` section 3 declares — `R1_CRATES` in
-`xtask/src/boundary.rs`, `["nomos-render-plan"]` today, reported as
+`xtask/src/boundary.rs`, `["nomos-play", "nomos-render-plan"]` today, reported as
 `r1 members N`:
 
 | Rule | What it refuses |

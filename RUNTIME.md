@@ -97,6 +97,7 @@ artifact, hash, or diagnostic.
 | `nomos-cli` | the `entity-catalog` subcommand | #138, an R1-2 input | accepted with R1-2 |
 | `nomos-core` | `SourceSpan::to_canonical`, the one rendering of a source span; it replaces five byte-identical private copies in `nomos-core`, `nomos-schema`, `nomos-projection`, and `nomos-cli` | #138, an R1-2 input | accepted with R1-2 |
 | `nomos-projection` | `activation_is_true`, the one evaluator of `ProjectedActivation`, taking the activation and a caller-supplied state lookup that owns its own diagnostic; it replaces the private copies in `nomos-compiler` and `nomos-sim`, which cannot share code as placed | #136 | accepted |
+| `nomos-projection` | `decode.rs`, `SimulationPlan::from_canonical_bytes`, the strict inverse of the encoder it sits beside; it refuses unless the reconstructed plan re-encodes to the exact input bytes, and no Gate K command reaches it — every kernel command still recompiles its plan from the packaged World IR and checks the stored member against it | R1-5 | accepted with R1-5 |
 
 The three R1-1 rows are accepted: `nomos.effective_facts@1` is registered in
 `docs/evaluation/R1_SCHEMA_OWNERSHIP.md`, its comparison harness reports
@@ -142,9 +143,9 @@ string `name@version`, while Gate K package and run artifacts keep
   depending on `nomos-core` only, with dev-dependency edges to
   `nomos-projection` and `nomos-sim` for the issue #132 divergence fixture. It
   declares three canonical identities, all registered in
-  `docs/evaluation/R1_SCHEMA_OWNERSHIP.md`: `nomos.presentation_source@1`, the
-  typed presentation source it decodes; `nomos.rendering_plan@2`, the plan it
-  emits through `nomos_core::CanonicalValue`; and `nomos.area_collection@1`, the
+  `docs/evaluation/R1_SCHEMA_OWNERSHIP.md`: `nomos.presentation_source@2`, the
+  typed presentation source it decodes; `nomos.rendering_plan@3`, the plan it
+  emits through `nomos_core::CanonicalValue`; and `nomos.area_collection@2`, the
   route graph over the compiled plans, emitted the same way. It contains no
   canonical encoder of its own and no floating-point type.
 
@@ -152,6 +153,35 @@ string `name@version`, while Gate K package and run artifacts keep
   crates, which is why the collection has no row there: `nomos-render-plan` is a
   declared R1 member, so its surface is declared here, and no Gate K command,
   artifact, hash, or diagnostic is touched by it.
+
+- `nomos-play` — the R1-5 authoritative play runtime (library plus the
+  `nomos-play` binary, whose one mode is
+  `nomos-play replay <areas-dir> --session <session.json>`), depending on
+  `nomos-core`, `nomos-projection`, and `nomos-sim`, and on the declared R1
+  member `nomos-render-plan` for one constant: the rendering plan's identity,
+  bound from the crate that declares it so that a version move carries both ends
+  at once. It has dev-dependency edges to `nomos-compiler` and `nomos-schema`,
+  used only by `tests/semantics.rs` to compile the four committed areas in
+  memory and compare the simulation projection this crate decodes with the value
+  the compiler projected; neither edge exists in the built library, so the
+  browser build reaches no compiler and no Canonical World IR.
+
+  It declares five canonical identities, all registered:
+  `nomos.play_state@1`, the authoritative state of one area;
+  `nomos.play_command@1`, the single input a batch carries;
+  `nomos.play_receipt@1`, the evidence one batch produced;
+  `nomos.play_session@1`, the run across areas with its log and receipts; and
+  `nomos.presentation_state@1`, the per-tick document the renderer draws from.
+  It contains no canonical encoder of its own and no floating-point type.
+
+  It is the first member built for a second target. `crates/nomos-play/src/wasm.rs`
+  is a hand-written `extern "C"` ABI behind `#[cfg(target_arch = "wasm32")]` —
+  the only `unsafe` in the R1 tree, and forbidden on every other target — and
+  `[profile.wasm]` in the root manifest is a separate profile rather than
+  settings on `[profile.release]`, because Cargo profiles are workspace-global
+  and `lto`, `panic`, and `strip` have no per-package override. Nothing selects
+  that profile except `crates/nomos-play/build-wasm.sh`, and no Gate K command
+  uses it.
 
 `R1_CRATES` in `xtask/src/boundary.rs` mirrors this list, and `cargo xtask
 boundary` enforces it: a workspace member that is neither a kernel crate,
@@ -425,10 +455,25 @@ anticipated, and it runs in CI on every change and locally through the same
 entry point:
 
 ```text
+crates/nomos-play/build-wasm.sh
 node --test apps/nomos-viewer/test/*.test.mjs
 node apps/nomos-viewer/build.mjs --from target/executable-gaol --out apps/nomos-viewer/dist
 node apps/nomos-viewer/smoke/smoke.mjs --dist apps/nomos-viewer/dist --out target/nomos-viewer-smoke
 ```
+
+R1-5 added the first line and gave the last one something new to prove. The
+build script is what stages an authoritative runtime the viewer can load; the
+smoke lane records the whole `nomos.play_session@1` document the browser
+produced and replays it through the native runtime:
+
+```text
+nomos-play replay target/executable-gaol/areas --session target/nomos-viewer-smoke/session.json
+```
+
+Identical receipts and an identical chain head is the assertion R1-5 exists to
+make. It is not that the browser reached the same counters — it is that every
+batch the browser committed, refusals included, is what the native runtime
+produces from the same inputs.
 
 No target is accepted while that lane is red or absent. Locally the smoke lane
 skips with an explicit message when the machine has no Chrome; in CI it is
@@ -450,8 +495,10 @@ acceptance.
 | Workspace build time | s | clean release build of the workspace | not measured |
 | Validation latency | ms | `nomos validate` on the accepted fixture | not measured |
 | Replay throughput | commands/s | `nomos replay` over the accepted log | not measured |
+| Play replay throughput | commands/s | `nomos-play replay` over the recorded four-area session | 1 194 — twenty release-profile replays of the smoke lane's 52-command `session.json` in 0.871 s, 43.5 ms each, process start and the four projection decodes included; measured on the R1-5 branch |
 | Package size | bytes | a compiled world package directory | not measured |
-| Public artifact size | bytes | the staged public site directory | 896 680 — `apps/nomos-viewer/dist`, 14 files, of which 750 938 is the vendored renderer; measured by `apps/nomos-viewer/build.mjs` on the issue #152 branch. It was 894 174 on the R1-4 branch; the 2 506 bytes are the collection's new area rows and the decoder that reads them |
+| Public artifact size | bytes | the staged public site directory | 1 355 141 — `apps/nomos-viewer/dist`, 20 files, measured by `apps/nomos-viewer/build.mjs` on the R1-5 branch. It was 896 680 on the issue #152 branch; the 458 461 bytes are the authoritative runtime at 422 432, the four simulation projections at 24 956, and the loader and adapter |
+| Play runtime size | bytes | `crates/nomos-play/build-wasm.sh`, `stat -c%s` | 422 432, sha256 `70addbe7662caab4af2d0147c09dc8e839dd282c617a99cd325ced026d0d3a0f`. Reproducible, and across machines rather than only across builds: two builds with `target/wasm32-unknown-unknown` removed between them agree byte for byte, and the `ubuntu-24.04` CI runner produced the same digit-for-digit sha256 in run 32883772392, from a different checkout path. The profile is measured rather than assumed — the same crate is 554 732 bytes under the plain release profile, and the four knobs `[profile.wasm]` sets are what closes the gap |
 | Edit-to-visible-frame latency | ms | content edit to first rendered frame | not measured |
 
 ## 8. Contract repair

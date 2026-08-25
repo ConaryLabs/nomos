@@ -24,12 +24,27 @@ const STEPS = [
   { dx: 1, dy: 0, key: "ArrowRight" },
 ];
 
+// Occupancy, as `crates/nomos-play` defines it for the player. The solver only
+// needs it to plan a path; the runtime is what decides, and if the two ever
+// disagree the run stops with a key that changed nothing.
 const blocked = (plan, cell) => {
   const { width, height } = plan.architecture.bounds;
   if (cell.x < 0 || cell.y < 0 || cell.x >= width || cell.y >= height) return true;
-  return plan.architecture.masses.some(
-    (mass) =>
-      cell.x >= mass.min.x && cell.x < mass.max.x && cell.y >= mass.min.y && cell.y < mass.max.y,
+  if (
+    plan.architecture.masses.some(
+      (mass) =>
+        cell.x >= mass.min.x && cell.x < mass.max.x && cell.y >= mass.min.y && cell.y < mass.max.y,
+    )
+  ) {
+    return true;
+  }
+  // Another actor's cell. `play.mjs` used to let the player walk onto the
+  // gaoler; the authoritative rule does not, and the solver has to know so it
+  // does not plan a step the runtime will refuse. The pursuer does not move on
+  // this route — it hunts only once the pursuit light is out, and the route
+  // never extinguishes one — so its declared cell is where it stays.
+  return plan.actors.some(
+    (actor) => actor.role !== "player" && actor.cell.x === cell.x && actor.cell.y === cell.y,
   );
 };
 
@@ -89,7 +104,7 @@ export function solveRoute(collection, plans) {
     const plan = plans.get(areaId);
     let scenario = initialScenario(plan);
     let cell = plan.area.start
-      ? { ...plan.actors.find((one) => one.id === "player").cell }
+      ? { ...plan.actors.find((one) => one.role === "player").cell }
       : { ...plan.route.entry };
     const keys = [];
     const spend = (leg) => {

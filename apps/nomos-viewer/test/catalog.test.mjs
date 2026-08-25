@@ -7,6 +7,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import { stripComments } from "../build.mjs";
 import {
   ACTOR_ASSEMBLIES,
+  ACTOR_ROLES,
   ARCHITECTURE_ASSEMBLIES,
   CAMERA,
   DISPOSITION_LABELS,
@@ -56,7 +57,10 @@ test("steps convert by division", () => {
 });
 
 test("the ward socket offset is five zero seventeen", () => {
-  assert.deepEqual(SOCKETS["visual/iron_barred_door"].ward, { x: 5, y: 0, z: 17 });
+  // Keyed by the compiled kind, which is the only thing `nomos.rendering_plan@3`
+  // says about what an entity is: the assembly name it used to carry alongside
+  // is the catalog's own business now.
+  assert.deepEqual(SOCKETS.door.ward, { x: 5, y: 0, z: 17 });
   // The WebGL ward ring sits at y = 1.22, and this is where the socket lands.
   assert.ok(Math.abs(cellsOf(17) * VERTICAL_SCALE - 1.22) < 0.005);
 });
@@ -64,7 +68,7 @@ test("the ward socket offset is five zero seventeen", () => {
 test("a socket resolves by the declared direction", () => {
   const gate = (direction) => ({
     id: "gate",
-    visual_assembly: "visual/iron_barred_door",
+    kind: "door",
     anchor: { kind: "face", cell: { x: 3, y: 2, z: 0 }, direction },
   });
   // North is what the study computed: cell + (0.5, 0, 1.7). R1-3 deferred the
@@ -75,7 +79,7 @@ test("a socket resolves by the declared direction", () => {
   assert.deepEqual(resolveSocket(gate("east"), "ward"), { x: 4, y: 2.5, z: 1.7 });
   // Fail closed, never a silently unplaced glyph.
   assert.equal(resolveSocket(gate("north"), "lintel"), null);
-  assert.equal(resolveSocket({ ...gate("north"), visual_assembly: "visual/brazier" }, "ward"), null);
+  assert.equal(resolveSocket({ ...gate("north"), kind: "light" }, "ward"), null);
   assert.equal(resolveSocket({ ...gate("north"), anchor: { kind: "cell" } }, "ward"), null);
 });
 
@@ -95,37 +99,21 @@ test("the closed sets are the ones content selects from", () => {
   assert.deepEqual([...TRIM_FAMILIES], ["broad_mortar"]);
   assert.deepEqual([...ACTOR_ASSEMBLIES], ["visual/gaoler_silhouette", "visual/player_silhouette"]);
   assert.deepEqual([...EFFECT_ASSEMBLIES], ["visual/cyan_crescent"]);
+  // The roles `nomos.rendering_plan@3` added. They are what an actor is for, not
+  // what it looks like, so the set is deliberately not the assembly names: two
+  // silhouettes and two roles that happen to pair off in the corpus.
+  assert.deepEqual([...ACTOR_ROLES], ["player", "pursuer"]);
 });
 
-test("the catalog knows every assembly the compiler can emit", () => {
-  // The compiler still selects an assembly per entity kind
-  // (`crates/nomos-render-plan/src/catalog.rs`), and this catalog defines what
-  // those names mean. Issue #153 moves the selection out; until it does, the
-  // two tables are held together here so neither can drift alone.
-  const rust = readFileSync(
-    new URL("../../../crates/nomos-render-plan/src/catalog.rs", import.meta.url),
-    "utf8",
-  );
-  const table = (name) => {
-    const body = rust.match(new RegExp(`pub const fn ${name}\\(self\\)[^{]*\\{[^}]*\\{([^}]*)\\}`))?.[1];
-    assert.ok(body, `could not read the Rust ${name} table`);
-    return Object.fromEntries(
-      [...body.matchAll(/Self::(\w+) => "([^"]+)"/g)].map((match) => [match[1].toLowerCase(), match[2]]),
-    );
-  };
-  const assemblies = table("visual_assembly");
-  const families = table("material_family");
-  for (const [kind, entry] of Object.entries(ENTITY_KINDS)) {
-    assert.equal(assemblies[kind], entry.visualAssembly, `${kind} assembly`);
-    assert.equal(families[kind], entry.materialFamily, `${kind} material family`);
-  }
-  // The compiler has a fourth arm this catalog deliberately does not: an
-  // unclassified primitive reaches a plan as `visual/marker`, and the viewer
-  // refuses it rather than drawing the study's silent fallback.
-  assert.equal(assemblies.unknown, "visual/marker");
-  assert.equal(Object.keys(assemblies).length, Object.keys(ENTITY_KINDS).length + 1);
-  assert.equal(ENTITY_KINDS.marker, undefined);
-});
+// `the_catalog_knows_every_assembly_the_compiler_can_emit` stood here. It parsed
+// `crates/nomos-render-plan/src/catalog.rs` and asserted that crate's
+// kind-to-assembly and kind-to-material tables agreed with `ENTITY_KINDS` row for
+// row, which was worth doing only while both ends held the same mapping. Issue
+// #153 deleted the Rust tables and `nomos.rendering_plan@3` stopped carrying the
+// two names, so this catalog is the sole place a kind becomes an assembly and
+// there is no second table left to drift from. What the compiler may still emit
+// is a kind, and `an unclassified entity is refused` in `plan.test.mjs` holds
+// that end: a kind this catalog does not declare fails the decode.
 
 test("one palette serves the scene and the ui", () => {
   assert.equal(Object.keys(PALETTE).length, 36);

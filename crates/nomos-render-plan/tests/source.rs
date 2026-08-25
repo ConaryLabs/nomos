@@ -1,4 +1,4 @@
-//! `nomos.presentation_source@1` refuses what it says it refuses.
+//! `nomos.presentation_source@2` refuses what it says it refuses.
 //!
 //! `RUNTIME.md` section 5 R1-3 requires two of these outright — "the accepted
 //! source is versioned, and a version mismatch is refused with a stable
@@ -8,14 +8,19 @@
 //!
 //! Each test edits one thing in a source that otherwise compiles, so a pass
 //! cannot come from the file being broken some other way. The unedited text is
-//! asserted to compile first, in [`the_unedited_source_compiles`].
+//! asserted to compile first, in [`the_unedited_source_compiles`]. The one
+//! exception is [`renaming_both_actors_changes_nothing`], which starts from a
+//! committed source rather than from the fixture, because the statement it
+//! makes is about content this repository ships.
 
 mod common;
 
 use std::fs;
+use std::path::PathBuf;
 
 use common::Fixture;
-use nomos_render_plan::PlanResult;
+use nomos_render_plan::source::{self, Cell, PresentationSource};
+use nomos_render_plan::{EntityKind, PlanResult};
 
 /// Compiles the fixture after rewriting its presentation source.
 fn compile_with(label: &str, edit: impl Fn(&str) -> String) -> PlanResult<()> {
@@ -46,20 +51,20 @@ fn the_unedited_source_compiles() {
 #[test]
 fn a_version_mismatch_is_refused_with_a_stable_diagnostic() {
     let (code, message) = refusal("source-version", |text| {
-        text.replace("nomos.presentation_source@1", "nomos.presentation_source@2")
+        text.replace("nomos.presentation_source@2", "nomos.presentation_source@3")
     });
     assert_eq!(code, "RP0104");
     assert_eq!(
         message,
-        "expected schema `nomos.presentation_source@1`, \
-         found `nomos.presentation_source@2`"
+        "expected schema `nomos.presentation_source@2`, \
+         found `nomos.presentation_source@3`"
     );
 }
 
 #[test]
 fn a_different_schema_name_is_refused() {
     let (code, message) = refusal("source-name", |text| {
-        text.replace("nomos.presentation_source@1", "nomos.area@1")
+        text.replace("nomos.presentation_source@2", "nomos.area@1")
     });
     assert_eq!(code, "RP0104");
     assert!(message.contains("found `nomos.area@1`"), "{message}");
@@ -68,7 +73,7 @@ fn a_different_schema_name_is_refused() {
 #[test]
 fn an_absent_schema_field_is_refused_by_identity_not_by_shape() {
     let (code, message) = refusal("source-no-schema", |text| {
-        text.replace("  \"schema\": \"nomos.presentation_source@1\",\n", "")
+        text.replace("  \"schema\": \"nomos.presentation_source@2\",\n", "")
     });
     // The field set is checked before the identity, so an absent `schema` is
     // an RP0202 shape refusal that still names the missing field. What matters
@@ -414,23 +419,169 @@ fn an_area_routing_to_itself_is_refused() {
 
 // ---------------------------------------------------------------------------
 // Actors
+//
+// `@1` required the two ids `player` and `gaoler` and nothing else. `@2` reads
+// a declared `role` instead, so what is bounded here is the cast — exactly one
+// player, at most one pursuer — and the ids are free.
 // ---------------------------------------------------------------------------
 
+/// Removes the fixture's pursuer, leaving the player alone in the array.
+fn without_the_pursuer(text: &str) -> String {
+    text.replace(
+        "    { \"id\": \"gaoler\", \"role\": \"pursuer\", \
+         \"assembly\": \"visual/gaoler_silhouette\", \
+         \"cell\": { \"x\": 4, \"y\": 3, \"z\": 0 } }\n",
+        "",
+    )
+    .replace(
+        "\"cell\": { \"x\": 7, \"y\": 4, \"z\": 0 } },\n",
+        "\"cell\": { \"x\": 7, \"y\": 4, \"z\": 0 } }\n",
+    )
+}
+
 #[test]
-fn a_missing_required_actor_is_refused() {
-    let (code, message) = refusal("actor-missing", |text| {
+fn a_role_outside_the_declared_pair_is_refused() {
+    // `gaoler` was an actor *identity* under `@1`. It is not a role, and
+    // declaring it as one is refused rather than read as a pursuer by
+    // resemblance.
+    let (code, message) = refusal("role-unknown", |text| {
+        text.replace("\"role\": \"pursuer\"", "\"role\": \"gaoler\"")
+    });
+    assert_eq!(code, "RP0202");
+    assert_eq!(
+        message,
+        "`actors[].role` must be `player` or `pursuer`; `gaoler` is neither"
+    );
+}
+
+#[test]
+fn an_area_declaring_no_player_is_refused() {
+    let (code, message) = refusal("role-no-player", |text| {
+        without_the_pursuer(text).replace("\"role\": \"player\"", "\"role\": \"pursuer\"")
+    });
+    assert_eq!(code, "RP0202");
+    assert!(
+        message.contains("must declare exactly one `player`; this area declares 0"),
+        "{message}"
+    );
+}
+
+#[test]
+fn a_second_player_is_refused() {
+    // Two actors, both declaring `player`: legal ids, legal roles, and an area
+    // in which the runtime could not say whose input it is reading.
+    let (code, message) = refusal("role-two-players", |text| {
+        text.replace("\"role\": \"pursuer\"", "\"role\": \"player\"")
+    });
+    assert_eq!(code, "RP0202");
+    assert!(
+        message.contains("must declare exactly one `player`; this area declares 2"),
+        "{message}"
+    );
+}
+
+#[test]
+fn a_second_pursuer_is_refused() {
+    // `RUNTIME.md` section 5 R1-5 rules a second pursuer out as content, so
+    // the source refuses it here rather than leaving the runtime to discover
+    // it. The added actor is legal in every other respect: a fresh id, a cell
+    // in bounds, and clear of the masonry.
+    let (code, message) = refusal("role-two-pursuers", |text| {
         text.replace(
-            "    { \"id\": \"gaoler\", \"assembly\": \"visual/gaoler_silhouette\", \
-             \"cell\": { \"x\": 4, \"y\": 3, \"z\": 0 } }\n",
-            "",
-        )
-        .replace(
-            "\"cell\": { \"x\": 7, \"y\": 4, \"z\": 0 } },\n",
-            "\"cell\": { \"x\": 7, \"y\": 4, \"z\": 0 } }\n",
+            "\"cell\": { \"x\": 4, \"y\": 3, \"z\": 0 } }\n",
+            "\"cell\": { \"x\": 4, \"y\": 3, \"z\": 0 } },\n    \
+             { \"id\": \"under_gaoler\", \"role\": \"pursuer\", \
+             \"assembly\": \"visual/gaoler_silhouette\", \
+             \"cell\": { \"x\": 5, \"y\": 3, \"z\": 0 } }\n",
         )
     });
     assert_eq!(code, "RP0202");
-    assert!(message.contains("must declare exactly"), "{message}");
+    assert!(
+        message.contains("must declare at most one `pursuer`; this area declares 2"),
+        "{message}"
+    );
+}
+
+#[test]
+fn an_area_with_no_pursuer_is_accepted() {
+    // The other half of "at most one": an area nothing hunts the player
+    // through is content, not a broken file. `@1` refused it, because it
+    // required the id `gaoler` to be present.
+    compile_with("role-no-pursuer", without_the_pursuer)
+        .expect("an area declaring only a player compiles");
+}
+
+#[test]
+fn renaming_both_actors_changes_nothing() {
+    // The proof that the magic identities are gone. `@1` required the two ids
+    // `player` and `gaoler`; here a committed source's actors are renamed to
+    // `runner` and `warden`, which resemble neither, and the decode produces
+    // the same two roles standing on the same two cells.
+    let committed = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../experiments/executable-gaol/areas/north-gaol/presentation.json");
+    let original = fs::read_to_string(&committed).expect("the study's north gaol is readable");
+    let renamed = original
+        .replace("\"id\": \"player\"", "\"id\": \"runner\"")
+        .replace("\"id\": \"gaoler\"", "\"id\": \"warden\"");
+    assert_ne!(renamed, original, "the rename matched nothing");
+    assert!(
+        !renamed.contains("\"id\": \"player\"") && !renamed.contains("\"id\": \"gaoler\""),
+        "an actor kept the identity `@1` required"
+    );
+
+    let fixture = Fixture::new("actor-rename");
+    let before = read_north_gaol(&fixture, &original);
+    let after = read_north_gaol(&fixture, &renamed);
+
+    let ids = |source: &PresentationSource| -> Vec<String> {
+        source.actors.iter().map(|actor| actor.id.clone()).collect()
+    };
+    assert_eq!(ids(&before), vec!["player", "gaoler"]);
+    assert_eq!(ids(&after), vec!["runner", "warden"]);
+
+    // Everything the decoder reads about an actor, unmoved by the rename.
+    assert_eq!(cast(&before), cast(&after));
+    assert_eq!(
+        cast(&after)
+            .into_iter()
+            .map(|(role, _, _)| role)
+            .collect::<Vec<String>>(),
+        vec!["player", "pursuer"]
+    );
+
+    // And the rename is confined to the actors: every other decoded field is
+    // equal, so nothing else was reading those two ids either.
+    assert_eq!(before.area, after.area);
+    assert_eq!(before.route, after.route);
+    assert_eq!(before.pursuit, after.pursuit);
+    assert_eq!(before.architecture, after.architecture);
+    assert_eq!(before.effects, after.effects);
+}
+
+/// Every actor as the decoder describes it, less the identity.
+fn cast(source: &PresentationSource) -> Vec<(String, String, Cell)> {
+    source
+        .actors
+        .iter()
+        .map(|actor| (actor.role.clone(), actor.assembly.clone(), actor.cell))
+        .collect()
+}
+
+/// Decodes one presentation source, written into a fixture's own directory so
+/// the committed file is never edited in place.
+fn read_north_gaol(fixture: &Fixture, text: &str) -> PresentationSource {
+    let path = fixture.source();
+    fs::write(&path, text).unwrap();
+    source::read_source(&path, &north_gaol_kind).expect("the committed source decodes")
+}
+
+/// The kinds the study's north gaol declares, as its catalog resolves them.
+fn north_gaol_kind(id: &str) -> Option<EntityKind> {
+    match id {
+        "north_gate" => Some(EntityKind::Door),
+        "brazier_02" => Some(EntityKind::Light),
+        _ => None,
+    }
 }
 
 // ---------------------------------------------------------------------------

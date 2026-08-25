@@ -23,7 +23,7 @@ fn a_directory_of_only_the_declared_inputs_compiles() {
         "the second scenario adds exactly one command to the first"
     );
     let text = String::from_utf8(compiled.bytes.clone()).unwrap();
-    assert!(text.contains("\"schema\":\"nomos.rendering_plan@2\""));
+    assert!(text.contains("\"schema\":\"nomos.rendering_plan@3\""));
     assert!(text.ends_with('\n'), "the plan file is newline-terminated");
 }
 

@@ -8,6 +8,8 @@
 
 mod common;
 
+use std::collections::BTreeSet;
+
 use common::{Fixture, Options, scramble};
 use nomos_render_plan::EntityKind;
 
@@ -41,29 +43,58 @@ fn renaming_every_entity_and_machine_leaves_the_kinds_unchanged() {
     assert_eq!(plain_kinds, vec!["water", "door", "light"]);
 }
 
+/// Two closed vocabularies remain on `EntityKind`: the `kind` string the plan
+/// publishes, and the socket names an effect may attach to on that kind.
+///
+/// The kind-to-assembly and kind-to-material tables this test used to assert
+/// are not stubbed here, they are gone: issue #153 moved them to the renderer
+/// catalog with `nomos.rendering_plan@3`, and this crate now names no visual
+/// assembly and no material family at all. What is left is the part a kind
+/// genuinely owns.
 #[test]
-fn the_kind_to_assembly_table_is_closed_and_total() {
-    for kind in [
+fn the_kind_vocabularies_are_closed_and_total() {
+    let kinds = [
         EntityKind::Door,
         EntityKind::Water,
         EntityKind::Light,
         EntityKind::Unknown,
-    ] {
-        assert!(kind.visual_assembly().starts_with("visual/"));
-        assert!(!kind.material_family().is_empty());
-    }
-    // The four rows `build-plan.mjs:33-38,43` assigned, unchanged.
+    ];
+
+    // The plan's `kind` strings, total over the enum and distinct: a consumer
+    // switching on them has four arms and no default.
+    let names: Vec<&str> = kinds.iter().map(|kind| kind.as_str()).collect();
+    assert_eq!(names, vec!["door", "water", "light", "unknown"]);
     assert_eq!(
-        EntityKind::Door.visual_assembly(),
-        "visual/iron_barred_door"
+        names.iter().collect::<BTreeSet<_>>().len(),
+        names.len(),
+        "two kinds share one plan string"
     );
-    assert_eq!(EntityKind::Door.material_family(), "iron_oxidized");
-    assert_eq!(EntityKind::Light.visual_assembly(), "visual/brazier");
-    assert_eq!(EntityKind::Light.material_family(), "iron_brazier");
-    assert_eq!(EntityKind::Water.visual_assembly(), "visual/shallow_water");
-    assert_eq!(EntityKind::Water.material_family(), "water_cold");
-    assert_eq!(EntityKind::Unknown.visual_assembly(), "visual/marker");
-    assert_eq!(EntityKind::Unknown.material_family(), "stone");
+
+    // The socket vocabulary is per kind and closed. Only a door declares one,
+    // which is what makes `tests/source.rs`'s "declares: none" refusal a
+    // property of the kind rather than of the entity it was written for.
+    assert_eq!(EntityKind::Door.sockets(), ["ward"]);
+    for kind in [EntityKind::Water, EntityKind::Light, EntityKind::Unknown] {
+        assert!(
+            kind.sockets().is_empty(),
+            "`{}` declares a socket the source reader would then accept",
+            kind.as_str()
+        );
+    }
+    for socket in EntityKind::Door.sockets() {
+        assert!(
+            socket
+                .bytes()
+                .all(|byte| byte.is_ascii_lowercase() || byte == b'_'),
+            "socket `{socket}` is outside the identifier grammar the source reader enforces"
+        );
+    }
+
+    // `Unknown` is a kind the plan carries, not an absence: it has a string of
+    // its own and no socket, so a primitive the plan has no visual kind for
+    // compiles into something a consumer can see and refuse.
+    assert_eq!(EntityKind::Unknown.as_str(), "unknown");
+    assert!(EntityKind::Unknown.sockets().is_empty());
 }
 
 #[test]

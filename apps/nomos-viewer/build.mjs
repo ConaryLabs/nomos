@@ -6,7 +6,10 @@
 // refuses is a build that fails, not a directory someone publishes anyway.
 //
 // Usage:
-//   node apps/nomos-viewer/build.mjs --from target/executable-gaol --out apps/nomos-viewer/dist
+//   crates/nomos-play/build-wasm.sh
+//   node apps/nomos-viewer/build.mjs --from target/executable-gaol \
+//     --wasm target/wasm32-unknown-unknown/wasm/nomos_play.wasm \
+//     --out apps/nomos-viewer/dist
 
 import { createHash } from "node:crypto";
 import {
@@ -33,7 +36,22 @@ export class BuildError extends Error {
   }
 }
 
-const APP_MODULES = ["plan.mjs", "catalog.mjs", "play.mjs", "render.mjs", "ui.mjs"];
+const APP_MODULES = ["plan.mjs", "catalog.mjs", "play.mjs", "render.mjs", "runtime.mjs", "ui.mjs"];
+
+/// The authoritative runtime, staged beside the app it is the authority for.
+/// A binary is pinned by digest rather than read as text: rules 4, 5, and 6
+/// match regexes over a file's bytes decoded as UTF-8, and a 400 KB binary
+/// read that way can match a credential or a path shape by coincidence. A
+/// build that fails on a coin flip is worse than no check, so the binary is
+/// checked the way the vendored renderer is — against a digest the build
+/// computed — and `crates/nomos-play/build-wasm.sh` is what proves it carries
+/// no build-machine path, at the point where a `strings` sweep is meaningful.
+const RUNTIME_FILE = "nomos_play.wasm";
+
+/// The staged name of one area's executable semantics. `crates/nomos-play`
+/// needs the simulation projection to run a kernel transaction at all, and
+/// refuses any bytes whose digest the area's plan did not publish.
+const semanticsFile = (areaId) => `areas/${areaId}.simulation.json`;
 const VENDOR_FILES = ["three/three.module.min.js", "three/three.core.min.js", "three/LICENSE"];
 
 const sha256 = (bytes) => createHash("sha256").update(bytes).digest("hex");
@@ -44,9 +62,10 @@ const sha256 = (bytes) => createHash("sha256").update(bytes).digest("hex");
 
 /// Stages `out` from the published artifacts in `from` plus the app and vendor
 /// trees. Returns the staged file list with byte counts.
-export function stage({ from, out, app = here }) {
+export function stage({ from, out, wasm, app = here }) {
   const source = resolve(from);
   const target = resolve(out);
+  const runtimeSource = resolve(wasm);
   rmSync(target, { recursive: true, force: true });
   mkdirSync(join(target, "areas"), { recursive: true });
   mkdirSync(join(target, "src"), { recursive: true });
@@ -78,6 +97,36 @@ export function stage({ from, out, app = here }) {
       );
     }
     writeFileSync(join(target, area.plan), planBytes);
+
+    // The simulation projection is what makes the browser able to run a kernel
+    // transaction. It is staged beside the plan that published its digest, and
+    // the runtime refuses the pair if the two disagree; this checks the same
+    // thing here so an artifact that could not be played never ships.
+    const semanticsBytes = readFileSync(
+      join(source, "areas", area.id, "world", "simulation.json"),
+    );
+    const published = plan.projection_digests.find((one) => one.file === "simulation.json");
+    if (!published || published.digest !== sha256(semanticsBytes)) {
+      throw new BuildError(
+        "semantics-digest",
+        `${area.id}'s simulation projection does not match the digest its plan publishes`,
+      );
+    }
+    writeFileSync(join(target, semanticsFile(area.id)), semanticsBytes);
+  }
+
+  const runtimeBytes = readFileSync(runtimeSource);
+  if (runtimeBytes.length < 8 || runtimeBytes.readUInt32BE(0) !== 0x00_61_73_6d) {
+    throw new BuildError("runtime", `${wasm} is not a WebAssembly module`);
+  }
+  writeFileSync(join(target, RUNTIME_FILE), runtimeBytes);
+  // Read back what was written. A short write is the one way a staged binary
+  // can differ from its source without anyone touching it, and it is the only
+  // thing about the copy that can be checked here — the digest's provenance is
+  // the build receipt's job, because at scan time there is nothing independent
+  // to check it against.
+  if (sha256(readFileSync(join(target, RUNTIME_FILE))) !== sha256(runtimeBytes)) {
+    throw new BuildError("runtime", `${RUNTIME_FILE} did not survive being staged`);
   }
 
   copyFileSync(join(app, "index.html"), join(target, "index.html"));
@@ -102,9 +151,45 @@ export function stage({ from, out, app = here }) {
   }
 
   return listFiles(target).map((path) => ({
-    path: relative(target, path),
+    path: relative(target, path).split("\\").join("/"),
     bytes: statSync(path).size,
+    sha256: sha256(readFileSync(path)),
   }));
+}
+
+/// Writes the build receipt.
+///
+/// Outside `dist/`, so the shape rule is unaffected by it. Deliberately not
+/// spelled `name@version`: it is harness output, not a canonical document, and
+/// a canonical-looking identity would invite it into a register it does not
+/// belong in — the same position `docs/review/nomos-viewer.md` section 5.5
+/// takes about the smoke receipt.
+export function writeReceipt(path, staged, report, options) {
+  const runtime = staged.find((one) => one.path === RUNTIME_FILE);
+  const receipt = {
+    receipt: "nomos-viewer-build/1",
+    generated_by: "apps/nomos-viewer/build.mjs",
+    node: process.version,
+    files: staged,
+    total_bytes: staged.reduce((sum, one) => sum + one.bytes, 0),
+    runtime: {
+      path: RUNTIME_FILE,
+      bytes: runtime.bytes,
+      sha256: runtime.sha256,
+      target: "wasm32-unknown-unknown",
+      profile: "wasm",
+      built_by: "crates/nomos-play/build-wasm.sh",
+    },
+    semantics: staged
+      .filter((one) => one.path.endsWith(".simulation.json"))
+      .map((one) => ({ path: one.path, bytes: one.bytes, sha256: one.sha256 })),
+    scanned: report.files,
+    from: options.from,
+    outcome: "pass",
+  };
+  mkdirSync(dirname(resolve(path)), { recursive: true });
+  writeFileSync(resolve(path), `${JSON.stringify(receipt, null, 2)}\n`);
+  return receipt;
 }
 
 const listFiles = (dir) =>
@@ -129,9 +214,11 @@ const EXPECTED_FILES = [
   "areas.json",
   "index.html",
   "src/catalog.mjs",
+  "nomos_play.wasm",
   "src/plan.mjs",
   "src/play.mjs",
   "src/render.mjs",
+  "src/runtime.mjs",
   "src/ui.mjs",
   "vendor/three/LICENSE",
   "vendor/three/three.core.min.js",
@@ -165,6 +252,13 @@ const PROJECTION_FILES = [
   "persistence.json",
   "diagnostics.json",
 ];
+
+/// The staged simulation projections, by name.
+const SEMANTICS_NAME = /^areas\/[a-z0-9-]+\.simulation\.json$/;
+
+/// The app modules that construct the staged layout and therefore name it. A
+/// closed list, so the exemption in rule 4 is declared rather than inferred.
+const LAYOUT_MODULES = new Set(["src/plan.mjs"]);
 
 const SOURCE_MARKERS = [/^\s*schema\s+nomos\./m, /^\s*entity\s+[a-z_]+\s*\{/m, /^\s*catalog\s*\{/m];
 
@@ -245,6 +339,7 @@ export function scanDist(dir) {
     // scan is a second opinion about the staged tree, so it re-derives the
     // layout from what `areas.json` actually says.
     ...collection.areas.map((one) => `areas/${one.plan.file}`),
+    ...collection.areas.map((one) => semanticsFile(one.id)),
   ].sort();
   if (files.join("\n") !== expected.join("\n")) {
     refuse(
@@ -260,10 +355,35 @@ export function scanDist(dir) {
     manifest.packages.flatMap((one) => one.files).map((one) => [`vendor/${one.path}`, one]),
   );
 
+  // Rule 9: every staged file is either text-scanned or checked as a binary,
+  // and nothing is neither. `binaries` is the closed set of the second kind, so
+  // the exemption below is a declared list rather than a hole.
+  const binaries = new Set([RUNTIME_FILE]);
+
   for (const name of files) {
     const bytes = readFileSync(join(root, name));
     const text = bytes.toString("utf8");
     const vendored = vendorDigests.get(name);
+
+    if (binaries.has(name)) {
+      // Checked as what it claims to be, not read as text. Rules 4, 5, and 6
+      // match regexes over a file's bytes decoded as UTF-8, and a 400 KB binary
+      // read that way can match a credential or a path shape by coincidence; a
+      // build that fails on a coin flip is worse than no check. The two
+      // properties that matter for this binary — no external origin, no
+      // build-machine path — are enforced where they can be measured, by
+      // `crates/nomos-play/build-wasm.sh`, which sweeps the linked module and
+      // fails closed on a path from the machine that built it. What is left to
+      // check here is that a WebAssembly module is what arrived.
+      if (bytes.length < 8) refuse("binary", `${name} is too short to be a module`);
+      if (bytes.readUInt32BE(0) !== 0x00_61_73_6d) {
+        refuse("binary", `${name} is not a WebAssembly module`);
+      }
+      if (bytes.readUInt32LE(4) !== 1) {
+        refuse("binary", `${name} declares WebAssembly version ${bytes.readUInt32LE(4)}`);
+      }
+      continue;
+    }
 
     // 3. The vendored files are pinned by digest rather than read for content.
     if (vendored) {
@@ -317,7 +437,12 @@ export function scanDist(dir) {
     for (const marker of SOURCE_MARKERS) {
       if (marker.test(text)) refuse("forbidden-input", `${name} carries .nomos source`);
     }
-    for (const match of text.matchAll(/[^"'\s]*\.nomos/g)) {
+    // `.nomos` as a file extension, not as the tail of any identifier that
+    // happens to contain it: `exports.nomos_play_step` is not a source file.
+    // The rule is about what the artifact carries, and a false positive costs a
+    // build for nothing — the same defect `docs/review/nomos-viewer.md` section
+    // 10 finding 1 records for the acceptance grep.
+    for (const match of text.matchAll(/[^"'\s]*\.nomos(?![\w-])/g)) {
       const occurrence = match[0];
       const before = text.slice(Math.max(0, match.index - 10), match.index);
       if (!/"path"\s*:\s*"$/.test(before) || !PROVENANCE_PATH.test(occurrence)) {
@@ -327,7 +452,23 @@ export function scanDist(dir) {
         );
       }
     }
+    // A projection *member* copied into the artifact would be a leak; the
+    // simulation projection staged as `areas/<id>.simulation.json` is not that.
+    // It is the executable semantics the browser needs to run a kernel
+    // transaction at all, its digest is published by the plan beside it, and it
+    // is named in the shape rule above rather than smuggled in. The other three
+    // projections stay refused everywhere, as do `world-ir.json` and the
+    // compiler receipts.
+    const isStagedSemantics = SEMANTICS_NAME.test(name);
     for (const projection of PROJECTION_FILES) {
+      // Two positions may name the simulation projection: the staged file
+      // itself, and the one app module that constructs the staged layout. The
+      // rule's job is to catch a projection *member* copied into the artifact,
+      // and neither of those is that. The other three projections, the World
+      // IR, and the compiler receipts stay refused everywhere, in every file.
+      if (projection === "simulation.json" && (isStagedSemantics || LAYOUT_MODULES.has(name))) {
+        continue;
+      }
       for (const match of text.matchAll(new RegExp(projection.replace(".", "\\."), "g"))) {
         const before = text.slice(Math.max(0, match.index - 10), match.index);
         if (!/"file"\s*:\s*"$/.test(before)) {
@@ -363,10 +504,17 @@ export function scanDist(dir) {
 // ---------------------------------------------------------------------------
 
 const parseArguments = (argv) => {
-  const options = { from: "target/executable-gaol", out: join(here, "dist") };
+  const options = {
+    from: "target/executable-gaol",
+    out: join(here, "dist"),
+    wasm: "target/wasm32-unknown-unknown/wasm/nomos_play.wasm",
+    receipt: "target/nomos-viewer-build/receipt.json",
+  };
   for (let index = 0; index < argv.length; index += 1) {
     if (argv[index] === "--from") options.from = argv[index + 1];
     else if (argv[index] === "--out") options.out = argv[index + 1];
+    else if (argv[index] === "--wasm") options.wasm = argv[index + 1];
+    else if (argv[index] === "--receipt") options.receipt = argv[index + 1];
     else if (argv[index].startsWith("--")) throw new BuildError("usage", `unknown option ${argv[index]}`);
   }
   return options;
@@ -377,9 +525,12 @@ if (process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url) 
   const options = parseArguments(process.argv.slice(2));
   const staged = stage(options);
   const report = scanDist(options.out);
-  const bytes = staged.reduce((sum, one) => sum + one.bytes, 0);
+  const receipt = writeReceipt(options.receipt, staged, report, options);
+  const bytes = receipt.total_bytes;
   process.stdout.write(
-    `NOMOS_VIEWER_BUILD PASS files=${report.files} bytes=${bytes} out=${relative(process.cwd(), resolve(options.out)) || "."}\n`,
+    `NOMOS_VIEWER_BUILD PASS files=${report.files} bytes=${bytes} ` +
+      `wasm=${receipt.runtime.bytes} wasm_sha256=${receipt.runtime.sha256} ` +
+      `out=${relative(process.cwd(), resolve(options.out)) || "."}\n`,
   );
   for (const one of staged.sort((left, right) => right.bytes - left.bytes)) {
     process.stdout.write(`  ${String(one.bytes).padStart(8)}  ${one.path}\n`);

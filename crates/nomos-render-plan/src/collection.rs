@@ -1,6 +1,6 @@
 //! The area collection: schema identity, route chain, and canonical bytes.
 //!
-//! This is the owner file for `nomos.area_collection@1`, registered in
+//! This is the owner file for `nomos.area_collection@2`, registered in
 //! `docs/evaluation/R1_SCHEMA_OWNERSHIP.md`.
 //!
 //! # What it replaces
@@ -31,6 +31,22 @@
 //! One `CanonicalValue`, written through `nomos_core`'s encoder exactly as the
 //! plan is. There is no encoder here and no floating-point value anywhere on the
 //! path: every number it copies is an integer the plan already carried.
+//!
+//! # Why `@2`
+//!
+//! `@1` published `visual_grammar.entity_assemblies` as
+//! `{kind, material_family, visual_assembly}` rows copied out of the plan.
+//! `nomos.rendering_plan@3` stops carrying an assembly or a material family at
+//! all (issue #153): those are renderer-catalog data and the accepted viewer
+//! catalog owns them. The grammar therefore publishes `entity_kinds`, the set
+//! of compiled kinds the collection's areas use, and the viewer maps each kind
+//! to an assembly and a material itself.
+//!
+//! The identity moves rather than the field changing under a fixed version. The
+//! owner's ruling on `nomos.presentation_source@2` in the same slice is the
+//! precedent and the reason: versioned means versioned. `@1`'s register row is
+//! replaced; it was never persisted anywhere, never entered a hash domain, and
+//! had no consumer outside this repository.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
@@ -52,7 +68,7 @@ use crate::read::{self, Shape};
 /// rule out.
 #[must_use]
 pub fn area_collection_schema() -> SchemaId {
-    SchemaId::new("nomos.area_collection", 1).expect("the area-collection schema id is a literal")
+    SchemaId::new("nomos.area_collection", 2).expect("the area-collection schema id is a literal")
 }
 
 /// One rendering plan named on the command line.
@@ -70,7 +86,7 @@ pub struct PlanInput {
 /// A compiled collection.
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct CompiledCollection {
-    /// Canonical bytes under `nomos.area_collection@1`.
+    /// Canonical bytes under `nomos.area_collection@2`.
     pub bytes: Vec<u8>,
     /// Area count, for the command's status line.
     pub area_count: usize,
@@ -479,15 +495,15 @@ fn read_area(input: &PlanInput) -> PlanResult<Area> {
 /// | `rendering_plan_schema` | `:32`, `plan.schema` — read here from the one constant the identity was bound against |
 /// | `projection_schemas` | `:33`, copied verbatim |
 /// | `architecture_style` | `:34`, `plan.architecture.style`, copied verbatim |
-/// | `entity_assemblies` | `:35`, the unique `(kind, visual_assembly, material_family)` rows |
+/// | `entity_kinds` | `:35`, the unique `kind` values; `@1` published the assembly and material beside each and `@2` does not (issue #153) |
 /// | `actor_assemblies` | `:36`, the unique `actors[].assembly` values |
 /// | `effect_assemblies` | `:37`, the unique `effects[].assembly` values |
 ///
 /// The study's `uniqueRows` (`:30`) deduplicated by JSON text and sorted; here
-/// the deduplication and the ordering are both a `BTreeSet`, and the entity row
-/// is a declared-field object rather than a three-element array, because a
-/// positional triple has no field names and `CanonicalValue` gives no reason to
-/// keep one. `docs/review/area-collection.md` records it.
+/// the deduplication and the ordering are both a `BTreeSet`. `@1` emitted a
+/// declared-field object per entity row rather than the study's three-element
+/// array; `@2` emits the kind alone, because the other two columns left the
+/// plan with issue #153. `docs/review/area-collection.md` records it.
 fn visual_grammar(
     document: &CanonicalValue,
     path: &Path,
@@ -500,43 +516,15 @@ fn visual_grammar(
 
     let mut entities = BTreeSet::new();
     for entity in required_array(document, "entities", "entities", path)? {
-        entities.insert((
-            required_text(entity, "kind", "entities[].kind", path)?.to_owned(),
-            required_text(
-                entity,
-                "visual_assembly",
-                "entities[].visual_assembly",
-                path,
-            )?
-            .to_owned(),
-            required_text(
-                entity,
-                "material_family",
-                "entities[].material_family",
-                path,
-            )?
-            .to_owned(),
-        ));
+        entities.insert(required_text(entity, "kind", "entities[].kind", path)?.to_owned());
     }
-    let entity_assemblies = entities
-        .into_iter()
-        .map(|(kind, visual_assembly, material_family)| {
-            CanonicalValue::object_declared([
-                ("kind", CanonicalValue::text(kind)),
-                ("material_family", CanonicalValue::text(material_family)),
-                ("visual_assembly", CanonicalValue::text(visual_assembly)),
-            ])
-        })
-        .collect();
+    let entity_kinds = entities.into_iter().map(CanonicalValue::text).collect();
 
     Ok(CanonicalValue::object_declared([
         ("actor_assemblies", assemblies(document, "actors", path)?),
         ("architecture_style", style),
         ("effect_assemblies", assemblies(document, "effects", path)?),
-        (
-            "entity_assemblies",
-            CanonicalValue::Array(entity_assemblies),
-        ),
+        ("entity_kinds", CanonicalValue::Array(entity_kinds)),
         ("projection_schemas", projection_schemas),
         (
             "rendering_plan_schema",

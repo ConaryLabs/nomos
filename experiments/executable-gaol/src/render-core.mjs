@@ -202,7 +202,10 @@ export function renderSvg(plan, scenarioId, forensic = false, presentation = {})
   for (const actor of plan.actors) {
     const anchor = presentation.actorPositions?.[actor.id] ?? actor.cell;
     const p = iso(anchor.x + .5, anchor.y + .5, anchor.z ?? 0);
-    if (actor.id === "player") {
+    // The declared role, not the identity. `nomos.rendering_plan@3` carries
+    // `actors[].role`, which retires the ownership audit's item 21: the id was
+    // the only role signal and it was a magic string.
+    if (actor.role === "player") {
       chunks.push(`<g filter="url(#${prefix}-shadow)"><ellipse cx="${p.x}" cy="${p.y+12}" rx="22" ry="9" fill="#080d11" opacity=".6"/><circle cx="${p.x}" cy="${p.y-42}" r="10" fill="#80aeb0"/><path d="M${p.x-12} ${p.y-31} L${p.x-20} ${p.y+7} L${p.x-4} ${p.y+1} L${p.x+5} ${p.y+15} L${p.x+17} ${p.y+8} L${p.x+11} ${p.y-30}Z" fill="${palette.teal}" stroke="#182a2e" stroke-width="4"/><path d="M${p.x+9} ${p.y-17} L${p.x+36} ${p.y-39}" stroke="${palette.cyanDim}" stroke-width="5"/></g>`);
     } else {
       chunks.push(`<g filter="url(#${prefix}-shadow)"><ellipse cx="${p.x}" cy="${p.y+13}" rx="30" ry="10" fill="#080d11" opacity=".65"/><circle cx="${p.x+3}" cy="${p.y-45}" r="12" fill="#9d7a5c"/><path d="M${p.x-19} ${p.y-33} L${p.x-24} ${p.y+11} L${p.x+21} ${p.y+11} L${p.x+17} ${p.y-33}Z" fill="${palette.ochre}" stroke="#392921" stroke-width="5"/><path d="M${p.x-29} ${p.y-28} Q${p.x-53} ${p.y-9} ${p.x-31} ${p.y+12} Q${p.x-7} ${p.y-8} ${p.x-29} ${p.y-28}Z" fill="${palette.rust}" stroke="#3c2c27" stroke-width="5"/></g>`);
@@ -231,7 +234,7 @@ export function renderSvg(plan, scenarioId, forensic = false, presentation = {})
   const primaryMovement = movementOf(scenario, plan.objective.gate);
   const waterCost = Math.max(...plan.entities.filter((entry) => entry.kind === "water").map((entry) => movementOf(scenario, entry.id)?.cost ?? 1));
   chunks.push(`<g><rect x="870" y="31" width="298" height="82" rx="9" fill="#0a1117" opacity=".84" stroke="#39474d"/>${pixelText(plan.objective.gate.replaceAll("_", " "), 891, 45, 2, palette.muted)}${pixelText(primaryMovement?.disposition ?? "unknown", 891, 66, 3, primaryMovement?.disposition === "blocked" ? palette.danger : palette.cyan)}${pixelText(`WATER ${waterCost} TICK ${scenario.tick} ${scenario.state_hash.slice(0,8)}`, 891, 95, 1, palette.text)}</g>`);
-  if (forensic) chunks.push(`<g font-family="DejaVu Sans Mono, monospace" font-size="11"><rect x="31" y="454" width="1138" height="67" rx="7" fill="#071016" opacity=".92" stroke="${palette.cyanDim}"/><text x="48" y="477" fill="${palette.cyan}">FORENSIC PROJECTION OWNERSHIP</text><text x="48" y="496" fill="${palette.text}">renderer input: nomos.rendering_plan@2 | source/World IR unavailable</text><text x="48" y="515" fill="${palette.muted}">movement: navigation projection + runtime state | light: simulation/persistence projection + runtime state | visuals: stable assembly IDs</text></g>`);
+  if (forensic) chunks.push(`<g font-family="DejaVu Sans Mono, monospace" font-size="11"><rect x="31" y="454" width="1138" height="67" rx="7" fill="#071016" opacity=".92" stroke="${palette.cyanDim}"/><text x="48" y="477" fill="${palette.cyan}">FORENSIC PROJECTION OWNERSHIP</text><text x="48" y="496" fill="${palette.text}">renderer input: nomos.rendering_plan@3 | source/World IR unavailable</text><text x="48" y="515" fill="${palette.muted}">movement: navigation projection + runtime state | light: simulation/persistence projection + runtime state | visuals: stable assembly IDs</text></g>`);
   chunks.push(`</svg>`);
   return chunks.join("");
 }

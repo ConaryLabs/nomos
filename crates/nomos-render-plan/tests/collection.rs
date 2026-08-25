@@ -114,16 +114,20 @@ fn schema(name: &str, version: u64) -> CanonicalValue {
     ])
 }
 
-fn entity(id: &str, kind: &str, assembly: &str, material: &str) -> CanonicalValue {
+/// One compiled entity, in the two fields the collection reads.
+///
+/// `nomos.rendering_plan@2` also carried a `visual_assembly` and a
+/// `material_family` on every entity, and the collection copied both into the
+/// shared grammar. `@3` carries neither (issue #153), so a kind is the whole
+/// of what an entity contributes.
+fn entity(id: &str, kind: &str) -> CanonicalValue {
     CanonicalValue::object_declared([
         ("id", CanonicalValue::text(id)),
         ("kind", CanonicalValue::text(kind)),
-        ("material_family", CanonicalValue::text(material)),
-        ("visual_assembly", CanonicalValue::text(assembly)),
     ])
 }
 
-/// One `nomos.rendering_plan@2` document, in the fields the collection reads.
+/// One `nomos.rendering_plan@3` document, in the fields the collection reads.
 fn plan_document(spec: &AreaSpec) -> CanonicalValue {
     let mut route = vec![(
         "to_area",
@@ -141,10 +145,12 @@ fn plan_document(spec: &AreaSpec) -> CanonicalValue {
                 CanonicalValue::object_declared([
                     ("assembly", CanonicalValue::text("visual/player_silhouette")),
                     ("id", CanonicalValue::text("player")),
+                    ("role", CanonicalValue::text("player")),
                 ]),
                 CanonicalValue::object_declared([
                     ("assembly", CanonicalValue::text("visual/gaoler_silhouette")),
                     ("id", CanonicalValue::text("gaoler")),
+                    ("role", CanonicalValue::text("pursuer")),
                 ]),
             ]),
         ),
@@ -177,14 +183,12 @@ fn plan_document(spec: &AreaSpec) -> CanonicalValue {
         (
             "entities",
             CanonicalValue::Array(vec![
-                entity(
-                    spec.gate,
-                    "door",
-                    "visual/iron_barred_door",
-                    "iron_oxidized",
-                ),
-                entity("brazier", "light", "visual/brazier", "iron_brazier"),
-                entity("channel", "water", "visual/shallow_water", "water_cold"),
+                entity(spec.gate, "door"),
+                // A second door, so the grammar's deduplication is exercised
+                // rather than implied by three entities of three kinds.
+                entity("inner_gate", "door"),
+                entity("brazier", "light"),
+                entity("channel", "water"),
             ]),
         ),
         (
@@ -285,7 +289,7 @@ fn text(bytes: &[u8]) -> String {
 fn the_schema_identity_is_declared_here() {
     assert_eq!(
         collection::area_collection_schema().to_string(),
-        "nomos.area_collection@1"
+        "nomos.area_collection@2"
     );
 }
 
@@ -306,9 +310,9 @@ fn four_areas_compile_to_one_ordered_chain() {
         cursor += at + needle.len();
     }
 
-    assert!(document.contains("\"schema\":\"nomos.area_collection@1\""));
+    assert!(document.contains("\"schema\":\"nomos.area_collection@2\""));
     assert!(document.contains("\"start_area\":\"lower-sump\""));
-    assert!(document.contains("\"rendering_plan_schema\":\"nomos.rendering_plan@2\""));
+    assert!(document.contains("\"rendering_plan_schema\":\"nomos.rendering_plan@3\""));
     // The chain: every hop reads its arrival cell from the destination's own
     // plan, and the last hop carries none.
     assert!(document.contains(
@@ -373,6 +377,41 @@ fn the_grammar_digest_covers_the_grammar_and_nothing_else() {
         document[at..at + 64].to_owned()
     };
     assert_eq!(digest(&first), digest(&second));
+}
+
+#[test]
+fn the_shared_grammar_publishes_entity_kinds_and_no_entity_assembly() {
+    // `nomos.area_collection@1` published one `{kind, material_family,
+    // visual_assembly}` row per entity, copied out of the plan. `@2` publishes
+    // the kinds alone, because `nomos.rendering_plan@3` carries neither of the
+    // other two columns any more (issue #153) and the viewer's catalog is what
+    // maps a kind to an assembly and a material.
+    let corpus = Corpus::new("grammar-kinds", &four_areas());
+    let document = text(&corpus.build().unwrap());
+
+    // Sorted, and deduplicated: each plan declares four entities of three
+    // kinds, and the four plans share one grammar between them.
+    assert!(
+        document.contains("\"entity_kinds\":[\"door\",\"light\",\"water\"]"),
+        "{document}"
+    );
+    assert!(
+        !document.contains("entity_assemblies"),
+        "the collection still publishes `@1`'s entity rows"
+    );
+
+    // The grammar still names an assembly where the plan still carries one: on
+    // actors, on effects, and on the architecture style.
+    assert!(
+        document.contains(
+            "\"actor_assemblies\":[\"visual/gaoler_silhouette\",\"visual/player_silhouette\"]"
+        ),
+        "{document}"
+    );
+    assert!(
+        document.contains("\"effect_assemblies\":[\"visual/cyan_crescent\"]"),
+        "{document}"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -657,7 +696,7 @@ fn the_plan_identity_and_version_are_bound() {
     };
     fields.insert(
         nomos_core::FieldName::declared("schema"),
-        CanonicalValue::text("nomos.rendering_plan@1"),
+        CanonicalValue::text("nomos.rendering_plan@2"),
     );
     write_plan(&corpus.plan("kiln-yard"), &document);
 
@@ -666,7 +705,7 @@ fn the_plan_identity_and_version_are_bound() {
     assert!(
         error
             .message()
-            .contains("expected schema `nomos.rendering_plan@2`, found `nomos.rendering_plan@1`"),
+            .contains("expected schema `nomos.rendering_plan@3`, found `nomos.rendering_plan@2`"),
         "{error}"
     );
     assert_eq!(error.path(), Some(corpus.plan("kiln-yard").as_path()));
@@ -677,7 +716,7 @@ fn a_plan_that_is_not_canonical_bytes_is_refused() {
     let corpus = Corpus::new("not-canonical", &four_areas());
     fs::write(
         corpus.plan("kiln-yard"),
-        b"{ \"schema\": \"nomos.rendering_plan@2\" }\n",
+        b"{ \"schema\": \"nomos.rendering_plan@3\" }\n",
     )
     .unwrap();
     let error = collection::build(&corpus.inputs()).unwrap_err();
@@ -715,7 +754,7 @@ fn the_collection_mode_writes_the_document_and_reports_it() {
     // The status document names the identity the file carries, and the file is
     // what the library would have produced.
     assert!(
-        reported.contains("\"schema\":{\"name\":\"nomos.area_collection\",\"version\":1}"),
+        reported.contains("\"schema\":{\"name\":\"nomos.area_collection\",\"version\":2}"),
         "{reported}"
     );
     assert_eq!(fs::read(&out).unwrap(), corpus.build().unwrap());

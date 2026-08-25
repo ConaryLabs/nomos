@@ -9,6 +9,7 @@ import {
   SOCKETS,
   TRIM_FAMILIES,
   VERTICAL_STEPS_PER_CELL,
+  assemblyOf,
   cellsOf,
 } from "./renderer-catalog.mjs";
 
@@ -18,7 +19,7 @@ const cistern = readPlan("cistern-walk");
 const ember = readPlan("ember-vault");
 const ossuary = readPlan("ossuary-reach");
 
-// The area collection itself is not read here any more. `nomos.area_collection@1`
+// The area collection itself is not read here any more. `nomos.area_collection@2`
 // is emitted by `crates/nomos-render-plan/src/collection.rs`, its route-graph and
 // visual-grammar refusals are proved by `crates/nomos-render-plan/tests/collection.rs`,
 // and the committed `area-collection.example.json` is compared byte for byte by
@@ -27,7 +28,7 @@ const ossuary = readPlan("ossuary-reach");
 
 const grammar = (plan) => ({
   architectureStyle: plan.architecture.style,
-  entities: [...new Set(plan.entities.map((entity) => `${entity.kind}:${entity.visual_assembly}:${entity.material_family}`))].sort(),
+  entities: [...new Set(plan.entities.map((entity) => entity.kind))].sort(),
   actors: [...new Set(plan.actors.map((actor) => actor.assembly))].sort(),
   effects: [...new Set(plan.effects.map((effect) => effect.assembly))].sort(),
 });
@@ -93,7 +94,20 @@ test("content selects from the renderer catalog's closed sets", () => {
     for (const effect of plan.effects) {
       assert.ok(EFFECT_ASSEMBLIES.includes(effect.assembly));
       const anchor = plan.entities.find((entity) => entity.id === effect.anchor.entity);
-      assert.ok(SOCKETS[anchor.visual_assembly]?.[effect.anchor.socket], "the socket resolves in the catalog");
+      assert.ok(SOCKETS[anchor.kind]?.[effect.anchor.socket], "the socket resolves in the catalog");
+    }
+  }
+});
+
+test("every actor declares a role and no plan entity names an assembly", () => {
+  for (const plan of [cistern, ember, ossuary, north]) {
+    assert.equal(plan.schema, "nomos.rendering_plan@3");
+    const roles = plan.actors.map((actor) => actor.role).sort();
+    assert.deepEqual(roles, ["player", "pursuer"]);
+    for (const entity of plan.entities) {
+      assert.equal(entity.visual_assembly, undefined);
+      assert.equal(entity.material_family, undefined);
+      assert.ok(assemblyOf(entity.kind), "the catalog owns the assembly for every kind");
     }
   }
 });
@@ -120,7 +134,7 @@ test("each area declares its own arrival cell, and only the start area declares 
 test("every added area is a distinct composition", () => {
   const anchors = (plan) => plan.entities.map((entity) => entity.anchor);
   assert.notDeepEqual(anchors(cistern), anchors(north));
-  assert.deepEqual(cistern.actors.find((actor) => actor.id === "player").cell, { x: 7, y: 4, z: 0 });
+  assert.deepEqual(cistern.actors.find((actor) => actor.role === "player").cell, { x: 7, y: 4, z: 0 });
   assert.equal(cistern.entities.find((entity) => entity.kind === "water").id, "runoff_channel");
   assert.notDeepEqual(anchors(ember), anchors(north));
   assert.equal(ember.architecture.masses.length, 2);

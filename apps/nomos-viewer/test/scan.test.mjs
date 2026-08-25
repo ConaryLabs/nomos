@@ -12,27 +12,54 @@ import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { BuildError, scanDist, stage, stripComments } from "../build.mjs";
-import { collectionDocument, hallPlan, yardPlan } from "./fixtures.mjs";
+import {
+  collectionDocument,
+  hallPlan,
+  publishedSemanticsBytes,
+  yardPlan,
+} from "./fixtures.mjs";
 
 const app = dirname(fileURLToPath(new URL("../build.mjs", import.meta.url)));
 
 const workspace = () => mkdtempSync(join(tmpdir(), "nomos-viewer-scan-"));
 
+/// The published runtime a build stages beside the app.
+///
+/// Eight bytes: the WebAssembly magic number and the version word. The build
+/// pins the binary by a digest it computed and the scan checks that magic
+/// rather than reading the file as text, so a real module would prove nothing
+/// more here — what the module does is `crates/nomos-play`'s own tests to make.
+const WASM_HEADER = Buffer.from([0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00]);
+
 /// Writes the published artifacts a build stages from.
 function publish(root) {
   const from = join(root, "published");
-  mkdirSync(join(from, "areas", "test-hall"), { recursive: true });
-  mkdirSync(join(from, "areas", "test-yard"), { recursive: true });
+  mkdirSync(from, { recursive: true });
   writeFileSync(join(from, "areas.json"), `${JSON.stringify(collectionDocument(), null, 2)}\n`);
-  writeFileSync(join(from, "areas", "test-hall", "rendering-plan.json"), `${JSON.stringify(hallPlan())}\n`);
-  writeFileSync(join(from, "areas", "test-yard", "rendering-plan.json"), `${JSON.stringify(yardPlan())}\n`);
+  for (const [id, plan] of [
+    ["test-hall", hallPlan()],
+    ["test-yard", yardPlan()],
+  ]) {
+    mkdirSync(join(from, "areas", id, "world"), { recursive: true });
+    writeFileSync(join(from, "areas", id, "rendering-plan.json"), `${JSON.stringify(plan)}\n`);
+    // The executable semantics, under the name the compiler publishes it as.
+    // The plan beside it carries the digest of exactly these bytes, which is
+    // what lets the build refuse a pair that does not belong together.
+    writeFileSync(join(from, "areas", id, "world", "simulation.json"), publishedSemanticsBytes(id));
+  }
   return from;
 }
+
+const publishRuntime = (root) => {
+  const path = join(root, "nomos_play.wasm");
+  writeFileSync(path, WASM_HEADER);
+  return path;
+};
 
 const build = (root) => {
   const from = publish(root);
   const out = join(root, "dist");
-  const staged = stage({ from, out, app });
+  const staged = stage({ from, out, wasm: publishRuntime(root), app });
   return { from, out, staged };
 };
 
@@ -63,12 +90,19 @@ test("build stages only published artifacts", (t) => {
   assert.deepEqual(files, [
     "areas.json",
     "areas/test-hall.json",
+    // The executable semantics, staged beside the plan that publishes its
+    // digest. It is the one projection member the artifact carries, because it
+    // is what makes the browser able to run a kernel transaction at all.
+    "areas/test-hall.simulation.json",
     "areas/test-yard.json",
+    "areas/test-yard.simulation.json",
     "index.html",
+    "nomos_play.wasm",
     "src/catalog.mjs",
     "src/plan.mjs",
     "src/play.mjs",
     "src/render.mjs",
+    "src/runtime.mjs",
     "src/ui.mjs",
     "vendor/three/LICENSE",
     "vendor/three/three.core.min.js",
@@ -92,7 +126,7 @@ test("building twice is byte identical", (t) => {
   t.after(() => rmSync(root, { recursive: true, force: true }));
   const { from, out } = build(root);
   const first = listing(out).map((path) => [relative(out, path), readFileSync(path)]);
-  stage({ from, out, app });
+  stage({ from, out, wasm: publishRuntime(root), app });
   const second = listing(out).map((path) => [relative(out, path), readFileSync(path)]);
   assert.equal(first.length, second.length);
   for (let index = 0; index < first.length; index += 1) {
@@ -106,7 +140,7 @@ test("the scan passes on a staged tree", (t) => {
   t.after(() => rmSync(root, { recursive: true, force: true }));
   const { out } = build(root);
   const report = scanDist(out);
-  assert.equal(report.files, 12);
+  assert.equal(report.files, 16);
   assert.ok(report.bytes > 700_000, "the vendored renderer is most of the artifact");
   // And the provenance path the plans legitimately carry survives it: this is
   // the one `.nomos` occurrence the design record's finding 1 permits.
@@ -157,6 +191,19 @@ test("the scan refuses a vendored file that does not match its digest", (t) => {
   const path = join(out, "vendor/three/three.module.min.js");
   writeFileSync(path, `${readFileSync(path, "utf8")}\n// one byte more\n`);
   refuses("vendor", () => scanDist(out));
+});
+
+test("the scan refuses a runtime that is not a WebAssembly module", (t) => {
+  const root = workspace();
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const { out } = build(root);
+  // The binary is the one staged file the scan pins rather than reads, so what
+  // is worth planting is a file that is not the module at all. An empty or
+  // truncated stage fails here, where it is cheap to say so, rather than in the
+  // browser as a failed instantiation.
+  writeFileSync(join(out, "nomos_play.wasm"), "not a module\n");
+  const error = refuses("binary", () => scanDist(out));
+  assert.match(error.message, /not a WebAssembly module/);
 });
 
 test("the scan refuses .nomos outside a provenance path", (t) => {
@@ -250,7 +297,7 @@ test("staging refuses an artifact the viewer could not read", (t) => {
   const broken = structuredClone(hallPlan());
   broken.schema = "nomos.rendering_plan@1";
   writeFileSync(join(from, "areas", "test-hall", "rendering-plan.json"), JSON.stringify(broken));
-  assert.throws(() => stage({ from, out: join(root, "dist"), app }), /NV0102/);
+  assert.throws(() => stage({ from, out: join(root, "dist"), wasm: publishRuntime(root), app }), /NV0102/);
 });
 
 test("staging refuses a plan whose bytes are not the ones the collection names", (t) => {
@@ -264,7 +311,25 @@ test("staging refuses a plan whose bytes are not the ones the collection names",
     join(from, "areas", "test-hall", "rendering-plan.json"),
     `${JSON.stringify(hallPlan(), null, 2)}\n`,
   );
-  refuses("plan-digest", () => stage({ from, out: join(root, "dist"), app }));
+  refuses("plan-digest", () => stage({ from, out: join(root, "dist"), wasm: publishRuntime(root), app }));
+});
+
+test("staging refuses semantics the plan did not publish", (t) => {
+  const root = workspace();
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const from = publish(root);
+  // A plan and its simulation projection are published as a pair, and the plan
+  // carries the digest that says which bytes are its half. The yard's semantics
+  // are a well-formed projection and the wrong one, which is exactly the shape a
+  // stale or mismatched build takes; an artifact that could not be played must
+  // not reach the public directory.
+  writeFileSync(
+    join(from, "areas", "test-hall", "world", "simulation.json"),
+    publishedSemanticsBytes("test-yard"),
+  );
+  refuses("semantics-digest", () =>
+    stage({ from, out: join(root, "dist"), wasm: publishRuntime(root), app }),
+  );
 });
 
 test("staging refuses a vendored file that does not match its manifest", (t) => {
@@ -276,7 +341,7 @@ test("staging refuses a vendored file that does not match its manifest", (t) => 
   const vendored = join(tampered, "vendor/three/three.core.min.js");
   writeFileSync(vendored, `${readFileSync(vendored, "utf8")}\n`);
   assert.throws(
-    () => stage({ from, out: join(root, "dist"), app: tampered }),
+    () => stage({ from, out: join(root, "dist"), wasm: publishRuntime(root), app: tampered }),
     /does not match its recorded digest/,
   );
 });
