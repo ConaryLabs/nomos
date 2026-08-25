@@ -21,6 +21,58 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
+  r1-adoption-evidence:
+    name: R1 offline build, artifact, budgets
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      # Toolchain provisioning belongs to the runner, not to the repository's
+      # dependency closure. Force rustup to resolve the pinned toolchain and
+      # wasm target before the proof removes the network route.
+      - name: Provision the pinned toolchain
+        run: |
+          rustup show
+          cargo --version
+
+      - name: Measure from a network-isolated clean checkout
+        run: |
+          set -euo pipefail
+          export NOMOS_RUNNER_PATH=$PATH
+          export NOMOS_CARGO_HOME=${CARGO_HOME:-$HOME/.cargo}
+          export NOMOS_RUSTUP_HOME=${RUSTUP_HOME:-$HOME/.rustup}
+          export NOMOS_CHROME_BIN=$(command -v google-chrome)
+          sudo --preserve-env=NOMOS_RUNNER_PATH,NOMOS_CARGO_HOME,NOMOS_RUSTUP_HOME,NOMOS_CHROME_BIN,RUNNER_ARCH,ImageOS,ImageVersion,GITHUB_WORKSPACE \
+            unshare --net -- bash -ceu '
+              ip link set lo up
+              export PATH=$NOMOS_RUNNER_PATH
+              export CARGO_HOME=$NOMOS_CARGO_HOME
+              export RUSTUP_HOME=$NOMOS_RUSTUP_HOME
+              export CHROME_BIN=$NOMOS_CHROME_BIN
+              export GIT_CONFIG_COUNT=1
+              export GIT_CONFIG_KEY_0=safe.directory
+              export GIT_CONFIG_VALUE_0=$GITHUB_WORKSPACE
+              export NOMOS_NETWORK_ISOLATED=1
+              cd "$GITHUB_WORKSPACE"
+              docs/evaluation/r1-adoption-evidence.sh target/r1-adoption
+            '
+
+      - name: Upload the complete R1 adoption receipt
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: r1-adoption-evidence
+          path: target/r1-adoption
+          if-no-files-found: error
+          retention-days: 90
+
   viewer:
     name: tests, artifact, scan, browser
     runs-on: ubuntu-24.04

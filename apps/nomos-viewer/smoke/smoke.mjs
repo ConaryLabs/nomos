@@ -6,7 +6,8 @@
 // the design, including the twelve ways this fails and the receipt it writes.
 //
 //   node apps/nomos-viewer/smoke/smoke.mjs --dist apps/nomos-viewer/dist \
-//     --out target/nomos-viewer-smoke [--require-chrome]
+//     --out target/nomos-viewer-smoke [--require-chrome] \
+//     [--pipeline-start-ms <unix-ms>]
 
 import { execFileSync } from "node:child_process";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -40,12 +41,22 @@ const parseArguments = (argv) => {
     out: "target/nomos-viewer-smoke",
     requireChrome: false,
     deadlineMs: DEADLINE_MS,
+    pipelineStartMs: null,
   };
   for (let index = 0; index < argv.length; index += 1) {
     if (argv[index] === "--dist") options.dist = argv[index + 1];
     else if (argv[index] === "--out") options.out = argv[index + 1];
     else if (argv[index] === "--require-chrome") options.requireChrome = true;
     else if (argv[index] === "--deadline-ms") options.deadlineMs = Number(argv[index + 1]);
+    else if (argv[index] === "--pipeline-start-ms") {
+      options.pipelineStartMs = Number(argv[index + 1]);
+    }
+  }
+  if (
+    options.pipelineStartMs !== null &&
+    (!Number.isSafeInteger(options.pipelineStartMs) || options.pipelineStartMs <= 0)
+  ) {
+    throw new Error("--pipeline-start-ms must be a positive integer Unix timestamp in milliseconds");
   }
   return options;
 };
@@ -121,6 +132,9 @@ async function run(options) {
 
   const server = await serve(dist);
   const started = Date.now();
+  if (options.pipelineStartMs !== null && options.pipelineStartMs > started) {
+    fail("--pipeline-start-ms is later than the smoke-lane start");
+  }
   const receipt = {
     receipt: "nomos-viewer-smoke/1",
     generated_by: "apps/nomos-viewer/smoke/smoke.mjs",
@@ -137,6 +151,12 @@ async function run(options) {
       cost: leg.cost,
     })),
     expected: { areas: route.areas, moves: route.moves, cost: route.cost, summary: route.summary },
+    timing: {
+      smoke_started_unix_ms: started,
+      ...(options.pipelineStartMs === null
+        ? {}
+        : { pipeline_started_unix_ms: options.pipelineStartMs }),
+    },
     outcome: "fail",
   };
 
@@ -208,6 +228,7 @@ async function drive({ browser, server, route, collection, out, receipt }) {
   await page.send("Page.enable");
   await page.send("Network.enable");
 
+  const navigationStarted = Date.now();
   const loaded = page.once("Page.loadEventFired");
   await page.send("Page.navigate", { url: `${server.origin}/` });
   await loaded;
@@ -239,6 +260,17 @@ async function drive({ browser, server, route, collection, out, receipt }) {
     fail(`${error.message} (no console error was reported)`);
   }
   await guard();
+
+  // `data-ready` is set only after `renderer.present()` has synchronously
+  // submitted its first WebGL render. This timestamp therefore closes the
+  // content-edit-to-visible interval without counting the rest of the route.
+  const firstFrame = Date.now();
+  receipt.timing.first_frame_unix_ms = firstFrame;
+  receipt.timing.navigation_to_first_frame_ms = firstFrame - navigationStarted;
+  if (receipt.timing.pipeline_started_unix_ms !== undefined) {
+    receipt.timing.edit_to_visible_frame_ms =
+      firstFrame - receipt.timing.pipeline_started_unix_ms;
+  }
 
   const webgl = await page.evaluate(`(() => {
     const canvas = document.querySelector('#frame canvas');

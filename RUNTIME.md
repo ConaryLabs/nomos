@@ -480,6 +480,20 @@ No target is accepted while that lane is red or absent. Locally the smoke lane
 skips with an explicit message when the machine has no Chrome; in CI it is
 required.
 
+The section 1 criterion 4 clean-checkout proof and the complete section 7
+measurement run through one entry point:
+
+```text
+docs/evaluation/r1-adoption-evidence.sh target/r1-adoption
+```
+
+The `R1 offline build, artifact, budgets` CI job invokes it inside a network
+namespace with no default route and loopback as the only enabled interface. The
+script refuses to run without that isolation, forces Cargo offline, records the
+exact environment and commands, and uploads the raw samples and compact
+receipt. `docs/evaluation/r1-adoption-evidence.md` preserves the load-bearing
+receipt from the run that supplied section 7's current values.
+
 Nothing is green until someone other than its author reruns the proof. Under
 `AGENTS.md` the rerun receipt records the commit, the commands, the environment,
 the result, and the reviewer. The author's own run is insufficient.
@@ -491,16 +505,21 @@ that produced it; the values are observations, not portable guarantees. Nothing
 below is a target value, and no unmeasured claim of sufficiency satisfies
 acceptance.
 
+Unless a row names earlier cross-machine evidence, the current values are from
+commit `bdd2229219bfb3b9efdf6c64f0d865f3202a4d82`, workflow run `32905965046`,
+on the `ubuntu24` x86_64 runner image `20260823.283.1`; the compact receipt is
+`docs/evaluation/r1-adoption-evidence.md`.
+
 | Field | Unit | How measured | Value |
 | --- | --- | --- | --- |
-| Workspace build time | s | clean release build of the workspace | not measured |
-| Validation latency | ms | `nomos validate` on the accepted fixture | not measured |
-| Replay throughput | commands/s | `nomos replay` over the accepted log | not measured |
-| Play replay throughput | commands/s | `nomos-play replay` over the recorded four-area session | 1 194 — twenty release-profile replays of the smoke lane's 52-command `session.json` in 0.871 s, 43.5 ms each, process start and the four projection decodes included; measured on the R1-5 branch |
-| Package size | bytes | a compiled world package directory | not measured |
-| Public artifact size | bytes | the staged public site directory | 1 355 141 — `apps/nomos-viewer/dist`, 20 files, measured by `apps/nomos-viewer/build.mjs` on the R1-5 branch. It was 896 680 on the issue #152 branch; the 458 461 bytes are the authoritative runtime at 422 432, the four simulation projections at 24 956, and the loader and adapter |
-| Play runtime size | bytes | `crates/nomos-play/build-wasm.sh`, `stat -c%s` | 422 432, sha256 `70addbe7662caab4af2d0147c09dc8e839dd282c617a99cd325ced026d0d3a0f`. Reproducible, and across machines rather than only across builds: two builds with `target/wasm32-unknown-unknown` removed between them agree byte for byte, and the `ubuntu-24.04` CI runner produced the same digit-for-digit sha256 in run 32883772392, from a different checkout path. The profile is measured rather than assumed — the same crate is 554 732 bytes under the plain release profile, and the four knobs `[profile.wasm]` sets are what closes the gap |
-| Edit-to-visible-frame latency | ms | content edit to first rendered frame | not measured |
+| Workspace build time | s | clean release build of the workspace, Cargo offline | 17.344 |
+| Validation latency | ms | `nomos validate` on the accepted fixture; three warmups, twenty process-level samples | 9.783 median; 9.989 p95 |
+| Replay throughput | commands/s | `nomos replay` over the accepted five-command log; three warmups, twenty process-level samples | 349.668 |
+| Play replay throughput | commands/s | release `nomos-play replay` over the recorded six-area, 77-command browser session; three warmups, twenty process-level samples, process start and six projection decodes included | 1 206.731; 63.476 ms median and 65.064 ms p95 per replay |
+| Package size | bytes | sum of regular-file bytes in the compiled accepted-fixture package | 20 492 across 8 files |
+| Public artifact size | bytes | sum of regular-file bytes in the staged and scanned six-area public site | 1 387 887 across 24 files |
+| Play runtime size | bytes | `crates/nomos-play/build-wasm.sh`, `stat -c%s` | 422 432, sha256 `70addbe7662caab4af2d0147c09dc8e839dd282c617a99cd325ced026d0d3a0f`. The isolated run reproduced the value; two builds with the wasm target removed between them and CI run 32883772392 from another checkout path had already reproduced the same digest. The profile is measured rather than assumed — the same crate was 554 732 bytes under the plain release profile, and the four knobs `[profile.wasm]` sets are what closes the gap |
+| Edit-to-visible-frame latency | ms | cold content pipeline before compilation/capture through the browser's first completed WebGL render; proof-only tests excluded | 27 771 total, of which navigation to first frame was 2 056 |
 
 ## 8. Contract repair
 
