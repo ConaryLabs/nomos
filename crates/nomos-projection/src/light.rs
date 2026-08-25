@@ -313,7 +313,9 @@ impl ResolvedLight {
         &self.reasons
     }
 
-    fn to_canonical(&self) -> CanonicalValue {
+    /// Canonical form of one subject's effective light fact.
+    #[must_use]
+    pub fn to_canonical(&self) -> CanonicalValue {
         CanonicalValue::object_declared([
             ("emitting", CanonicalValue::Bool(self.emitting)),
             ("entity", self.entity.to_canonical()),
@@ -361,16 +363,21 @@ impl ResolvedLightFacts {
             .map(|index| &self.facts[index])
     }
 
-    /// Canonical bytes for deterministic evidence.
+    /// Canonical entity-ordered array of every resolved subject.
     #[must_use]
-    pub fn to_canonical_bytes(&self) -> Vec<u8> {
+    pub fn to_canonical(&self) -> CanonicalValue {
         keyed_array(
             self.facts
                 .iter()
                 .map(|fact| (fact.entity.clone(), fact.to_canonical())),
         )
         .expect("ResolvedLightFacts validates unique subjects")
-        .to_canonical_bytes()
+    }
+
+    /// Canonical bytes for deterministic evidence.
+    #[must_use]
+    pub fn to_canonical_bytes(&self) -> Vec<u8> {
+        self.to_canonical().to_canonical_bytes()
     }
 }
 

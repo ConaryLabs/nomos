@@ -17,7 +17,7 @@ use crate::{
     require_available_run_output, write_run_bundle,
 };
 
-const ROOT_HELP: &str = "Nomos Gate K semantic runtime\n\nUsage:\n  nomos validate <source.nomos>\n  nomos compile <source.nomos> --out <new.world/>\n  nomos inspect <world/>\n  nomos migrate <v1-world/> --to 2 --out <new-v2-world/>\n  nomos run <world/> --commands <commands> --out <new-run/>\n  nomos command <world/> --state <state.json> \"<command>\" --out <new-run/>\n  nomos replay <world/> --log <replay> --out <new-run/>\n  nomos explain-entity <world/> <entity>\n  nomos explain-transition <run/> <entity> --tick <tick> --world <world/>\n  nomos --help\n";
+const ROOT_HELP: &str = "Nomos Gate K semantic runtime\n\nUsage:\n  nomos validate <source.nomos>\n  nomos compile <source.nomos> --out <new.world/>\n  nomos inspect <world/>\n  nomos migrate <v1-world/> --to 2 --out <new-v2-world/>\n  nomos run <world/> --commands <commands> --out <new-run/>\n  nomos command <world/> --state <state.json> \"<command>\" --out <new-run/>\n  nomos replay <world/> --log <replay> --out <new-run/>\n  nomos explain-entity <world/> <entity>\n  nomos explain-transition <run/> <entity> --tick <tick> --world <world/>\n  nomos effective-facts <world/> --state <state.json>\n  nomos --help\n";
 const VALIDATE_HELP: &str = "Validate one Nomos source file without writing artifacts.\n\nUsage:\n  nomos validate <source.nomos>\n";
 const COMPILE_HELP: &str = "Compile one Nomos source file into a new immutable world package.\n\nUsage:\n  nomos compile <source.nomos> --out <new.world/>\n";
 const INSPECT_HELP: &str =
@@ -28,6 +28,7 @@ const COMMAND_HELP: &str = "Execute one command from a verified persisted runtim
 const REPLAY_HELP: &str = "Reproduce one strict replay log against a compiled world's initial state.\n\nUsage:\n  nomos replay <world/> --log <replay> --out <new-run/>\n";
 const EXPLAIN_ENTITY_HELP: &str = "Explain one entity from a strictly verified compiled world.\n\nUsage:\n  nomos explain-entity <world/> <entity>\n";
 const EXPLAIN_TRANSITION_HELP: &str = "Explain one committed transition after strictly verifying its world and re-executing its run.\n\nUsage:\n  nomos explain-transition <run/> <entity> --tick <tick> --world <world/>\n";
+const EFFECTIVE_FACTS_HELP: &str = "Project every resolver subject's effective facts at one verified runtime state.\n\nUsage:\n  nomos effective-facts <world/> --state <state.json>\n";
 
 /// One completed command-line execution, including its exact stdout bytes.
 #[derive(Clone, PartialEq, Eq, Debug)]
@@ -93,6 +94,10 @@ enum Command {
         entity: String,
         tick: u64,
         package: String,
+    },
+    EffectiveFacts {
+        package: String,
+        state: String,
     },
 }
 
@@ -233,6 +238,20 @@ fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Command, Diagnostic
                 package: package.clone(),
             }
         }
+        [name, help] if name == "effective-facts" && help == "--help" => {
+            Command::Help(EFFECTIVE_FACTS_HELP)
+        }
+        [name, package, state_option, state]
+            if name == "effective-facts"
+                && !is_option(package)
+                && state_option == "--state"
+                && !is_option(state) =>
+        {
+            Command::EffectiveFacts {
+                package: package.clone(),
+                state: state.clone(),
+            }
+        }
         [name, help] if name == "command" && help == "--help" => Command::Help(COMMAND_HELP),
         [
             name,
@@ -308,6 +327,9 @@ fn execute_command(command: Command) -> Execution {
             tick,
             package,
         } => explain_transition(&run, &entity, tick, &package).map(RuntimeOutcome::completed),
+        Command::EffectiveFacts { package, state } => {
+            effective_facts(&package, &state).map(RuntimeOutcome::completed)
+        }
     };
     match result {
         Ok(outcome) => outcome.into_execution(),
@@ -558,6 +580,17 @@ fn explain_transition(
     let world = open_compiled_world(&package_path)?;
     let run = open_run_bundle(&run_path, &world)?;
     crate::explanation::transition_report(&world, &run, &entity, tick)
+}
+
+fn effective_facts(package: &str, state: &str) -> Result<CanonicalValue, Diagnostic> {
+    let package_path = relative_filesystem_path(package)?;
+    let state_path = relative_filesystem_path(state)?;
+    let world = open_compiled_world(&package_path)?;
+    let state = PersistedRuntimeState::from_canonical_bytes(
+        &read_regular_bytes(&state_path, "persisted runtime state")?,
+        world.simulation(),
+    )?;
+    nomos_sim::effective_facts(world.simulation(), &state, world.package_digest())
 }
 
 fn publish_execution(

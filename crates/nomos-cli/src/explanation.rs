@@ -65,7 +65,7 @@ pub(crate) fn entity_report(
             CanonicalValue::object_declared([
                 (
                     "ground_movement",
-                    movement.map_or(CanonicalValue::Null, movement_to_canonical),
+                    movement.map_or(CanonicalValue::Null, MovementDisposition::to_canonical),
                 ),
                 (
                     "light_emission",
@@ -188,26 +188,6 @@ pub(crate) fn transition_report(
         ("status", CanonicalValue::text("completed")),
         ("tick", CanonicalValue::Uint(tick)),
     ]))
-}
-
-fn movement_to_canonical(disposition: &MovementDisposition) -> CanonicalValue {
-    match disposition {
-        MovementDisposition::Blocked { reasons } => CanonicalValue::object_declared([
-            ("kind", CanonicalValue::text("blocked")),
-            (
-                "reasons",
-                CanonicalValue::Array(reasons.iter().map(StableId::to_canonical).collect()),
-            ),
-        ]),
-        MovementDisposition::Traversable { cost, reasons } => CanonicalValue::object_declared([
-            ("cost", CanonicalValue::Uint(u64::from(*cost))),
-            ("kind", CanonicalValue::text("traversable")),
-            (
-                "reasons",
-                CanonicalValue::Array(reasons.iter().map(StableId::to_canonical).collect()),
-            ),
-        ]),
-    }
 }
 
 fn active_claims(receipt: &CausalReceipt, entity: &EntityId, before: bool) -> BTreeSet<ClaimRef> {

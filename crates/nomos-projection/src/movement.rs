@@ -564,7 +564,12 @@ impl MovementDisposition {
         }
     }
 
-    fn to_canonical(&self) -> CanonicalValue {
+    /// Canonical form of the composed disposition.
+    ///
+    /// Public so that every consumer of an effective movement fact renders the
+    /// one spelling this crate owns, rather than re-deriving the object.
+    #[must_use]
+    pub fn to_canonical(&self) -> CanonicalValue {
         match self {
             Self::Blocked { reasons } => CanonicalValue::object_declared([
                 ("kind", CanonicalValue::text("blocked")),
@@ -614,7 +619,9 @@ impl ResolvedMovement {
         &self.disposition
     }
 
-    fn to_canonical(&self) -> CanonicalValue {
+    /// Canonical form of one subject's effective movement fact.
+    #[must_use]
+    pub fn to_canonical(&self) -> CanonicalValue {
         CanonicalValue::object_declared([
             ("disposition", self.disposition.to_canonical()),
             ("entity", self.entity.to_canonical()),
@@ -660,16 +667,21 @@ impl ResolvedMovementFacts {
             .map(|index| self.facts[index].disposition())
     }
 
-    /// Canonical bytes for deterministic evidence and atomicity checks.
+    /// Canonical entity-ordered array of every resolved subject.
     #[must_use]
-    pub fn to_canonical_bytes(&self) -> Vec<u8> {
+    pub fn to_canonical(&self) -> CanonicalValue {
         keyed_array(
             self.facts
                 .iter()
                 .map(|fact| (fact.entity.clone(), fact.to_canonical())),
         )
         .expect("ResolvedMovementFacts validates unique subjects")
-        .to_canonical_bytes()
+    }
+
+    /// Canonical bytes for deterministic evidence and atomicity checks.
+    #[must_use]
+    pub fn to_canonical_bytes(&self) -> Vec<u8> {
+        self.to_canonical().to_canonical_bytes()
     }
 }
 
