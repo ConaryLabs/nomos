@@ -50,6 +50,14 @@ projection: given a strictly verified package and a runtime state it emits
 reasons, and effective light for every resolver subject, resolved entirely by
 the existing `resolve_movement` and `resolve_light` rather than by new logic.
 
+`nomos entity-catalog <world/>` adds the read-only catalog of what a compiled
+world *contains*: for every entity it emits `nomos.entity_catalog@1`, carrying
+the World IR primitive kind and `expansion.capabilities` beside the simulation
+projection's binding and machines and the movement and light resolver claims
+with their source spans. It classifies nothing and reads no `.nomos` source, so
+a downstream compiler no longer has to infer an entity's kind from a naming
+convention.
+
 The executable study provides:
 
 - Cistern Walk, Ember Vault, Ossuary Reach, and North Gaol as separately

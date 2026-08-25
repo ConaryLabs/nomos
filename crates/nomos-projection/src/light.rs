@@ -99,7 +99,7 @@ impl LightClaim {
             ("activation", self.activation.to_canonical()),
             ("capability", CanonicalValue::text("emits_light")),
             ("id", self.id.to_canonical()),
-            ("source", span_to_canonical(&self.source)),
+            ("source", self.source.to_canonical()),
             ("value", CanonicalValue::Bool(self.value)),
         ])
     }
@@ -400,16 +400,4 @@ fn duplicate(identity: &str) -> Diagnostic {
         format!("{identity} occurs more than once"),
     )
     .with_repair(RepairClass::RemoveDuplicateDeclaration)
-}
-
-fn span_to_canonical(span: &SourceSpan) -> CanonicalValue {
-    let (byte_start, byte_end) = span.byte_range();
-    let (line, column) = span.position();
-    CanonicalValue::object_declared([
-        ("byte_end", CanonicalValue::Uint(u64::from(byte_end))),
-        ("byte_start", CanonicalValue::Uint(u64::from(byte_start))),
-        ("column", CanonicalValue::Uint(u64::from(column))),
-        ("line", CanonicalValue::Uint(u64::from(line))),
-        ("path", CanonicalValue::text(span.path().as_str())),
-    ])
 }
