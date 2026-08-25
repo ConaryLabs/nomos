@@ -31,7 +31,8 @@
 //! - **`route.entry` is this area's own arrival cell.** `area.json` had the
 //!   exiting area author a cell inside its *destination*; that cross-area
 //!   authority is gone. Every non-start area declares the cell a player arrives
-//!   on, and it is validated here against *that area's* bounds and masses.
+//!   on, and it is validated here against *that area's* bounds and masses and
+//!   against the starting cell of its sole player-role actor.
 //!
 //! The bounded-area invariants `experiments/executable-gaol/src/build-plan.mjs:73-84`
 //! enforced as compiler magic numbers — the 9x6 lattice, the wall-height bound,
@@ -301,6 +302,7 @@ fn decode(
     let route = decode_route(field(document, "route")?, &area, &architecture, entity_kind)?;
     let pursuit = decode_pursuit(field(document, "pursuit")?, entity_kind)?;
     let actors = decode_actors(field(document, "actors")?, &architecture)?;
+    validate_arrival(&route, &actors)?;
     let effects = decode_effects(field(document, "effects")?, entity_kind)?;
 
     Ok(PresentationSource {
@@ -311,6 +313,23 @@ fn decode(
         actors,
         effects,
     })
+}
+
+fn validate_arrival(route: &Route, actors: &[Actor]) -> PlanResult<()> {
+    let Some(entry) = route.entry else {
+        return Ok(());
+    };
+    let player = actors
+        .iter()
+        .find(|actor| actor.role == "player")
+        .expect("decode_actors guarantees exactly one player-role actor");
+    if entry != player.cell {
+        return Err(invalid(format!(
+            "`route.entry` ({}, {}, {}) does not equal player-role actor `{}`'s cell ({}, {}, {})",
+            entry.x, entry.y, entry.z, player.id, player.cell.x, player.cell.y, player.cell.z
+        )));
+    }
+    Ok(())
 }
 
 /// Binds the declared identity.

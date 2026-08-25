@@ -388,6 +388,22 @@ fn a_non_start_area_without_an_entry_is_refused() {
 }
 
 #[test]
+fn a_route_entry_different_from_the_player_cell_is_refused() {
+    let (code, message) = refusal("entry-player-mismatch", |text| {
+        text.replace("\"start\": true", "\"start\": false").replace(
+            "\"exit\": { \"gate\": \"north_gate\", \"to_area\": null }",
+            "\"exit\": { \"gate\": \"north_gate\", \"to_area\": null },\n    \
+             \"entry\": { \"x\": 1, \"y\": 1, \"z\": 0 }",
+        )
+    });
+    assert_eq!(code, "RP0202");
+    assert!(
+        message.contains("does not equal player-role actor `player`'s cell"),
+        "{message}"
+    );
+}
+
+#[test]
 fn a_gate_that_is_not_a_compiled_door_is_refused() {
     let (code, message) = refusal("gate-not-a-door", |text| {
         text.replace("\"gate\": \"north_gate\"", "\"gate\": \"watch_brazier\"")

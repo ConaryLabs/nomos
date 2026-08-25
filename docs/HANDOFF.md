@@ -142,9 +142,9 @@ iterations inside the quarantined executable study until concrete evidence
 justifies a separate decision to promote a boundary into a post-Gate-K runtime
 epoch.
 
-The cold-author area-five experiment leaves one open packet gap (issue #165,
-`route.entry` duplicating the player actor's `cell`) and an owner visual
-verdict still pending on `docs/review/cold-author-area-five.md`.
+The cold-author area-five experiment's owner visual verdict is compelling.
+Issue #165 closes its packet gap by making `route.entry` equal the player-role
+actor's `cell` as both an authored rule and an `RP0202` decoder invariant.
 
 That separate decision is now owner-authorized:
 `docs/decisions/0017-post-gate-k-runtime-epoch.md` opens the R1 epoch under
