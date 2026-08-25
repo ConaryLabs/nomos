@@ -44,6 +44,15 @@ jobs:
       - name: Verify the study and publish its artifacts
         run: experiments/executable-gaol/gaol verify
 
+      # The authoritative runtime, before anything that stages or loads it —
+      # the same two steps as .github/workflows/nomos-viewer.yml. This workflow
+      # runs only on push to main, so a PR lane cannot catch their absence.
+      - name: Build the play runtime for the browser
+        run: crates/nomos-play/build-wasm.sh
+
+      - name: Build the native play runtime
+        run: cargo build --locked -p nomos-play
+
       - name: Viewer tests
         run: node --test apps/nomos-viewer/test/*.test.mjs
 
@@ -51,6 +60,7 @@ jobs:
         run: |
           node apps/nomos-viewer/build.mjs \
             --from target/executable-gaol \
+            --wasm target/wasm32-unknown-unknown/wasm/nomos_play.wasm \
             --out apps/nomos-viewer/dist
 
       - name: Browser smoke lane

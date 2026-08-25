@@ -75,6 +75,27 @@ const versionOf = (binary) => {
 };
 
 /// The Chrome this machine offers, and where it came from.
+
+// Chrome's renderer and GPU children can outlive a SIGKILL on the main pid by
+// a few hundred milliseconds and keep writing into the profile, so a single
+// recursive removal can race them and fail with ENOTEMPTY. The directory is a
+// tmpdir the harness created; failing to remove it must never fail the lane.
+function removeUserDataDir(dir) {
+  const started = Date.now();
+  for (;;) {
+    try {
+      rmSync(dir, { recursive: true, force: true });
+      return;
+    } catch (error) {
+      if (Date.now() - started > 3_000) {
+        process.stderr.write(`chrome profile dir left behind: ${dir} (${error.code ?? error.message})\n`);
+        return;
+      }
+      const until = Date.now() + 100;
+      while (Date.now() < until) { /* bounded busy-wait; cleanup path only */ }
+    }
+  }
+}
 export function findChrome() {
   if (process.env.CHROME_BIN) {
     if (!executable(process.env.CHROME_BIN)) {
@@ -180,7 +201,7 @@ export async function launch({ binary, flags, timeout = 20_000 }) {
   }
   if (!port) {
     child.kill("SIGKILL");
-    rmSync(userDataDir, { recursive: true, force: true });
+    removeUserDataDir(userDataDir);
     throw new Error(`chrome wrote no DevToolsActivePort within ${timeout}ms: ${stderr.join("").slice(-500)}`);
   }
 
@@ -214,7 +235,7 @@ export async function launch({ binary, flags, timeout = 20_000 }) {
       child.stdout?.destroy();
       child.stderr?.destroy();
       child.unref();
-      rmSync(userDataDir, { recursive: true, force: true });
+      removeUserDataDir(userDataDir);
     },
   };
 }
