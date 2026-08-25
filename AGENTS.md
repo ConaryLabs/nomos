@@ -40,10 +40,13 @@ here is authority for any other project.
 - **Measure budgets; never assume them.** Build time, peak disk, validation
   latency, replay throughput, and package size are numbers in the record, not
   adjectives in a meeting.
-- **Gate K stays dependency-free by decision, not superstition.** No third-party
-  dependency enters the workspace before Gate K is disposed. This is the
-  temporary policy in `docs/decisions/0005-gate-k-dependency-policy.md`, not a
-  permanent claim that later gates should reimplement mature libraries.
+- **The kernel crates stay dependency-free by decision, not superstition.** The
+  six kernel crates admit no third-party dependency and `cargo xtask boundary`
+  still fails closed on them. Outside them, R1's dependency policy is set by
+  `docs/decisions/0017-post-gate-k-runtime-epoch.md`: a committed lockfile, each
+  dependency vendored or digest-pinned with its license preserved, and each
+  addition recorded in `RUNTIME.md`. This was never a permanent claim that later
+  epochs should reimplement mature libraries.
 - **Cold review is fuzzing, not authority.** A different model family may attack
   design or code under `docs/review/`; a human owner decides what matters. Use
   `docs/evaluation/COLD_AGENT_PROTOCOL.md` for formal cold-author and cold-debug

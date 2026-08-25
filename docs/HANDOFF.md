@@ -87,10 +87,12 @@ iterations inside the quarantined executable study until concrete evidence
 justifies a separate decision to promote a boundary into a post-Gate-K runtime
 epoch.
 
-That separate decision is now drafted but not adopted: issue #124 carries the
-pending `docs/decisions/0017-post-gate-k-runtime-epoch.md`, with issue #125
-auditing presentation-boundary ownership and issue #126 sizing the kernel
-effective-facts projection that would be its first target.
+That separate decision is now owner-authorized:
+`docs/decisions/0017-post-gate-k-runtime-epoch.md` opens the R1 epoch under
+issue #124. Its contract document `RUNTIME.md` is pending under issue #128 and
+nothing is accepted into R1 until it exists; issue #125 audits
+presentation-boundary ownership and issue #126 sizes the kernel effective-facts
+projection that is R1's first target.
 
 Simulation-boundary expansion remains deferred while the visual grammar is
 being established. Do not reopen Gate K evaluation work or add proof machinery

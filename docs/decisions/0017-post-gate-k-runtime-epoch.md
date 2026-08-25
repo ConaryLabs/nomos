@@ -1,6 +1,6 @@
 ---
 title: Post-Gate-K runtime epoch (R1)
-status: Draft; awaiting owner authorization
+status: Owner-authorized; R1 epoch open
 number: 0017
 date: 2026-08-25
 owner: Peter Permenter
@@ -15,8 +15,8 @@ r1_contract: RUNTIME.md
 
 ## Decision authority
 
-This record is a draft prepared under issue #124. It has no effect until Peter
-Permenter records a disposition below.
+This record was prepared under issue #124. Peter Permenter authorized it on
+2026-08-25; the disposition is recorded below.
 
 It proposes one thing: an explicit epoch break. Gate K is closed and cannot be
 retried, so the executable study currently has no authorized route into accepted
@@ -126,10 +126,7 @@ declared by the code that emits them, under `RUNTIME.md`.
 
 ## Owner disposition
 
-_Not yet recorded._ Peter Permenter records exactly one outcome:
-
-1. **authorize** — R1 opens as written; `RUNTIME.md` is the next slice.
-2. **authorize with amendments** — R1 opens with the recorded changes to its
-   contract location, dependency policy, or target order.
-3. **decline** — no post-Gate-K epoch is authorized; the executable study
-   continues under decision 0016 alone with no promotion path.
+**Authorize.** Recorded by Peter Permenter on 2026-08-25, with no amendments.
+R1 opens as written: the epoch break, the contract location, the dependency
+policy, and the first-target order all stand as drafted. `RUNTIME.md` is the
+next slice, under issue #128.

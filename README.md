@@ -45,11 +45,11 @@ AI-authored areas can share one coherent visual grammar.
   through one projection-only WebGL renderer and one bounded procedural look.
   It is playable online and explicitly authorized to continue by decision
   0016, but remains non-authoritative and satisfies neither Gate K nor Gate 1
-- **Post-Gate-K epoch status:** decision 0017 is a **draft awaiting owner
-  authorization** under issue #124. It proposes an explicit R1 epoch break
-  governed by a not-yet-written `RUNTIME.md`, with promotion by clean
-  implementation only. Nothing in it is adopted, and no R1 work is authorized
-  until the owner records a disposition
+- **Post-Gate-K epoch status:** decision 0017 is **owner-authorized** under
+  issue #124 and the **R1 epoch is open**: an explicit epoch break, not a Gate K
+  pass, with promotion by clean implementation only. Its contract document
+  `RUNTIME.md` is still pending under issue #128, and nothing is accepted into
+  R1 until it exists
 - **Contract revision:** 7, owner-authorized in decision 0009
 - **Cold-agent protocol revision:** 6, owner-authorized in decision 0015;
   revision-6 packet, boundary, record, adjudication, and finalization tooling is
