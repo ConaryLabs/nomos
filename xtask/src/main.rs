@@ -134,7 +134,7 @@ fn run_boundary(manifest_path: Option<&str>) -> ExitCode {
         println!("  r1 members         {}", boundary::R1_CRATES.len());
         println!(
             "  rules checked      membership, permitted-edges, cycles, \
-             forbidden-dependency, tooling-isolation"
+             forbidden-dependency, tooling-isolation, viewer-isolation"
         );
         println!(
             "  forbidden entries  {} exact names, {} prefixes",
