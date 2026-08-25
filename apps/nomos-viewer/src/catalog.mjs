@@ -188,11 +188,20 @@ export const ACTOR_SHAPES = Object.freeze({
   }),
 });
 
-// The entity vocabulary. `crates/nomos-render-plan/src/catalog.rs:89-107` holds
-// the selection — which assembly each kind gets — and
-// `the_catalog_knows_every_assembly_the_compiler_can_emit` parses that file and
-// asserts it agrees with this table row for row, so the two cannot drift while
-// issue #153 is open.
+// The entity vocabulary, and the only place in the tree that says what a
+// compiled kind is drawn as and what it is made of.
+//
+// `nomos.rendering_plan@2` carried `visual_assembly` and `material_family` on
+// every entity, assigned per kind by a table in
+// `crates/nomos-render-plan/src/catalog.rs` whose own comment said the correct
+// change was to move it out. `@3` drops both fields and issue #153 is that
+// move, so there is no second table to drift against and the test that parsed
+// the Rust one to compare them is gone with it.
+//
+// `anchorKind` is the binding shape a kind must declare and is checked: a door
+// is bound to a face, water to a region, a light to a cell. An entity whose
+// kind is not here is refused rather than drawn as a marker, which is the
+// ownership audit's item 4.
 export const ENTITY_KINDS = Object.freeze({
   door: Object.freeze({
     visualAssembly: "visual/iron_barred_door",

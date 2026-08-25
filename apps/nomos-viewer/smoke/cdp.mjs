@@ -112,5 +112,22 @@ export async function connect(url, { timeout = 20_000 } = {}) {
     }
   };
 
-  return { send, on, once, evaluate, until, close: () => socket.close() };
+  // Issue #160: `close()` starts a handshake, and the socket stays an open
+  // handle until it finishes. The lane waits for it, briefly, so a browser that
+  // has already been killed cannot hold the process open.
+  const close = () =>
+    new Promise((done) => {
+      if (socket.readyState === WebSocket.CLOSED) {
+        done();
+        return;
+      }
+      const timer = setTimeout(done, 1_000);
+      socket.addEventListener("close", () => {
+        clearTimeout(timer);
+        done();
+      });
+      socket.close();
+    });
+
+  return { send, on, once, evaluate, until, close };
 }

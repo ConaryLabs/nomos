@@ -24,7 +24,7 @@ import {
   cellsOf,
   resolveSocket,
 } from "./catalog.mjs";
-import { doorState, lightOf, scenarioOf, wardSealed } from "./plan.mjs";
+import { doorState, lightOf, viewKey, wardSealed } from "./plan.mjs";
 
 const shadow = (object, cast = true, receive = true) => {
   object.castShadow = cast;
@@ -528,7 +528,12 @@ export function createGaolRenderer(container, three, host = globalThis) {
   if (host.ResizeObserver) new host.ResizeObserver(fit).observe(container);
   fit();
 
-  const rebuild = (plan, scenarioId, actorPositions) => {
+  // `view` is a state to draw: either the live `nomos.presentation_state@1`
+  // document the runtime returned, or one of the plan's captured scenarios when
+  // the forensic controls are showing one. The two spell `machine_states`,
+  // `movement`, and `effective_light` identically, which is why the accessors
+  // below read either without knowing which they hold.
+  const rebuild = (plan, view, actorPositions) => {
     scene.remove(worldRoot);
     disposeTree(worldRoot);
     worldRoot = new three.Group();
@@ -537,8 +542,14 @@ export function createGaolRenderer(container, three, host = globalThis) {
     animatedMaterials = [];
     glowLights = [];
     const resources = makeResources(three, look);
-    const scenario = scenarioOf(plan, scenarioId);
-    const context = { scenario, look, actorPositions, actorMeshes, animatedMaterials, glowLights };
+    const context = {
+      scenario: view,
+      look,
+      actorPositions,
+      actorMeshes,
+      animatedMaterials,
+      glowLights,
+    };
     buildFloor(three, worldRoot, plan, resources);
     buildWalls(three, worldRoot, plan, resources);
     buildMasses(three, worldRoot, plan, resources, look);
@@ -562,7 +573,11 @@ export function createGaolRenderer(container, three, host = globalThis) {
     );
     camera.lookAt(new three.Vector3(0, CAMERA.targetHeight, 0));
     planIdentity = plan.area.id;
-    scenarioIdentity = scenario.id;
+    // The kernel state hash, which both documents carry. What the world looks
+    // like is a function of the machine states, and the machine states are a
+    // function of the kernel state, so this is exactly the right cache key —
+    // and it is one the runtime computed rather than a name the viewer chose.
+    scenarioIdentity = viewKey(view);
   };
 
   const updateActors = (plan, actorPositions) => {
@@ -572,9 +587,9 @@ export function createGaolRenderer(container, three, host = globalThis) {
     }
   };
 
-  const present = (plan, scenarioId, forensic = false, presentation = {}) => {
-    if (planIdentity !== plan.area.id || scenarioIdentity !== scenarioId) {
-      rebuild(plan, scenarioId, presentation.actorPositions);
+  const present = (plan, view, forensic = false, presentation = {}) => {
+    if (planIdentity !== plan.area.id || scenarioIdentity !== viewKey(view)) {
+      rebuild(plan, view, presentation.actorPositions);
     } else updateActors(plan, presentation.actorPositions);
     if (forensicState !== forensic) {
       forensicState = forensic;

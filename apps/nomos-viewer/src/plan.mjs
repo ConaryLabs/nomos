@@ -55,6 +55,11 @@ export const CODES = Object.freeze({
   NUMBER_UNSUPPORTED: "NV0203",
   CATALOG_UNKNOWN: "NV0301",
   REFERENCE_UNRESOLVED: "NV0401",
+  // The authoritative runtime declined an input, or could not be loaded. The
+  // `PL####` code the runtime itself refused with is carried inside the
+  // message, because the refusal belongs to `crates/nomos-play` and this
+  // viewer is only reporting it.
+  RUNTIME_REFUSED: "NV0501",
 });
 
 const fail = (code, message, artifact) => {
@@ -850,7 +855,13 @@ export function decodeCollection(document, artifact = "the area collection") {
 // Loading
 // ---------------------------------------------------------------------------
 
-async function readJson(fetchImpl, base, relative) {
+/// Fetches one staged file as bytes.
+///
+/// The bytes matter and not only the parsed value: `crates/nomos-play` is
+/// handed the exact bytes it hashes, and the digests the runtime checks — the
+/// plan's `projection_digests` entry and the kernel's `runtime_semantics_digest`
+/// — are over these bytes and not over a re-serialization of them.
+async function readBytes(fetchImpl, base, relative) {
   const url = new URL(relative, base);
   let response;
   try {
@@ -861,13 +872,24 @@ async function readJson(fetchImpl, base, relative) {
   if (!response.ok) {
     throw new ViewerError(CODES.UNREADABLE, `\`${relative}\` responded ${response.status}`, relative);
   }
-  const body = await response.text();
+  return new Uint8Array(await response.arrayBuffer());
+}
+
+const DECODER = new TextDecoder();
+
+async function readJson(fetchImpl, base, relative) {
+  const body = DECODER.decode(await readBytes(fetchImpl, base, relative));
   try {
     return JSON.parse(body);
   } catch (cause) {
     throw new ViewerError(CODES.UNREADABLE, `\`${relative}\` is not well-formed JSON: ${cause.message}`, relative);
   }
 }
+
+/// The name a staged simulation projection is published under, beside the plan
+/// it belongs to. `build.mjs` stages it and `test/scan.test.mjs` pins the
+/// layout; the runtime refuses any bytes whose digest the plan did not publish.
+export const semanticsFile = (areaId) => `areas/${areaId}.simulation.json`;
 
 /// Loads and decodes the collection and every plan it names, relative to `base`.
 ///
@@ -876,8 +898,14 @@ async function readJson(fetchImpl, base, relative) {
 export async function loadArtifacts(base, fetchImpl) {
   const collection = decodeCollection(await readJson(fetchImpl, base, "areas.json"), "areas.json");
   const plans = new Map();
+  // What the authoritative runtime is handed: the plan's own bytes and the
+  // simulation projection's, per area, exactly as they were staged.
+  const runtimeInputs = new Map();
   for (const area of collection.areas) {
-    const plan = decodePlan(await readJson(fetchImpl, base, area.plan), area.plan);
+    const planBytes = await readBytes(fetchImpl, base, area.plan);
+    const semanticsBytes = await readBytes(fetchImpl, base, semanticsFile(area.id));
+    runtimeInputs.set(area.id, Object.freeze({ plan: planBytes, semantics: semanticsBytes }));
+    const plan = decodePlan(JSON.parse(DECODER.decode(planBytes)), area.plan);
     reference(
       plan.area.id === area.id,
       `\`${area.plan}\` carries area \`${plan.area.id}\`, and the collection lists it as \`${area.id}\``,
@@ -921,7 +949,7 @@ export async function loadArtifacts(base, fetchImpl) {
     `\`${collection.start_area}\` is the collection's start area but its plan does not say so`,
     "areas.json",
   );
-  return { collection, plans };
+  return { collection, plans, runtimeInputs };
 }
 
 // ---------------------------------------------------------------------------
@@ -938,13 +966,21 @@ export const entityOf = (plan, id) => plan.entities.find((one) => one.id === id)
 
 export const scenarioOf = (plan, id) => plan.scenarios.find((one) => one.id === id) ?? null;
 
+/// The identity of a state to draw.
+///
+/// A plan scenario names itself; a `nomos.presentation_state@1` document does
+/// not, and does not need to — it carries the kernel state hash, which is what
+/// the drawn world is actually a function of. Both spellings are a stable
+/// string, so a renderer can cache on it without knowing which it holds.
+export const viewKey = (view) => view.id ?? view.kernel_state_hash;
+
 export function machineState(scenario_, entity_, machine) {
   const namespace = `${entity_}.${machine}`;
   const row = scenario_.machine_states.find((one) => one.namespace === namespace);
   if (!row) {
     throw new ViewerError(
       CODES.REFERENCE_UNRESOLVED,
-      `scenario \`${scenario_.id}\` carries no machine \`${namespace}\``,
+      `state \`${viewKey(scenario_)}\` carries no machine \`${namespace}\``,
     );
   }
   return row.state;

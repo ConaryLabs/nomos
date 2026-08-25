@@ -27,9 +27,7 @@ const door = (id, x, direction = "north") => ({
   id,
   kind: "door",
   machine_namespaces: [`${id}.access`, `${id}.integrity`, `${id}.ward`],
-  material_family: "iron_oxidized",
   provenance: [],
-  visual_assembly: "visual/iron_barred_door",
 });
 
 const water = (id, min, max) => ({
@@ -37,7 +35,6 @@ const water = (id, min, max) => ({
   id,
   kind: "water",
   machine_namespaces: [],
-  material_family: "water_cold",
   provenance: [
     {
       claim: `${id}.region#traversal_cost_ground`,
@@ -50,7 +47,6 @@ const water = (id, min, max) => ({
       },
     },
   ],
-  visual_assembly: "visual/shallow_water",
 });
 
 const lamp = (id, x, y) => ({
@@ -58,9 +54,7 @@ const lamp = (id, x, y) => ({
   id,
   kind: "light",
   machine_namespaces: [`${id}.emission`],
-  material_family: "iron_brazier",
   provenance: [],
-  visual_assembly: "visual/brazier",
 });
 
 const doorMachines = (id, { access = "locked", integrity = "intact", ward = "sealed" } = {}) => [
@@ -76,10 +70,42 @@ const PROJECTIONS = [
   { name: "nomos.projection.diagnostics", version: 1 },
 ];
 
-const digests = PROJECTIONS.map((one, index) => ({
-  digest: hash(String(index + 1)),
-  file: `${one.name.split(".").pop()}.json`,
-}));
+/// The executable semantics staged beside one area's plan.
+///
+/// `crates/nomos-play` is the only thing that reads inside this document, and
+/// nothing in this app does: `loadArtifacts` forwards the bytes, `stage()`
+/// weighs them against the digest the plan publishes, and the scan checks the
+/// name they are staged under. What the fixture therefore has to be right about
+/// is its identity and its bytes, and it deliberately declares no kernel — a
+/// test that drives the real runtime needs a projection the compiler emitted,
+/// not one written here.
+export const simulationProjection = (areaId) => ({
+  area: areaId,
+  machines: [],
+  schema: "nomos.projection.simulation@3",
+});
+
+/// The bytes that projection is published as, in the same shape as a plan's:
+/// canonical bytes plus one `LF`.
+export const publishedSemanticsBytes = (areaId) =>
+  `${JSON.stringify(simulationProjection(areaId))}\n`;
+
+const semanticsDigest = (areaId) =>
+  createHash("sha256").update(publishedSemanticsBytes(areaId)).digest("hex");
+
+/// What a plan says it was compiled against.
+///
+/// The simulation member's digest is computed rather than invented, because the
+/// build stages that projection beside the plan and refuses the pair unless the
+/// plan published the digest of the exact bytes. The other three members are
+/// metadata: nothing stages them and nothing hashes them, so a stable invented
+/// digest is the honest fixture for those rows.
+const digestsFor = (areaId) =>
+  PROJECTIONS.map((one, index) => {
+    const file = `${one.name.split(".").pop()}.json`;
+    const staged = one.name === "nomos.projection.simulation";
+    return { digest: staged ? semanticsDigest(areaId) : hash(String(index + 1)), file };
+  });
 
 /// The start area: `test-hall`.
 export function hallPlan() {
@@ -108,8 +134,8 @@ export function hallPlan() {
 
   return {
     actors: [
-      { assembly: "visual/player_silhouette", cell: { x: 0, y: 2, z: 0 }, id: "player" },
-      { assembly: "visual/gaoler_silhouette", cell: { x: 3, y: 2, z: 0 }, id: "gaoler" },
+      { assembly: "visual/player_silhouette", cell: { x: 0, y: 2, z: 0 }, id: "player", role: "player" },
+      { assembly: "visual/gaoler_silhouette", cell: { x: 3, y: 2, z: 0 }, id: "gaoler", role: "pursuer" },
     ],
     architecture: {
       bounds: { height: 3, width: 4 },
@@ -147,7 +173,7 @@ export function hallPlan() {
       },
     ],
     objective: { gate: "hall_gate", kind: "exit_via" },
-    projection_digests: digests,
+    projection_digests: digestsFor("test-hall"),
     projection_schemas: PROJECTIONS,
     pursuit: { light: "hall_lamp" },
     route: { to_area: "test-yard" },
@@ -156,7 +182,7 @@ export function hallPlan() {
       scenario("02-unsealed", "unsealed", 1, HASHES.unsealed, { gateOpen: true, lit: true }),
       scenario("03-dark", "dark", 2, HASHES.dark, { gateOpen: true, lit: false }),
     ],
-    schema: "nomos.rendering_plan@2",
+    schema: "nomos.rendering_plan@3",
   };
 }
 
@@ -186,8 +212,8 @@ export function yardPlan() {
 
   return {
     actors: [
-      { assembly: "visual/player_silhouette", cell: { x: 1, y: 1, z: 0 }, id: "player" },
-      { assembly: "visual/gaoler_silhouette", cell: { x: 0, y: 0, z: 0 }, id: "gaoler" },
+      { assembly: "visual/player_silhouette", cell: { x: 1, y: 1, z: 0 }, id: "player", role: "player" },
+      { assembly: "visual/gaoler_silhouette", cell: { x: 0, y: 0, z: 0 }, id: "gaoler", role: "pursuer" },
     ],
     architecture: {
       bounds: { height: 2, width: 3 },
@@ -214,7 +240,7 @@ export function yardPlan() {
       },
     ],
     objective: { gate: "yard_gate", kind: "exit_via" },
-    projection_digests: digests,
+    projection_digests: digestsFor("test-yard"),
     projection_schemas: PROJECTIONS,
     pursuit: { light: "yard_lamp" },
     route: { entry: { x: 1, y: 1, z: 0 }, to_area: null },
@@ -222,7 +248,7 @@ export function yardPlan() {
       scenario("01-shut", "shut", 0, HASHES.yardSealed, false),
       scenario("02-open", "open", 1, HASHES.yardOpen, true),
     ],
-    schema: "nomos.rendering_plan@2",
+    schema: "nomos.rendering_plan@3",
   };
 }
 
@@ -259,7 +285,7 @@ export function collectionDocument() {
       { entry: { x: 1, y: 1, z: 0 }, from_area: "test-hall", gate: "hall_gate", to_area: "test-yard" },
       { entry: null, from_area: "test-yard", gate: "yard_gate", to_area: null },
     ],
-    schema: "nomos.area_collection@1",
+    schema: "nomos.area_collection@2",
     start_area: "test-hall",
     visual_grammar: {
       actor_assemblies: ["visual/gaoler_silhouette", "visual/player_silhouette"],
@@ -270,13 +296,9 @@ export function collectionDocument() {
       },
       digest: hash("f6"),
       effect_assemblies: ["visual/cyan_crescent"],
-      entity_assemblies: [
-        { kind: "door", material_family: "iron_oxidized", visual_assembly: "visual/iron_barred_door" },
-        { kind: "light", material_family: "iron_brazier", visual_assembly: "visual/brazier" },
-        { kind: "water", material_family: "water_cold", visual_assembly: "visual/shallow_water" },
-      ],
+      entity_kinds: ["door", "light", "water"],
       projection_schemas: PROJECTIONS,
-      rendering_plan_schema: "nomos.rendering_plan@2",
+      rendering_plan_schema: "nomos.rendering_plan@3",
     },
   };
 }
@@ -314,16 +336,42 @@ export function edited(document, path, value) {
 }
 
 /// A `fetch` over an in-memory tree, for `loadArtifacts`.
+///
+/// The app reads a staged file as bytes and decodes them itself, because the
+/// bytes are what the runtime hashes, so the stub answers `arrayBuffer()` the
+/// way a `Response` does rather than only `text()`.
 export function fetchFrom(files) {
+  const encoder = new TextEncoder();
+  const bytesOf = (value) => {
+    const encoded = encoder.encode(JSON.stringify(value));
+    return encoded.buffer.slice(encoded.byteOffset, encoded.byteOffset + encoded.byteLength);
+  };
   return async (url) => {
     const path = new URL(url).pathname.replace(/^\/+/, "");
-    if (!(path in files)) return { ok: false, status: 404, text: async () => "" };
-    return { ok: true, status: 200, text: async () => JSON.stringify(files[path]) };
+    if (!(path in files)) {
+      return {
+        ok: false,
+        status: 404,
+        text: async () => "",
+        arrayBuffer: async () => new ArrayBuffer(0),
+      };
+    }
+    return {
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify(files[path]),
+      arrayBuffer: async () => bytesOf(files[path]),
+    };
   };
 }
 
+/// The tree a build stages, under the names the collection and `plan.mjs`
+/// declare: one plan and one simulation projection per area, beside the
+/// collection that names them.
 export const stagedFiles = () => ({
   "areas.json": collectionDocument(),
   "areas/test-hall.json": hallPlan(),
+  "areas/test-hall.simulation.json": simulationProjection("test-hall"),
   "areas/test-yard.json": yardPlan(),
+  "areas/test-yard.simulation.json": simulationProjection("test-yard"),
 });

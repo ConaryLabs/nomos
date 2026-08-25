@@ -9,18 +9,26 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { LOOK_PROFILES, PALETTE, VERTICAL_SCALE, cellsOf, resolveSocket } from "../src/catalog.mjs";
-import { decodePlan } from "../src/plan.mjs";
+import { decodePlan, scenarioOf } from "../src/plan.mjs";
 import { createGaolRenderer } from "../src/render.mjs";
 import { census, makeHost, makeThree, meshesOf } from "./three-stub.mjs";
 import { facingPlan, hallPlan } from "./fixtures.mjs";
 
 const hall = decodePlan(hallPlan());
+// The renderer is handed the state to draw, not a name to look one up by, so
+// every row here resolves the scenario the way the app does.
+const sealedHall = scenarioOf(hall, "01-sealed");
 
 const present = (plan, scenarioId, options = {}) => {
   const three = makeThree();
   const { container, host } = makeHost();
   const renderer = createGaolRenderer(container, three, host);
-  renderer.present(plan, scenarioId, options.forensic ?? false, options.presentation ?? {});
+  renderer.present(
+    plan,
+    scenarioOf(plan, scenarioId),
+    options.forensic ?? false,
+    options.presentation ?? {},
+  );
   return { three, renderer, world: renderer.worldRoot() };
 };
 
@@ -170,9 +178,9 @@ test("presentation positions move the actors without rebuilding", () => {
   const three = makeThree();
   const { container, host } = makeHost();
   const renderer = createGaolRenderer(container, three, host);
-  renderer.present(hall, "01-sealed", false, {});
+  renderer.present(hall, sealedHall, false, {});
   const before = renderer.worldRoot();
-  renderer.present(hall, "01-sealed", false, {
+  renderer.present(hall, sealedHall, false, {
     actorPositions: { player: { x: 2, y: 2, z: 0.08 }, gaoler: { x: 3, y: 2, z: 0 } },
   });
   assert.equal(renderer.worldRoot(), before, "the same scenario does not rebuild the world");
@@ -182,13 +190,13 @@ test("switching look profiles rebuilds the world", () => {
   const three = makeThree();
   const { container, host } = makeHost();
   const renderer = createGaolRenderer(container, three, host);
-  renderer.present(hall, "01-sealed", false, {});
+  renderer.present(hall, sealedHall, false, {});
   const before = renderer.worldRoot();
   assert.equal(renderer.lookProfile(), LOOK_PROFILES.procedural);
 
   renderer.setLookProfile("baseline");
   assert.equal(renderer.lookProfile(), LOOK_PROFILES.baseline);
-  renderer.present(hall, "01-sealed", false, {});
+  renderer.present(hall, sealedHall, false, {});
   assert.notEqual(renderer.worldRoot(), before, "a new look rebuilds");
   // The baseline profile has no bevel, so the masses are plain boxes.
   const beveled = meshesOf(renderer.worldRoot(), "ExtrudeGeometry");
@@ -196,7 +204,7 @@ test("switching look profiles rebuilds the world", () => {
   assert.equal(renderer.renderer.toneMappingExposure, LOOK_PROFILES.baseline.exposure);
 
   renderer.setLookProfile("procedural");
-  renderer.present(hall, "01-sealed", false, {});
+  renderer.present(hall, sealedHall, false, {});
   assert.ok(meshesOf(renderer.worldRoot(), "ExtrudeGeometry").length > 0);
   assert.throws(() => renderer.setLookProfile("cinematic"), /unknown look profile/);
 });
@@ -205,11 +213,11 @@ test("the forensic overlay is a grid and nothing else", () => {
   const three = makeThree();
   const { container, host } = makeHost();
   const renderer = createGaolRenderer(container, three, host);
-  renderer.present(hall, "01-sealed", false, {});
+  renderer.present(hall, sealedHall, false, {});
   assert.equal(census(renderer.worldRoot()).get("GridHelper"), undefined);
-  renderer.present(hall, "01-sealed", true, {});
+  renderer.present(hall, sealedHall, true, {});
   assert.equal(census(renderer.worldRoot()).get("GridHelper"), 1);
-  renderer.present(hall, "01-sealed", false, {});
+  renderer.present(hall, sealedHall, false, {});
   assert.equal(census(renderer.worldRoot()).get("GridHelper"), undefined);
 });
 

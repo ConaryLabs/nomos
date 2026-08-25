@@ -15,6 +15,10 @@ const TYPES = {
   ".json": "application/json",
   ".png": "image/png",
   ".css": "text/css; charset=utf-8",
+  // Served the way a real host would, even though `runtime.mjs` deliberately
+  // uses `WebAssembly.instantiate` rather than `instantiateStreaming` and so
+  // does not require it.
+  ".wasm": "application/wasm",
 };
 
 /// Serves `root` on a loopback port the operating system chooses.
@@ -40,6 +44,16 @@ export async function serve(root) {
     response.end(readFileSync(path));
   });
 
+  // Issue #160: a keep-alive socket the client never closes holds the process
+  // open after `server.close()` resolves, and the lane then hangs to the job's
+  // timeout with PASS already printed. Every connection is tracked so shutdown
+  // can destroy them.
+  const sockets = new Set();
+  server.on("connection", (socket) => {
+    sockets.add(socket);
+    socket.on("close", () => sockets.delete(socket));
+  });
+
   await new Promise((done) => server.listen(0, "127.0.0.1", done));
   const { port } = server.address();
   // Bound to the loopback address, addressed by the one name the lane's
@@ -51,6 +65,11 @@ export async function serve(root) {
     address: "127.0.0.1",
     port,
     requests,
-    close: () => new Promise((done) => server.close(done)),
+    close: () =>
+      new Promise((done) => {
+        server.close(done);
+        for (const socket of sockets) socket.destroy();
+        sockets.clear();
+      }),
   };
 }

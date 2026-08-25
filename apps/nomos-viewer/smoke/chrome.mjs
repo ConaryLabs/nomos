@@ -201,8 +201,19 @@ export async function launch({ binary, flags, timeout = 20_000 }) {
     version,
     pageUrl: pages[0].webSocketDebuggerUrl,
     stderr,
-    kill: () => {
-      child.kill("SIGKILL");
+    // Issue #160: killing the child is not the same as it being gone. Node
+    // keeps the process handle alive until `exit` fires, so the lane awaits it
+    // — with a bound, because a Chrome that will not die must not turn a pass
+    // into a hang either.
+    kill: async () => {
+      if (child.exitCode === null && child.signalCode === null) {
+        const gone = new Promise((done) => child.once("exit", done));
+        child.kill("SIGKILL");
+        await Promise.race([gone, sleep(2_000)]);
+      }
+      child.stdout?.destroy();
+      child.stderr?.destroy();
+      child.unref();
       rmSync(userDataDir, { recursive: true, force: true });
     },
   };
