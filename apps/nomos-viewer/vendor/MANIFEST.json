@@ -1,0 +1,64 @@
+{
+  "comment": [
+    "The one third-party dependency of the accepted tree, recorded under RUNTIME.md section 4.",
+    "Nothing here is fetched at build time or at run time: every file is committed, and",
+    "test/vendor.test.mjs recomputes every digest below from the working tree.",
+    "three@0.185.1's build/three.module.min.js is not self-contained: it re-exports from a",
+    "sibling build/three.core.min.js, so both files are vendored and the import between them",
+    "stays a same-origin relative specifier.",
+    "external_url_occurrences is measured, not assumed - a three.js bump that introduces a",
+    "new external URL changes these numbers and shows up as a diff."
+  ],
+  "packages": [
+    {
+      "name": "three",
+      "version": "0.185.1",
+      "registry": "https://registry.npmjs.org",
+      "tarball": "https://registry.npmjs.org/three/-/three-0.185.1.tgz",
+      "tarball_integrity": "sha512-5aojFCXKwnjBRZvUnt3WFfEcvUJgkN5LlijRFN95hMy8WVkG4I0QNcJE+OuWvuJ0bOdStrbfXn0pkd6/QyiAlg==",
+      "tarball_sha256": "a2143f5bf978bd3470a51024b2b6bdd581913ba8f36ff1538d433f3a95adf2df",
+      "upstream": "https://github.com/mrdoob/three.js",
+      "license": "MIT",
+      "retrieved": "2026-08-25",
+      "retrieved_by": "curl https://registry.npmjs.org/three/-/three-0.185.1.tgz",
+      "entry": "three/three.module.min.js",
+      "files": [
+        {
+          "path": "three/three.module.min.js",
+          "tarball_entry": "package/build/three.module.min.js",
+          "bytes": 365552,
+          "sha256": "86bcee248b64f44bcfc23c331ae74619061957d59cab040171dcb6fb5900beb6",
+          "relative_imports": [
+            "./three.core.min.js"
+          ],
+          "external_url_occurrences": 1,
+          "external_urls": [
+            "https://jcgt.org/published/0007/04/01/"
+          ],
+          "external_urls_note": "One paper citation inside a GLSL comment in a shader source string. Not a fetch target."
+        },
+        {
+          "path": "three/three.core.min.js",
+          "tarball_entry": "package/build/three.core.min.js",
+          "bytes": 385386,
+          "sha256": "05b2609338c76cd65daf74f3ac515bc9a5045e1b3b33edc07d8c9bd55250fa90",
+          "relative_imports": [],
+          "external_url_occurrences": 1,
+          "external_urls": [
+            "http://www.w3.org/1999/xhtml"
+          ],
+          "external_urls_note": "The XHTML namespace identifier passed to document.createElementNS. An XML namespace name, never resolved and never fetched."
+        },
+        {
+          "path": "three/LICENSE",
+          "tarball_entry": "package/LICENSE",
+          "bytes": 1081,
+          "sha256": "8b378ebe60e2fe500158cb0ac71cb5e8b7d92953c2abcc63a0eb90499653b5bc",
+          "relative_imports": [],
+          "external_url_occurrences": 0,
+          "external_urls": []
+        }
+      ]
+    }
+  ]
+}

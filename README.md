@@ -62,7 +62,15 @@ AI-authored areas can share one coherent visual grammar.
   `nomos.rendering_plan@1` — the register's third row — from those two documents
   plus the run bundles and presentation source, and
   `experiments/executable-gaol/src/build-plan.mjs`, which classified by naming
-  convention and reimplemented the resolvers in JavaScript, is deleted
+  convention and reimplemented the resolvers in JavaScript, is deleted.
+  **R1-3, typed presentation source (issue #146), is the third accepted slice**:
+  each area's `presentation.json` carries `nomos.presentation_source@1`,
+  versioned and integer-only, and the plan is `nomos.rendering_plan@2`.
+  **R1-4, the promoted viewer (issue #148), is the fourth**: `apps/nomos-viewer/`
+  is an accepted app with a vendored Three.js, a strict decoder, a scanned public
+  artifact, and a headless Chromium lane that plays the four-area route to the
+  final escape and fails on a single console error. The study's own viewer,
+  which imported Three.js from a CDN and had no browser test, is deleted
 - **Contract revision:** 7, owner-authorized in decision 0009
 - **Cold-agent protocol revision:** 6, owner-authorized in decision 0015;
   revision-6 packet, boundary, record, adjudication, and finalization tooling is
@@ -89,8 +97,12 @@ AI-authored areas can share one coherent visual grammar.
   decision in that project's own authority records
 - **License:** MIT
 
-**Play the quarantined executable gaol:**
-<https://conarylabs.github.io/nomos/>
+**Play the promoted viewer:** <https://conarylabs.github.io/nomos/>
+
+The published page is `apps/nomos-viewer/dist`, staged from the study's compiled
+artifacts, scanned for external origins and build-machine leakage, and played
+end to end in headless Chromium before it is uploaded. The content it renders is
+still the quarantined study's.
 
 The repository does not claim the thesis is correct. The kernel gives it a
 cheap, falsifiable semantic boundary; the executable study tests a narrower
@@ -199,6 +211,7 @@ README.md          status and reading order
 THESIS.md          the design thesis
 KERNEL.md          the Gate K acceptance contract
 docs/              decisions, evaluation protocols, reviews, workspace notes
+apps/nomos-viewer/ the promoted viewer (R1-4); no bundler, no install step
 experiments/       quarantined target-pack and executable-gaol studies
 fixtures/          exact Gate K authoring source, command, and replay fixtures
 crates/            the six Gate K kernel crates named in KERNEL.md section 10

@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Nomos — the gaol</title>
+<!-- An empty data icon, so the page issues no favicon request of its own. -->
+<link rel="icon" href="data:,">
+<style>
+  /* Every colour on this page is a custom property written from the renderer
+     catalog's one palette at boot. There is no colour value in this file. */
+  :root { color-scheme: dark; font:14px system-ui,sans-serif; background:var(--nomos-void); color:var(--nomos-text) }
+  body { margin:0; min-height:100vh; display:grid; grid-template-rows:auto 1fr auto; background:var(--nomos-void) }
+  header { display:flex; flex-wrap:wrap; gap:12px; align-items:center; padding:12px 18px; background:var(--nomos-surface); border-bottom:1px solid var(--nomos-border) }
+  h1 { margin:0 auto 0 0; font-size:15px; letter-spacing:.12em; text-transform:uppercase }
+  code { font:inherit; font-family:ui-monospace,monospace; letter-spacing:0 }
+  #areas, #states { display:flex; gap:6px }
+  #areas { padding-right:12px; border-right:1px solid var(--nomos-border) }
+  #grammar { color:var(--nomos-cyan-dim); font:11px ui-monospace,monospace }
+  button { color:var(--nomos-text); background:var(--nomos-surface-button); border:1px solid var(--nomos-border-strong); border-radius:5px; padding:7px 11px; cursor:pointer }
+  button[aria-pressed="true"] { color:var(--nomos-void); background:var(--nomos-cyan); border-color:var(--nomos-cyan-bright) }
+  main { display:grid; place-items:center; padding:18px }
+  #stage { position:relative; width:min(100%,1200px); aspect-ratio:20/9 }
+  #frame { width:100%; height:100%; border:1px solid var(--nomos-stone-2); line-height:0; background:var(--nomos-void); box-shadow:0 28px 80px color-mix(in srgb, var(--nomos-void) 60%, transparent) }
+  #frame canvas { width:100%; height:100%; display:block }
+  #play-hud { position:absolute; z-index:2; top:18px; left:18px; padding:11px 14px; background:color-mix(in srgb, var(--nomos-surface-sunk) 86%, transparent); border-left:3px solid var(--nomos-cyan-dim); pointer-events:none }
+  #progress { color:var(--nomos-text-dim); font:10px ui-monospace,monospace; letter-spacing:.16em; text-transform:uppercase }
+  #objective { margin-top:3px; font-weight:650; letter-spacing:.04em }
+  #prompt { margin-top:5px; color:var(--nomos-prompt); font:12px ui-monospace,monospace }
+  #prompt[data-tone="action"] { color:var(--nomos-amber) }
+  #prompt[data-tone="success"] { color:var(--nomos-cyan) }
+  #prompt[data-tone="danger"] { color:var(--nomos-danger) }
+  #arrival { position:absolute; z-index:3; top:14%; left:50%; translate:-50% -8px; padding:13px 26px; text-align:center; background:color-mix(in srgb, var(--nomos-surface-sunk) 91%, transparent); border-top:1px solid var(--nomos-cyan-dim); border-bottom:1px solid var(--nomos-cyan-dim); opacity:0; transition:opacity .3s,translate .3s; pointer-events:none }
+  #arrival.active { opacity:1; translate:-50% 0 }
+  #arrival-kicker { color:var(--nomos-cyan); font:10px ui-monospace,monospace; letter-spacing:.18em; text-transform:uppercase }
+  #arrival-title { margin-top:4px; font-size:19px; letter-spacing:.08em; text-transform:uppercase }
+  #completion { position:absolute; z-index:4; inset:0; display:grid; place-items:center; background:color-mix(in srgb, var(--nomos-surface-sunk) 78%, transparent) }
+  #completion[hidden] { display:none }
+  #completion-card { min-width:min(360px,calc(100vw - 60px)); padding:28px; text-align:center; background:var(--nomos-surface-raised); border:1px solid var(--nomos-cyan-dim) }
+  #completion-kicker { color:var(--nomos-cyan); font:11px ui-monospace,monospace; letter-spacing:.2em; text-transform:uppercase }
+  #completion h2 { margin:8px 0 10px; font-size:27px; letter-spacing:.1em; text-transform:uppercase }
+  #completion-summary { margin:0 0 20px; color:var(--nomos-prompt) }
+  #failure { position:absolute; z-index:5; inset:0; display:grid; place-items:center; padding:24px; text-align:center; font:13px ui-monospace,monospace; color:var(--nomos-danger); background:var(--nomos-surface-raised) }
+  #failure[hidden] { display:none }
+  footer { display:flex; flex-wrap:wrap; justify-content:center; gap:8px 24px; padding:11px 18px 15px; color:var(--nomos-text-muted); background:var(--nomos-surface); border-top:1px solid var(--nomos-border) }
+  #message[data-tone="blocked"], #message[data-tone="danger"] { color:var(--nomos-danger) }
+  #message[data-tone="success"] { color:var(--nomos-cyan) }
+  #message[data-tone="water"] { color:var(--nomos-water-high) }
+  @media (max-width:700px) {
+    header { padding:10px; gap:8px }
+    h1 { flex-basis:100% }
+    #areas { order:2; width:100%; padding:0 0 7px; border:0; border-bottom:1px solid var(--nomos-border) }
+    #states { order:3; flex-wrap:wrap }
+    #forensic { order:4 }
+    main { padding:10px }
+    #play-hud { top:9px; left:9px; padding:8px 10px }
+    #arrival { top:auto; bottom:8px; width:max-content; max-width:calc(100% - 24px); box-sizing:border-box; padding:8px 16px; translate:-50% 8px }
+    #arrival.active { translate:-50% 0 }
+    #arrival-title { font-size:15px }
+    #progress { display:none }
+    #objective { font-size:12px }
+    #prompt { font-size:10px }
+    footer { justify-content:flex-start; font-size:12px }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>Nomos // the gaol</h1>
+  <span id="grammar"></span>
+  <span id="areas"></span>
+  <span id="states"></span>
+  <button id="look-mode" aria-pressed="true">Look</button>
+  <button id="forensic" aria-pressed="false">Forensics</button>
+</header>
+<main>
+  <div id="stage">
+    <div id="play-hud"><div id="progress"></div><div id="objective"></div><div id="prompt"></div></div>
+    <div id="arrival" aria-live="polite"><div id="arrival-kicker"></div><div id="arrival-title"></div></div>
+    <div id="frame"></div>
+    <div id="completion" hidden><div id="completion-card"><div id="completion-kicker">Run complete</div><h2>Gaol escaped</h2><p id="completion-summary"></p><button id="restart">Begin again</button></div></div>
+    <div id="failure" hidden></div>
+  </div>
+</main>
+<footer>
+  <span>Move: WASD / arrows · Interact: E · Areas: [ ] · Scenarios: 1–5 · Reset: R</span>
+  <span id="message"></span>
+  <span id="meter"></span>
+</footer>
+<script type="module">
+  import * as three from "./vendor/three/three.module.min.js";
+  import { start } from "./src/ui.mjs";
+  start(document, three);
+</script>
+</body>
+</html>

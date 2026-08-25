@@ -122,6 +122,7 @@ crates `RUNTIME.md` section 3 declares — `R1_CRATES` in
 | `membership` (R1) | a workspace member that `RUNTIME.md` section 3 does not declare as an R1 crate; a declared R1 crate that has gone missing |
 | `permitted-edges` (R1) | an R1 crate depending on a workspace member that is neither a kernel crate nor another declared R1 crate; a kernel crate depending on an R1 crate is already refused by the row above |
 | `cycles` (R1) | a dependency cycle among the kernel and R1 crates, R1 to R1 included |
+| `viewer-isolation` (R1) | a workspace member living under `apps/`. `RUNTIME.md` section 3 keeps the promoted viewer out of the workspace graph; it is JavaScript, so the enforceable statement is about membership rather than edges, and `cargo metadata` carries each member's manifest path. Added with R1-4 (issue #148) |
 
 `forbidden-dependency` stays scoped to what a kernel crate reaches: `RUNTIME.md`
 section 4, not this list, governs an R1 crate's third-party dependencies.

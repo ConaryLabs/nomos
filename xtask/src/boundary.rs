@@ -14,7 +14,9 @@
 //! 3. a cycle among the kernel and R1 crates;
 //! 4. a forbidden dependency — renderer, windowing, audio, networking, watcher,
 //!    or hot-reload — anywhere reachable from a kernel crate, transitively;
-//! 5. tooling reaching into the kernel graph it checks.
+//! 5. tooling reaching into the kernel graph it checks;
+//! 6. a workspace member living under `apps/`, which `RUNTIME.md` section 3
+//!    keeps outside the graph entirely.
 //!
 //! Rules 1 to 3 carry `RUNTIME.md` section 3 as well as section 10. An R1 crate
 //! may depend on any kernel crate and on another declared R1 crate; a kernel
@@ -196,12 +198,16 @@ pub struct Graph {
     members: BTreeSet<String>,
     /// Workspace member name to package id.
     member_ids: BTreeMap<String, String>,
+    /// Workspace member name to its manifest path, relative to the workspace
+    /// root. Rule 6 is about where a member lives, not what it depends on.
+    member_manifests: BTreeMap<String, String>,
 }
 
 impl Graph {
     /// Reduces `cargo metadata` output to a graph.
     pub fn from_metadata(metadata: &Value) -> Result<Self, String> {
         let mut names = BTreeMap::new();
+        let mut manifests = BTreeMap::new();
         for package in metadata.field_array("packages") {
             let id = package
                 .field_str("id")
@@ -211,8 +217,12 @@ impl Graph {
                 .field_str("name")
                 .ok_or("a package has no `name`")?
                 .to_owned();
+            if let Some(manifest) = package.field_str("manifest_path") {
+                manifests.insert(id.clone(), manifest.to_owned());
+            }
             names.insert(id, name);
         }
+        let workspace_root = metadata.field_str("workspace_root").unwrap_or_default();
 
         let mut edges = BTreeMap::new();
         let resolve = metadata
@@ -231,6 +241,7 @@ impl Graph {
 
         let mut members = BTreeSet::new();
         let mut member_ids = BTreeMap::new();
+        let mut member_manifests = BTreeMap::new();
         for member in metadata.field_array("workspace_members") {
             let id = member
                 .as_str()
@@ -240,6 +251,13 @@ impl Graph {
                 .ok_or_else(|| format!("workspace member `{id}` has no package entry"))?;
             members.insert(name.clone());
             member_ids.insert(name.clone(), id.to_owned());
+            if let Some(manifest) = manifests.get(id) {
+                let relative = manifest
+                    .strip_prefix(workspace_root)
+                    .unwrap_or(manifest)
+                    .trim_start_matches(['/', '\\']);
+                member_manifests.insert(name.clone(), relative.replace('\\', "/"));
+            }
         }
 
         Ok(Self {
@@ -247,6 +265,7 @@ impl Graph {
             edges,
             members,
             member_ids,
+            member_manifests,
         })
     }
 
@@ -298,6 +317,7 @@ impl Graph {
         self.check_cycles(r1_crates, &mut violations);
         self.check_forbidden(&mut violations);
         self.check_tooling_isolation(&mut violations);
+        self.check_viewer_isolation(&mut violations);
         violations
     }
 
@@ -441,6 +461,30 @@ impl Graph {
                     format!(
                         "`{name}` is reachable from a kernel crate; section 10 forbids \
                          {category} dependencies anywhere in Gate K"
+                    ),
+                ));
+            }
+        }
+    }
+
+    /// Rule 6: `apps/` stays out of the workspace graph.
+    ///
+    /// `RUNTIME.md` section 3 forbids a kernel crate depending on `apps/`, and
+    /// says viewer isolation "joins the checker with R1-4". The viewer is
+    /// JavaScript, so the enforceable statement is about membership rather than
+    /// edges: no workspace member may live under `apps/`. A crate placed there
+    /// would be a member the kernel graph could reach, and `cargo metadata`
+    /// carries each member's manifest path, so this is checkable from the same
+    /// data as every other rule.
+    fn check_viewer_isolation(&self, violations: &mut Vec<Violation>) {
+        for (member, manifest) in &self.member_manifests {
+            if manifest.starts_with("apps/") {
+                violations.push(Violation::new(
+                    "viewer-isolation",
+                    format!(
+                        "workspace member `{member}` lives at `{manifest}`; RUNTIME.md section 3 \
+                         keeps `apps/` outside the workspace graph, and no kernel or R1 crate may \
+                         depend on the viewer"
                     ),
                 ));
             }

@@ -5,7 +5,10 @@ This is the deliberately quarantined answer to issues #101, #103, #105, #107,
 renderer, a connected run, and visible semantic state. It is not Gate K or
 Gate 1 evidence and it does not change the accepted workspace.
 
-**Play online:** <https://conarylabs.github.io/nomos/>
+**Play online:** <https://conarylabs.github.io/nomos/> — that page is the
+promoted viewer under `apps/nomos-viewer/`, which is accepted R1 code. This
+study supplies the content it renders and the compiled artifacts it consumes,
+and nothing here is accepted.
 
 Run:
 
@@ -40,31 +43,32 @@ lattice cell and effects attach to a named socket rather than to a coordinate.
 the renderer says what a socket, an assembly, or a family name means, which is
 the half content may name but not define.
 
-To use the interactive state and forensic-overlay controls:
+To play it, build the artifacts here and then build and serve the promoted
+viewer:
 
 ```sh
-experiments/executable-gaol/gaol serve
+experiments/executable-gaol/gaol capture
+node apps/nomos-viewer/build.mjs --from target/executable-gaol --out apps/nomos-viewer/dist
+node apps/nomos-viewer/smoke/smoke.mjs --dist apps/nomos-viewer/dist --out target/nomos-viewer-smoke
 ```
 
-Open the printed local URL. The WebGL renderer receives only `areas.json`, the
-four selected rendering plans, and presentation-only actor deltas; it does not
-parse `.nomos`, World IR, or compiler receipts. Its pinned Three.js backend
-supplies meshes, depth, shadows, fog, real point lights, and animated shader
-water. North Gaol, Cistern Walk, Ember Vault, and Ossuary Reach use the same
-camera, bounded palette, materials, assemblies, actor silhouettes, beveled
-masonry vocabulary, effect language, and renderer — all of which the renderer
-owns, so none of them appears in a content file. Their doors, water, light,
-actors, wall height, masonry masses, and composition come from separate area
-content.
+The viewer receives only `areas.json` and the four rendering plans; it does not
+parse `.nomos`, World IR, or compiler receipts. North Gaol, Cistern Walk, Ember
+Vault, and Ossuary Reach use the same camera, palette, materials, assemblies,
+actor silhouettes, beveled masonry vocabulary, effect language, and renderer —
+all of which the renderer owns, so none of them appears in a content file. Their
+doors, water, light, actors, wall height, masonry masses, and composition come
+from separate area content.
 See [AUTHORING.md](AUTHORING.md) for the intentionally small LLM authoring
 packet.
 
 The default `gaol_procedural_01` look is likewise renderer-owned: one bounded
 profile controls palette roles, coarse deterministic stone/iron/cloth variation,
 bevel treatment, actor silhouettes, exposure, and fog for every area. It uses no
-bitmap texture or generated image asset. `Look: procedural` switches to the
+bitmap texture or generated image asset. The `Look` button switches to the
 untreated baseline in place, so visual iteration can compare the shared grammar
-without changing or reloading area content.
+without changing or reloading area content. Those profiles now live in the
+promoted catalog; what stays here is the SVG capture path and its own palette.
 
 Use WASD or the arrow keys to cross each room. Walk beside its primary gate,
 press `E` to ignite it, press `E` again to unseal it, and cross the resulting
@@ -94,15 +98,12 @@ while resetting area-local actors and runtime scenario selection. The area
 buttons and bracket keys are forensic shortcuts that reset run progress; `R`
 returns to the Cistern start.
 
-The internet build is the same static viewer staged without a running process:
-
-```sh
-experiments/executable-gaol/gaol site
-```
-
-The GitHub Pages workflow publishes that directory. No dev-machine port,
-repository checkout, `.nomos` source, World IR, or credential enters the public
-artifact.
+The GitHub Pages workflow publishes `apps/nomos-viewer/dist`, staged by the
+viewer's own build from the artifacts `gaol capture` writes. That build scans
+what it staged and refuses an external origin, a projection member, a credential
+shape, or a path from the build machine, and the browser lane plays the route
+before the page is uploaded. `gaol serve` and `gaol site` are gone with the
+viewer they staged; `gaol capture` and `gaol verify` remain.
 
 Known limits: this is a procedural WebGL visual proof rather than production
 art; its pixels are not deterministic across GPU/driver combinations. Actor

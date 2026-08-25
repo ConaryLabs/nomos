@@ -145,8 +145,11 @@ counts what is declared as `r1 members N`.
 
 The checker enforces R1 membership, edge direction, and kernel purity as of
 issue #137; the planted-violation tests in `xtask/src/planted.rs` prove each of
-those rules refuses. Viewer isolation is not enforced yet — no `apps/` member
-exists — and joins the checker with R1-4.
+those rules refuses. Viewer isolation joined it with R1-4 (issue #148) as the
+`viewer-isolation` rule: `apps/nomos-viewer/` is present and is not a workspace
+member, and a Cargo manifest placed under `apps/` fails the check. The viewer is
+JavaScript, so what the rule refuses is membership rather than an edge — a crate
+there would be a member the kernel graph could reach.
 
 ## 4. Dependency policy
 
@@ -173,7 +176,18 @@ tests it with no network; **added by**, the issue and pull request.
 
 ### Recorded additions
 
-None. No third-party dependency has entered the accepted tree under R1.
+**three** — added by issue #148, pull request #151, for R1-4's promoted viewer.
+
+| Field | Value |
+| --- | --- |
+| **name** | `three` |
+| **version** | `0.185.1` |
+| **provenance** | Vendored under `apps/nomos-viewer/vendor/three/`, extracted from the npm registry tarball `https://registry.npmjs.org/three/-/three-0.185.1.tgz`, whose registry `dist.integrity` is `sha512-5aojFCXKwnjBRZvUnt3WFfEcvUJgkN5LlijRFN95hMy8WVkG4I0QNcJE+OuWvuJ0bOdStrbfXn0pkd6/QyiAlg==` and whose bytes are sha256 `a2143f5bf978bd3470a51024b2b6bdd581913ba8f36ff1538d433f3a95adf2df`. Two files, because the build is two files: `three.module.min.js`, sha256 `86bcee248b64f44bcfc23c331ae74619061957d59cab040171dcb6fb5900beb6`, 365 552 bytes, which re-exports from its sibling `three.core.min.js`, sha256 `05b2609338c76cd65daf74f3ac515bc9a5045e1b3b33edc07d8c9bd55250fa90`, 385 386 bytes. Upstream is `https://github.com/mrdoob/three.js`. Every field here is recorded in `apps/nomos-viewer/vendor/MANIFEST.json` and recomputed by `apps/nomos-viewer/test/vendor.test.mjs`. |
+| **license** | MIT, preserved verbatim at `apps/nomos-viewer/vendor/three/LICENSE`, sha256 `8b378ebe60e2fe500158cb0ac71cb5e8b7d92953c2abcc63a0eb90499653b5bc`, 1 081 bytes. |
+| **why not local** | A WebGL2 scene graph with material and shader compilation, an orthographic camera, shadow maps, and generated geometry — extrusion with bevels, torus, cone, cylinder, icosahedron, plane. A local implementation would be a second renderer to maintain and no more trustworthy for being ours. Section 4's policy admits exactly this case outside the six kernel crates. |
+| **determinism** | Cannot affect authoritative state, hashes, or receipts. It is loaded only by `apps/nomos-viewer/`, which consumes published artifacts and writes none; no kernel crate, no R1 crate, no `xtask` target, and no step that produces a canonical artifact links or executes it. Bounded by the `viewer-isolation` rule in section 3, by the staged artifact's scan, and by the smoke lane, which hashes no GPU output — section 9 already states the study's pixels are not deterministic across GPUs, and no receipt depends on them. |
+| **offline proof** | Both files are committed; there is no `npm install`, no lockfile to resolve, and no bundler. `node --test apps/nomos-viewer/test/vendor.test.mjs` recomputes every digest and byte count from the working tree and asserts that the only module specifier either file carries is the relative sibling. `apps/nomos-viewer/build.mjs` re-checks the digests as it stages them and refuses any external origin in the built artifact. The smoke lane runs Chrome with `--host-resolver-rules="MAP * ~NOTFOUND, EXCLUDE localhost"`, records every request, requires the external list to be empty, and proves the rule is in force with a negative-control fetch that must fail. |
+| **added by** | Issue #148, pull request #151. |
 
 ## 5. First targets
 
@@ -380,17 +394,27 @@ PR CI runs the R1 register check from issue #133 instead, which holds the twenty
 Gate K identities fixed and requires every new identity to have exactly one
 registered owner.
 
-The comparison target, which proves the study rather than accepted work and is
-the specification while R1-2 and R1-3 are open:
+The comparison target, which proves the study rather than accepted work:
 
 ```text
 experiments/executable-gaol/gaol verify
-experiments/executable-gaol/gaol site
 ```
 
-Once R1-4 exists, its headless Chromium smoke lane runs in CI on every change
-and locally through the same entry point; no target is accepted while its lane
-is red or absent.
+R1-2 and R1-3 have landed, so the block above no longer needs a second command:
+`gaol site` staged the study's own viewer and was removed with it when R1-4
+promoted the viewer under `apps/`. The R1-4 lane is the replacement this section
+anticipated, and it runs in CI on every change and locally through the same
+entry point:
+
+```text
+node --test apps/nomos-viewer/test/*.test.mjs
+node apps/nomos-viewer/build.mjs --from target/executable-gaol --out apps/nomos-viewer/dist
+node apps/nomos-viewer/smoke/smoke.mjs --dist apps/nomos-viewer/dist --out target/nomos-viewer-smoke
+```
+
+No target is accepted while that lane is red or absent. Locally the smoke lane
+skips with an explicit message when the machine has no Chrome; in CI it is
+required.
 
 Nothing is green until someone other than its author reruns the proof. Under
 `AGENTS.md` the rerun receipt records the commit, the commands, the environment,
@@ -409,7 +433,7 @@ acceptance.
 | Validation latency | ms | `nomos validate` on the accepted fixture | not measured |
 | Replay throughput | commands/s | `nomos replay` over the accepted log | not measured |
 | Package size | bytes | a compiled world package directory | not measured |
-| Public artifact size | bytes | the staged public site directory | not measured |
+| Public artifact size | bytes | the staged public site directory | 894 174 — `apps/nomos-viewer/dist`, 14 files, of which 750 938 is the vendored renderer; measured by `apps/nomos-viewer/build.mjs` on the R1-4 branch |
 | Edit-to-visible-frame latency | ms | content edit to first rendered frame | not measured |
 
 ## 8. Contract repair

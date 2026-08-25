@@ -1,7 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { attemptInteraction, attemptMove, completeRun, createPlayState, enterArea } from "./play-state.mjs";
 import {
   ACTOR_ASSEMBLIES,
   ARCHITECTURE_ASSEMBLIES,
@@ -138,147 +137,11 @@ test("every added area is a distinct composition", () => {
   ]);
 });
 
-test("declared masonry masses block presentation movement", () => {
-  const state = { ...createPlayState(cistern), player: { x: 3, y: 0, z: 0 } };
-  const result = attemptMove(cistern, "01-baseline", state, 1, 0);
-  assert.equal(result.moved, false);
-  assert.equal(result.state.message, "Blocked by channel_buttress");
-});
 
-test("the cistern interactions remain projection-bound", () => {
-  const state = { ...createPlayState(cistern), player: { x: 2, y: 1, z: 0 } };
-  const ignite = attemptInteraction(cistern, "01-baseline", state);
-  assert.equal(ignite.interaction.target_entity, "sluice_gate");
-  assert.equal(ignite.interaction.input_state_hash, cistern.scenarios[0].state_hash);
-  const unseal = attemptInteraction(cistern, ignite.scenarioId, ignite.state);
-  assert.equal(unseal.scenarioId, "03-breached-unsealed");
-  assert.equal(unseal.interaction.resulting_state_hash, cistern.scenarios[2].state_hash);
-});
-
-test("the cistern dark route is winnable", () => {
-  let scenarioId = "01-baseline";
-  let state = createPlayState(cistern);
-  for (const [dx, dy] of [[0, -1], [0, -1], [0, -1], [-1, 0], [-1, 0], [-1, 0], [-1, 0], [-1, 0]]) {
-    state = attemptMove(cistern, scenarioId, state, dx, dy).state;
-  }
-  for (let count = 0; count < 2; count += 1) {
-    const result = attemptInteraction(cistern, scenarioId, state);
-    state = result.state;
-    scenarioId = result.scenarioId;
-  }
-  for (const [dx, dy] of [[1, 0], [1, 0], [1, 0], [0, 1]]) {
-    state = attemptMove(cistern, scenarioId, state, dx, dy).state;
-  }
-  const extinguish = attemptInteraction(cistern, scenarioId, state);
-  state = extinguish.state;
-  scenarioId = extinguish.scenarioId;
-  for (const [dx, dy] of [[0, -1], [-1, 0], [-1, 0], [-1, 0], [0, -1], [0, -1]]) {
-    state = attemptMove(cistern, scenarioId, state, dx, dy).state;
-  }
-  assert.equal(state.escaped, true);
-  assert.equal(state.caught, false);
-});
-
-test("the ember vault dark route is winnable", () => {
-  let scenarioId = "01-baseline";
-  let state = createPlayState(ember);
-  for (const [dx, dy] of [[0, -1], [0, -1], [0, -1], [-1, 0], [-1, 0], [-1, 0], [0, -1]]) {
-    state = attemptMove(ember, scenarioId, state, dx, dy).state;
-  }
-  for (let count = 0; count < 2; count += 1) {
-    const result = attemptInteraction(ember, scenarioId, state);
-    state = result.state;
-    scenarioId = result.scenarioId;
-  }
-  for (const [dx, dy] of [[-1, 0], [0, 1], [-1, 0], [-1, 0]]) {
-    state = attemptMove(ember, scenarioId, state, dx, dy).state;
-  }
-  const extinguish = attemptInteraction(ember, scenarioId, state);
-  state = extinguish.state;
-  scenarioId = extinguish.scenarioId;
-  for (const [dx, dy] of [[1, 0], [1, 0], [0, -1], [1, 0], [0, -1], [0, -1]]) {
-    state = attemptMove(ember, scenarioId, state, dx, dy).state;
-  }
-  assert.equal(state.escaped, true);
-  assert.equal(state.caught, false);
-});
-
-const solveArea = (plan, initialState, toGate, toLight, toExit) => {
-  let scenarioId = "01-baseline";
-  let state = initialState;
-  for (const [dx, dy] of toGate) state = attemptMove(plan, scenarioId, state, dx, dy).state;
-  for (let count = 0; count < 2; count += 1) {
-    const interaction = attemptInteraction(plan, scenarioId, state);
-    state = interaction.state;
-    scenarioId = interaction.scenarioId;
-  }
-  for (const [dx, dy] of toLight) state = attemptMove(plan, scenarioId, state, dx, dy).state;
-  const extinguish = attemptInteraction(plan, scenarioId, state);
-  state = extinguish.state;
-  scenarioId = extinguish.scenarioId;
-  let result;
-  for (const [dx, dy] of toExit) {
-    result = attemptMove(plan, scenarioId, state, dx, dy);
-    state = result.state;
-  }
-  assert.equal(state.caught, false);
-  assert.equal(state.escaped, true);
-  return { state, exitGate: result.exitGate };
-};
-
-test("one run traverses all declared area connections", () => {
-  assert.equal(collection.start_area, "cistern-walk");
-  let solved = solveArea(
-    cistern,
-    createPlayState(cistern),
-    [[0, -1], [0, -1], [0, -1], [-1, 0], [-1, 0], [-1, 0], [-1, 0], [-1, 0]],
-    [[1, 0], [1, 0], [1, 0], [0, 1]],
-    [[0, -1], [-1, 0], [-1, 0], [-1, 0], [0, -1], [0, -1]],
-  );
-  let edge = collection.route.find((candidate) => candidate.from_area === "cistern-walk" && candidate.gate === solved.exitGate);
-  assert.equal(edge.to_area, "ember-vault");
-  let state = enterArea(ember, solved.state);
-  const cisternMoves = state.moves;
-  const cisternCost = state.movementCost;
-  assert.equal(state.areasCleared, 1);
-
-  solved = solveArea(
-    ember,
-    state,
-    [[0, -1], [0, -1], [0, -1], [-1, 0], [-1, 0], [-1, 0], [0, -1]],
-    [[-1, 0], [0, 1], [-1, 0], [-1, 0]],
-    [[1, 0], [1, 0], [0, -1], [1, 0], [0, -1], [0, -1]],
-  );
-  edge = collection.route.find((candidate) => candidate.from_area === "ember-vault" && candidate.gate === solved.exitGate);
-  assert.equal(edge.to_area, "ossuary-reach");
-  state = enterArea(ossuary, solved.state);
-  assert.equal(state.areasCleared, 2);
-  assert.ok(state.moves > cisternMoves);
-  assert.ok(state.movementCost > cisternCost);
-
-  solved = solveArea(
-    ossuary,
-    state,
-    [[1, 0], [1, 0], [1, 0], [1, 0], [1, 0], [0, -1], [0, -1], [0, -1], [0, -1]],
-    [[0, 1], [0, 1], [0, 1]],
-    [[0, -1], [0, -1], [0, -1], [0, -1], [0, -1]],
-  );
-  edge = collection.route.find((candidate) => candidate.from_area === "ossuary-reach" && candidate.gate === solved.exitGate);
-  assert.equal(edge.to_area, "north-gaol");
-  state = enterArea(north, solved.state);
-  assert.equal(state.areasCleared, 3);
-
-  solved = solveArea(
-    north,
-    state,
-    [[0, -1], [0, -1], [0, -1], [1, 0], [1, 0], [1, 0]],
-    [[-1, 0]],
-    [[1, 0], [0, -1], [0, -1]],
-  );
-  edge = collection.route.find((candidate) => candidate.from_area === "north-gaol" && candidate.gate === solved.exitGate);
-  assert.equal(edge.to_area, null);
-  state = completeRun(solved.state);
-  assert.equal(state.completed, true);
-  assert.equal(state.areasCleared, 4);
-  assert.equal(state.message, "Escaped the gaol");
-});
+// The six tests that drove `play-state.mjs` over these four areas are gone with
+// it. What they asserted - that each committed area is winnable and that one run
+// crosses every declared connection - is now proved end to end by
+// `apps/nomos-viewer/smoke/`, which plays the same corpus in a browser and
+// checks the cumulative counters against a walk solved from these artifacts.
+// RUNTIME.md section 2: the study is the specification, and this is what it
+// looks like when a behaviour is promoted rather than copied.

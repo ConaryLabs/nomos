@@ -78,7 +78,18 @@ impl Planted {
 
     /// Writes a new crate under `crates/` and adds it to the member list.
     fn plant_crate(&self, name: &str, dependencies: &[&str], dev_dependencies: &[&str]) {
-        let directory = self.root.join("crates").join(name);
+        self.plant_crate_in("crates", name, dependencies, dev_dependencies);
+    }
+
+    /// Writes a new crate under `tree/` and adds it to the member list.
+    fn plant_crate_in(
+        &self,
+        tree: &str,
+        name: &str,
+        dependencies: &[&str],
+        dev_dependencies: &[&str],
+    ) {
+        let directory = self.root.join(tree).join(name);
         fs::create_dir_all(directory.join("src")).expect("create the planted crate");
         let section = |names: &[&str]| {
             names
@@ -111,7 +122,7 @@ impl Planted {
         let text = fs::read_to_string(&manifest).expect("read the copied workspace manifest");
         let planted = text.replacen(
             "    \"xtask\",\n",
-            &format!("    \"xtask\",\n    \"crates/{name}\",\n"),
+            &format!("    \"xtask\",\n    \"{tree}/{name}\",\n"),
             1,
         );
         assert_ne!(
@@ -268,5 +279,46 @@ fn a_cycle_between_two_r1_members_fails_cycles() {
     assert!(
         detail.contains(&format!("{PLANTED_R1} -> {PLANTED_PEER} -> {PLANTED_R1}")),
         "{detail}"
+    );
+}
+
+#[test]
+fn a_workspace_member_under_apps_fails_viewer_isolation() {
+    // RUNTIME.md section 3: `apps/nomos-viewer/` consumes published artifacts
+    // only, and viewer isolation "joins the checker with R1-4". The viewer is
+    // JavaScript and so has no manifest; what this refuses is the change that
+    // would make it reachable at all - a Cargo member placed under `apps/`.
+    let planted = Planted::copy_of_the_workspace("apps-member");
+    planted.plant_crate_in("apps", PLANTED_R1, &[], &[]);
+
+    let violations = planted.graph().check_with(&declared_with(&[PLANTED_R1]));
+    for violation in &violations {
+        println!("PLANTED [{}] {}", violation.rule, violation.detail);
+    }
+    let detail = only_violation(&violations, "viewer-isolation");
+    assert!(detail.contains(PLANTED_R1), "{detail}");
+    assert!(detail.contains("apps/"), "{detail}");
+}
+
+#[test]
+fn the_shipped_workspace_has_no_member_under_apps() {
+    // The positive half: `apps/nomos-viewer/` exists in the tree and is not a
+    // workspace member, so the rule above is satisfied by construction rather
+    // than by there being no `apps/` at all.
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .expect("xtask is a member of the workspace it checks")
+        .join("apps/nomos-viewer");
+    assert!(root.is_dir(), "apps/nomos-viewer is missing");
+    assert!(
+        !root.join("Cargo.toml").exists(),
+        "apps/nomos-viewer has grown a Cargo manifest"
+    );
+
+    let graph = crate::load_graph(None).expect("read the workspace metadata");
+    let violations = graph.check();
+    assert!(
+        violations.iter().all(|one| one.rule != "viewer-isolation"),
+        "{violations:?}"
     );
 }

@@ -94,12 +94,24 @@ cargo test --workspace --locked
 cargo xtask boundary
 ```
 
-Verify and stage the executable study with:
+Verify the executable study with:
 
 ```text
 experiments/executable-gaol/gaol verify
-experiments/executable-gaol/gaol site
 ```
+
+Build and prove the promoted viewer with:
+
+```text
+node --test apps/nomos-viewer/test/*.test.mjs
+node apps/nomos-viewer/build.mjs --from target/executable-gaol --out apps/nomos-viewer/dist
+node apps/nomos-viewer/smoke/smoke.mjs --dist apps/nomos-viewer/dist --out target/nomos-viewer-smoke
+```
+
+The last one needs a Chrome. It uses `CHROME_BIN` if that is set, otherwise
+`google-chrome` or `chromium` on `PATH`, and falls back to a Playwright cache
+only if one happens to be present. With none of those it skips with an explicit
+message; in CI it is required.
 
 ## What is next
 
@@ -141,10 +153,28 @@ floating-point rows are dispositioned in `docs/review/presentation-source.md`,
 which is its design record. Seven rows are deferred with a named slice: three to
 R1-4 and four to R1-5.
 
-**R1-4, the promoted viewer, is next.** It inherits the deferrals R1-3 named:
-the kind-to-assembly and kind-to-material tables still in the compiler, the
-display strings `displayName()` invents from identifiers, direction-aware socket
-resolution, and one palette in place of two renderers' two.
+**R1-4, the promoted viewer, has landed** (issue #148, PR #151).
+`apps/nomos-viewer/` is a clean implementation - no file moved or copied - with
+a strict decoder for `nomos.rendering_plan@2`, a vendored `three@0.185.1`
+recorded under `RUNTIME.md` section 4, a `dist/` staged from published artifacts
+and scanned before it is published, and a dependency-free headless Chromium lane
+that plays the four-area route to the final escape and fails on a single console
+error. `docs/review/nomos-viewer.md` is its design record, and its section 2
+names the study lines each promoted behaviour reproduces and the test that
+proves it.
+
+It resolved the deferrals R1-3 named. The kind-to-assembly and kind-to-material
+tables became the catalog's definition of what those names mean, with the
+compiler's table held to it by a test and issue #153 carrying the move out of
+Rust; `displayName()` is gone, because prose now comes only from `area.label`,
+the app's own strings, and tables keyed by closed sets the schema declares;
+sockets resolve through the entity's declared face; and the two colour tables
+are one palette that the page reads too.
+
+Still deferred to R1-5: the literal actor ids, the scenario label derived from a
+directory name, the interaction reconstruction, and a declared actor role. The
+viewer picks its initial scenario by lowest authoritative tick rather than array
+position, which closes the audit's remaining positional convention early.
 
 Simulation-boundary expansion remains deferred while the visual grammar is
 being established. Do not reopen Gate K evaluation work or add proof machinery
