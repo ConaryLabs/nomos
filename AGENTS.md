@@ -1,8 +1,11 @@
 # Agent guide
 
-Read [README.md](README.md), then [THESIS.md](THESIS.md), then
-[KERNEL.md](KERNEL.md), then [RUNTIME.md](RUNTIME.md). For changes to the
-acceptance contract, also read the latest record under `docs/decisions/`.
+Read [README.md](README.md), then [docs/HANDOFF.md](docs/HANDOFF.md), then
+[docs/decisions/0019-r1-final-disposition.md](docs/decisions/0019-r1-final-disposition.md),
+then [docs/decisions/0021-runtime-revision-4.md](docs/decisions/0021-runtime-revision-4.md),
+then [THESIS.md](THESIS.md), [KERNEL.md](KERNEL.md), and [RUNTIME.md](RUNTIME.md).
+For changes to an acceptance contract, also read the latest applicable record
+under `docs/decisions/`.
 
 Nomos is the project/runtime; The Signed World is the thesis it tests. Nothing
 here is authority for any other project.
@@ -57,6 +60,10 @@ here is authority for any other project.
 - **Do not import another project's bureaucracy by accident.** Validators,
   document families, routing tools, and conventions from other repositories
   require a recorded decision here before use.
+- **Old branches are not a work queue.** Historical remote branches and tags
+  preserve evidence. Open GitHub issues and pull requests, together with owner
+  decisions, identify active work. At a new-session boundary, verify those
+  lists instead of inferring a task from a branch name.
 
 ## Change flow
 
@@ -73,9 +80,10 @@ here is authority for any other project.
 
 ```text
 README.md          status and reading order
+docs/HANDOFF.md    current state, fresh-box setup, stop line, and next action
 THESIS.md          exploratory design thesis, currently revision 2
 KERNEL.md          Gate K acceptance contract, currently revision 7
-RUNTIME.md         R1 epoch contract, currently revision 1
+RUNTIME.md         accepted R1 baseline contract, currently revision 4
 docs/decisions/    owner-authorized contract and architecture decisions
 docs/evaluation/   reproducible evaluation protocols
 docs/review/       review syntheses, provenance notes, and cold-review records

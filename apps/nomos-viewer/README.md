@@ -1,6 +1,6 @@
 # The promoted viewer
 
-Accepted R1 code under `RUNTIME.md` §5 R1-4 and §5 R1-5. It renders the four
+Accepted R1 code under `RUNTIME.md` §5 R1-4 and §5 R1-5. It renders the six
 `nomos.rendering_plan@3` artifacts the Rust compiler emits and fetches nothing:
 the renderer is vendored in-tree and every URL the page constructs is a relative
 path the artifacts declared.
@@ -36,28 +36,36 @@ test/           node's test runner; no dependency, no install step
 
 ## Running it
 
-```sh
+```bash
+experiments/executable-gaol/gaol verify
 crates/nomos-play/build-wasm.sh
 cargo build --locked -p nomos-play
-experiments/executable-gaol/gaol capture
-node apps/nomos-viewer/build.mjs --from target/executable-gaol --out apps/nomos-viewer/dist
-node apps/nomos-viewer/smoke/smoke.mjs --dist apps/nomos-viewer/dist --out target/nomos-viewer-smoke
+node apps/nomos-viewer/build.mjs \
+  --from target/executable-gaol \
+  --wasm target/wasm32-unknown-unknown/wasm/nomos_play.wasm \
+  --out apps/nomos-viewer/dist \
+  --receipt target/nomos-viewer-build/receipt.json
 node --test apps/nomos-viewer/test/*.test.mjs
+node apps/nomos-viewer/smoke/smoke.mjs \
+  --dist apps/nomos-viewer/dist \
+  --out target/nomos-viewer-smoke \
+  --require-chrome
 ```
 
-The first line builds the runtime the page loads and prints its size and
-sha256; the second builds the native binary the smoke lane shells to replay what
-the browser did. `test/runtime.test.mjs` drives the staged binary under node and
-skips with a message when `dist/` has not been built, so a failure has somewhere
-smaller to be found than a headless run.
+The first command builds and verifies the six-area artifact the viewer consumes.
+The wasm build prints the runtime's size and SHA-256; the native build produces
+the binary the smoke lane shells to replay what the browser did.
+`test/runtime.test.mjs` drives the staged binary under Node and skips with a
+message when `dist/` has not been built, so a failure has somewhere smaller to
+be found than a headless run.
 
 The smoke lane uses `CHROME_BIN` if it is set, then `google-chrome` or
 `chromium` on `PATH`, and falls back to a Playwright cache only if one is
 already present. With none of those it skips with an explicit message; in CI it
 is required, and `--require-chrome` makes an absent browser a failure.
 
-There is no `npm install`, no lockfile, and no bundler. Node's built-ins and one
-vendored file are the whole dependency set.
+There is no `npm install`, no lockfile, and no bundler. Node's built-ins and the
+two vendored Three.js modules are the whole executable dependency set.
 
 ## What it consumes, and what owns it
 

@@ -1,10 +1,7 @@
 # Nomos
 
-**Nomos — a semantic game runtime designed for AI authors.**
-
-This repository contains the executable semantic kernel, **The Signed World**
-architectural thesis, and a quarantined executable gaol used to test whether
-AI-authored areas can share one coherent visual grammar.
+**Nomos is a semantic game runtime designed for AI authors. The Signed World is
+the architectural thesis this repository tests.**
 
 > The agent proposes the world. Nomos supplies the law.
 
@@ -13,250 +10,135 @@ AI-authored areas can share one coherent visual grammar.
 > the consequences. The runtime executes a sealed world. The renderer owns every
 > pixel. A cold stranger can rebuild and explain all of it.
 
+New machine or new agent? Read [the current handoff](docs/HANDOFF.md) before
+choosing work. It contains the fresh-box prerequisites, proof order, exact stop
+line, and operational gotchas.
+
+**Play the six-area viewer:** <https://conarylabs.github.io/nomos/>
+
 ## Status
 
-- **Architecture status:** exploratory and non-authoritative
-- **Implementation status:** semantic implementation is complete through SW-N
-  on `main`. The implemented surface includes foundations, source and preserved
-  construction IR, stable
-  `nomos.world_ir@2` plus strict v1 migration, compiled transitions,
-  shared movement and light resolution, all four projections, immutable runtime
-  commits, complete hash-verified world packages, the filesystem `validate`,
-  `compile`, `inspect`, `run`, `command`, and `replay` commands, strict persisted
-  runtime and replay evidence, atomic verified run bundles, the immutable
-  `migrate` command, and package-bound read-only entity and transition
-  explanations
-- **Gate K status:** **failed**, owner-disposed in decision 0013. Exact candidate
-  `gate-k-rc1` / `d8a0b85` passed criteria 1–16 and the final different-author
-  proof passed criterion 19. The one formal cold-author attempt failed criterion
-  17 because its checker requested forbidden outside-workspace paths; the one
-  formal cold-debug attempt failed criterion 18 for the same class of subject
-  request. Both did the semantic task correctly, but the frozen rubric does not
-  permit self-waiver. Those attempts remain failed, no acceptance tag exists,
-  and Gate K is not green. Decision 0015 authorized a separately governed round
-  two; its candidate and two formal subjects completed, but neither independent
-  checker ran. Decision 0016 terminates round two incomplete with no verdict,
-  preserves the unmerged debugger record at annotated tag
-  `gate-k-rc2-debug-subject-incomplete`, and authorizes no retry, protocol
-  revision 7, or round three. No Gate K work remains active
-- **Executable-study status:** the static target pack remains preserved under
-  `experiments/gate-0-gaol-target-pack/`. A separate quarantined study under
-  `experiments/executable-gaol/` now connects six independently authored areas
-  — two of them cold-authored from the packet alone as a Gate 2/Gate 3
-  miniature, `docs/review/cold-author-area-five.md` — through one
-  projection-only WebGL renderer and one bounded procedural look. It is
-  playable online and explicitly authorized to continue by decision 0016, but
-  remains non-authoritative and satisfies neither Gate K nor Gate 1
-- **Post-Gate-K epoch status:** decision 0017 is **owner-authorized** under
-  issue #124 and the **R1 epoch is open**: an explicit epoch break, not a Gate K
-  pass, with promotion by clean implementation only. Its contract document
-  `RUNTIME.md` is now owner-authorized under issue #128 and governs what R1
-  accepts. **R1-1, the kernel effective-facts projection (`nomos
-  effective-facts`, PR #130), is the first accepted R1 slice**: it meets every
-  `RUNTIME.md` §5 R1-1 criterion, and its identity `nomos.effective_facts@2` is
-  the first row of the R1 register `docs/evaluation/R1_SCHEMA_OWNERSHIP.md`.
-  `nomos entity-catalog <world/>` (issue #138) adds the register's second row,
-  `nomos.entity_catalog@1`: the read-only entity kind, capability set, binding,
-  machines, and resolver claims R1-2 needs in order to classify doors, water,
-  and lights from typed declarations instead of naming conventions.
-  **R1-2, Rust rendering-plan compilation (issue #139), is the second accepted
-  slice**: the R1 crate `crates/nomos-render-plan` compiles
-  `nomos.rendering_plan@1` — the register's third row — from those two documents
-  plus the run bundles and presentation source, and
-  `experiments/executable-gaol/src/build-plan.mjs`, which classified by naming
-  convention and reimplemented the resolvers in JavaScript, is deleted.
-  **R1-3, typed presentation source (issue #146), is the third accepted slice**:
-  each area's `presentation.json` is versioned and integer-only.
-  **R1-4, the promoted viewer (issue #148), is the fourth**: `apps/nomos-viewer/`
-  is an accepted app with a vendored Three.js, a strict decoder, a scanned public
-  artifact, and a headless Chromium lane that plays the four-area route to the
-  final escape and fails on a single console error. The study's own viewer,
-  which imported Three.js from a CDN and had no browser test, is deleted.
-  **R1-5, authoritative movement and pursuit (issue #154), is the fifth**: the
-  R1 crate `crates/nomos-play` takes the player's cell, the cost of a step,
-  collision, the gaoler's pursuit, capture, the area transition, and the
-  counters away from JavaScript and layers them over the kernel's own
-  transactions, and the same crate compiled to `wasm32-unknown-unknown` is what
-  the browser plays. The smoke lane records the whole session the browser
-  produced and replays it through the native runtime: identical receipts and an
-  identical chain head, which is the claim the slice exists to make. The
-  content versions move together — `nomos.presentation_source@2`,
-  `nomos.rendering_plan@3`, `nomos.area_collection@2` — and the drawn artifacts
-  do not: every SVG frame and every contact sheet is byte-identical across the
-  bump
-- **Contract revision:** 7, owner-authorized in decision 0009
-- **Cold-agent protocol revision:** 6, owner-authorized in decision 0015;
-  revision-6 packet, boundary, record, adjudication, and finalization tooling is
-  implemented under issue #88 and merged in PR #89 at `7744610`. Fresh
-  cross-family author/checker and
-  debugger/checker rehearsals passed at exact tooling commit `cbfa3f7`, and the
-  complete proof plus zero-finding non-author audit passed at `da19239`. Issue
-  #90 / PR #91 froze exact candidate `53db236`, whose verify run `32689876814`
-  and gate-k-evidence run `32689876846` passed before the annotated
-  `gate-k-rc2` tag was created. Revision 6 and the incomplete round-two records
-  are now historical evidence; decision 0016 closes the evaluation without
-  further checker or audit launches
-- **R1 contract status:** [RUNTIME.md](RUNTIME.md) revision 2 is
-  **owner-authorized and in force** as of 2026-08-25 under
-  [decision 0018](docs/decisions/0018-runtime-revision-2.md), which repairs four
-  contract texts in §3, §5, and §6 and weakens no criterion; revision 1 was
-  authorized under issue #128. It is the R1 epoch's own acceptance contract
-  under decision 0017, reconciled with the merged ownership audit (#125,
-  PR #129); its section 3 permits read-only R1 surface inside the kernel crates
-  under stated conditions. R1-1, the kernel
-  effective-facts projection prototyped on PR #130, is the first slice under
-  acceptance, and R1-2 through R1-5 follow it. Two crates are declared R1
-  members in `RUNTIME.md` §3 and in `cargo xtask boundary`:
-  `nomos-render-plan` and `nomos-play`. `KERNEL.md` revision 7 stays frozen and
-  unamended
-- **Scope:** greenfield / vacuum architecture exercise
-- **Effect on other projects:** none unless separately adopted by an explicit
-  decision in that project's own authority records
-- **License:** MIT
+| Line | Current disposition |
+| --- | --- |
+| The Signed World thesis | exploratory; applies to no game project |
+| Gate K round one | failed under decision 0013 |
+| Gate K round two | terminated incomplete under decision 0016 |
+| R1 runtime epoch | all five criteria passed; accepted and closed under decision 0019 |
+| R1 contract | `RUNTIME.md` revision 4, in force under decision 0021 |
+| Game adoption | not authorized |
+| Later runtime epoch | not authorized |
 
-**Play the promoted viewer:** <https://conarylabs.github.io/nomos/>
+R1 is the accepted runtime baseline for this repository. That result does not
+rewrite Gate K, pass a later gate, approve production art, or authorize Nomos
+for another project. Decision 0019 is explicit: **accept R1; do not adopt Nomos
+into a game.**
 
-The published page is `apps/nomos-viewer/dist`, staged from the study's compiled
-artifacts, scanned for external origins and build-machine leakage, and played
-end to end in headless Chromium before it is uploaded. The content it renders is
-still the quarantined study's.
+The implementation includes:
 
-The repository does not claim the thesis is correct. The kernel gives it a
-cheap, falsifiable semantic boundary; the executable study tests a narrower
-visual proposition without changing the accepted runtime or its formal gate
-status.
+- six dependency-free semantic kernel crates through SW-N: strict authoring,
+  stable World IR, compiled projections and transitions, immutable runtime
+  transactions, verified packages, replay, migration, and explanations;
+- read-only effective-facts and entity-catalog projections;
+- the R1 `nomos-render-plan` compiler and typed presentation boundary;
+- the R1 `nomos-play` native/wasm runtime for actors, movement, pursuit,
+  receipts, sessions, and replay; and
+- `apps/nomos-viewer`, an accepted offline viewer with vendored Three.js,
+  strict decoders, scanned artifacts, native/browser session identity, and a
+  bounded headless-Chromium proof.
 
-That falsification happened at the round-one cold-agent boundary. Nomos remains
-a useful semantic experiment. The decision-0014 static visual study produced a
-compelling owner-approved target from its ordinary gameplay frame and
-supporting tests. The executable study now asks whether separately authored
-rooms can remain coherent through shared projections, visual assemblies, and
-renderer-owned grammar. Decision 0016 terminates the remaining Gate K ceremony
-and explicitly permits this quarantined work to continue. It is still not a
-Gate K waiver or an accepted renderer architecture.
+The proof corpus connects six independently authored areas from the
+quarantined executable-gaol study through one route. Two were cold-authored
+from the packet alone. The study remains non-authoritative even though accepted
+R1 code consumes its published artifacts as a specification and comparison
+target.
+
+Audio, networking, replication, combat, production scaling, and the adopting
+game's Gate 0/Gate 1 evidence do not exist here.
+
+## Proof
+
+The pinned toolchain is Rust 1.98.0 with `rustfmt`, `clippy`, and
+`wasm32-unknown-unknown`. The workspace has no third-party Cargo dependency;
+Three.js is vendored with its license and digest. No `npm install` is needed.
+
+Run the accepted workspace proof from a clean checkout:
+
+```bash
+cargo fmt --all -- --check
+cargo clippy --workspace --all-targets --locked -- -D warnings
+cargo test --workspace --locked
+cargo xtask boundary
+```
+
+Run the six-area artifact and browser proof in this order:
+
+```bash
+experiments/executable-gaol/gaol verify
+crates/nomos-play/build-wasm.sh
+cargo build --locked -p nomos-play
+node apps/nomos-viewer/build.mjs \
+  --from target/executable-gaol \
+  --wasm target/wasm32-unknown-unknown/wasm/nomos_play.wasm \
+  --out apps/nomos-viewer/dist \
+  --receipt target/nomos-viewer-build/receipt.json
+node --test apps/nomos-viewer/test/*.test.mjs
+node apps/nomos-viewer/smoke/smoke.mjs \
+  --dist apps/nomos-viewer/dist \
+  --out target/nomos-viewer-smoke \
+  --require-chrome
+```
+
+The browser lane requires Node 22 or newer and Chrome/Chromium; set
+`CHROME_BIN` when discovery cannot find the binary. See
+[docs/HANDOFF.md](docs/HANDOFF.md) for complete setup and worktree rules.
 
 ## Read in this order
 
-First read
-[decision 0016](docs/decisions/0016-terminate-gate-k-round-two.md), which
-terminates round two, preserves its incomplete record, and names the active
-visual direction. Then read [RUNTIME.md](RUNTIME.md) revision 2 with
-[decision 0018](docs/decisions/0018-runtime-revision-2.md), its owner-authorized
-four-repair amendment. The historical proof sequence follows:
+1. [docs/HANDOFF.md](docs/HANDOFF.md) — current state, fresh-box setup, stop
+   line, and next authorized action.
+2. [decision 0019](docs/decisions/0019-r1-final-disposition.md) — final R1
+   verdict, evidence boundary, and no-adoption disposition.
+3. [THESIS.md](THESIS.md) — the exploratory architecture and adoption bars.
+4. [KERNEL.md](KERNEL.md) — frozen Gate K revision 7 contract.
+5. [RUNTIME.md](RUNTIME.md) — accepted R1 revision 4 contract.
+6. [decision 0021](docs/decisions/0021-runtime-revision-4.md) — revision 4's
+   lifecycle-history repair after R1 closed.
+7. [decision 0020](docs/decisions/0020-runtime-revision-3.md) — revision 3's
+   exact comparison-count repair.
+8. [decision 0013](docs/decisions/0013-gate-k-disposition.md) and
+   [decision 0016](docs/decisions/0016-terminate-gate-k-round-two.md) — the
+   historical Gate K dispositions.
+9. [docs/workspace.md](docs/workspace.md) — crate map and dependency boundary.
 
-1. [docs/decisions/0015-gate-k-round-two.md](docs/decisions/0015-gate-k-round-two.md)
-   — the prospective round-two protocol, safeguards, and operating order.
-2. [docs/decisions/0013-gate-k-disposition.md](docs/decisions/0013-gate-k-disposition.md)
-   — the final owner verdict, exact 1–19 matrix, and project consequence.
-3. [docs/decisions/0014-quarantined-gaol-visual-target-experiment.md](docs/decisions/0014-quarantined-gaol-visual-target-experiment.md)
-   — the narrow authorization for a non-authoritative static gaol target pack.
-4. [experiments/gate-0-gaol-target-pack/TARGET.md](experiments/gate-0-gaol-target-pack/TARGET.md)
-   — the static visual invariants, frame intent, provenance, risks, and
-   compelling owner disposition for issue #83.
-5. [experiments/executable-gaol/README.md](experiments/executable-gaol/README.md)
-   — the four-area public visual/playability study, authoring boundary, controls,
-   and known limits.
-6. [THESIS.md](THESIS.md) — the design, boundaries, proof gates, resolved
-   disagreements, and adoption criteria.
-7. [KERNEL.md](KERNEL.md) — the revisioned acceptance contract for Gate K, the
-   renderer-free executable semantic kernel.
-8. [docs/evaluation/GATE_K_FINAL_EVIDENCE_INDEX.json](docs/evaluation/GATE_K_FINAL_EVIDENCE_INDEX.json)
-   — the content-addressed final evidence index.
-9. [docs/decisions/0012-cold-agent-evidence-authentication.md](docs/decisions/0012-cold-agent-evidence-authentication.md)
-   and [docs/decisions/0011-cold-agent-attempt-ledger.md](docs/decisions/0011-cold-agent-attempt-ledger.md)
-   — the owner-authorized protocol revisions 4 and 5 for prospective attempt
-   reservation and complete evaluation-envelope authentication.
-10. [docs/decisions/0009-transition-explanation-input-boundary.md](docs/decisions/0009-transition-explanation-input-boundary.md)
-   — the owner-authorized revision-6 to revision-7 repair requiring a verified
-   world for transition explanations and separate tick-7 run evidence.
-11. [docs/decisions/0010-cold-agent-token-budget.md](docs/decisions/0010-cold-agent-token-budget.md)
-   — the owner-authorized cold-agent protocol revision 3 removal of resource
-   ceilings while preserving complete usage and command accounting.
-12. [docs/decisions/0008-cold-agent-nomos-cli-identity.md](docs/decisions/0008-cold-agent-nomos-cli-identity.md)
-   — the owner-authorized cold-agent protocol revision 2 correction from the
-   prototype `estate` CLI name to active `nomos`; no tool scope or rubric changes.
-13. [docs/decisions/0007-adopt-nomos-identity.md](docs/decisions/0007-adopt-nomos-identity.md)
-   — the owner-authorized revision-5 to revision-6 identity cutover: Nomos is
-   the project/runtime, The Signed World remains the thesis, and active schemas
-   begin a fresh pre-Gate epoch.
-14. [docs/decisions/0006-package-evidence-boundary.md](docs/decisions/0006-package-evidence-boundary.md)
-   — the owner-authorized revision-4 to revision-5 repair sealing package
-   receipts, publication, exact manifest decoding, and filesystem entry types.
-15. [docs/decisions/0003-contract-profile-closure.md](docs/decisions/0003-contract-profile-closure.md)
-   — the owner-authorized revision-2 to revision-3 closure of the canonical
-   profile and workspace-evidence contract gaps.
-16. [docs/decisions/0004-world-ir-construction-lineage.md](docs/decisions/0004-world-ir-construction-lineage.md)
-   — the owner-authorized revision-3 to revision-4 repair separating incomplete
-   construction snapshots from the stable World IR migration line.
-17. [docs/decisions/0005-gate-k-dependency-policy.md](docs/decisions/0005-gate-k-dependency-policy.md)
-   — the owner-authorized temporary zero-third-party-dependency policy for Gate
-   K; it does not amend contract revision 4 or bind later gates.
-18. [docs/decisions/0001-contract-repair.md](docs/decisions/0001-contract-repair.md)
-   — the owner-authorized revision-1 to revision-2 contract repair.
-19. [docs/evaluation/COLD_AGENT_PROTOCOL.md](docs/evaluation/COLD_AGENT_PROTOCOL.md)
-   — the reproducible cold-author, cold-debug, and cold-review procedure.
-20. [docs/evaluation/GATE_K_COLD_AGENT_PLAN.md](docs/evaluation/GATE_K_COLD_AGENT_PLAN.md)
-   — the owner-authorized whole-kernel subject roster and eligibility checks.
-21. [docs/workspace.md](docs/workspace.md) — the crate map, how to run the
-   proof, and the decisions the first implementation slice had to make.
-22. [docs/authoring.md](docs/authoring.md) — source schema version 1 and the
-   approved Gate K authoring vocabulary.
-23. [docs/compiler.md](docs/compiler.md) — parser/linker stages, schema
-   ownership, proof coverage, and limits.
-24. [docs/transitions.md](docs/transitions.md) — compiled command/event
-   semantics, causal ordering, and immutable runtime preparation.
-25. [docs/movement.md](docs/movement.md) — compiled claim composition,
-   shared simulation/navigation movement semantics, and SW-E evidence.
-26. [docs/packages.md](docs/packages.md) — atomic package publication, exact
-   manifest/member verification, and the revision-5 evidence boundary.
-27. [docs/migration.md](docs/migration.md) — stable-v1 to stable-v2 movement
-   migration, normalized runtime proof, and digest mapping.
-28. [docs/provenance.md](docs/provenance.md) — typed fact identities, resolved
-    values, causal inputs, and the boundary between semantics and display text.
-29. [docs/runtime.md](docs/runtime.md) — compiler-owned light union, immutable
-    runtime snapshots, state hashes, atomic commit, and typed causal receipts.
-30. [docs/explanations.md](docs/explanations.md) — package-bound entity and
-    transition explanations, stable selection failures, and SW-N evidence.
-31. [docs/review/2026-08-21-founding-review.md](docs/review/2026-08-21-founding-review.md)
-   — the condensed primary record of the founding adversarial review, written
-   in the originating session, with its provenance limits stated.
-32. [docs/review/2026-08-21-founding-review-synthesis.md](docs/review/2026-08-21-founding-review-synthesis.md)
-    — the contract-revision-2 edited synthesis of that review.
+Subsystem designs and receipts live under `docs/review/` and
+`docs/evaluation/`. The large `docs/evaluation/runs/` archive and `gate-k-*`
+tags are deliberate historical evidence, not build caches.
 
 ## Layout
 
 ```text
 README.md          status and reading order
-THESIS.md          the design thesis
-KERNEL.md          the Gate K acceptance contract
-docs/              decisions, evaluation protocols, reviews, workspace notes
-apps/nomos-viewer/ the promoted viewer (R1-4); no bundler, no install step
-experiments/       quarantined target-pack and executable-gaol studies
-fixtures/          exact Gate K authoring source, command, and replay fixtures
-crates/            the six Gate K kernel crates named in KERNEL.md section 10
-xtask/             workspace tooling; `cargo xtask boundary`
-.github/workflows/ the verification lane
+AGENTS.md          mandatory agent rules and change flow
+THESIS.md          exploratory design thesis, revision 2
+KERNEL.md          frozen Gate K contract, revision 7
+RUNTIME.md         accepted R1 contract, revision 4
+docs/HANDOFF.md    current operational state and fresh-box setup
+docs/decisions/    owner-authorized contract and architecture decisions
+docs/evaluation/   reproducible proofs and immutable run archive
+docs/review/       subsystem designs, audits, and review receipts
+crates/            six kernel crates plus two declared R1 crates
+apps/nomos-viewer/ accepted offline viewer and browser harness
+experiments/       quarantined studies; never authority for accepted code
+xtask/             dependency-boundary checker
+.github/workflows/ verification, viewer, evidence, and Pages lanes
 ```
 
-The kernel crates have no third-party dependencies: `Cargo.lock` holds seven
-local entries and nothing else, so the workspace builds and tests offline.
+## Starting new work
 
-The repository deliberately retains a large `docs/evaluation/runs/` archive.
-It contains immutable formal/rehearsal packets, transcripts, receipts, and
-exact binaries used by the evidence records; it is historical evidence, not an
-accidental build cache, and should not be pruned as routine cleanup.
+Open issues, open pull requests, and owner decisions identify active work. Old
+remote branches do not. Ordinary maintenance begins with a falsifiable issue
+and follows [AGENTS.md](AGENTS.md). A new capability family, dependency policy,
+runtime epoch, Gate K attempt, or game adoption requires a new owner decision.
 
-## Start here if you are new to the tree
-
-[docs/HANDOFF.md](docs/HANDOFF.md) — current state, what is next, how to prove it.
-
-## Gate order
-
-- **Gate K:** prove the semantic kernel without graphics.
-- **Gate 0:** obtain a human-approved visual target pack.
-- **Gate 1 and later:** prove cross-system primitives, vocabulary, cold authors,
-  cold debugging, and clean rebuilds.
-
-Gate K is closed as failed and round two is terminated incomplete. The
-executable gaol is an owner-authorized quarantined feasibility study, not a
-passed gate. Visual progress does not rewrite the Gate K verdict.
+Nomos is authority only for this repository. Nothing here becomes authority for
+another project without that project's own explicit decision.
