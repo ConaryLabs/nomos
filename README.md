@@ -26,12 +26,18 @@ line, and operational gotchas.
 | R1 runtime epoch | all five criteria passed; accepted and closed under decision 0019 |
 | R1 contract | `RUNTIME.md` revision 4, in force under decision 0021 |
 | Game adoption | not authorized |
+| Mortal Estate evidence | bounded presentation-adoption evidence authorized under decision 0022 |
 | Later runtime epoch | not authorized |
 
 R1 is the accepted runtime baseline for this repository. That result does not
 rewrite Gate K, pass a later gate, approve production art, or authorize Nomos
 for another project. Decision 0019 is explicit: **accept R1; do not adopt Nomos
 into a game.**
+
+Decision 0022 authorizes one bounded presentation-adoption evidence program for
+The Mortal Estate. It authorizes evidence collection only: not game adoption,
+R2, a new capability family, accepted Nomos implementation, or a production
+platform.
 
 The implementation includes:
 
@@ -98,17 +104,19 @@ The browser lane requires Node 22 or newer and Chrome/Chromium; set
    line, and next authorized action.
 2. [decision 0019](docs/decisions/0019-r1-final-disposition.md) — final R1
    verdict, evidence boundary, and no-adoption disposition.
-3. [THESIS.md](THESIS.md) — the exploratory architecture and adoption bars.
-4. [KERNEL.md](KERNEL.md) — frozen Gate K revision 7 contract.
-5. [RUNTIME.md](RUNTIME.md) — accepted R1 revision 4 contract.
-6. [decision 0021](docs/decisions/0021-runtime-revision-4.md) — revision 4's
+3. [decision 0022](docs/decisions/0022-mortal-estate-presentation-adoption-evidence.md)
+   — bounded Mortal Estate evidence authority and upstream-admission stop line.
+4. [THESIS.md](THESIS.md) — the exploratory architecture and adoption bars.
+5. [KERNEL.md](KERNEL.md) — frozen Gate K revision 7 contract.
+6. [RUNTIME.md](RUNTIME.md) — accepted R1 revision 4 contract.
+7. [decision 0021](docs/decisions/0021-runtime-revision-4.md) — revision 4's
    lifecycle-history repair after R1 closed.
-7. [decision 0020](docs/decisions/0020-runtime-revision-3.md) — revision 3's
+8. [decision 0020](docs/decisions/0020-runtime-revision-3.md) — revision 3's
    exact comparison-count repair.
-8. [decision 0013](docs/decisions/0013-gate-k-disposition.md) and
+9. [decision 0013](docs/decisions/0013-gate-k-disposition.md) and
    [decision 0016](docs/decisions/0016-terminate-gate-k-round-two.md) — the
    historical Gate K dispositions.
-9. [docs/workspace.md](docs/workspace.md) — crate map and dependency boundary.
+10. [docs/workspace.md](docs/workspace.md) — crate map and dependency boundary.
 
 Subsystem designs and receipts live under `docs/review/` and
 `docs/evaluation/`. The large `docs/evaluation/runs/` archive and `gate-k-*`
@@ -139,6 +147,11 @@ Open issues, open pull requests, and owner decisions identify active work. Old
 remote branches do not. Ordinary maintenance begins with a falsifiable issue
 and follows [AGENTS.md](AGENTS.md). A new capability family, dependency policy,
 runtime epoch, Gate K attempt, or game adoption requires a new owner decision.
+
+Decision 0022 is the narrow exception for Mortal Estate evidence collection.
+It does not authorize accepted Nomos implementation. Its next Nomos actions
+require their own falsifiable issues, and executable evidence cannot begin until
+the adopter has recorded its own authority and accepted its visual target.
 
 Nomos is authority only for this repository. Nothing here becomes authority for
 another project without that project's own explicit decision.

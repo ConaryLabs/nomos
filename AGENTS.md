@@ -2,6 +2,7 @@
 
 Read [README.md](README.md), then [docs/HANDOFF.md](docs/HANDOFF.md), then
 [docs/decisions/0019-r1-final-disposition.md](docs/decisions/0019-r1-final-disposition.md),
+then [docs/decisions/0022-mortal-estate-presentation-adoption-evidence.md](docs/decisions/0022-mortal-estate-presentation-adoption-evidence.md),
 then [docs/decisions/0021-runtime-revision-4.md](docs/decisions/0021-runtime-revision-4.md),
 then [THESIS.md](THESIS.md), [KERNEL.md](KERNEL.md), and [RUNTIME.md](RUNTIME.md).
 For changes to an acceptance contract, also read the latest applicable record
