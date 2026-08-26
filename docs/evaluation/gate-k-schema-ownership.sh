@@ -2,6 +2,9 @@
 
 set -euo pipefail
 
+# Identity ordering and comparisons are defined over bytes, not host collation.
+export LC_ALL=C
+
 fail() {
   printf 'gate-k schema ownership: FAIL: %s\n' "$*" >&2
   exit 1

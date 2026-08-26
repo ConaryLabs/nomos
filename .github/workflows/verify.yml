@@ -70,6 +70,7 @@ jobs:
         # debug twice, release twice — must produce byte-identical lines.
         run: |
           set -euo pipefail
+          export LC_ALL=C
           hashes() {
             cargo test --locked -p nomos-core --test determinism "$@" \
               -- --nocapture --test-threads=1 | grep '^HASH ' | sort

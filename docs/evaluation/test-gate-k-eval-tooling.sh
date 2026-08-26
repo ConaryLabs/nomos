@@ -2,6 +2,9 @@
 
 set -euo pipefail
 
+# The suite exercises byte-defined packet and receipt ordering on every host.
+export LC_ALL=C
+
 repo_root=$(git rev-parse --show-toplevel)
 "$repo_root/docs/evaluation/test-gate-k-attempt-ledger.sh"
 "$repo_root/docs/evaluation/test-gate-k-eval-strictness.sh"
