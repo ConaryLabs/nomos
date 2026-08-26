@@ -110,7 +110,7 @@ criterion 4. PR #179 refreshes that receipt after the corrective implementation
 merges and binds section 7 to their combined candidate
 `bf9e11b25a37591401033d76b94ac875a1cb92c1`, tree
 `df7b1a9c023f5c9b4943b61f39c13f6b67668ead`. Run `32908589982`, job
-`97997912940`, used GitHub `ubuntu24` x86_64 image `20260823.277.1`, removed
+`97997912940`, used GitHub `ubuntu24` x86_64 image `20260816.277.1`, removed
 every default network route, retained loopback only, and forced Cargo offline.
 The compact record is `docs/evaluation/r1-adoption-evidence.md`; artifact
 `9585756215` has archive SHA-256
@@ -146,7 +146,8 @@ Chrome 151.0.7922.34. The worktree was clean before and after, and the reviewer
 made no source edit, commit, push, merge, or GitHub mutation.
 
 The reviewer set `PROOF_TARGET` to the fresh disposable directory
-`/work/signed-dev/r1-final-proof-target.yOEgJP`. These were the exact proof
+`/work/signed-dev/r1-final-proof-target.yOEgJP` and `PROOF_DOWNLOAD` to
+`/work/signed-dev/r1-final-proof-download.065tc6`. These were the exact proof
 commands; the area-ID loop follows separately:
 
 ```text
