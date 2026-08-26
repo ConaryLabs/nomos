@@ -167,6 +167,21 @@ const readJson = (url) =>
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+const waitForExit = (child, timeout) => {
+  if (child.exitCode !== null || child.signalCode !== null) return Promise.resolve(true);
+  return new Promise((resolve) => {
+    const exited = () => {
+      clearTimeout(timer);
+      resolve(true);
+    };
+    const timer = setTimeout(() => {
+      child.off("exit", exited);
+      resolve(false);
+    }, timeout);
+    child.once("exit", exited);
+  });
+};
+
 /// Launches Chrome and returns the page target's DevTools endpoint.
 export async function launch({ binary, flags, timeout = 20_000 }) {
   const userDataDir = mkdtempSync(join(tmpdir(), "nomos-viewer-chrome-"));
@@ -177,65 +192,101 @@ export async function launch({ binary, flags, timeout = 20_000 }) {
     `--user-data-dir=${userDataDir}`,
     "about:blank",
   ];
-  const child = spawn(binary, argv, { stdio: ["ignore", "pipe", "pipe"] });
+  // A distinct process group makes the browser and all of its renderer/GPU
+  // children one exact cleanup target. Negating this child's known pid is safe
+  // only because `detached` made it the group's leader.
+  const detached = process.platform !== "win32";
+  const child = spawn(binary, argv, { detached, stdio: ["ignore", "pipe", "pipe"] });
   const stderr = [];
   child.stderr.on("data", (chunk) => stderr.push(chunk.toString("utf8")));
 
-  const portFile = join(userDataDir, "DevToolsActivePort");
-  const deadline = Date.now() + timeout;
-  let port = null;
-  while (Date.now() < deadline) {
-    if (child.exitCode !== null) {
-      throw new Error(`chrome exited with ${child.exitCode}: ${stderr.join("").slice(-500)}`);
+  let terminated = false;
+  const kill = async () => {
+    if (terminated) {
+      return {
+        pid: child.pid,
+        process_group: detached ? child.pid : null,
+        exit_code: child.exitCode,
+        signal: child.signalCode,
+        exit_awaited: true,
+      };
     }
+    terminated = true;
+    let signalError = null;
     try {
-      const lines = readFileSync(portFile, "utf8").split("\n");
-      if (lines.length >= 2 && lines[0].trim()) {
-        port = Number(lines[0].trim());
-        break;
-      }
-    } catch {
-      // Not written yet.
-    }
-    await sleep(50);
-  }
-  if (!port) {
-    child.kill("SIGKILL");
-    removeUserDataDir(userDataDir);
-    throw new Error(`chrome wrote no DevToolsActivePort within ${timeout}ms: ${stderr.join("").slice(-500)}`);
-  }
-
-  const version = await readJson(`http://127.0.0.1:${port}/json/version`);
-  let pages = [];
-  const pageDeadline = Date.now() + timeout;
-  while (Date.now() < pageDeadline) {
-    const targets = await readJson(`http://127.0.0.1:${port}/json/list`);
-    pages = targets.filter((one) => one.type === "page" && one.webSocketDebuggerUrl);
-    if (pages.length > 0) break;
-    await sleep(50);
-  }
-  if (pages.length === 0) throw new Error("chrome exposed no page target");
-
-  return {
-    port,
-    argv,
-    version,
-    pageUrl: pages[0].webSocketDebuggerUrl,
-    stderr,
-    // Issue #160: killing the child is not the same as it being gone. Node
-    // keeps the process handle alive until `exit` fires, so the lane awaits it
-    // — with a bound, because a Chrome that will not die must not turn a pass
-    // into a hang either.
-    kill: async () => {
-      if (child.exitCode === null && child.signalCode === null) {
-        const gone = new Promise((done) => child.once("exit", done));
+      if (detached) {
+        process.kill(-child.pid, "SIGKILL");
+      } else if (child.exitCode === null && child.signalCode === null) {
         child.kill("SIGKILL");
-        await Promise.race([gone, sleep(2_000)]);
       }
-      child.stdout?.destroy();
-      child.stderr?.destroy();
-      child.unref();
-      removeUserDataDir(userDataDir);
-    },
+    } catch (error) {
+      if (error.code !== "ESRCH") signalError = error;
+    }
+
+    const exited = await waitForExit(child, 2_000);
+    child.stdout?.destroy();
+    child.stderr?.destroy();
+    child.unref();
+    removeUserDataDir(userDataDir);
+    if (signalError) throw signalError;
+    if (!exited) throw new Error(`Chrome process group ${child.pid} did not exit within 2000ms`);
+    return {
+      pid: child.pid,
+      process_group: detached ? child.pid : null,
+      exit_code: child.exitCode,
+      signal: child.signalCode,
+      exit_awaited: true,
+    };
   };
+
+  try {
+    const portFile = join(userDataDir, "DevToolsActivePort");
+    const deadline = Date.now() + timeout;
+    let port = null;
+    while (Date.now() < deadline) {
+      if (child.exitCode !== null) {
+        throw new Error(`chrome exited with ${child.exitCode}: ${stderr.join("").slice(-500)}`);
+      }
+      try {
+        const lines = readFileSync(portFile, "utf8").split("\n");
+        if (lines.length >= 2 && lines[0].trim()) {
+          port = Number(lines[0].trim());
+          break;
+        }
+      } catch {
+        // Not written yet.
+      }
+      await sleep(50);
+    }
+    if (!port) {
+      throw new Error(`chrome wrote no DevToolsActivePort within ${timeout}ms: ${stderr.join("").slice(-500)}`);
+    }
+
+    const version = await readJson(`http://127.0.0.1:${port}/json/version`);
+    let pages = [];
+    const pageDeadline = Date.now() + timeout;
+    while (Date.now() < pageDeadline) {
+      const targets = await readJson(`http://127.0.0.1:${port}/json/list`);
+      pages = targets.filter((one) => one.type === "page" && one.webSocketDebuggerUrl);
+      if (pages.length > 0) break;
+      await sleep(50);
+    }
+    if (pages.length === 0) throw new Error("chrome exposed no page target");
+
+    return {
+      port,
+      argv,
+      version,
+      pageUrl: pages[0].webSocketDebuggerUrl,
+      stderr,
+      kill,
+    };
+  } catch (error) {
+    try {
+      await kill();
+    } catch (cleanupError) {
+      error.message += `; Chrome cleanup also failed: ${cleanupError.message}`;
+    }
+    throw error;
+  }
 }
