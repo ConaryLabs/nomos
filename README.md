@@ -24,7 +24,7 @@ line, and operational gotchas.
 | Gate K round one | failed under decision 0013 |
 | Gate K round two | terminated incomplete under decision 0016 |
 | R1 runtime epoch | all five criteria passed; accepted and closed under decision 0019 |
-| R1 contract | `RUNTIME.md` revision 3, in force under decision 0020 |
+| R1 contract | `RUNTIME.md` revision 4, in force under decision 0021 |
 | Game adoption | not authorized |
 | Later runtime epoch | not authorized |
 
@@ -100,13 +100,15 @@ The browser lane requires Node 22 or newer and Chrome/Chromium; set
    verdict, evidence boundary, and no-adoption disposition.
 3. [THESIS.md](THESIS.md) — the exploratory architecture and adoption bars.
 4. [KERNEL.md](KERNEL.md) — frozen Gate K revision 7 contract.
-5. [RUNTIME.md](RUNTIME.md) — accepted R1 revision 3 contract.
-6. [decision 0020](docs/decisions/0020-runtime-revision-3.md) — revision 3's
-   exact contract repair.
-7. [decision 0013](docs/decisions/0013-gate-k-disposition.md) and
+5. [RUNTIME.md](RUNTIME.md) — accepted R1 revision 4 contract.
+6. [decision 0021](docs/decisions/0021-runtime-revision-4.md) — revision 4's
+   lifecycle-history repair after R1 closed.
+7. [decision 0020](docs/decisions/0020-runtime-revision-3.md) — revision 3's
+   exact comparison-count repair.
+8. [decision 0013](docs/decisions/0013-gate-k-disposition.md) and
    [decision 0016](docs/decisions/0016-terminate-gate-k-round-two.md) — the
    historical Gate K dispositions.
-8. [docs/workspace.md](docs/workspace.md) — crate map and dependency boundary.
+9. [docs/workspace.md](docs/workspace.md) — crate map and dependency boundary.
 
 Subsystem designs and receipts live under `docs/review/` and
 `docs/evaluation/`. The large `docs/evaluation/runs/` archive and `gate-k-*`
@@ -119,7 +121,7 @@ README.md          status and reading order
 AGENTS.md          mandatory agent rules and change flow
 THESIS.md          exploratory design thesis, revision 2
 KERNEL.md          frozen Gate K contract, revision 7
-RUNTIME.md         accepted R1 contract, revision 3
+RUNTIME.md         accepted R1 contract, revision 4
 docs/HANDOFF.md    current operational state and fresh-box setup
 docs/decisions/    owner-authorized contract and architecture decisions
 docs/evaluation/   reproducible proofs and immutable run archive

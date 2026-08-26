@@ -2,9 +2,10 @@
 
 Read [README.md](README.md), then [docs/HANDOFF.md](docs/HANDOFF.md), then
 [docs/decisions/0019-r1-final-disposition.md](docs/decisions/0019-r1-final-disposition.md),
-then [THESIS.md](THESIS.md), [KERNEL.md](KERNEL.md), and
-[RUNTIME.md](RUNTIME.md). For changes to an acceptance contract, also read the
-latest applicable record under `docs/decisions/`.
+then [docs/decisions/0021-runtime-revision-4.md](docs/decisions/0021-runtime-revision-4.md),
+then [THESIS.md](THESIS.md), [KERNEL.md](KERNEL.md), and [RUNTIME.md](RUNTIME.md).
+For changes to an acceptance contract, also read the latest applicable record
+under `docs/decisions/`.
 
 Nomos is the project/runtime; The Signed World is the thesis it tests. Nothing
 here is authority for any other project.
@@ -82,7 +83,7 @@ README.md          status and reading order
 docs/HANDOFF.md    current state, fresh-box setup, stop line, and next action
 THESIS.md          exploratory design thesis, currently revision 2
 KERNEL.md          Gate K acceptance contract, currently revision 7
-RUNTIME.md         accepted R1 baseline contract, currently revision 3
+RUNTIME.md         accepted R1 baseline contract, currently revision 4
 docs/decisions/    owner-authorized contract and architecture decisions
 docs/evaluation/   reproducible evaluation protocols
 docs/review/       review syntheses, provenance notes, and cold-review records

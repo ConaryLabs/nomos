@@ -1,8 +1,8 @@
 # Nomos handoff
 
-Status snapshot: 2026-08-26, after decision 0019 and maintenance PRs #180 and
-#181. This file is an operational map; owner decisions and revisioned contracts
-remain the authority when prose conflicts.
+Status snapshot: 2026-08-26, after decision 0021 and PR #185's contract-history
+repair. This file is an operational map; owner decisions and revisioned
+contracts remain the authority when prose conflicts.
 
 **Play the accepted six-area viewer:** <https://conarylabs.github.io/nomos/>
 
@@ -33,10 +33,12 @@ The exact last-main receipts at that baseline are:
 | `nomos viewer` | [32919428210](https://github.com/ConaryLabs/nomos/actions/runs/32919428210) | success |
 | `executable gaol pages` | [32919428271](https://github.com/ConaryLabs/nomos/actions/runs/32919428271) | success |
 
-The final maintenance sequence before this handoff was PR #180, which closed
-#134 and #141 by pinning load-bearing evaluation ordering to `LC_ALL=C`, and PR
-#181, which closed #160 with bounded and receipt-recorded browser shutdown. Both
-had exact-head non-author reruns and green post-merge workflows.
+The final completed sequence before this handoff was PR #180, which closed #134
+and #141 by pinning load-bearing evaluation ordering to `LC_ALL=C`; PR #181,
+which closed #160 with bounded and receipt-recorded browser shutdown; and PR
+#185, which repaired `RUNTIME.md`'s stale revision-1 footer and established
+revision 4 without changing a criterion or R1's revision-3 acceptance evidence.
+All three had exact-head non-author reruns and green workflows.
 
 ## Authoritative state
 
@@ -45,7 +47,7 @@ had exact-head non-author reruns and green post-merge workflows.
 | Gate K round one | failed; criteria 17 and 18 failed | decision 0013 |
 | Gate K round two | terminated incomplete; no verdict | decision 0016 |
 | R1 | all five criteria passed; accepted and closed | decision 0019 |
-| R1 contract | revision 3 in force | `RUNTIME.md`, decision 0020 |
+| R1 contract | revision 4 in force | `RUNTIME.md`, decision 0021 |
 | Game adoption | not authorized; thesis applies to no game | decision 0019 |
 | Later epoch or new capability family | not authorized | decision 0019 consequence 2 |
 | Current maintenance queue | empty at the baseline above | GitHub issues and PRs |
@@ -78,12 +80,15 @@ game's Gate 0 target pack, and that game's Gate 1 proof remain absent.
    non-claims.
 4. `THESIS.md` — exploratory design thesis; not authority for another project.
 5. `KERNEL.md` — frozen Gate K revision 7 contract and historical failed bar.
-6. `RUNTIME.md` — accepted R1 revision 3 contract.
-7. `docs/decisions/0020-runtime-revision-3.md` — revision 3's exact repair.
-8. `docs/decisions/0013-gate-k-disposition.md` and
+6. `RUNTIME.md` — accepted R1 revision 4 contract.
+7. `docs/decisions/0021-runtime-revision-4.md` — revision 4's exact
+   lifecycle-history repair.
+8. `docs/decisions/0020-runtime-revision-3.md` — revision 3's exact
+   comparison-count repair.
+9. `docs/decisions/0013-gate-k-disposition.md` and
    `docs/decisions/0016-terminate-gate-k-round-two.md` — historical Gate K
    verdicts.
-9. `docs/workspace.md` — crate graph and boundary proof.
+10. `docs/workspace.md` — crate graph and boundary proof.
 
 Read design records under `docs/review/` only for the subsystem being changed.
 The large `docs/evaluation/runs/` tree is immutable historical evidence, not a
