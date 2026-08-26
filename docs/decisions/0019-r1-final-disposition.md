@@ -1,6 +1,6 @@
 ---
 title: R1 final disposition — accept the runtime epoch, no game adoption
-status: Final proposal; owner disposition pending; does not take effect
+status: Owner-authorized; R1 accepted; no game adoption
 number: 0019
 date: 2026-08-26
 owner: Peter Permenter
@@ -17,19 +17,18 @@ round_two_termination: docs/decisions/0016-terminate-gate-k-round-two.md
 
 # R1 final disposition — accept the runtime epoch, no game adoption
 
-## Owner-review boundary
+## Decision authority
 
-This record is complete for owner review but is not yet an owner decision.
-Nothing in it takes effect or closes R1 until the owner records the explicit
-disposition at the end.
+Peter Permenter authorized this record exactly as proposed on 2026-08-26. The
+disposition at the end takes effect without amendment.
 
 The prerequisite corrections and evidence updates landed through PRs #169,
 #170, #171, #173, #177, and #179, each with an exact-head non-author receipt.
 The final different-author proof passed on the bound candidate and is recorded
 below. No implementation, evidence, proof, or contract prerequisite remains;
-only the owner's R1 disposition is pending.
+the owner's R1 disposition is now recorded.
 
-## Proposed verdict
+## Verdict
 
 **Accept R1 as a completed, passing runtime epoch. No game adoption is
 authorized by this decision.**
@@ -296,9 +295,9 @@ bytes.
 - Nothing here authorizes networking, audio, combat, production scaling, a
   later runtime epoch, or adoption into another repository.
 
-## Proposed consequences
+## Consequences
 
-If the final matrix passes and the owner adopts the proposed verdict:
+The authorized verdict has these consequences:
 
 1. R1 closes as the accepted repository runtime baseline at the frozen
    candidate. Its five first targets and recorded dependencies remain governed
@@ -314,7 +313,8 @@ If the final matrix passes and the owner adopts the proposed verdict:
 
 ## Owner disposition
 
-**Pending.** The candidate and evidence are complete. Recommended owner text:
+**Authorize.** Peter Permenter authorized this disposition on 2026-08-26 with
+no amendments:
 
 > **Accept R1; do not adopt Nomos into a game.** R1's five adoption criteria
 > pass at the bound candidate, so the runtime epoch closes as the accepted
