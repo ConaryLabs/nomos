@@ -2,7 +2,7 @@ name: nomos viewer
 
 # The R1-4 lane, extended by R1-5: the authoritative runtime built for the
 # browser, the app's own tests, the staged public artifact, the scan over it, the
-# headless Chromium run that plays the four-area route to the final escape, and
+# headless Chromium run that plays the six-area route to the final escape, and
 # the native replay of the session that run produced. RUNTIME.md section 5 R1-4
 # requires this lane to exist and to be green and R1-5 requires the identity
 # assertion; no target is accepted while it is red or absent.

@@ -1,6 +1,6 @@
 # The promoted viewer
 
-Accepted R1 code under `RUNTIME.md` §5 R1-4 and §5 R1-5. It renders the four
+Accepted R1 code under `RUNTIME.md` §5 R1-4 and §5 R1-5. It renders the six
 `nomos.rendering_plan@3` artifacts the Rust compiler emits and fetches nothing:
 the renderer is vendored in-tree and every URL the page constructs is a relative
 path the artifacts declared.

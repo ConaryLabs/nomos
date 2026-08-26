@@ -1,233 +1,230 @@
 # Nomos handoff
 
-## Current state
+Status snapshot: 2026-08-26, after decision 0019 and maintenance PRs #180 and
+#181. This file is an operational map; owner decisions and revisioned contracts
+remain the authority when prose conflicts.
 
-Gate K is closed. Decision 0013 remains its controlling verdict: **failed**.
-Decision 0016 terminates the separately governed round two incomplete, with no
-round-two verdict and no remaining checker, audit, retry, or evidence-assembly
-work authorized.
+**Play the accepted six-area viewer:** <https://conarylabs.github.io/nomos/>
 
-The kernel workspace implements the renderer-free semantic system through
-SW-N. The active product direction is the owner-authorized quarantined study at
-`experiments/executable-gaol/`: four independently authored areas, one
-projection-only WebGL renderer, one bounded procedural look, and a connected
-playable route. It is not Gate K or Gate 1 evidence.
+## Stop line
 
-**Play online:** <https://conarylabs.github.io/nomos/>
+R1 is complete, passing, accepted, and closed as this repository's runtime
+baseline. Decision 0019 expressly does **not** adopt Nomos into a game. No later
+runtime epoch, capability family, Gate K retry, or game-adoption program is
+authorized.
 
-## Gate K record
+There is no unfinished implementation slice to resume. At baseline commit
+`21f66d55f20cd9bc94459b12a3b9764b650010b1`, GitHub had zero open issues and
+zero open pull requests, and all four main workflows were green. Issue #182 and
+its handoff PR are the expected temporary exception while this status update
+lands. After that PR closes, a new agent should expect no active work unless the
+owner or GitHub state says otherwise.
 
-- Round one is preserved at annotated tag `gate-k-rc1`; its exact 1–19 matrix
-  is in `docs/decisions/0013-gate-k-disposition.md`.
-- Round two's mechanically proven candidate is preserved at annotated tag
-  `gate-k-rc2`, commit
-  `53db236d397b3db0779f0d2aab23180d926e55a5`.
-- The round-two Gemini author subject completed with subject-stage outcome
-  `eligible-for-checker`, but no checker adjudicated it.
-- The round-two DeepSeek debugger subject is preserved, unmerged, at annotated
-  tag `gate-k-rc2-debug-subject-incomplete`, commit
-  `55bb77bf4221c2c5600cd20bb781c0018a6d40a8`. Its non-author audit and checker
-  did not complete.
-- Neither round-two subject is a formal pass. Round two has no acceptance tag,
-  criteria matrix, or overall verdict.
-- No protocol revision 7, Gate K retry, or round three is authorized.
+A fresh agent must not infer active work from an old remote branch. The
+repository intentionally retains evidence branches and annotated tags. Check
+owner decisions, then open issues and pull requests.
 
-The large `docs/evaluation/runs/` tree and archival tags intentionally preserve
-the exact packets, transcripts, receipts, binaries, rehearsals, blocked audits,
-and failed attempts behind historical claims. They are evidence, not active
-product work or disposable build output.
+The exact last-main receipts at that baseline are:
 
-## What works
+| Workflow | Run | Result |
+| --- | ---: | --- |
+| `verify` | [32919428223](https://github.com/ConaryLabs/nomos/actions/runs/32919428223) | success |
+| `gate-k-evidence` | [32919428225](https://github.com/ConaryLabs/nomos/actions/runs/32919428225) | success |
+| `nomos viewer` | [32919428210](https://github.com/ConaryLabs/nomos/actions/runs/32919428210) | success |
+| `executable gaol pages` | [32919428271](https://github.com/ConaryLabs/nomos/actions/runs/32919428271) | success |
 
-The kernel provides source parsing, stable World IR, deterministic
-simulation/navigation/persistence/diagnostic projections, immutable runtime
-transactions, hash-verified packages, replay and migration, and package-bound
-explanations.
+The final maintenance sequence before this handoff was PR #180, which closed
+#134 and #141 by pinning load-bearing evaluation ordering to `LC_ALL=C`, and PR
+#181, which closed #160 with bounded and receipt-recorded browser shutdown. Both
+had exact-head non-author reruns and green post-merge workflows.
 
-`nomos effective-facts <world/> --state <state.json>` adds the R1-1 read-only
-projection: given a strictly verified package and a runtime state it emits
-`nomos.effective_facts@2`, the composed movement disposition, cost, ordered
-reasons, and effective light for every resolver subject, resolved entirely by
-the existing `resolve_movement` and `resolve_light` rather than by new logic.
+## Authoritative state
 
-`nomos entity-catalog <world/>` adds the read-only catalog of what a compiled
-world *contains*: for every entity it emits `nomos.entity_catalog@1`, carrying
-the World IR primitive kind and `expansion.capabilities` beside the simulation
-projection's binding and machines and the movement and light resolver claims
-with their source spans. It classifies nothing and reads no `.nomos` source, so
-a downstream compiler no longer has to infer an entity's kind from a naming
-convention.
+| Line | State | Authority |
+| --- | --- | --- |
+| Gate K round one | failed; criteria 17 and 18 failed | decision 0013 |
+| Gate K round two | terminated incomplete; no verdict | decision 0016 |
+| R1 | all five criteria passed; accepted and closed | decision 0019 |
+| R1 contract | revision 3 in force | `RUNTIME.md`, decision 0020 |
+| Game adoption | not authorized; thesis applies to no game | decision 0019 |
+| Later epoch or new capability family | not authorized | decision 0019 consequence 2 |
+| Current maintenance queue | empty at the baseline above | GitHub issues and PRs |
 
-`nomos-render-plan --catalog <entity-catalog.json> --facts <dir> --runs <dir>
---world <world/> --source <presentation.json> --out <plan.json>` is the R1-2/R1-3 compiler: it
-turns those two read-only projections, the per-scenario run bundles, the four
-projection members' identities and digests, and the presentation source into
-`nomos.rendering_plan@1` as canonical bytes. It is the first declared R1 member,
-depends on `nomos-core` alone, and replaces
-`experiments/executable-gaol/src/build-plan.mjs`.
+The accepted R1 surface consists of:
 
-`nomos-play replay <areas-dir> --session <session.json>` re-executes a recorded
-`nomos.play_session@1` against the content its route names, compares every
-receipt by canonical bytes, and reports the first difference with its ordinal.
-It is what the browser lane shells to prove that the session the page produced
-is the one the native runtime produces from the same inputs.
+- the six dependency-free Gate K kernel crates and their SW-N semantic surface;
+- the read-only effective-facts and entity-catalog projections;
+- `nomos-render-plan`, including typed presentation source and the compiled
+  area collection;
+- `nomos-play`, including authoritative actors, commands, movement, pursuit,
+  receipts, session replay, and the wasm runtime;
+- `apps/nomos-viewer`, with vendored Three.js, a scanned offline public
+  artifact, native/browser session identity, and bounded browser shutdown.
 
-`nomos-render-plan collection --plans <dir-or-plan> --out <areas.json>` is the
-same binary's second mode, added by issue #152: it reads the compiled plans and
-emits `nomos.area_collection@2` — the route chain, the visual grammar every area
-shares, and one row per area naming the published plan file and its SHA-256. It
-replaces `experiments/executable-gaol/src/build-collection.mjs`, which was the
-last identity accepted code bound whose declaration lived under `experiments/`.
+That accepted path is proved against six independently authored areas from the
+quarantined study: Cistern Walk, Drowned Stair, Ember Vault, Gloam Bastion,
+North Gaol, and Ossuary Reach. The study remains non-authoritative; it is a
+specification and comparison target, not accepted source.
 
-The executable study provides:
+The public viewer is evidence for this repository runtime, not a production-art
+claim. Audio, networking, replication, combat, production scaling, an adopting
+game's Gate 0 target pack, and that game's Gate 1 proof remain absent.
 
-- Cistern Walk, Ember Vault, Gloam Bastion, Drowned Stair, Ossuary Reach, and
-  North Gaol as separately authored content;
-- shared camera, palette, materials, assemblies, actor silhouettes, masonry,
-  effects, water, lighting, and minimal UI;
-- content-derived doors, movement cost, effective light, objectives, and a
-  connected escape route;
-- deterministic semantic/SVG evidence plus a WebGL presentation layer;
-- forensic overlays and a procedural-versus-baseline comparison;
-- a static public build containing no source, World IR, credentials, or
-  dependency on the development machine.
+## Read in this order
 
-Two of those six areas, Gloam Bastion and Drowned Stair, were cold-authored
-from `AUTHORING.md` alone as a Gate 2/Gate 3 miniature; see
-`docs/review/cold-author-area-five.md`.
+1. `README.md` — short project map and status.
+2. This file — operational state, setup, and stop line.
+3. `docs/decisions/0019-r1-final-disposition.md` — final R1 verdict and exact
+   non-claims.
+4. `THESIS.md` — exploratory design thesis; not authority for another project.
+5. `KERNEL.md` — frozen Gate K revision 7 contract and historical failed bar.
+6. `RUNTIME.md` — accepted R1 revision 3 contract.
+7. `docs/decisions/0020-runtime-revision-3.md` — revision 3's exact repair.
+8. `docs/decisions/0013-gate-k-disposition.md` and
+   `docs/decisions/0016-terminate-gate-k-round-two.md` — historical Gate K
+   verdicts.
+9. `docs/workspace.md` — crate graph and boundary proof.
 
-Actor movement and gaoler pursuit remain presentation-only because Gate K has
-no dynamic actor state. Audio, combat, networking, and the later cross-system
-Gate 1 contract remain absent.
+Read design records under `docs/review/` only for the subsystem being changed.
+The large `docs/evaluation/runs/` tree is immutable historical evidence, not a
+cache and not active work.
 
-## How to verify
+## Fresh Linux box
 
-From a clean checkout, verify the kernel workspace with:
+The repository has no package-manager bootstrap script and does not need
+`npm install`. Rust dependencies are workspace-local; Three.js is vendored with
+its license and digest.
 
-```text
+Install these host tools before expecting the complete proof to run:
+
+- Git and Bash;
+- rustup (the checked-in `rust-toolchain.toml` selects Rust 1.98.0, `rustfmt`,
+  `clippy`, and `wasm32-unknown-unknown`);
+- Node 22 or newer, because the smoke client uses Node's global `WebSocket`;
+- Google Chrome, Chromium, or a compatible headless-shell binary; and
+- common GNU userland used by the proof scripts, including `jq`, `sha256sum`,
+  `find`, `sort`, `diff`, `cmp`, `sed`, `grep`, `stat`, and `timeout`.
+
+CI uses Ubuntu 24.04, Node 22, the pinned Rust toolchain, and Google Chrome.
+GitHub CLI is useful for repository state but is not needed to build.
+
+From a new checkout:
+
+```bash
+git clone https://github.com/ConaryLabs/nomos.git
+cd nomos
+git fetch --tags origin
+rustup show
+rustc --version
+cargo --version
+node --version
+```
+
+`rustup show` provisions the pinned components and wasm target on a connected
+machine. After toolchain provisioning, the workspace and accepted artifact can
+be proved offline; the recorded network-isolated receipt is
+`docs/evaluation/r1-adoption-evidence.md`.
+
+Find a browser, or set it explicitly:
+
+```bash
+command -v google-chrome || command -v chromium || command -v chromium-browser
+export CHROME_BIN=/absolute/path/to/chrome-or-chrome-headless-shell
+"$CHROME_BIN" --version
+```
+
+Do not copy a machine-specific Chrome path into the repository. On a minimal
+Linux install a headless-shell binary can work when a full Chromium build lacks
+desktop libraries.
+
+## Verification order
+
+Run commands from the repository root. The fast accepted-workspace proof is:
+
+```bash
 cargo fmt --all -- --check
 cargo clippy --workspace --all-targets --locked -- -D warnings
 cargo test --workspace --locked
 cargo xtask boundary
 ```
 
-Verify the executable study with:
+The six-area study and promoted viewer proof must generate artifacts before the
+browser consumes them:
 
-```text
+```bash
 experiments/executable-gaol/gaol verify
-```
-
-Build and prove the promoted viewer with:
-
-```text
 crates/nomos-play/build-wasm.sh
 cargo build --locked -p nomos-play
+node apps/nomos-viewer/build.mjs \
+  --from target/executable-gaol \
+  --wasm target/wasm32-unknown-unknown/wasm/nomos_play.wasm \
+  --out apps/nomos-viewer/dist \
+  --receipt target/nomos-viewer-build/receipt.json
 node --test apps/nomos-viewer/test/*.test.mjs
-node apps/nomos-viewer/build.mjs --from target/executable-gaol --out apps/nomos-viewer/dist
-node apps/nomos-viewer/smoke/smoke.mjs --dist apps/nomos-viewer/dist --out target/nomos-viewer-smoke
+node apps/nomos-viewer/smoke/smoke.mjs \
+  --dist apps/nomos-viewer/dist \
+  --out target/nomos-viewer-smoke \
+  --require-chrome
 ```
 
-The first line builds the authoritative runtime the viewer loads and prints its
-size and sha256; the second builds the native binary the smoke lane shells to
-replay what the browser did. The last one needs a Chrome. It uses `CHROME_BIN` if that is set, otherwise
-`google-chrome` or `chromium` on `PATH`, and falls back to a Playwright cache
-only if one happens to be present. With none of those it skips with an explicit
-message; in CI it is required.
+The smoke lane must end with six areas, 65 moves, traversal cost 95, zero
+external requests, and native replay agreement. Its receipt records bounded
+CDP, Chrome-process-group, and HTTP-server shutdown. PR #181 independently ran
+the full browser proof ten consecutive times; every process closed within 9 ms
+of the reviewer observing PASS, against a 2-second acceptance limit.
 
-## What is next
+The formal archived Gate K harnesses are historical and materially heavier.
+Do not launch a new cold-agent attempt, checker, retry, or evidence assembly:
+decision 0016 authorizes none.
 
-Improve the shared look and presentation, then prove that additional
-content-authored areas fit it without renderer-specific edits. Keep those
-iterations inside the quarantined executable study until concrete evidence
-justifies a separate decision to promote a boundary into a post-Gate-K runtime
-epoch.
+## Operational gotchas
 
-The cold-author area-five experiment's owner visual verdict is compelling.
-Issue #165 closes its packet gap by making `route.entry` equal the player-role
-actor's `cell` as both an authored rule and an `RP0202` decoder invariant.
+- Give every worktree its own fresh `target/`. Some evaluation and viewer
+  commands intentionally refer to the literal worktree-local `target/` path;
+  sharing a Cargo target across concurrent worktrees can mix candidates.
+- If an external `CARGO_TARGET_DIR` is necessary, also audit commands that use
+  `target/debug/nomos`, `target/release/nomos-play`, viewer wasm paths, or smoke
+  defaults. Prefer the worktree-local default for the complete proof.
+- The Pages workflow runs only after a push to `main`. A green PR proves the
+  viewer lane, not the final Pages deployment; verify the main run after merge.
+- The smoke lane skips without Chrome unless `--require-chrome` is present.
+  Acceptance and CI use `--require-chrome`.
+- `apps/nomos-viewer/dist`, `target/executable-gaol`, the wasm module, and the
+  native `nomos-play` binary must describe the same checkout. Rebuild them in
+  the order above after switching commits.
+- Compiled worlds and evidence are immutable inputs. Tests and runtime commands
+  write new output; they do not repair a package in place.
+- `docs/evaluation/runs/` and the `gate-k-*` tags are historical evidence.
+  Never prune them as reinstall cleanup.
+- Byte-sensitive evaluation scripts pin `LC_ALL=C`. Preserve that pin when
+  adding ordering or tree-digest logic.
 
-That separate decision is now owner-authorized:
-`docs/decisions/0017-post-gate-k-runtime-epoch.md` opens the R1 epoch under
-issue #124. Its contract document `RUNTIME.md` is owner-authorized under issue
-#128 and now governs what R1 accepts. R1-1 is accepted on PR #130 (issue #126),
-and its identity is the first row of `docs/evaluation/R1_SCHEMA_OWNERSHIP.md`.
+## Establish current work after reinstall
 
-R1-2, Rust rendering-plan compilation, is accepted under issue #139.
-`crates/nomos-render-plan` is the first declared R1 member: it compiles
-`nomos.rendering_plan@1` from `nomos.entity_catalog@1`, one
-`nomos.effective_facts@2` document per scenario, the run bundles, four
-projection members, and `presentation.json`, and it opens no `.nomos` source, World IR,
-or compiler receipt. `experiments/executable-gaol/src/build-plan.mjs` is
-deleted, and `experiments/executable-gaol/gaol` runs the Rust binary. For all
-four areas the Rust plan equalled the JavaScript fixtures under one documented
-normalization — `experiments/executable-gaol/compare-rendering-plan.sh` reports
-`4 areas compared, 0 differences` — and every SVG frame and `contact-sheet.png`
-is byte-identical across the switch except the four `forensic.svg` overlays,
-which print the plan's own identity. `docs/review/rendering-plan-compiler.md` is
-its design record.
+After cloning and before making a branch, run:
 
-**R1-3, typed presentation source, has landed** (issue #146, PR #147). Each
-area's `presentation.json` is versioned,
-closed against unknown fields, integer-only by the type its reader parses into,
-with attachment by named socket instead of by coordinate and each area owning
-its own arrival cell. The plan is emitted through
-`nomos_core::CanonicalValue` — which retires issue #144, since the private
-encoder in `src/doc.rs` and its decimal type are deleted. The ownership audit's
-69 rows each have one owner and its 61 double-authority, convention-derived, and
-floating-point rows are dispositioned in `docs/review/presentation-source.md`,
-which is its design record. Seven rows are deferred with a named slice: three to
-R1-4 and four to R1-5.
+```bash
+git status --short --branch
+git log -5 --oneline --decorate
+git tag -l 'gate-k-*'
+gh issue list --state open
+gh pr list --state open
+gh run list --branch main --limit 8
+```
 
-**R1-4, the promoted viewer, has landed** (issue #148, PR #151).
-`apps/nomos-viewer/` is a clean implementation - no file moved or copied - with
-a strict decoder for the rendering plan, a vendored `three@0.185.1`
-recorded under `RUNTIME.md` section 4, a `dist/` staged from published artifacts
-and scanned before it is published, and a dependency-free headless Chromium lane
-that plays the four-area route to the final escape and fails on a single console
-error. `docs/review/nomos-viewer.md` is its design record, and its section 2
-names the study lines each promoted behaviour reproduces and the test that
-proves it.
+Expected steady state after this handoff merges: clean `main` matching
+`origin/main`, zero open issues, zero open PRs, and successful `verify`,
+`gate-k-evidence`, `nomos viewer`, and `executable gaol pages` runs on the
+handoff merge. Old remote heads may still exist; they do not override that
+state.
 
-It resolved the deferrals R1-3 named. The kind-to-assembly and kind-to-material
-tables became the catalog's definition of what those names mean, with the
-compiler's table held to it by a test and issue #153 carrying the move out of
-Rust; `displayName()` is gone, because prose now comes only from `area.label`,
-the app's own strings, and tables keyed by closed sets the schema declares;
-sockets resolve through the entity's declared face; and the two colour tables
-are one palette that the page reads too.
+## What can happen next
 
-**R1-5, authoritative movement and pursuit, has landed** (issue #154).
-`crates/nomos-play` is the second declared R1 member: it holds the actors, the
-command batch, occupancy, pursuit, receipts, and replay, and it layers them over
-the kernel's own transactions rather than beside them. `play.mjs` shrank from
-316 lines that owned everything the player experienced to an adapter that turns
-a key into a command document and paints what comes back. The same crate builds
-for `wasm32-unknown-unknown` with a hand-written `extern "C"` ABI — no
-`wasm-bindgen`, no third-party crate, zero imports declared — and that binary is
-what the browser plays. `docs/review/nomos-play.md` is its design record.
+Ordinary bug maintenance against the accepted R1 baseline may start from a new
+issue with falsifiable acceptance. Nothing else is pre-authorized.
 
-The claim it exists to make is an identity, not a number: the smoke lane records
-the whole `nomos.play_session@1` document the browser produced and replays it
-through the native `nomos-play replay`, and the receipts and the chain head
-match. Every batch the browser committed, refusals included, is what the native
-runtime produces from the same inputs.
-
-Three content identities moved together so the four fixtures are regenerated
-once — `nomos.presentation_source@2` with the declared actor role,
-`nomos.rendering_plan@3` with the role and without the assembly and material
-strings issue #153 moved to the renderer catalog, and
-`nomos.area_collection@2` with `entity_kinds` in place of `entity_assemblies`.
-The drawn artifacts are unchanged: every SVG frame and every contact sheet is
-byte-identical across the bump, and substituting the old version string back
-into the four `forensic.svg` overlays reproduces each prior digest exactly.
-
-That closes the audit deferrals R1-3 named: the literal actor ids and the
-missing role are one field, the interaction reconstruction is replaced by an
-enumeration of what the kernel says is legal within reach, and the scenario
-label is recorded as tooling's own. The plan's `scenarios` and `interactions`
-stay where they are, as the SVG capture ladder and the evidence that the
-compiler consumed committed run bundles; they are no longer gameplay.
-
-Simulation-boundary expansion remains deferred while the visual grammar is
-being established. Do not reopen Gate K evaluation work or add proof machinery
-unless the owner explicitly reverses decision 0016.
+A new accepted capability family, dependency policy, runtime epoch, Gate K
+attempt, or adoption into a game requires a new owner decision. Work toward an
+actual game remains exploratory until that game supplies its own target, gates,
+authority decision, and acceptance of measured cost. A fresh agent should ask
+the owner for that direction rather than continuing the old R1 checklist.
