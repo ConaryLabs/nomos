@@ -66,8 +66,12 @@ export async function serve(root) {
     port,
     requests,
     close: () =>
-      new Promise((done) => {
-        server.close(done);
+      new Promise((resolveClose, rejectClose) => {
+        const socketCount = sockets.size;
+        server.close((error) => {
+          if (error) rejectClose(error);
+          else resolveClose({ sockets_destroyed: socketCount });
+        });
         for (const socket of sockets) socket.destroy();
         sockets.clear();
       }),

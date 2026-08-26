@@ -38,7 +38,10 @@ export async function connect(url, { timeout = 20_000 } = {}) {
 
   socket.addEventListener("close", () => {
     closed = new CdpError("the DevTools connection closed");
-    for (const { reject } of pending.values()) reject(closed);
+    for (const { reject, timer } of pending.values()) {
+      clearTimeout(timer);
+      reject(closed);
+    }
     pending.clear();
   });
 
@@ -48,6 +51,7 @@ export async function connect(url, { timeout = 20_000 } = {}) {
       const waiter = pending.get(message.id);
       if (!waiter) return;
       pending.delete(message.id);
+      clearTimeout(waiter.timer);
       if (message.error) waiter.reject(new CdpError(`${waiter.method}: ${message.error.message}`));
       else waiter.resolve(message.result);
       return;
@@ -60,13 +64,19 @@ export async function connect(url, { timeout = 20_000 } = {}) {
     if (closed) return Promise.reject(closed);
     const id = nextId++;
     return new Promise((resolve, reject) => {
-      pending.set(id, { resolve, reject, method });
-      socket.send(JSON.stringify({ id, method, params }));
-      setTimeout(() => {
+      const timer = setTimeout(() => {
         if (!pending.has(id)) return;
         pending.delete(id);
         reject(new CdpError(`${method} did not answer within ${timeout}ms`));
       }, timeout);
+      pending.set(id, { resolve, reject, method, timer });
+      try {
+        socket.send(JSON.stringify({ id, method, params }));
+      } catch (error) {
+        clearTimeout(timer);
+        pending.delete(id);
+        reject(error);
+      }
     });
   };
 
@@ -112,21 +122,25 @@ export async function connect(url, { timeout = 20_000 } = {}) {
     }
   };
 
-  // Issue #160: `close()` starts a handshake, and the socket stays an open
-  // handle until it finishes. The lane waits for it, briefly, so a browser that
-  // has already been killed cannot hold the process open.
+  // `close()` starts a handshake, and the socket stays an open handle until it
+  // finishes. Make a missing close event a recorded shutdown failure; the
+  // caller will still kill Chrome and run the remaining cleanup steps.
   const close = () =>
-    new Promise((done) => {
+    new Promise((resolve, reject) => {
       if (socket.readyState === WebSocket.CLOSED) {
-        done();
+        resolve({ ready_state: "closed" });
         return;
       }
-      const timer = setTimeout(done, 1_000);
-      socket.addEventListener("close", () => {
+      const onClose = () => {
         clearTimeout(timer);
-        done();
-      });
-      socket.close();
+        resolve({ ready_state: "closed" });
+      };
+      const timer = setTimeout(() => {
+        socket.removeEventListener("close", onClose);
+        reject(new CdpError("the DevTools connection did not close within 1000ms"));
+      }, 1_000);
+      socket.addEventListener("close", onClose, { once: true });
+      if (socket.readyState === WebSocket.OPEN) socket.close();
     });
 
   return { send, on, once, evaluate, until, close };

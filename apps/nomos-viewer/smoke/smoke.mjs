@@ -19,6 +19,12 @@ import { connect } from "./cdp.mjs";
 import { FLAG_SETS, findChrome, launch } from "./chrome.mjs";
 import { solveRoute } from "./route.mjs";
 import { serve } from "./server.mjs";
+import {
+  armHardDeadline,
+  exitAfterFlush,
+  finishShutdown,
+  recordShutdownStep,
+} from "./shutdown.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -157,19 +163,30 @@ async function run(options) {
         ? {}
         : { pipeline_started_unix_ms: options.pipelineStartMs }),
     },
+    shutdown: { steps: [] },
     outcome: "fail",
   };
 
   let browser = null;
+  const shutdownFailures = [];
   try {
     for (const [name, flags] of Object.entries(FLAG_SETS)) {
-      if (browser) await browser.kill();
+      if (browser) {
+        const previous = browser;
+        browser = null;
+        const error = await recordShutdownStep(
+          receipt.shutdown,
+          `chrome_process_group_${receipt.chrome.flag_set}`,
+          () => previous.kill(),
+        );
+        if (error) fail(`Chrome shutdown failed: ${error.message}`);
+      }
       browser = await launch({ binary: chrome.binary, flags });
       receipt.chrome.flag_set = name;
       receipt.chrome.product = browser.version.Browser;
       receipt.chrome.revision = browser.version["WebKit-Version"];
       receipt.flags = browser.argv;
-      const attempt = await drive({ browser, server, route, collection, out, receipt });
+      const attempt = await drive({ browser, server, route, out, receipt, flagSet: name });
       if (attempt.webgl) return { ...attempt, receipt };
       if (name === "B") fail(`no WebGL context with either flag set: ${attempt.reason}`);
       process.stdout.write(
@@ -179,20 +196,49 @@ async function run(options) {
     return fail("unreachable");
   } finally {
     receipt.duration_ms = Date.now() - started;
-    // Issue #160: PASS printed and the process still alive is a hung job. Every
-    // handle the lane opened is closed here, in the order that lets each one
-    // finish: the browser first, because killing it drops the CDP socket, then
-    // the socket, then the server and the connections Chrome left open.
-    await browser?.kill();
-    await server.close();
+    // `drive` closes CDP first. Kill the isolated Chrome process group next,
+    // then stop the server and destroy every keep-alive socket Chrome left.
+    if (browser) {
+      const error = await recordShutdownStep(
+        receipt.shutdown,
+        `chrome_process_group_${receipt.chrome.flag_set}`,
+        () => browser.kill(),
+      );
+      if (error) shutdownFailures.push(error);
+    }
+    const serverError = await recordShutdownStep(
+      receipt.shutdown,
+      "http_server_and_sockets",
+      () => server.close(),
+    );
+    if (serverError) shutdownFailures.push(serverError);
+    finishShutdown(receipt.shutdown);
+    if (receipt.shutdown.outcome === "fail") receipt.outcome = "fail";
     receipt.requests = server.requests;
     receipt.request_count = server.requests.length;
     writeFileSync(join(out, "receipt.json"), `${JSON.stringify(receipt, null, 2)}\n`);
+    if (shutdownFailures.length > 0) {
+      fail(`shutdown failed: ${shutdownFailures.map((error) => error.message).join("; ")}`);
+    }
   }
 }
 
-async function drive({ browser, server, route, collection, out, receipt }) {
+async function drive({ browser, server, route, out, receipt, flagSet }) {
   const page = await connect(browser.pageUrl);
+  let result;
+  let closeError;
+  try {
+    result = await drivePage({ page, server, route, out, receipt });
+  } finally {
+    closeError = await recordShutdownStep(receipt.shutdown, `cdp_socket_${flagSet}`, () =>
+      page.close(),
+    );
+  }
+  if (closeError) fail(`CDP shutdown failed: ${closeError.message}`);
+  return result;
+}
+
+async function drivePage({ page, server, route, out, receipt }) {
   const consoleErrors = [];
   const exceptions = [];
   const logErrors = [];
@@ -286,7 +332,6 @@ async function drive({ browser, server, route, collection, out, receipt }) {
     };
   })()`);
   if (!webgl.ok) {
-    await page.close();
     return { webgl: false, reason: webgl.reason };
   }
   receipt.webgl = webgl;
@@ -433,20 +478,12 @@ async function drive({ browser, server, route, collection, out, receipt }) {
     outcome: "pass",
   });
 
-  await page.close();
   return { webgl: true, screenshots, final, summary };
 }
 
 const options = parseArguments(process.argv.slice(2));
 
-// Issue #160: a hard deadline, so a lane that wedges anywhere fails in minutes
-// with a message rather than in half an hour with a job timeout. Unreferenced,
-// so it is not itself a handle that keeps the process alive.
-const deadline = setTimeout(() => {
-  process.stderr.write(`NOMOS_VIEWER_SMOKE FAIL the lane exceeded ${options.deadlineMs}ms\n`);
-  process.exit(1);
-}, options.deadlineMs);
-deadline.unref();
+const cancelDeadline = armHardDeadline(options.deadlineMs);
 
 try {
   const result = await run(options);
@@ -464,10 +501,7 @@ try {
   process.exitCode = 1;
 }
 
-clearTimeout(deadline);
-// The receipt is written in `run`'s `finally`, so by here it is on disk. Issue
-// #160: exit rather than wait for the event loop to drain. A handle this lane
-// failed to close is a bug to fix — the closing above is that fix — but it must
-// not also be a job that runs to its timeout after the result is known.
-process.stdout.write("");
-process.exit(process.exitCode ?? 0);
+cancelDeadline();
+// `run` writes the receipt synchronously before returning. Flush the result
+// diagnostic too, then exit even if a future regression leaves a handle open.
+await exitAfterFlush(process.exitCode ?? 0);
