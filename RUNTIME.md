@@ -1,11 +1,13 @@
 ---
 title: The R1 runtime contract
-status: Owner-authorized; revision 3 in force
+status: Owner-authorized; revision 4 in force; R1 accepted and closed
 epoch: R1
-contract_revision: 3
+contract_revision: 4
 authority: docs/decisions/0017-post-gate-k-runtime-epoch.md
 revision_2_authority: docs/decisions/0018-runtime-revision-2.md
 revision_3_authority: docs/decisions/0020-runtime-revision-3.md
+revision_4_authority: docs/decisions/0021-runtime-revision-4.md
+final_disposition: docs/decisions/0019-r1-final-disposition.md
 kernel_contract: KERNEL.md revision 7, frozen
 date: 2026-08-26
 issue: 128
@@ -551,9 +553,18 @@ by any project. This document declares no schema; the identities it cites,
 including `nomos.effective_facts@2`, are declared by the code that emits them
 and are not accepted until the slice that emits them is.
 
-## 10. Owner disposition
+## 10. Owner disposition and revision history
 
-**Authorize.** Recorded by Peter Permenter on 2026-08-25. Revision 1 takes
-effect as written, with section 3 resolved to option (a): kernel crates may gain
-read-only R1 surface under the conditions stated there. No further amendments.
-R1-1 is the first slice under acceptance.
+Peter Permenter authorized revision 1 on 2026-08-25, with section 3 resolved to
+option (a): kernel crates may gain read-only R1 surface under the conditions
+stated there. R1-1 was the first slice under acceptance. Owner-authorized
+decision 0018 established revision 2, and owner-authorized decision 0020
+established revision 3.
+
+Decision 0019 accepted all five R1 criteria and closed the epoch as this
+repository's runtime baseline without authorizing game adoption. Decision 0021
+repairs this revision history and establishes revision 4; it changes no
+criterion, implementation, evidence, or verdict. No further R1 implementation
+slice is authorized by this contract. Any later contract amendment must follow
+section 8, and any later runtime epoch, capability family, or game adoption
+requires a new owner decision under decision 0019's consequences.
