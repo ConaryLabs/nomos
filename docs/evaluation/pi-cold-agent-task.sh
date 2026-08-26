@@ -2,6 +2,9 @@
 
 set -euo pipefail
 
+# Packet path comparison is defined over bytes, not host collation.
+export LC_ALL=C
+
 fail() {
   printf 'pi cold-agent task: FAIL: %s\n' "$*" >&2
   exit 1

@@ -2,6 +2,9 @@
 
 set -euo pipefail
 
+# Canonical artifact ordering and tree digests are byte-defined.
+export LC_ALL=C
+
 fail() {
   printf 'gate-k eval task recorder: FAIL: %s\n' "$*" >&2
   exit 1

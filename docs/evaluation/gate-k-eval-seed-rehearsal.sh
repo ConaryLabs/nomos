@@ -2,6 +2,9 @@
 
 set -euo pipefail
 
+# Seed-tree traversal is deterministic byte ordering.
+export LC_ALL=C
+
 fail() {
   printf 'gate-k debug rehearsal seed: FAIL: %s\n' "$*" >&2
   exit 1

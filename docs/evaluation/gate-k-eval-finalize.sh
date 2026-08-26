@@ -2,6 +2,9 @@
 
 set -euo pipefail
 
+# Canonical path ordering, tree digests, and comparisons are byte-defined.
+export LC_ALL=C
+
 fail() {
   printf 'gate-k eval finalizer: FAIL: %s\n' "$*" >&2
   exit 1
