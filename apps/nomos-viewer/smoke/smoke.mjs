@@ -136,11 +136,11 @@ async function run(options) {
     return { skipped: true };
   }
 
-  const server = await serve(dist);
   const started = Date.now();
   if (options.pipelineStartMs !== null && options.pipelineStartMs > started) {
     fail("--pipeline-start-ms is later than the smoke-lane start");
   }
+  const server = await serve(dist);
   const receipt = {
     receipt: "nomos-viewer-smoke/1",
     generated_by: "apps/nomos-viewer/smoke/smoke.mjs",
@@ -483,7 +483,7 @@ async function drivePage({ page, server, route, out, receipt }) {
 
 const options = parseArguments(process.argv.slice(2));
 
-const cancelDeadline = armHardDeadline(options.deadlineMs);
+armHardDeadline(options.deadlineMs);
 
 try {
   const result = await run(options);
@@ -501,7 +501,6 @@ try {
   process.exitCode = 1;
 }
 
-cancelDeadline();
 // `run` writes the receipt synchronously before returning. Flush the result
 // diagnostic too, then exit even if a future regression leaves a handle open.
 await exitAfterFlush(process.exitCode ?? 0);
