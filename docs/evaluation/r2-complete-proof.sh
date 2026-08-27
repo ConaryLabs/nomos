@@ -514,10 +514,14 @@ disk_sampler_ready=$disk_sample_state/ready
 mkdir "$disk_sample_state"
 disk_sampler_started=$(date +%s%N)
 disk_sample_period_ns=50000000
+# Monitor mode gives only this background job a dedicated process group; the
+# pre-stop closure audit uses that kernel identity for its one allowed subtree.
+set -m
 r2_sample_checkout_disk \
   "$repo_root" "$disk_samples" "$disk_sampler_stop" "$disk_sample_state" \
   "$disk_sampler_started" "$disk_sample_period_ns" &
 disk_sampler_pid=$!
+set +m
 sampler_running=1
 stop_sampler() {
   if [[ ${sampler_running:-0} -eq 1 ]]; then
@@ -529,6 +533,18 @@ stop_sampler() {
 trap stop_sampler EXIT
 trap 'stop_sampler; exit 130' INT
 trap 'stop_sampler; exit 143' TERM
+sampler_group_bound=0
+for ((attempt = 0; attempt < 100; attempt += 1)); do
+  if r2_read_process_stat "/proc/$disk_sampler_pid/stat" &&
+    [[ $R2_PROC_GROUP == "$disk_sampler_pid" && $R2_PROC_STATE != Z ]]; then
+    sampler_group_bound=1
+    break
+  fi
+  kill -0 "$disk_sampler_pid" 2>/dev/null || break
+  sleep 0.001
+done
+[[ $sampler_group_bound -eq 1 ]] ||
+  fail 'disk sampler does not own its process group'
 for ((attempt = 0; attempt < 100; attempt += 1)); do
   [[ ! -e $disk_sampler_ready ]] || break
   kill -0 "$disk_sampler_pid" 2>/dev/null || fail 'disk sampler exited before its initial row'
@@ -896,7 +912,8 @@ run_step maximum-compile-benchmark \
 namespace_children_before_file=$evidence_dir/metadata/namespace-children-before-sampler-stop.txt
 r2_measure_process_closure \
   "$inner_netns" "$NOMOS_R2_PROOF_TOKEN" "$namespace_children_before_file" \
-  "$disk_sampler_pid" || fail 'a proof process remains while the sampler is active'
+  "$disk_sampler_pid" "$disk_sampler_pid" ||
+  fail 'a proof process remains while the sampler is active'
 namespace_children_before=$(jq -Rsc \
   'split("\n") | map(select(length > 0) | tonumber)' \
   "$namespace_children_before_file")

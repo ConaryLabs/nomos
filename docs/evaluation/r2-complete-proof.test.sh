@@ -42,12 +42,23 @@ temporary=$(mktemp -d "$repo_root/target/r2-complete-proof-plants.XXXXXX")
 seed=$temporary/seed
 linked=
 leaked_child_pid=
+allowed_group_pid=
+group_leak_pid=
 cleanup() {
   case $temporary in
     "$repo_root"/target/r2-complete-proof-plants.*)
       if [[ -n ${leaked_child_pid:-} ]] && kill -0 "$leaked_child_pid" 2>/dev/null; then
         kill "$leaked_child_pid" 2>/dev/null || true
         wait "$leaked_child_pid" 2>/dev/null || true
+      fi
+      if [[ -n ${allowed_group_pid:-} ]] && kill -0 "$allowed_group_pid" 2>/dev/null; then
+        kill -- "-$allowed_group_pid" 2>/dev/null ||
+          kill "$allowed_group_pid" 2>/dev/null || true
+        wait "$allowed_group_pid" 2>/dev/null || true
+      fi
+      if [[ -n ${group_leak_pid:-} ]] && kill -0 "$group_leak_pid" 2>/dev/null; then
+        kill "$group_leak_pid" 2>/dev/null || true
+        wait "$group_leak_pid" 2>/dev/null || true
       fi
       if [[ -n ${linked:-} && -d $seed/.git ]]; then
         git -C "$seed" worktree remove --force "$linked" >/dev/null 2>&1 || true
@@ -348,6 +359,35 @@ r2_measure_process_closure "$closure_namespace" "$closure_token" "$closure_repor
   fail 'closure primitive did not pass after the planted child closed'
 [[ ! -s $closure_report ]] || fail 'clean closure report is not empty'
 
+set -m
+env -i PATH="$PATH" sleep 30 &
+allowed_group_pid=$!
+set +m
+env -i PATH="$PATH" sleep 30 &
+group_leak_pid=$!
+expect_failure group-root-mismatch 'allowed process-group root is not stable' 0 \
+  r2_measure_process_closure "$closure_namespace" "$closure_token" \
+  "$closure_report" "$allowed_group_pid" "$((allowed_group_pid + 1))"
+expect_failure group-does-not-hide-leak 'R2 process closure: live namespace children:' 0 \
+  r2_measure_process_closure "$closure_namespace" "$closure_token" \
+  "$closure_report" "$allowed_group_pid" "$allowed_group_pid"
+grep -Fx -- "$group_leak_pid" "$closure_report" >/dev/null ||
+  fail 'dedicated process group hid an unrelated live child'
+kill "$group_leak_pid"
+wait "$group_leak_pid" 2>/dev/null || true
+group_leak_pid=
+r2_measure_process_closure "$closure_namespace" "$closure_token" \
+  "$closure_report" "$allowed_group_pid" "$allowed_group_pid" ||
+  fail 'closure primitive rejected a dedicated allowed process group'
+[[ ! -s $closure_report ]] || fail 'allowed process group appeared as a leak'
+kill "$allowed_group_pid"
+wait "$allowed_group_pid" 2>/dev/null || true
+closed_group_pid=$allowed_group_pid
+allowed_group_pid=
+expect_failure closed-group-root 'allowed process-group root is not stable' 0 \
+  r2_measure_process_closure "$closure_namespace" "$closure_token" \
+  "$closure_report" "$closed_group_pid" "$closed_group_pid"
+
 # Version evidence must invoke the exact canonical path recorded and digested
 # in tools.txt. This fake reports its argv[0] basename, so invoking its `cc`
 # symlink would produce different evidence from invoking the recorded file.
@@ -426,6 +466,7 @@ async_stop=$temporary/async-disk.stop
 async_started=$(date +%s%N)
 printf 'ordinal\telapsed_ms\tmebibytes\n' >"$async_samples"
 mkdir "$async_parts"
+set -m
 (
   export R2_TEST_DU_STABLE=1 R2_TEST_DU_DELAY=0.2
   export PATH="$fake_disk_bin:$PATH"
@@ -434,6 +475,13 @@ mkdir "$async_parts"
     "$async_started" 50000000
 ) &
 async_sampler_pid=$!
+set +m
+async_stat=$(<"/proc/$async_sampler_pid/stat")
+async_fields=${async_stat##*) }
+IFS=' ' read -r async_state async_parent async_process_group async_remainder \
+  <<<"$async_fields"
+[[ $async_process_group == "$async_sampler_pid" ]] ||
+  fail 'asynchronous sampler does not own its process group'
 for ((attempt = 0; attempt < 100; attempt += 1)); do
   [[ ! -e $async_parts/ready ]] || break
   kill -0 "$async_sampler_pid" 2>/dev/null || fail 'asynchronous sampler exited before readiness'

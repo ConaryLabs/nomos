@@ -2,8 +2,27 @@
 
 # Source-only primitives shared by the complete proof and its refusal suite.
 
+r2_read_process_stat() {
+  [[ $# -eq 1 && -n $1 ]] || return 2
+  local process_stat process_fields
+  local -a fields=()
+  if ! { IFS= read -r process_stat <"$1"; } 2>/dev/null; then
+    return 1
+  fi
+  process_fields=${process_stat##*) }
+  [[ $process_fields != "$process_stat" ]] || return 2
+  read -r -a fields <<<"$process_fields"
+  [[ ${#fields[@]} -ge 20 && ${fields[0]} =~ ^[A-Za-z]$ &&
+    ${fields[1]} =~ ^[0-9]+$ && ${fields[2]} =~ ^[0-9]+$ &&
+    ${fields[19]} =~ ^[0-9]+$ ]] || return 2
+  R2_PROC_STATE=${fields[0]}
+  R2_PROC_PARENT=${fields[1]}
+  R2_PROC_GROUP=${fields[2]}
+  R2_PROC_START=${fields[19]}
+}
+
 r2_measure_process_closure() {
-  [[ $# -ge 3 && $# -le 4 && $1 == net:\[*\] && $2 =~ ^[0-9a-f]{64}$ && -n $3 ]] || {
+  [[ $# -ge 3 && $# -le 5 && $1 == net:\[*\] && $2 =~ ^[0-9a-f]{64}$ && -n $3 ]] || {
     printf 'R2 process closure: invalid arguments\n' >&2
     return 2
   }
@@ -11,36 +30,79 @@ r2_measure_process_closure() {
   local proof_token=$2
   local report=$3
   local allowed_root=${4:-}
+  local allowed_group=${5:-}
   local ancestor=$$
   local ancestor_pids=" $$ "
-  local proc pid process_namespace parent allowed
+  local proc pid process_namespace parent allowed process_group process_start
+  local stat_status
   local strict_namespace=0
   local -a process_snapshot=(/proc/[0-9]*)
 
   [[ -z $allowed_root || $allowed_root =~ ^[0-9]+$ ]] || return 2
+  [[ -z $allowed_group || $allowed_group =~ ^[1-9][0-9]*$ ]] || return 2
+  if [[ -n $allowed_group ]]; then
+    [[ $allowed_root == "$allowed_group" ]] || {
+      printf 'R2 process closure: allowed process-group root is not stable\n' >&2
+      return 2
+    }
+    r2_read_process_stat "/proc/$allowed_root/stat" || {
+      printf 'R2 process closure: allowed process-group root is not stable\n' >&2
+      return 2
+    }
+    [[ $R2_PROC_GROUP == "$allowed_group" && $R2_PROC_STATE != Z ]] || {
+      printf 'R2 process closure: allowed process-group root is not stable\n' >&2
+      return 2
+    }
+    process_start=$R2_PROC_START
+  fi
   if [[ ${NOMOS_R2_HOST_NETNS:-} == net:\[*\] &&
         $expected_namespace != "$NOMOS_R2_HOST_NETNS" ]]; then
     strict_namespace=1
   fi
 
   : >"$report"
-  while [[ $ancestor -gt 1 && -r /proc/$ancestor/status ]]; do
-    ancestor=$(awk '/^PPid:/ { print $2; exit }' "/proc/$ancestor/status")
-    [[ $ancestor =~ ^[0-9]+$ ]] || break
+  while [[ $ancestor -gt 1 ]]; do
+    r2_read_process_stat "/proc/$ancestor/stat" || {
+      printf 'R2 process closure: auditor ancestor changed during inspection\n' >&2
+      return 2
+    }
+    ancestor=$R2_PROC_PARENT
     ancestor_pids+="$ancestor "
   done
   for proc in "${process_snapshot[@]}"; do
     pid=${proc##*/}
     [[ " $ancestor_pids " == *" $pid "* ]] && continue
-    process_namespace=$(readlink "$proc/ns/net" 2>/dev/null || true)
+    if [[ -n $allowed_group ]]; then
+      if r2_read_process_stat "$proc/stat"; then
+        process_group=$R2_PROC_GROUP
+      else
+        stat_status=$?
+        [[ $stat_status -eq 1 && ! -e $proc ]] && continue
+        return 2
+      fi
+      [[ $process_group != "$allowed_group" ]] || continue
+    fi
+    if ! process_namespace=$(readlink "$proc/ns/net" 2>/dev/null); then
+      [[ ! -e $proc ]] && continue
+      [[ $strict_namespace -eq 0 ]] && continue
+      return 2
+    fi
     [[ $process_namespace == "$expected_namespace" ]] || continue
 
     parent=$pid
     allowed=0
-    while [[ -n $allowed_root && $parent -gt 1 && -r /proc/$parent/status ]]; do
+    while [[ -z $allowed_group && -n $allowed_root && $parent -gt 1 ]]; do
       [[ $parent -ne $allowed_root ]] || { allowed=1; break; }
-      parent=$(awk '/^PPid:/ { print $2; exit }' "/proc/$parent/status")
-      [[ $parent =~ ^[0-9]+$ ]] || break
+      if r2_read_process_stat "/proc/$parent/stat"; then
+        parent=$R2_PROC_PARENT
+      else
+        if [[ ! -e $proc ]]; then
+          allowed=1
+          break
+        fi
+        printf 'R2 process closure: process ancestry changed during inspection\n' >&2
+        return 2
+      fi
     done
     [[ $allowed -eq 0 ]] || continue
 
@@ -48,15 +110,34 @@ r2_measure_process_closure() {
       ! grep -Fzx -- "NOMOS_R2_PROOF_TOKEN=$proof_token" "$proc/environ" \
         >/dev/null 2>&1; then
       parent=$pid
-      while [[ $parent -gt 1 && -r /proc/$parent/status ]]; do
-        parent=$(awk '/^PPid:/ { print $2; exit }' "/proc/$parent/status")
-        [[ $parent =~ ^[0-9]+$ ]] || break
+      while [[ $parent -gt 1 ]]; do
+        if r2_read_process_stat "/proc/$parent/stat"; then
+          parent=$R2_PROC_PARENT
+        else
+          if [[ ! -e $proc ]]; then
+            parent=0
+            break
+          fi
+          printf 'R2 process closure: process ancestry changed during inspection\n' >&2
+          return 2
+        fi
         [[ $parent -ne $$ ]] || break
       done
       [[ $parent -eq $$ ]] || continue
     fi
     printf '%s\n' "$pid" >>"$report"
   done
+  if [[ -n $allowed_group ]]; then
+    r2_read_process_stat "/proc/$allowed_root/stat" || {
+      printf 'R2 process closure: allowed process-group root is not stable\n' >&2
+      return 2
+    }
+    [[ $R2_PROC_GROUP == "$allowed_group" && $R2_PROC_START == "$process_start" &&
+      $R2_PROC_STATE != Z ]] || {
+      printf 'R2 process closure: allowed process-group root is not stable\n' >&2
+      return 2
+    }
+  fi
   if [[ -s $report ]]; then
     printf 'R2 process closure: live namespace children: %s\n' \
       "$(paste -sd, "$report")" >&2
