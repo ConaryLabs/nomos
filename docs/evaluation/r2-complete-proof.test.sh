@@ -350,6 +350,7 @@ printf '%s\n' \
   '[[ $# -eq 3 && $1 == -sm && $2 == -- && -d $3 ]] || exit 93' \
   'if [[ ${R2_TEST_DU_STABLE:-0} == 1 ]]; then' \
   '  sleep "${R2_TEST_DU_DELAY:-0}"' \
+  '  [[ ${R2_TEST_DU_FAIL:-0} != 1 ]] || exit 94' \
   '  printf '\''17\t%s\n'\'' "${@: -1}"' \
   '  exit 0' \
   'fi' \
@@ -410,6 +411,85 @@ async_count=$(awk 'NR > 1 { count += 1 } END { print count + 0 }' "$async_sample
 async_gap=$(awk 'NR == 2 { previous = $2 } NR > 2 { gap = $2 - previous; if (gap > maximum) maximum = gap; previous = $2 } END { print maximum + 0 }' "$async_samples")
 [[ $async_count -ge 5 && $async_gap -le 100 && ! -e $async_parts ]] ||
   fail 'asynchronous sampler did not preserve cadence across slow walks'
+
+# A long proof launches thousands of samples. Reaping must consult only the
+# bounded active child set on every launch rather than retaining and rescanning
+# every historical PID. Count the process probes and bind them to the number of
+# retained samples while quick walks repeatedly finish.
+history_samples=$temporary/history-disk-samples.tsv
+history_parts=$temporary/history-disk-state
+history_stop=$temporary/history-disk.stop
+history_probes=$temporary/history-disk-probes.txt
+history_started=$(date +%s%N)
+printf 'ordinal\telapsed_ms\tmebibytes\n' >"$history_samples"
+: >"$history_probes"
+mkdir "$history_parts"
+run_history_sampler() {
+  kill() {
+    printf 'probe\n' >>"$history_probes"
+    builtin kill "$@"
+  }
+  export R2_TEST_DU_STABLE=1 R2_TEST_DU_DELAY=0.02
+  export PATH="$fake_disk_bin:$PATH"
+  r2_sample_checkout_disk \
+    "$repo_root" "$history_samples" "$history_stop" "$history_parts" \
+    "$history_started" 10000000
+}
+run_history_sampler &
+history_sampler_pid=$!
+for ((attempt = 0; attempt < 100; attempt += 1)); do
+  [[ ! -e $history_parts/ready ]] || break
+  kill -0 "$history_sampler_pid" 2>/dev/null || fail 'history sampler exited before readiness'
+  sleep 0.01
+done
+[[ -f $history_parts/ready ]] || fail 'history sampler did not become ready'
+sleep 0.8
+: >"$history_stop"
+wait "$history_sampler_pid" || fail 'history sampler rejected quick complete walks'
+history_count=$(awk 'NR > 1 { count += 1 } END { print count + 0 }' "$history_samples")
+history_probe_count=$(wc -l <"$history_probes")
+[[ $history_count -ge 40 && $history_probe_count -gt 0 &&
+  $history_probe_count -le $(((history_count + 1) * 16)) &&
+  ! -e $history_parts ]] ||
+  fail 'disk sampler retained historical jobs instead of the bounded active set'
+
+# A failed asynchronous walk must be reaped, make the controller fail without
+# publishing a row, and leave no live child behind in the controller shell.
+child_failure_samples=$temporary/child-failure-disk-samples.tsv
+child_failure_state=$temporary/child-failure-disk-state
+child_failure_stop=$temporary/child-failure-disk.stop
+child_failure_waits=$temporary/child-failure-disk-waits.txt
+child_failure_jobs=$temporary/child-failure-disk-jobs.txt
+child_failure_started=$(date +%s%N)
+printf 'ordinal\telapsed_ms\tmebibytes\n' >"$child_failure_samples"
+: >"$child_failure_waits"
+mkdir "$child_failure_state"
+set +e
+(
+  wait() {
+    printf '%s\n' "$*" >>"$child_failure_waits"
+    builtin wait "$@"
+  }
+  export R2_TEST_DU_STABLE=1 R2_TEST_DU_FAIL=1
+  export PATH="$fake_disk_bin:$PATH"
+  r2_sample_checkout_disk \
+    "$repo_root" "$child_failure_samples" "$child_failure_stop" \
+    "$child_failure_state" "$child_failure_started" 50000000
+  child_failure_status=$?
+  jobs -pr >"$child_failure_jobs"
+  exit "$child_failure_status"
+) >"$temporary/child-failure.stdout" 2>"$temporary/child-failure.stderr"
+child_failure_status=$?
+set -e
+[[ $child_failure_status -ne 0 && ! -s $temporary/child-failure.stdout &&
+  $(wc -l <"$child_failure_samples") -eq 1 &&
+  $(wc -l <"$child_failure_waits") -ge 1 &&
+  ! -s $child_failure_jobs ]] ||
+  fail 'disk sampler published or leaked a failed asynchronous walk'
+grep -Fx 'R2 disk sampler: one or more scheduled samples failed' \
+  "$temporary/child-failure.stderr" >/dev/null ||
+  fail 'disk sampler child-failure diagnostic differs'
+plant_count=$((plant_count + 1))
 
 overload_samples=$temporary/overload-disk-samples.tsv
 overload_state=$temporary/overload-disk-state

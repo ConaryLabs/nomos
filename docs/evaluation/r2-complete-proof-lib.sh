@@ -145,17 +145,34 @@ r2_sample_checkout_disk() {
   local raw_samples=$state/samples.unsorted.tsv
   local sorted_samples=$state/samples.sorted.tsv
   local ordinal=0 deadline now delay delay_seconds sample_started pid status=0
-  local index line row_ordinal elapsed size extra active candidate
+  local index line row_ordinal elapsed size extra active
   local last_started=0
   local -a sample_pids=()
 
   : >"$raw_samples"
 
-  launch_sample() {
-    active=0
+  reap_finished_samples() {
+    local candidate
+    local -a still_running=()
+
+    # Reap completed children immediately and retain only the bounded active
+    # set. Bash preserves a background child's status for `wait` after the
+    # process exits, so every completed walk still contributes to the final
+    # fail-closed result without making controller work grow with proof age.
     for candidate in "${sample_pids[@]}"; do
-      kill -0 "$candidate" 2>/dev/null && active=$((active + 1))
+      if kill -0 "$candidate" 2>/dev/null; then
+        still_running+=("$candidate")
+      elif ! wait "$candidate"; then
+        status=1
+      fi
     done
+    sample_pids=("${still_running[@]}")
+    [[ $status -eq 0 ]]
+  }
+
+  launch_sample() {
+    reap_finished_samples || return
+    active=${#sample_pids[@]}
     [[ $active -lt 16 ]] || {
       printf 'R2 disk sampler: sixteen concurrent du walks are still active\n' >&2
       return 3
@@ -212,6 +229,7 @@ r2_sample_checkout_disk() {
     fi
   fi
 
+  reap_finished_samples || status=1
   for pid in "${sample_pids[@]}"; do
     wait "$pid" || status=1
   done
