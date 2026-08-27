@@ -190,6 +190,14 @@ jobs:
         with:
           node-version: '22'
 
+      - name: Provision the final-proof filesystem isolator
+        run: |
+          if ! command -v bwrap >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install --yes --no-install-recommends bubblewrap
+          fi
+          bwrap --version
+
       - name: Record the host proof tools
         run: |
           rustc --version
@@ -263,13 +271,16 @@ jobs:
           docs/evaluation/r2-source-provenance.test.sh
           docs/evaluation/r2-adopter-neutrality.sh
           docs/evaluation/r2-adopter-neutrality.test.sh
+          docs/evaluation/r2-complete-proof.test.sh
           node docs/evaluation/r2-maximum.test.mjs
           node docs/evaluation/r2-scene-signature.mjs \
             fixtures/r2/scenes/scene_one.json \
             fixtures/r2/scenes/scene_two.json >target/r2-ci-signatures.json
           node --test \
             apps/nomos-observed-viewer/test/*.test.mjs \
-            docs/evaluation/r2-scene-signature.test.mjs
+            docs/evaluation/r2-scene-signature.test.mjs \
+            docs/evaluation/r2-complete-proof-process.test.mjs \
+            docs/evaluation/r2-complete-proof-receipt.test.mjs
 
       - name: Build and scan the two-scene artifact
         run: |
@@ -296,5 +307,50 @@ jobs:
             target/r2-ci-signatures.json
             target/r2-observed-build.json
             target/r2-observed-smoke
+          if-no-files-found: error
+          retention-days: 90
+
+  r2-complete-proof:
+    name: R2 detached complete proof
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      - name: Provision host tools before isolation
+        run: |
+          rustup show
+          rustup target add wasm32-unknown-unknown
+          if ! command -v bwrap >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install --yes --no-install-recommends bubblewrap
+          fi
+          bwrap --version
+          google-chrome --version
+
+      - name: Run the detached complete proof
+        run: |
+          set -euo pipefail
+          candidate=$(git rev-parse 'HEAD^{commit}')
+          git checkout --detach "$candidate"
+          test "$(git rev-parse --is-shallow-repository)" = false
+          mkdir -p target/r2-complete-proof
+          CHROME_BIN=$(command -v google-chrome) \
+            docs/evaluation/r2-complete-proof.sh \
+              --output target/r2-complete-proof
+
+      - name: Upload the bound complete-proof evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: r2-complete-proof
+          path: target/r2-complete-proof
           if-no-files-found: error
           retention-days: 90

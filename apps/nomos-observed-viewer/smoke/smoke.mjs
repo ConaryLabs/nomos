@@ -9,6 +9,26 @@ import { serve } from "./server.mjs";
 
 const sha256 = (bytes) => createHash("sha256").update(bytes).digest("hex");
 const sleep = (milliseconds) => new Promise((resolveSleep) => setTimeout(resolveSleep, milliseconds));
+const requireEvidence = (condition, message) => {
+  if (!condition) throw new Error(`browser launch evidence: ${message}`);
+};
+const exactKeys = (value, keys, label) => {
+  requireEvidence(value && typeof value === "object" && !Array.isArray(value), `${label} is not an object`);
+  requireEvidence(
+    JSON.stringify(Object.keys(value).sort()) === JSON.stringify([...keys].sort()),
+    `${label} fields differ`,
+  );
+};
+
+const COUNT_KEYS = [
+  "actions",
+  "actors",
+  "controlled_markers",
+  "hostile_outlines",
+  "protection_rings",
+  "terrain_cells",
+  "terrain_layers",
+];
 
 const parseArguments = (argv) => {
   const options = { samples: 10 };
@@ -64,10 +84,11 @@ const openPage = async (chrome, width = 1280, height = 720) => {
   return client;
 };
 
-const sample = async ({ browser, index, output, plan, port, sampleIndex }) => {
+const sample = async ({ browser, index, launchOrdinal, output, plan, port, sampleIndex }) => {
   const chrome = await launchChrome(browser);
   let client;
   let known;
+  let record;
   const requests = [];
   const consoleErrors = [];
   const exceptions = [];
@@ -106,14 +127,23 @@ const sample = async ({ browser, index, output, plan, port, sampleIndex }) => {
       writeFileSync(resolve(output, screenshot), bytes);
     }
     known = process.hrtime.bigint();
-    return {
-      browser_requests: requests,
+    record = {
       browser_product: version.product,
+      cache_disabled: true,
       chrome_flags: chrome.flags,
-      consequence_counts: payload.consequence_counts,
+      closure: null,
+      console_errors: [...consoleErrors],
       elapsed_ns: elapsed.toString(),
-      plan_sha256: plan.sha256,
+      exceptions: [...exceptions],
+      frame: payload,
+      launch_ordinal: launchOrdinal,
+      network_negative_control: negative,
+      profile: chrome.profile,
+      requests: [...requests],
+      sample_ordinal: sampleIndex,
+      scene_ordinal: index,
       screenshot,
+      webgl2,
     };
   } finally {
     if (!known) known = process.hrtime.bigint();
@@ -121,8 +151,79 @@ const sample = async ({ browser, index, output, plan, port, sampleIndex }) => {
     const closure = await closeChrome(chrome);
     closure.after_result_ms = Number(process.hrtime.bigint() - known) / 1_000_000;
     if (closure.after_result_ms > 2_000) throw new Error(`Chrome closure exceeded 2000 ms: ${closure.after_result_ms}`);
-    sample.lastClosure = closure;
+    if (record) record.closure = closure;
   }
+  return record;
+};
+
+export const verifyLaunchEvidence = ({ launches, plans, port, samplesPerScene }) => {
+  requireEvidence(Number.isInteger(port) && port > 0, "local server port is invalid");
+  requireEvidence(Number.isInteger(samplesPerScene) && samplesPerScene > 0, "sample count is invalid");
+  requireEvidence(Array.isArray(plans) && plans.length === 2, "exactly two plans are required");
+  requireEvidence(
+    Array.isArray(launches) && launches.length === plans.length * samplesPerScene,
+    "launch count differs",
+  );
+  const profiles = new Set();
+  const localPrefix = `http://localhost:${port}/`;
+  launches.forEach((launch, launchOrdinal) => {
+    exactKeys(launch, [
+      "browser_product", "cache_disabled", "chrome_flags", "closure", "console_errors",
+      "elapsed_ns", "exceptions", "frame", "launch_ordinal", "network_negative_control",
+      "profile", "requests", "sample_ordinal", "scene_ordinal", "screenshot", "webgl2",
+    ], `launch ${launchOrdinal}`);
+    const sceneOrdinal = Math.floor(launchOrdinal / samplesPerScene);
+    const sampleOrdinal = launchOrdinal % samplesPerScene;
+    const plan = plans[sceneOrdinal];
+    requireEvidence(launch.launch_ordinal === launchOrdinal, `launch ${launchOrdinal} ordinal differs`);
+    requireEvidence(launch.scene_ordinal === sceneOrdinal, `launch ${launchOrdinal} scene ordinal differs`);
+    requireEvidence(launch.sample_ordinal === sampleOrdinal, `launch ${launchOrdinal} sample ordinal differs`);
+    requireEvidence(typeof launch.browser_product === "string" && launch.browser_product.length > 0, `launch ${launchOrdinal} browser product is absent`);
+    requireEvidence(launch.cache_disabled === true, `launch ${launchOrdinal} did not disable cache`);
+    requireEvidence(launch.network_negative_control === "blocked", `launch ${launchOrdinal} network negative control differs`);
+    requireEvidence(launch.webgl2 === true, `launch ${launchOrdinal} did not prove WebGL2`);
+    requireEvidence(/^\d+$/.test(launch.elapsed_ns) && BigInt(launch.elapsed_ns) > 0n, `launch ${launchOrdinal} elapsed time is invalid`);
+    requireEvidence(Array.isArray(launch.console_errors) && launch.console_errors.length === 0, `launch ${launchOrdinal} has console errors`);
+    requireEvidence(Array.isArray(launch.exceptions) && launch.exceptions.length === 0, `launch ${launchOrdinal} has exceptions`);
+    requireEvidence(Array.isArray(launch.requests) && launch.requests.every((url) => typeof url === "string"), `launch ${launchOrdinal} requests are invalid`);
+    requireEvidence(
+      launch.requests.includes(`${localPrefix}?scene=${sceneOrdinal}`),
+      `launch ${launchOrdinal} navigation request is absent`,
+    );
+    requireEvidence(launch.requests.every((url) => url.startsWith(localPrefix)), `launch ${launchOrdinal} made an external request`);
+    requireEvidence(typeof launch.profile === "string" && launch.profile.length > 0, `launch ${launchOrdinal} profile identity is absent`);
+    requireEvidence(!profiles.has(launch.profile), `launch ${launchOrdinal} reused a browser profile`);
+    profiles.add(launch.profile);
+    requireEvidence(Array.isArray(launch.chrome_flags) && launch.chrome_flags.every((flag) => typeof flag === "string"), `launch ${launchOrdinal} Chrome flags are invalid`);
+    requireEvidence(launch.chrome_flags.includes("--host-resolver-rules=MAP * ~NOTFOUND, EXCLUDE localhost"), `launch ${launchOrdinal} host resolver control is absent`);
+    requireEvidence(
+      launch.chrome_flags.filter((flag) => flag.startsWith("--user-data-dir=")).length === 1
+        && launch.chrome_flags.includes(`--user-data-dir=${launch.profile}`),
+      `launch ${launchOrdinal} profile flag differs`,
+    );
+    exactKeys(launch.frame, ["consequence_counts", "plan_sha256", "viewport"], `launch ${launchOrdinal} frame`);
+    exactKeys(launch.frame.consequence_counts, COUNT_KEYS, `launch ${launchOrdinal} consequence counts`);
+    exactKeys(launch.frame.viewport, ["height", "width"], `launch ${launchOrdinal} viewport`);
+    requireEvidence(launch.frame.plan_sha256 === plan.sha256, `launch ${launchOrdinal} plan digest differs`);
+    requireEvidence(
+      COUNT_KEYS.every((key) => launch.frame.consequence_counts[key] === plan.expected_counts[key]),
+      `launch ${launchOrdinal} consequence counts differ`,
+    );
+    requireEvidence(launch.frame.viewport.width === 1280 && launch.frame.viewport.height === 720, `launch ${launchOrdinal} viewport differs`);
+    requireEvidence(
+      launch.screenshot === (sampleOrdinal === 0 ? `scene_${sceneOrdinal + 1}.png` : null),
+      `launch ${launchOrdinal} screenshot identity differs`,
+    );
+    exactKeys(launch.closure, ["after_result_ms", "duration_ms", "exit_code", "signal"], `launch ${launchOrdinal} closure`);
+    requireEvidence(
+      Number.isFinite(launch.closure.after_result_ms) && launch.closure.after_result_ms >= 0
+        && launch.closure.after_result_ms <= 2_000
+        && Number.isFinite(launch.closure.duration_ms) && launch.closure.duration_ms >= 0
+        && launch.closure.duration_ms <= 2_000,
+      `launch ${launchOrdinal} closure exceeded 2000 ms`,
+    );
+  });
+  return true;
 };
 
 export const summarizeDurations = (values) => {
@@ -177,8 +278,17 @@ export const runSmoke = async (options) => {
   try {
     for (let index = 0; index < plans.length; index += 1) {
       for (let sampleIndex = 0; sampleIndex < options.samples; sampleIndex += 1) {
-        records.push(await sample({ browser, index, output, plan: plans[index], port: server.port, sampleIndex }));
-        closures.push(sample.lastClosure);
+        const record = await sample({
+          browser,
+          index,
+          launchOrdinal: records.length,
+          output,
+          plan: plans[index],
+          port: server.port,
+          sampleIndex,
+        });
+        records.push(record);
+        closures.push({ ...record.closure, kind: "browser_launch", launch_ordinal: record.launch_ordinal });
       }
     }
     resultKnown = process.hrtime.bigint();
@@ -186,10 +296,11 @@ export const runSmoke = async (options) => {
     if (!resultKnown) resultKnown = process.hrtime.bigint();
     const serverClosure = await server.close();
     serverClosure.after_result_ms = Number(process.hrtime.bigint() - resultKnown) / 1_000_000;
-    closures.push(serverClosure);
+    closures.push({ ...serverClosure, kind: "server" });
   }
+  verifyLaunchEvidence({ launches: records, plans, port: server.port, samplesPerScene: options.samples });
   const perScene = plans.map((plan) => {
-    const selected = records.filter((record) => record.plan_sha256 === plan.sha256);
+    const selected = records.filter((record) => record.frame.plan_sha256 === plan.sha256);
     return { plan, samples_ns: selected.map((record) => record.elapsed_ns), ...summarizeDurations(selected.map((record) => record.elapsed_ns)) };
   });
   const combined = summarizeDurations(records.map((record) => record.elapsed_ns));
@@ -198,14 +309,15 @@ export const runSmoke = async (options) => {
   }
   const screenshots = records.map((record) => record.screenshot).filter(Boolean);
   const sheet = await contactSheet(browser, output, screenshots);
-  if (sheet) closures.push(contactSheet.lastClosure);
+  if (sheet) closures.push({ ...contactSheet.lastClosure, kind: "contact_sheet_browser" });
   const receipt = {
     browser: records[0]?.browser_product ?? basename(browser),
     chrome_flags: records[0]?.chrome_flags ?? [],
     closures,
     combined,
     contact_sheet: sheet,
-    external_requests: records.flatMap((record) => record.browser_requests).filter((url) => !url.startsWith(`http://localhost:${server.port}/`)),
+    external_requests: records.flatMap((record) => record.requests).filter((url) => !url.startsWith(`http://localhost:${server.port}/`)),
+    launches: records,
     outcome: "pass",
     per_scene: perScene,
     requests: server.requests,

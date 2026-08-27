@@ -124,7 +124,6 @@ while IFS=$'\t' read -r path digest origin receipt license; do
         docs/evaluation/measure-r2-compile.mjs | \
         docs/evaluation/r2-maximum.test.mjs | \
         docs/evaluation/r2-schema-ownership.sh | \
-        docs/evaluation/r2-source-provenance.test.sh | \
         fixtures/r2/maximum-observed-scene.json | \
         fixtures/r2/scenes/scene_one.json)
           [[ $receipt == docs/evaluation/runs/r2/2026-08-27-issue-195-author/AUTHOR_RECEIPT.md ]] ||
@@ -134,6 +133,20 @@ while IFS=$'\t' read -r path digest origin receipt license; do
         docs/evaluation/runs/r2/2026-08-27-issue-197-second-author/SCENE_SIGNATURES.json)
           [[ $receipt == docs/evaluation/runs/r2/2026-08-27-issue-197-second-author/SECOND_AUTHOR_RECEIPT.md ]] ||
             fail "unexpected independent-author receipt for $path"
+          ;;
+        apps/nomos-observed-viewer/SOURCE_MANIFEST | \
+        apps/nomos-observed-viewer/smoke/smoke.mjs | \
+        apps/nomos-observed-viewer/test/smoke.test.mjs | \
+        docs/evaluation/r2-complete-proof.sh | \
+        docs/evaluation/r2-complete-proof-lib.sh | \
+        docs/evaluation/r2-complete-proof-process.mjs | \
+        docs/evaluation/r2-complete-proof-process.test.mjs | \
+        docs/evaluation/r2-complete-proof-receipt.mjs | \
+        docs/evaluation/r2-complete-proof-receipt.test.mjs | \
+        docs/evaluation/r2-complete-proof.test.sh | \
+        docs/evaluation/r2-source-provenance.test.sh)
+          [[ $receipt == docs/evaluation/runs/r2/2026-08-27-issue-199-author/AUTHOR_RECEIPT.md ]] ||
+            fail "unexpected R2 final-proof author receipt for $path"
           ;;
         *)
           [[ $receipt == docs/evaluation/runs/r2/2026-08-27-issue-197-author/AUTHOR_RECEIPT.md ]] ||
