@@ -314,6 +314,44 @@ r2_measure_process_closure "$closure_namespace" "$closure_token" "$closure_repor
   fail 'closure primitive did not pass after the planted child closed'
 [[ ! -s $closure_report ]] || fail 'clean closure report is not empty'
 
+# A `du` walk can race Cargo's atomic deletion of an intermediate file. The
+# sampler must discard that incomplete walk, retain a subsequent complete
+# result, and fail closed if no complete result can be obtained.
+fake_disk_bin=$temporary/fake-disk-bin
+fake_disk_state=$temporary/fake-disk-state
+mkdir "$fake_disk_bin"
+printf '%s\n' \
+  '#!/usr/bin/env bash' \
+  'count=0' \
+  '[[ ! -f ${R2_TEST_DU_STATE:?} ]] || read -r count <"$R2_TEST_DU_STATE"' \
+  'count=$((count + 1))' \
+  'printf '\''%s\n'\'' "$count" >"$R2_TEST_DU_STATE"' \
+  'if [[ ${R2_TEST_DU_ALWAYS_FAIL:-0} == 1 || $count -eq 1 ]]; then' \
+  '  printf '\''du: cannot access transient: No such file or directory\n'\'' >&2' \
+  '  exit 1' \
+  'fi' \
+  'printf '\''17\t%s\n'\'' "${@: -1}"' \
+  >"$fake_disk_bin/du"
+chmod 755 "$fake_disk_bin/du"
+disk_row=$(R2_TEST_DU_STATE="$fake_disk_state" PATH="$fake_disk_bin:$PATH" \
+  r2_measure_checkout_mib "$repo_root") || fail 'disk sampler did not recover from a raced walk'
+IFS=$'\t' read -r disk_started disk_mib <<<"$disk_row"
+[[ $disk_started =~ ^[0-9]+$ && $disk_mib == 17 && $(<"$fake_disk_state") == 2 ]] ||
+  fail 'disk sampler retained the wrong recovered result'
+find "$fake_disk_state" -delete
+set +e
+R2_TEST_DU_STATE="$fake_disk_state" R2_TEST_DU_ALWAYS_FAIL=1 \
+  PATH="$fake_disk_bin:$PATH" r2_measure_checkout_mib "$repo_root" \
+  >"$temporary/disk-failure.stdout" 2>"$temporary/disk-failure.stderr"
+disk_failure_status=$?
+set -e
+[[ $disk_failure_status -ne 0 && ! -s $temporary/disk-failure.stdout ]] ||
+  fail 'disk sampler accepted twenty incomplete walks'
+grep -Fx 'R2 disk sampler: no complete du result after 20 attempts' \
+  "$temporary/disk-failure.stderr" >/dev/null ||
+  fail 'disk sampler permanent-failure diagnostic differs'
+plant_count=$((plant_count + 1))
+
 # `run_step` must not let a later successful command mask an earlier failure
 # inside a compound proof function. Exercise its exact sourceable executor
 # outside a conditional context, because Bash deliberately suppresses errexit

@@ -22,6 +22,20 @@ done
 [[ -f $register && ! -L $register ]] || fail 'register is absent, non-regular, or symlinked'
 [[ -f $repo_root/LICENSE && ! -L $repo_root/LICENSE ]] || fail 'project license is absent or symlinked'
 
+project_license_line=$(awk '
+  $0 == "The `project_mit` disposition binds root `LICENSE`, SHA-256" {
+    if (found || getline <= 0) exit 2
+    print
+    found = 1
+  }
+  END { if (!found) exit 3 }
+' "$register") || fail 'project-license digest declaration is missing or repeated'
+[[ $project_license_line =~ ^\`([0-9a-f]{64})\`\.$ ]] ||
+  fail 'project-license digest declaration is malformed'
+project_license_sha=${BASH_REMATCH[1]}
+[[ $(sha256sum "$repo_root/LICENSE" | awk '{print $1}') == "$project_license_sha" ]] ||
+  fail 'project MIT license digest moved'
+
 tmp_dir=$(mktemp -d)
 trap 'rm -r -- "$tmp_dir"' EXIT
 
@@ -198,4 +212,4 @@ done <"$tmp_dir/rows"
 printf 'R2_SOURCE_PROVENANCE PASS\n'
 printf 'inventory_rows %s\n' "$(wc -l <"$tmp_dir/rows")"
 printf 'register_sha256 %s\n' "$(sha256sum "$register" | awk '{print $1}')"
-printf 'project_license_sha256 %s\n' "$(sha256sum "$repo_root/LICENSE" | awk '{print $1}')"
+printf 'project_license_sha256 %s\n' "$project_license_sha"

@@ -78,6 +78,33 @@ r2_execute_step() {
   ) >"$stdout_file" 2>"$stderr_file"
 }
 
+r2_measure_checkout_mib() {
+  [[ $# -eq 1 && -d $1 ]] || {
+    printf 'R2 disk sampler: invalid checkout root\n' >&2
+    return 2
+  }
+  local root=$1
+  local attempt started raw size
+  for ((attempt = 0; attempt < 20; attempt += 1)); do
+    started=$(date +%s%N) || return 2
+    # Cargo atomically publishes and removes intermediate files while `du`
+    # walks the checkout. Retain only a complete, successful `du -sm` result;
+    # a raced walk is not a sample and is retried immediately. The caller's
+    # retained start timestamps still enforce the contract's maximum gap.
+    if raw=$(du -sm -- "$root" 2>/dev/null); then
+      size=${raw%%$'\t'*}
+      [[ $size =~ ^[0-9]+$ && $raw == "$size"$'\t'"$root" ]] || {
+        printf 'R2 disk sampler: malformed du result\n' >&2
+        return 2
+      }
+      printf '%s\t%s\n' "$started" "$size"
+      return 0
+    fi
+  done
+  printf 'R2 disk sampler: no complete du result after 20 attempts\n' >&2
+  return 1
+}
+
 r2_network_probe() {
   [[ $# -eq 2 ]] || return 2
   node -e 'const net=require("node:net");const [host,port]=process.argv.slice(1);let done=false;const socket=net.connect({host,port:Number(port)});const timer=setTimeout(()=>finish(24,"blocked: timeout\n"),3000);function finish(code,text){if(done)return;done=true;clearTimeout(timer);socket.destroy();(code===0?process.stdout:process.stderr).write(text,()=>process.exit(code));}socket.once("connect",()=>finish(0,"connected\n"));socket.once("error",error=>finish(23,"blocked: "+(error.code||error.message)+"\n"));' "$1" "$2"

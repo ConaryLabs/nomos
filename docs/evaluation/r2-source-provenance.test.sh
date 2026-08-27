@@ -52,6 +52,10 @@ plant_digest_drift() {
   printf '\n' >>"$1/crates/nomos-observed-scene/src/value.rs"
 }
 
+plant_project_license_drift() {
+  printf '\n' >>"$1/LICENSE"
+}
+
 plant_unknown_origin() {
   sed -i '0,/`r2_authored`/s//`unknown_origin`/' "$1/docs/evaluation/R2_SOURCE_PROVENANCE.md"
 }
@@ -74,10 +78,11 @@ expect_failure missing plant_missing
 expect_failure extra plant_extra
 expect_failure symlink plant_symlink
 expect_failure digest-drift plant_digest_drift
+expect_failure project-license-drift plant_project_license_drift
 expect_failure unknown-origin plant_unknown_origin
 expect_failure unlicensed plant_unlicensed
 expect_failure dangling-receipt plant_dangling_receipt
 expect_failure wrong-final-receipt plant_wrong_final_receipt
 
 printf 'R2_SOURCE_PROVENANCE_PLANTS PASS\n'
-printf 'planted_failures 8\n'
+printf 'planted_failures 9\n'

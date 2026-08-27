@@ -172,10 +172,15 @@ run_outer() {
   mkdir -p "$repo_root/target"
   [[ $(stat -c %d "$repo_root/target") == "$(stat -c %d "$repo_root")" ]] ||
     fail 'target and checkout must share one filesystem'
-  local outer_control_stdout outer_control_stderr outer_control_exit
+  local outer_control_exit
   outer_control_stdout=$repo_root/target/.nomos-r2-network-$proof_token.stdout
   outer_control_stderr=$repo_root/target/.nomos-r2-network-$proof_token.stderr
-  cleanup_outer_control() { for file in "$outer_control_stdout" "$outer_control_stderr"; do [[ ! -e $file ]] || find "$file" -delete; done; }
+  cleanup_outer_control() {
+    local file
+    for file in "${outer_control_stdout:-}" "${outer_control_stderr:-}"; do
+      [[ -z $file || ! -e $file ]] || find "$file" -delete
+    done
+  }
   trap cleanup_outer_control EXIT
   trap 'cleanup_outer_control; exit 130' INT
   trap 'cleanup_outer_control; exit 143' TERM
@@ -200,6 +205,7 @@ run_outer() {
         XDG_CONFIG_HOME="$5/host/xdg-config" \
         XDG_DATA_HOME="$5/host/xdg-data" \
         CARGO_HOME="$5/host/cargo-home" \
+        CARGO_TARGET_TMPDIR="$4/target/tmp" \
         RUSTUP_HOME="$6" \
         RUSTUP_NO_UPDATE_CHECK=1 \
         CARGO_NET_OFFLINE=true \
@@ -414,6 +420,7 @@ jq -n \
   printf 'timezone=%s\n' "${TZ:-system}"
   printf 'network_namespace=%s\n' "$inner_netns"
   printf 'cargo_net_offline=%s\n' "$CARGO_NET_OFFLINE"
+  printf 'cargo_target_tmpdir=%s\n' "${CARGO_TARGET_TMPDIR#"$repo_root/"}"
   printf 'tmpdir=%s\n' "${TMPDIR#"$repo_root/"}"
 } >"$evidence_dir/metadata/environment.txt"
 
@@ -481,6 +488,9 @@ run_step() {
     "$next_ordinal" "$command_id" "$started" "$ended" "$status" \
     "$stdout_relative" "$stderr_relative" "$display" >>"$commands_ledger"
   [[ $status -eq 0 ]] || fail "command $number $command_id exited $status"
+  if [[ ${sampler_running:-0} -eq 1 ]] && ! kill -0 "$disk_sampler_pid" 2>/dev/null; then
+    fail "disk sampler exited during command $number $command_id"
+  fi
   next_ordinal=$((next_ordinal + 1))
 }
 
@@ -490,11 +500,11 @@ disk_sampler_stop=$evidence_dir/host/disk-sampler.stop
 disk_sampler_started=$(date +%s%N)
 disk_sample_period_ns=50000000
 sample_disk() {
-  local ordinal=0 now elapsed size deadline delay delay_seconds
+  local ordinal=0 row now elapsed size deadline delay delay_seconds
   while [[ ! -e $disk_sampler_stop ]]; do
-    now=$(date +%s%N)
+    row=$(r2_measure_checkout_mib "$repo_root") || return
+    IFS=$'\t' read -r now size <<<"$row"
     elapsed=$(( (now - disk_sampler_started) / 1000000 ))
-    size=$(du -sm -- "$repo_root" | awk '{print $1}')
     printf '%s\t%s\t%s\n' "$ordinal" "$elapsed" "$size" >>"$disk_samples"
     ordinal=$((ordinal + 1))
     deadline=$((disk_sampler_started + ordinal * disk_sample_period_ns))
@@ -505,9 +515,9 @@ sample_disk() {
       sleep "$delay_seconds"
     fi
   done
-  now=$(date +%s%N)
+  row=$(r2_measure_checkout_mib "$repo_root") || return
+  IFS=$'\t' read -r now size <<<"$row"
   elapsed=$(( (now - disk_sampler_started) / 1000000 ))
-  size=$(du -sm -- "$repo_root" | awk '{print $1}')
   printf '%s\t%s\t%s\n' "$ordinal" "$elapsed" "$size" >>"$disk_samples"
 }
 sample_disk &
