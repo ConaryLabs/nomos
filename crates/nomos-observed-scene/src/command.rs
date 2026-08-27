@@ -271,6 +271,7 @@ fn publish_plan_steps(
         STAGE_COUNTER.fetch_add(1, Ordering::Relaxed)
     ));
 
+    let mut stage_owned = false;
     let mut published = false;
     let result = (|| {
         let mut file = OpenOptions::new()
@@ -278,6 +279,7 @@ fn publish_plan_steps(
             .create_new(true)
             .open(&stage)
             .map_err(output_io)?;
+        stage_owned = true;
         checkpoint("stage-created")?;
         file.write_all(&bytes).map_err(output_io)?;
         checkpoint("stage-written")?;
@@ -327,7 +329,9 @@ fn publish_plan_steps(
         if published {
             let _ = fs::remove_file(output);
         }
-        let _ = fs::remove_file(&stage);
+        if stage_owned {
+            let _ = fs::remove_file(&stage);
+        }
     }
     result
 }
@@ -375,6 +379,8 @@ fn output_io(error: impl std::fmt::Display) -> ObservedError {
 mod tests {
     use super::*;
 
+    static PUBLICATION_TEST_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
     fn fresh(label: &str) -> PathBuf {
         let root = Path::new(env!("CARGO_MANIFEST_DIR"))
             .parent()
@@ -391,6 +397,9 @@ mod tests {
 
     #[test]
     fn every_injected_publication_failure_removes_staging_and_output() {
+        let _guard = PUBLICATION_TEST_LOCK
+            .lock()
+            .expect("lock publication tests");
         let source = include_bytes!("../../../fixtures/r2/scenes/scene_one.json");
         let plan = compile(source).expect("compile fixture");
         for stage in [
@@ -421,5 +430,30 @@ mod tests {
                 "{stage} left staging evidence"
             );
         }
+    }
+
+    #[test]
+    fn a_stage_name_collision_preserves_the_file_the_compiler_did_not_create() {
+        let _guard = PUBLICATION_TEST_LOCK
+            .lock()
+            .expect("lock publication tests");
+        let source = include_bytes!("../../../fixtures/r2/scenes/scene_one.json");
+        let plan = compile(source).expect("compile fixture");
+        let root = fresh("stage-name-collision");
+        let output = root.join("plan.json");
+        let stage = root.join(format!(
+            ".plan.json.nomos-stage-{}-{}",
+            std::process::id(),
+            STAGE_COUNTER.load(Ordering::Relaxed)
+        ));
+        let sentinel = b"not owned by the compiler";
+        fs::write(&stage, sentinel).expect("plant colliding stage file");
+
+        let error = publish_plan_steps(&output, &plan, |_| Ok(()))
+            .expect_err("the colliding stage name must fail closed");
+
+        assert_eq!(error.code(), codes::OUTPUT_IO);
+        assert!(!output.exists(), "collision published an output");
+        assert_eq!(fs::read(&stage).expect("read sentinel"), sentinel);
     }
 }

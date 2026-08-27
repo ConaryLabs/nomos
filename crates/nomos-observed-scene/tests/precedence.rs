@@ -91,6 +91,20 @@ fn faults_within_one_phase_walk_canonical_paths_lexically() {
     let error = rejected(&bounds);
     assert_eq!(error.code(), codes::BOUND_INVALID);
     assert!(error.message().contains("$.actors[0].cell.x"), "{error}");
+
+    let mut identities = common::replace_once(
+        &base,
+        "\"target_actor\":\"actor_dead\"",
+        "\"target_actor\":\"Actor_target\"",
+    );
+    identities = common::replace_once(
+        &identities,
+        "\"id\":\"action_enabled\"",
+        "\"id\":\"Action_later\"",
+    );
+    let error = rejected(&identities);
+    assert_eq!(error.code(), codes::IDENTITY_INVALID);
+    assert!(error.message().contains("Actor_target"), "{error}");
 }
 
 #[test]

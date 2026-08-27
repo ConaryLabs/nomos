@@ -202,12 +202,7 @@ fn bound_phase_lexical(root: &Object) -> ObservedResult<()> {
 
 fn identity_phase_lexical(root: &Object) -> ObservedResult<()> {
     let actions = value::array(value::field(root, "actions", "$")?, "$.actions")?;
-    validate_identity_collection(actions, "$.actions")?;
-    for (index, action) in actions.iter().enumerate() {
-        let path = format!("$.actions[{index}]");
-        let object = value::object(action, &path)?;
-        LocalId::new(text_field(object, "target_actor", &path)?)?;
-    }
+    validate_action_identities(actions)?;
     validate_identity_collection(
         value::array(value::field(root, "actors", "$")?, "$.actors")?,
         "$.actors",
@@ -458,10 +453,23 @@ fn identity_phase(root: &Object) -> ObservedResult<()> {
         "$.actors",
     )?;
     let actions = value::array(value::field(root, "actions", "$")?, "$.actions")?;
-    validate_identity_collection(actions, "$.actions")?;
+    validate_action_identities(actions)?;
+    Ok(())
+}
+
+fn validate_action_identities(actions: &[CanonicalValue]) -> ObservedResult<()> {
+    let mut seen = BTreeSet::new();
     for (index, action) in actions.iter().enumerate() {
         let path = format!("$.actions[{index}]");
         let object = value::object(action, &path)?;
+        let id = LocalId::new(text_field(object, "id", &path)?)?;
+        if !seen.insert(id.clone()) {
+            return Err(ObservedError::new(
+                codes::IDENTITY_INVALID,
+                format!("duplicate identity `{}` at `{path}`", id.as_str()),
+            )
+            .with_repair(RepairClass::RemoveDuplicateDeclaration));
+        }
         LocalId::new(text_field(object, "target_actor", &path)?)?;
     }
     Ok(())
