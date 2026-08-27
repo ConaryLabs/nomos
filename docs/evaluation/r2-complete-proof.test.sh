@@ -10,6 +10,21 @@ fail() {
 
 [[ $# -eq 0 ]] || fail 'this test accepts no arguments'
 
+# This suite is itself part of the complete isolated proof. Its nested harness
+# plants must start as ordinary outer invocations rather than inheriting the
+# parent proof's private inner-namespace authority markers.
+unset \
+  NOMOS_R2_PROOF_INNER \
+  NOMOS_R2_HOST_NETNS \
+  NOMOS_R2_CALLER_UID \
+  NOMOS_R2_CALLER_GID \
+  NOMOS_R2_EXPECTED_HEAD \
+  NOMOS_R2_EXPECTED_TREE \
+  NOMOS_R2_OUTPUT_REAL \
+  NOMOS_R2_OUTPUT_RELATIVE \
+  NOMOS_R2_PROOF_TOKEN \
+  NOMOS_R2_EXTERNAL_POSITIVE
+
 script_directory=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)
 repo_root=$(cd -- "$script_directory/../.." && pwd -P)
 harness_source=$script_directory/r2-complete-proof.sh
@@ -17,7 +32,7 @@ harness_lib_source=$script_directory/r2-complete-proof-lib.sh
 [[ -f $harness_source && ! -L $harness_source ]] || fail 'complete-proof harness is absent'
 [[ -f $harness_lib_source && ! -L $harness_lib_source ]] || fail 'complete-proof library is absent'
 
-for command in git tar cp ln chmod mkdir mktemp grep realpath readlink wc sed find rm id sleep; do
+for command in git tar cp ln chmod mkdir mktemp grep realpath readlink wc sed find id sleep; do
   command -v "$command" >/dev/null 2>&1 || fail "required executable not found: $command"
 done
 
@@ -36,7 +51,7 @@ cleanup() {
       if [[ -n ${linked:-} && -d $seed/.git ]]; then
         git -C "$seed" worktree remove --force "$linked" >/dev/null 2>&1 || true
       fi
-      [[ ! -e $temporary ]] || rm -r -- "$temporary"
+      [[ ! -e $temporary ]] || find "$temporary" -depth -delete
       ;;
     *)
       printf 'R2 complete proof plants: refusing unsafe cleanup path: %s\n' "$temporary" >&2
