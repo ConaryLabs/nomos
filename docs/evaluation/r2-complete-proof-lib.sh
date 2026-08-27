@@ -91,10 +91,10 @@ r2_measure_checkout_mib() {
     # walks the checkout. Retain only a complete, successful `du -sm` result;
     # a raced walk is not a sample and is retried immediately. The caller's
     # retained start timestamps still enforce the contract's maximum gap.
-    # Measurement must not become the dominant workload whose budget it is
-    # observing. Keep the contract's exact `du -sm` walk, but run it at the
-    # host's lowest ordinary CPU and I/O scheduling priorities.
-    if raw=$(nice -n 19 ionice -c 3 du -sm -- "$root" 2>/dev/null); then
+    # Measurement must not become the dominant I/O workload whose budget it is
+    # observing. Keep the contract's exact `du -sm` walk at ordinary CPU
+    # priority, but let measured writes take precedence at the I/O scheduler.
+    if raw=$(ionice -c 3 du -sm -- "$root" 2>/dev/null); then
       size=${raw%%$'\t'*}
       [[ $size =~ ^[0-9]+$ && $raw == "$size"$'\t'"$root" ]] || {
         printf 'R2 disk sampler: malformed du result\n' >&2
@@ -156,8 +156,8 @@ r2_sample_checkout_disk() {
     for candidate in "${sample_pids[@]}"; do
       kill -0 "$candidate" 2>/dev/null && active=$((active + 1))
     done
-    [[ $active -lt 8 ]] || {
-      printf 'R2 disk sampler: eight concurrent du walks are still active\n' >&2
+    [[ $active -lt 16 ]] || {
+      printf 'R2 disk sampler: sixteen concurrent du walks are still active\n' >&2
       return 3
     }
     sample_started=$(date +%s%N) || return 2

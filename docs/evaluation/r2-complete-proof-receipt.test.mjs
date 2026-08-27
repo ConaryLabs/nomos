@@ -87,7 +87,7 @@ const toolLabels = [
   "git", "realpath", "readlink", "find", "grep", "awk", "sed", "sort", "cmp", "cut",
   "sha256sum", "stat", "date", "du", "jq", "gnu-time", "ar", "basename", "bash", "bwrap",
   "cargo", "cc", "chmod", "cp", "diff", "dirname", "env", "getconf", "head", "id",
-  "install", "ionice", "ip", "ld", "ln", "mkdir", "mktemp", "nice", "node", "paste", "ps", "rm", "rustc",
+  "install", "ionice", "ip", "ld", "ln", "mkdir", "mktemp", "node", "paste", "ps", "rm", "rustc",
   "rustup", "seq", "setpriv", "sh", "sleep", "strings", "sudo", "tar", "timeout", "touch",
   "tr", "uname", "unshare", "wc", "cargo-toolchain", "rustc-toolchain", "rust-lld", "chrome",
 ];
@@ -234,7 +234,7 @@ const makeTemplate = () => {
 
   writeFileSync(join(template, "measurements/clean-release-time.txt"), "\tElapsed (wall clock) time (h:mm:ss or m:ss): 0:12.34\n\tExit status: 0\n");
   writeFileSync(join(template, "measurements/checkout-disk-samples.tsv"), "ordinal\telapsed_ms\tmebibytes\n0\t0\t100\n1\t50\t120\n");
-  json(join(template, "measurements/checkout-disk-summary.json"), { outcome: "pass", interval_ms: 50, samples: 2, initial_mib: 100, final_mib: 120, maximum_mib: 120, max_gap_ms: 50, cpu_nice: 19, io_priority_class: "idle", du_arguments: ["-sm", "--", "<checkout>"] });
+  json(join(template, "measurements/checkout-disk-summary.json"), { outcome: "pass", interval_ms: 50, samples: 2, initial_mib: 100, final_mib: 120, maximum_mib: 120, max_gap_ms: 50, cpu_priority: "ordinary", io_priority_class: "idle", concurrency_limit: 16, du_arguments: ["-sm", "--", "<checkout>"] });
 
   mkdir(join(template, "r1/wasm"));
   writeFileSync(join(template, "r1/wasm/nomos_play.wasm"), wasm);
@@ -531,7 +531,7 @@ test("major plants fail closed before a receipt can be assembled", async (t) => 
     ["disk-method", (out) => {
       const path = join(out, "measurements/checkout-disk-summary.json");
       const value = JSON.parse(readFileSync(path));
-      value.cpu_nice = 0;
+      value.concurrency_limit = 8;
       json(path, value);
     }, /disk summary arithmetic or method differs/],
     ["compile-summary", (out) => {

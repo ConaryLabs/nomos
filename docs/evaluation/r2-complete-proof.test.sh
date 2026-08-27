@@ -253,7 +253,7 @@ expect_failure dangling-proof-target 'pre-existing proof target is forbidden: ta
 missing_tools=$temporary/missing-tools
 mkdir "$missing_tools"
 for command in git realpath readlink find grep awk sed sort cmp cut sha256sum \
-  stat date dirname du ionice nice; do
+  stat date dirname du ionice; do
   ln -s "$(command -v "$command")" "$missing_tools/$command"
 done
 expect_failure missing-tool 'required executable not found: jq' 0 \
@@ -341,13 +341,7 @@ fake_disk_state=$temporary/fake-disk-state
 mkdir "$fake_disk_bin"
 printf '%s\n' \
   '#!/usr/bin/env bash' \
-  '[[ $1 == -n && $2 == 19 ]] || exit 91' \
-  'shift 2' \
-  'exec "$@"' \
-  >"$fake_disk_bin/nice"
-printf '%s\n' \
-  '#!/usr/bin/env bash' \
-  '[[ $1 == -c && $2 == 3 ]] || exit 92' \
+  '[[ $1 == -c && $2 == 3 ]] || exit 91' \
   'shift 2' \
   'exec "$@"' \
   >"$fake_disk_bin/ionice"
@@ -369,7 +363,7 @@ printf '%s\n' \
   'fi' \
   'printf '\''17\t%s\n'\'' "${@: -1}"' \
   >"$fake_disk_bin/du"
-chmod 755 "$fake_disk_bin/du" "$fake_disk_bin/ionice" "$fake_disk_bin/nice"
+chmod 755 "$fake_disk_bin/du" "$fake_disk_bin/ionice"
 disk_row=$(R2_TEST_DU_STATE="$fake_disk_state" PATH="$fake_disk_bin:$PATH" \
   r2_measure_checkout_mib "$repo_root") || fail 'disk sampler did not recover from a raced walk'
 IFS=$'\t' read -r disk_started disk_mib <<<"$disk_row"
@@ -425,7 +419,7 @@ printf 'ordinal\telapsed_ms\tmebibytes\n' >"$overload_samples"
 mkdir "$overload_state"
 set +e
 (
-  export R2_TEST_DU_STABLE=1 R2_TEST_DU_DELAY=0.6
+  export R2_TEST_DU_STABLE=1 R2_TEST_DU_DELAY=1.0
   export PATH="$fake_disk_bin:$PATH"
   r2_sample_checkout_disk \
     "$repo_root" "$overload_samples" "$overload_stop" "$overload_state" \
@@ -435,7 +429,7 @@ overload_status=$?
 set -e
 [[ $overload_status -ne 0 && ! -s $temporary/overload.stdout ]] ||
   fail 'asynchronous sampler permitted unbounded concurrent walks'
-grep -Fx 'R2 disk sampler: eight concurrent du walks are still active' \
+grep -Fx 'R2 disk sampler: sixteen concurrent du walks are still active' \
   "$temporary/overload.stderr" >/dev/null ||
   fail 'asynchronous sampler concurrency-limit diagnostic differs'
 plant_count=$((plant_count + 1))

@@ -90,7 +90,7 @@ const TOOL_LABELS = Object.freeze([
   "git", "realpath", "readlink", "find", "grep", "awk", "sed", "sort", "cmp", "cut",
   "sha256sum", "stat", "date", "du", "jq", "gnu-time", "ar", "basename", "bash", "bwrap",
   "cargo", "cc", "chmod", "cp", "diff", "dirname", "env", "getconf", "head", "id",
-  "install", "ionice", "ip", "ld", "ln", "mkdir", "mktemp", "nice", "node", "paste", "ps", "rm", "rustc",
+  "install", "ionice", "ip", "ld", "ln", "mkdir", "mktemp", "node", "paste", "ps", "rm", "rustc",
   "rustup", "seq", "setpriv", "sh", "sleep", "strings", "sudo", "tar", "timeout", "touch",
   "tr", "uname", "unshare", "wc", "cargo-toolchain", "rustc-toolchain", "rust-lld", "chrome",
 ]);
@@ -513,8 +513,8 @@ const validateMeasurements = (output) => {
   const maximum = Math.max(...rows.map((row) => row.mebibytes));
   required(maximum <= 8_192, `checkout peak disk exceeded 8192 MiB: ${maximum}`);
   const summary = readJson(join(output, "measurements/checkout-disk-summary.json"), "disk summary");
-  exactKeys(summary, ["outcome", "interval_ms", "samples", "initial_mib", "final_mib", "maximum_mib", "max_gap_ms", "cpu_nice", "io_priority_class", "du_arguments"], "disk summary");
-  required(summary.outcome === "pass" && summary.interval_ms === 50 && summary.samples === rows.length && summary.initial_mib === rows[0].mebibytes && summary.final_mib === rows.at(-1).mebibytes && summary.maximum_mib === maximum && summary.max_gap_ms === maximumGap && summary.cpu_nice === 19 && summary.io_priority_class === "idle" && JSON.stringify(summary.du_arguments) === JSON.stringify(["-sm", "--", "<checkout>"]), "disk summary arithmetic or method differs from raw rows");
+  exactKeys(summary, ["outcome", "interval_ms", "samples", "initial_mib", "final_mib", "maximum_mib", "max_gap_ms", "cpu_priority", "io_priority_class", "concurrency_limit", "du_arguments"], "disk summary");
+  required(summary.outcome === "pass" && summary.interval_ms === 50 && summary.samples === rows.length && summary.initial_mib === rows[0].mebibytes && summary.final_mib === rows.at(-1).mebibytes && summary.maximum_mib === maximum && summary.max_gap_ms === maximumGap && summary.cpu_priority === "ordinary" && summary.io_priority_class === "idle" && summary.concurrency_limit === 16 && JSON.stringify(summary.du_arguments) === JSON.stringify(["-sm", "--", "<checkout>"]), "disk summary arithmetic or method differs from raw rows");
   return { clean_release_build_ns: buildNs.toString(), checkout_peak_mib: maximum, disk_samples: rows.length, disk_maximum_gap_ms: maximumGap };
 };
 
