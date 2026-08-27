@@ -105,6 +105,41 @@ fn faults_within_one_phase_walk_canonical_paths_lexically() {
     let error = rejected(&identities);
     assert_eq!(error.code(), codes::IDENTITY_INVALID);
     assert!(error.message().contains("Actor_target"), "{error}");
+
+    let mut too_many_actions = common::replace_once(
+        &common::maximum(),
+        "],\"actors\"",
+        ",{\"availability\":\"enabled\",\"id\":\"z\",\"target_actor\":\"a\"}],\"actors\"",
+    );
+    too_many_actions = common::replace_once(
+        &too_many_actions,
+        "\"width\":32",
+        "\"width\":18446744073709551615",
+    );
+    let error = rejected(&too_many_actions);
+    assert_eq!(error.code(), codes::BOUND_INVALID);
+    assert!(error.message().contains("$.actions"), "{error}");
+
+    let mut crop_paths =
+        common::replace_once(&base, "\"height\":6", "\"height\":18446744073709551615");
+    crop_paths = common::replace_once(&crop_paths, "\"width\":6", "\"width\":18446744073709551615");
+    let error = rejected(&crop_paths);
+    assert_eq!(error.code(), codes::BOUND_INVALID);
+    assert!(error.message().contains("$.crop.height"), "{error}");
+}
+
+#[test]
+fn the_signed_minimum_dimension_is_rejected_without_panicking() {
+    let mutation = common::replace_once(
+        &common::scene_one(),
+        "\"width\":6",
+        "\"width\":-9223372036854775808",
+    );
+
+    let error = rejected(&mutation);
+
+    assert_eq!(error.code(), codes::BOUND_INVALID);
+    assert!(error.message().contains("$.actors[0].cell.x"), "{error}");
 }
 
 #[test]

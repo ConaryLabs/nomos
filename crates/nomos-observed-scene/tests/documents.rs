@@ -37,6 +37,18 @@ fn first_scene_round_trips_and_compiles_to_the_committed_plan() {
 }
 
 #[test]
+fn the_plan_source_digest_is_bound_to_its_reconstructed_input() {
+    let plan = common::plan_one();
+    let source_digest = Sha256Digest::of_bytes(&common::scene_one()).to_hex();
+    let mutation = common::replace_once(&plan, &source_digest, &"0".repeat(64));
+
+    let error = ScenePlan::from_bytes(&mutation).expect_err("wrong source digest must fail");
+
+    assert_eq!(error.code(), nomos_observed_scene::codes::FIELD_INVALID);
+    assert!(error.message().contains("$.source_sha256"), "{error}");
+}
+
+#[test]
 fn every_finite_mapping_is_exact_and_composes() {
     let plan = compile(&common::scene_one()).expect("compile scene");
     let terrain: Vec<_> = plan

@@ -197,6 +197,43 @@ impl Planted {
         fs::write(manifest, text).expect("plant R2 dependency");
     }
 
+    fn replace_r2_core_with_external_namesake(&self) {
+        let external = self.root.join("external/fake-nomos-core");
+        fs::create_dir_all(external.join("src")).expect("create fake core package");
+        fs::write(
+            external.join("Cargo.toml"),
+            "[package]\nname = \"nomos-core\"\nversion = \"9.9.9\"\nedition = \"2024\"\n",
+        )
+        .expect("write fake core manifest");
+        fs::write(
+            external.join("src/lib.rs"),
+            "//! External namesake; never accepted as the kernel member.\n",
+        )
+        .expect("write fake core source");
+
+        let workspace = self.manifest();
+        let text = fs::read_to_string(&workspace).expect("read workspace manifest");
+        let text = text.replacen(
+            "resolver = \"3\"\n",
+            "resolver = \"3\"\nexclude = [\"external/fake-nomos-core\"]\n",
+            1,
+        );
+        fs::write(workspace, text).expect("exclude fake core package");
+
+        let manifest = self.root.join("crates/nomos-observed-scene/Cargo.toml");
+        let text = fs::read_to_string(&manifest).expect("read R2 manifest");
+        let planted = text.replacen(
+            "nomos-core.workspace = true",
+            "nomos-core = { path = \"../../external/fake-nomos-core\" }",
+            1,
+        );
+        assert_ne!(
+            planted, text,
+            "R2 manifest no longer declares workspace core"
+        );
+        fs::write(manifest, planted).expect("replace core with external namesake");
+    }
+
     fn graph(&self) -> Graph {
         load_graph(Some(&self.manifest().to_string_lossy())).expect("read the planted metadata")
     }
@@ -402,6 +439,29 @@ fn every_external_r2_dependency_class_fails_closed() {
             "{label}: {violations:?}"
         );
     }
+}
+
+#[test]
+fn an_external_namesake_cannot_impersonate_the_workspace_core() {
+    let planted = Planted::copy_of_the_workspace("r2-core-namesake");
+    planted.replace_r2_core_with_external_namesake();
+    let violations = planted.graph().check();
+    assert!(
+        violations.iter().any(|violation| {
+            violation.rule == "r2-dependency-allowlist"
+                && violation
+                    .detail
+                    .contains("workspace-member edge `nomos-core`")
+        }),
+        "{violations:?}"
+    );
+    assert!(
+        violations.iter().any(|violation| {
+            violation.rule == "r2-transitive-dependency"
+                && violation.detail.contains("fake-nomos-core")
+        }),
+        "{violations:?}"
+    );
 }
 
 #[test]

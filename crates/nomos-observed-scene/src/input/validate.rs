@@ -110,34 +110,37 @@ fn field_phase_lexical(root: &Object) -> ObservedResult<()> {
 }
 
 fn bound_phase_lexical(root: &Object) -> ObservedResult<()> {
-    let crop = value::object(value::field(root, "crop", "$")?, "$.crop")?;
-    let width = value::integer(value::field(crop, "width", "$.crop")?, "$.crop.width")?;
-    let height = value::integer(value::field(crop, "height", "$.crop")?, "$.crop.height")?;
-
     let actions = value::array(value::field(root, "actions", "$")?, "$.actions")?;
     require_count(actions.len(), 0, 128, "$.actions")?;
 
     let actors = value::array(value::field(root, "actors", "$")?, "$.actors")?;
     require_count(actors.len(), 1, 64, "$.actors")?;
+    let crop = value::object(value::field(root, "crop", "$")?, "$.crop")?;
+    // Keep raw canonical integers wide until their own crop paths are reached.
+    // Actor paths sort before crop paths, and subtraction here would both
+    // reorder an oversized-unsigned rejection and overflow on `i64::MIN`.
+    let height =
+        integer_for_lexical_bounds(value::field(crop, "height", "$.crop")?, "$.crop.height")?;
+    let width = integer_for_lexical_bounds(value::field(crop, "width", "$.crop")?, "$.crop.width")?;
     for (index, actor) in actors.iter().enumerate() {
         let path = format!("$.actors[{index}]");
         let object = value::object(actor, &path)?;
         let cell_path = format!("{path}.cell");
         let cell = value::object(value::field(object, "cell", &path)?, &cell_path)?;
-        let x = value::integer(
+        let x = integer_for_lexical_bounds(
             value::field(cell, "x", &cell_path)?,
             &format!("{cell_path}.x"),
         )?;
-        let y = value::integer(
+        let y = integer_for_lexical_bounds(
             value::field(cell, "y", &cell_path)?,
             &format!("{cell_path}.y"),
         )?;
-        let z = value::integer(
+        let z = integer_for_lexical_bounds(
             value::field(cell, "z", &cell_path)?,
             &format!("{cell_path}.z"),
         )?;
-        require_range(x, 0, width - 1, &format!("{cell_path}.x"))?;
-        require_range(y, 0, height - 1, &format!("{cell_path}.y"))?;
+        require_half_open(x, width, &format!("{cell_path}.x"))?;
+        require_half_open(y, height, &format!("{cell_path}.y"))?;
         if z != 0 {
             return Err(value::bound_error(format!(
                 "`{cell_path}.z` must be exactly zero"
@@ -145,8 +148,8 @@ fn bound_phase_lexical(root: &Object) -> ObservedResult<()> {
         }
     }
 
-    require_range(height, 1, 32, "$.crop.height")?;
-    require_range(width, 1, 32, "$.crop.width")?;
+    require_lexical_range(height, 1, 32, "$.crop.height")?;
+    require_lexical_range(width, 1, 32, "$.crop.width")?;
 
     let layers = value::array(
         value::field(root, "terrain_layers", "$")?,
@@ -170,16 +173,16 @@ fn bound_phase_lexical(root: &Object) -> ObservedResult<()> {
         for (cell_index, cell) in cells.iter().enumerate() {
             let cell_path = format!("{path}.cells[{cell_index}]");
             let cell = value::object(cell, &cell_path)?;
-            let x = value::integer(
+            let x = integer_for_lexical_bounds(
                 value::field(cell, "x", &cell_path)?,
                 &format!("{cell_path}.x"),
             )?;
-            let y = value::integer(
+            let y = integer_for_lexical_bounds(
                 value::field(cell, "y", &cell_path)?,
                 &format!("{cell_path}.y"),
             )?;
-            require_range(x, 0, width - 1, &format!("{cell_path}.x"))?;
-            require_range(y, 0, height - 1, &format!("{cell_path}.y"))?;
+            require_half_open(x, width, &format!("{cell_path}.x"))?;
+            require_half_open(y, height, &format!("{cell_path}.y"))?;
             if !seen.insert((x, y)) {
                 return Err(value::bound_error(format!(
                     "duplicate terrain cell at `{cell_path}`"
@@ -590,6 +593,39 @@ fn integer_field(object: &Object, name: &str, parent: &str) -> ObservedResult<()
     match value::field(object, name, parent)? {
         CanonicalValue::Int(_) | CanonicalValue::Uint(_) => Ok(()),
         _ => Err(value::field_error(format!("`{path}` must be an integer"))),
+    }
+}
+
+fn integer_for_lexical_bounds(value_: &CanonicalValue, path: &str) -> ObservedResult<i128> {
+    match value_ {
+        CanonicalValue::Int(value_) => Ok(i128::from(*value_)),
+        CanonicalValue::Uint(value_) => Ok(i128::from(*value_)),
+        _ => Err(value::field_error(format!("`{path}` must be an integer"))),
+    }
+}
+
+fn require_half_open(value_: i128, upper: i128, path: &str) -> ObservedResult<()> {
+    if value_ >= 0 && value_ < upper {
+        Ok(())
+    } else {
+        Err(value::bound_error(format!(
+            "`{path}` must be in 0..{upper}"
+        )))
+    }
+}
+
+fn require_lexical_range(
+    value_: i128,
+    minimum: i128,
+    maximum: i128,
+    path: &str,
+) -> ObservedResult<()> {
+    if (minimum..=maximum).contains(&value_) {
+        Ok(())
+    } else {
+        Err(value::bound_error(format!(
+            "`{path}` must be in {minimum}..={maximum}"
+        )))
     }
 }
 

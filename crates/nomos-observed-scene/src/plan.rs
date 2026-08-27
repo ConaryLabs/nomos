@@ -364,6 +364,13 @@ impl ScenePlan {
 
         let stripped = stripped_input(root)?;
         let observed = ObservedScene::from_canonical(&stripped.raw)?;
+        let reconstructed_source = stripped.raw.to_canonical_bytes();
+        if source_sha256 != Sha256Digest::of_bytes(&reconstructed_source) {
+            return Err(ObservedError::new(
+                codes::FIELD_INVALID,
+                "`$.source_sha256` disagrees with the canonical copied source facts",
+            ));
+        }
         let terrain_layers = observed
             .terrain_layers
             .iter()

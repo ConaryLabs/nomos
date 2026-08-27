@@ -304,6 +304,32 @@ impl Graph {
             .unwrap_or_default()
     }
 
+    fn direct_dependency_ids(&self, member: &str) -> BTreeSet<&str> {
+        self.member_ids
+            .get(member)
+            .and_then(|id| self.edges.get(id))
+            .map(|targets| targets.iter().map(String::as_str).collect())
+            .unwrap_or_default()
+    }
+
+    fn reachable_ids_from(&self, roots: &[&str]) -> BTreeSet<&str> {
+        let mut seen: BTreeSet<&str> = BTreeSet::new();
+        let mut stack: Vec<&str> = roots
+            .iter()
+            .filter_map(|name| self.member_ids.get(*name).map(String::as_str))
+            .collect();
+        while let Some(id) = stack.pop() {
+            if let Some(targets) = self.edges.get(id) {
+                for target in targets {
+                    if seen.insert(target.as_str()) {
+                        stack.push(target.as_str());
+                    }
+                }
+            }
+        }
+        seen
+    }
+
     fn reachable_from(&self, roots: &[&str]) -> BTreeSet<&str> {
         let mut seen: BTreeSet<&str> = BTreeSet::new();
         let mut stack: Vec<&str> = roots
@@ -508,21 +534,29 @@ impl Graph {
                     ));
                 }
             }
-            let direct = self.direct_dependency_names(crate_name);
+            let direct = self.direct_dependency_ids(crate_name);
             for expected in permitted {
-                if !direct.contains(*expected) {
+                let expected_id = self.member_ids.get(*expected).map(String::as_str);
+                if expected_id.is_none_or(|expected_id| !direct.contains(expected_id)) {
                     violations.push(Violation::new(
                         "r2-dependency-allowlist",
-                        format!("R2 crate `{crate_name}` is missing required edge `{expected}`"),
+                        format!(
+                            "R2 crate `{crate_name}` is missing required workspace-member edge `{expected}`"
+                        ),
                     ));
                 }
             }
-            for dependency in self.reachable_from(&[*crate_name]) {
-                if !permitted.contains(&dependency) {
+            let permitted_ids: BTreeSet<&str> = permitted
+                .iter()
+                .filter_map(|name| self.member_ids.get(*name).map(String::as_str))
+                .collect();
+            for dependency_id in self.reachable_ids_from(&[*crate_name]) {
+                if !permitted_ids.contains(dependency_id) {
+                    let dependency = self.name_of(dependency_id);
                     violations.push(Violation::new(
                         "r2-transitive-dependency",
                         format!(
-                            "`{dependency}` is transitively reachable from R2 crate `{crate_name}`; \
+                            "package `{dependency}` (`{dependency_id}`) is transitively reachable from R2 crate `{crate_name}`; \
                              R2.md section 4 permits only {}",
                             permitted.join(", ")
                         ),
