@@ -1,0 +1,118 @@
+{
+  "schema": "nomos.experiment.observed_scene_gap_record@1",
+  "issue": 189,
+  "accepted_surface": {
+    "commit": "5e0e44cc912b57a1d29cc3e722497c16cf9a1797",
+    "tree": "7e606bde9f91307483307c4af1e0764d81df5c72",
+    "runtime_contract": {
+      "revision": 4,
+      "sha256": "dd6f4b2ce48557f48df61d50cdc25b4ebaf0904331f4fd78d804e3af536db593"
+    }
+  },
+  "experiment_source": {
+    "commit": "10a4cbbe84156a7510a931cf23c3e98ab6cb9608",
+    "tree": "1b5f7a1c269884c288632f82e61f4ff391b846ce",
+    "changed_root": "experiments/observed-scene-gap/",
+    "accepted_code_changed": false
+  },
+  "schemas": [
+    {
+      "identity": "nomos.presentation_source@2",
+      "owner_path": "crates/nomos-render-plan/src/source.rs",
+      "owner_sha256": "824510619cd2f4202b4a88d06b4be525676925d68771efb1a3d30dd4a8b2cb6a"
+    },
+    {
+      "identity": "nomos.rendering_plan@3",
+      "owner_path": "crates/nomos-render-plan/src/plan.rs",
+      "owner_sha256": "f5189bd98b350f77fc6612426c3b1b93560727c0dce6a9140f3919038b1a1f79"
+    },
+    {
+      "identity": "nomos.play_state@1",
+      "owner_path": "crates/nomos-play/src/state.rs",
+      "owner_sha256": "e9245bc5ce58aecec3c5ac94e00f128a118568f58c48d9f480aa2c72316a35fd"
+    },
+    {
+      "identity": "nomos.presentation_state@1",
+      "owner_path": "crates/nomos-play/src/presentation.rs",
+      "owner_sha256": "3c2bc43115a265314336e5ad7c7e64fc0b0ec3be0910a988e1f08555939fa578"
+    }
+  ],
+  "fixture": {
+    "path": "experiments/observed-scene-gap/fixture.json",
+    "bytes": 1464,
+    "sha256": "9b809bee523c9be04b26c6ab08412f96f9ad4f446a50a83824961dc8be016449",
+    "adopter_payload": false,
+    "raw_transform_or_final_pixels": false,
+    "gameplay_rules": false,
+    "facts_already_resolved": true
+  },
+  "proof": {
+    "command": "experiments/observed-scene-gap/verify",
+    "record_verification_command": "node experiments/observed-scene-gap/verify-record.mjs",
+    "steps": [
+      "experiments/executable-gaol/gaol verify",
+      "node experiments/observed-scene-gap/probe.mjs"
+    ],
+    "result_path": "target/observed-scene-gap/result.json",
+    "result_bytes": 4788,
+    "result_sha256": "ce0c43bba6461d133962d9e9332c5592727b3621771b83076db16fe83ffcdf5a",
+    "positive_control": {
+      "command": "target/debug/nomos-render-plan --catalog target/executable-gaol/areas/cistern-walk/entity-catalog.json --facts target/executable-gaol/areas/cistern-walk/facts --runs target/executable-gaol/areas/cistern-walk/runs --world target/executable-gaol/areas/cistern-walk/world --source target/observed-scene-gap/control.presentation.json --out target/observed-scene-gap/control.plan.json",
+      "status": "completed",
+      "byte_equal_to_verified_plan": true,
+      "plan_sha256": "7bf15645b64641600bc5116ed150c5138e6d992f1627560f46dd40d959cd324e"
+    },
+    "diagnostics": [
+      {
+        "probe": "actor-facts",
+        "command": "target/debug/nomos-render-plan --catalog target/executable-gaol/areas/cistern-walk/entity-catalog.json --facts target/executable-gaol/areas/cistern-walk/facts --runs target/executable-gaol/areas/cistern-walk/runs --world target/executable-gaol/areas/cistern-walk/world --source target/observed-scene-gap/actor-facts.presentation.json --out target/observed-scene-gap/actor-facts.plan.json",
+        "code": "RP0202",
+        "message": "an actor carries unknown hostile, life_state, protected",
+        "expected_sha256": "98cd0d4e0a982c60ae416fc30bcfe454c9332a351db6ccecafa03408c5bfb099",
+        "status": "rejected"
+      },
+      {
+        "probe": "actor-role",
+        "command": "target/debug/nomos-render-plan --catalog target/executable-gaol/areas/cistern-walk/entity-catalog.json --facts target/executable-gaol/areas/cistern-walk/facts --runs target/executable-gaol/areas/cistern-walk/runs --world target/executable-gaol/areas/cistern-walk/world --source target/observed-scene-gap/actor-role.presentation.json --out target/observed-scene-gap/actor-role.plan.json",
+        "code": "RP0202",
+        "message": "`actors[].role` must be `player` or `pursuer`; `protected_interactive` is neither",
+        "expected_sha256": "7193795bb160a16ce7a12c301ee47b75f14d28a56babfa68126cd577bb553d71",
+        "status": "rejected"
+      },
+      {
+        "probe": "observed-actions",
+        "command": "target/debug/nomos-render-plan --catalog target/executable-gaol/areas/cistern-walk/entity-catalog.json --facts target/executable-gaol/areas/cistern-walk/facts --runs target/executable-gaol/areas/cistern-walk/runs --world target/executable-gaol/areas/cistern-walk/world --source target/observed-scene-gap/observed-actions.presentation.json --out target/observed-scene-gap/observed-actions.plan.json",
+        "code": "RP0202",
+        "message": "the presentation source carries unknown observed_actions",
+        "expected_sha256": "6a1a8016d3a03f72c2caef6d20736b16086853233e1f43772884224dbcbd2461",
+        "status": "rejected"
+      },
+      {
+        "probe": "terrain-layers",
+        "command": "target/debug/nomos-render-plan --catalog target/executable-gaol/areas/cistern-walk/entity-catalog.json --facts target/executable-gaol/areas/cistern-walk/facts --runs target/executable-gaol/areas/cistern-walk/runs --world target/executable-gaol/areas/cistern-walk/world --source target/observed-scene-gap/terrain-layers.presentation.json --out target/observed-scene-gap/terrain-layers.plan.json",
+        "code": "RP0202",
+        "message": "the presentation source carries unknown terrain_layers",
+        "expected_sha256": "230aece36a5c392585a5e8ea62fec6144a57d63c1a74dcedfaf19bb63688f2d2",
+        "status": "rejected"
+      }
+    ],
+    "environment": {
+      "host": "Linux 7.0.0-30-generic x86_64; Ubuntu",
+      "rustc": "1.98.0 (88d9e12ae 2026-08-18)",
+      "cargo": "1.98.0 (797e8a9bc 2026-08-05)",
+      "node": "v22.22.1",
+      "git": "2.53.0"
+    },
+    "outcome": "pass"
+  },
+  "classification": {
+    "already_representable_honestly": false,
+    "adopter_owned_mapping_only": false,
+    "reusable_nomos_capability": "candidate",
+    "reason": "The accepted boundary refuses independent actor facts, a third protected-interactive actor, overlapping semantic terrain roles, and supplied action availability. Encoding them as player/pursuer, masonry, or derived interaction legality would change or recompute the observed facts.",
+    "presenter_implementation_exists": false,
+    "presenter_resolves_gameplay_fact": false,
+    "cold_attack": "pending",
+    "owner_classification": "pending"
+  }
+}

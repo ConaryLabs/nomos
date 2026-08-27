@@ -33,6 +33,11 @@ The wrapper first rebuilds and verifies the standing six-area evidence, then
 runs one byte-exact positive control and the four refusal probes against the
 real R1 rendering-plan compiler. Generated
 probe inputs and `result.json` live only under `target/observed-scene-gap/`.
+The committed receipt is checked after that run with:
+
+```text
+node experiments/observed-scene-gap/verify-record.mjs
+```
 
 ## Outcome classification
 
