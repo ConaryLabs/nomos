@@ -13,7 +13,7 @@ script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)
 repo_root=$(cd "$script_dir/../.." && pwd -P)
 checker=$script_dir/r2-source-provenance.sh
 
-for command in cp git ln mktemp sed tar; do
+for command in awk cp find git ln mktemp sed sort tar; do
   command -v "$command" >/dev/null 2>&1 || fail "required executable not found: $command"
 done
 
@@ -21,7 +21,29 @@ tmp_dir=$(mktemp -d)
 trap 'rm -r -- "$tmp_dir"' EXIT
 baseline=$tmp_dir/baseline
 mkdir "$baseline"
-git -C "$repo_root" archive --format=tar HEAD | tar -xf - -C "$baseline"
+R2_PROVENANCE_ROOT=$repo_root "$checker" >/dev/null ||
+  fail 'committed repository did not pass before fixture reduction'
+
+# The real repository check above owns closed-inventory coverage. Plant roots
+# need only the already-verified registered bytes and their producing receipts;
+# copying the 150+ MiB historical evaluation archive for every mutation makes
+# the checkout-wide 50 ms disk sampler measure accumulated disposable fixtures.
+baseline_paths=$tmp_dir/baseline-paths
+{
+  printf '%s\n' LICENSE docs/evaluation/R2_SOURCE_PROVENANCE.md
+  awk -F '|' '/^\| `[^`]+` \| `[0-9a-f]+` \| `/ {
+    path = $2
+    receipt = $5
+    gsub(/[` ]/, "", path)
+    gsub(/[` ]/, "", receipt)
+    print path
+    print receipt
+  }' "$repo_root/docs/evaluation/R2_SOURCE_PROVENANCE.md"
+} | LC_ALL=C sort -u >"$baseline_paths"
+mapfile -t baseline_members <"$baseline_paths"
+[[ ${#baseline_members[@]} -gt 2 ]] || fail 'reduced fixture member list is empty'
+git -C "$repo_root" archive --format=tar HEAD -- "${baseline_members[@]}" |
+  tar -xf - -C "$baseline"
 R2_PROVENANCE_ROOT=$baseline "$checker" >/dev/null || fail 'committed baseline did not pass'
 
 expect_failure() {
@@ -33,6 +55,7 @@ expect_failure() {
   if R2_PROVENANCE_ROOT=$root "$checker" >/dev/null 2>&1; then
     fail "$label plant passed"
   fi
+  find "$root" -depth -delete
 }
 
 plant_missing() {
