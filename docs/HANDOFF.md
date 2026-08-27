@@ -1,6 +1,6 @@
 # Nomos handoff
 
-Status snapshot: 2026-08-26, at the decision 0022 authorization slice. This file
+Status snapshot: 2026-08-27, at the decision 0023 authorization slice. This file
 is an operational map; owner decisions and revisioned contracts remain the
 authority when prose conflicts.
 
@@ -9,32 +9,36 @@ authority when prose conflicts.
 ## Stop line
 
 R1 is complete, passing, accepted, and closed as this repository's runtime
-baseline. Decision 0019 expressly does **not** adopt Nomos into a game. No later
-runtime epoch, capability family, Gate K retry, or game adoption is authorized.
-Decision 0022 is the narrow exception: it authorizes bounded Mortal Estate
-presentation-adoption evidence collection, not accepted Nomos implementation,
-R2, a platform, or adoption.
+baseline. Decision 0019 expressly does **not** adopt Nomos into a game. Decision
+0022's bounded Mortal Estate evidence then admitted one immutable R1 dependency
+point, recorded one representative adopter frame, and reduced the observed gap
+to an adopter-neutral fixture classified `reusable missing Nomos capability`.
 
-There is no unfinished implementation slice to resume. At baseline commit
-`22506c6b808e704153dcd8ff340fc1086226c804`, GitHub had zero open issues and
-zero open pull requests, and all four main workflows were green. Issue #186 and
-its decision PR are the expected temporary exception while decision 0022 lands.
-After that PR closes, later evidence work must appear as separately falsifiable
-issues under decision 0022; a new agent must not infer an implementation slice
-from the authorization alone.
+Decision 0023 opens one narrow R2 observed-scene presentation epoch. It does
+not authorize implementation directly. The root R2 contract does not yet
+exist; the next authorized action is a separately falsifiable documentation
+issue proposing `R2.md`. No R2 code, schema, dependency, accepted artifact,
+platform choice, or game-adoption claim may precede that contract's separate
+owner authorization.
+
+At decision 0023's input baseline commit
+`d12f56ec7f8a1f4a26db4d8482d5c4571ce1735d`, tree
+`ed33da33797bc58006c72a0ed8f5e048a471a65f`, GitHub had zero open issues and
+zero open pull requests. Issue #191 and its decision PR are the expected
+temporary exception while this authorization lands.
 
 A fresh agent must not infer active work from an old remote branch. The
 repository intentionally retains evidence branches and annotated tags. Check
 owner decisions, then open issues and pull requests.
 
-The exact last-main receipts at that baseline are:
+The exact last-main receipts at decision 0023's input baseline are:
 
 | Workflow | Run | Result |
 | --- | ---: | --- |
-| `verify` | [32922996009](https://github.com/ConaryLabs/nomos/actions/runs/32922996009) | success |
-| `gate-k-evidence` | [32922996010](https://github.com/ConaryLabs/nomos/actions/runs/32922996010) | success |
-| `nomos viewer` | [32922996033](https://github.com/ConaryLabs/nomos/actions/runs/32922996033) | success |
-| `executable gaol pages` | [32922996019](https://github.com/ConaryLabs/nomos/actions/runs/32922996019) | success |
+| `verify` | [33052279259](https://github.com/ConaryLabs/nomos/actions/runs/33052279259) | success |
+| `gate-k-evidence` | [33052279261](https://github.com/ConaryLabs/nomos/actions/runs/33052279261) | success |
+| `nomos viewer` | [33052279276](https://github.com/ConaryLabs/nomos/actions/runs/33052279276) | success |
+| `executable gaol pages` | [32922996019](https://github.com/ConaryLabs/nomos/actions/runs/32922996019) | last applicable run succeeded at `22506c6` |
 
 The final completed sequence before this handoff was PR #180, which closed #134
 and #141 by pinning load-bearing evaluation ordering to `LC_ALL=C`; PR #181,
@@ -43,7 +47,15 @@ which closed #160 with bounded and receipt-recorded browser shutdown; and PR
 revision 4 without changing a criterion or R1's revision-3 acceptance evidence.
 PR #183 then refreshed the reinstall handoff at the exact decision 0022 input
 baseline. Each implementation or contract slice had its required exact-head
-non-author rerun, and all four workflows were green at the baseline above.
+non-author rerun, and every applicable workflow was green at its bound
+baseline.
+
+Decision 0022 then landed through PR #187. Issue #188 admitted its exact
+dependency point after a Luna max rerun. TME issue #5 and PR #6 recorded and
+independently reproduced the representative observer frame. Nomos issue #189
+and PR #190 reduced the gap to a quarantined generic fixture, received a Luna
+max cold attack, and closed on the owner's exact classification `reusable
+missing Nomos capability`. Decision 0023 is the resulting epoch stop.
 
 ## Authoritative state
 
@@ -54,9 +66,9 @@ non-author rerun, and all four workflows were green at the baseline above.
 | R1 | all five criteria passed; accepted and closed | decision 0019 |
 | R1 contract | revision 4 in force | `RUNTIME.md`, decision 0021 |
 | Game adoption | not authorized; thesis applies to no game | decision 0019 |
-| Mortal Estate presentation evidence | bounded collection authorized; no accepted implementation or adoption | decision 0022 |
-| Later epoch or new capability family | not authorized | decision 0019 consequence 2 |
-| Current queue | decision issue #186 while this slice lands; later work requires new issues | GitHub issues and PRs, decision 0022 |
+| Mortal Estate presentation evidence | bounded prerequisite evidence complete; no adoption | decisions 0022 and 0023 evidence |
+| R2 observed-scene presentation epoch | open; contract pending; no implementation | decision 0023 |
+| Current queue | decision issue #191 while this slice lands; `R2.md` is next | GitHub issues and PRs, decision 0023 |
 
 The accepted R1 surface consists of:
 
@@ -86,17 +98,19 @@ game's Gate 0 target pack, and that game's Gate 1 proof remain absent.
    non-claims.
 4. `docs/decisions/0022-mortal-estate-presentation-adoption-evidence.md` — the
    bounded evidence authority, upstream-admission rule, and stop line.
-5. `THESIS.md` — exploratory design thesis; not authority for another project.
-6. `KERNEL.md` — frozen Gate K revision 7 contract and historical failed bar.
-7. `RUNTIME.md` — accepted R1 revision 4 contract.
-8. `docs/decisions/0021-runtime-revision-4.md` — revision 4's exact
+5. `docs/decisions/0023-observed-scene-presentation-epoch.md` — the narrow R2
+   authority, first-target order, adopter boundary, and stop line.
+6. `THESIS.md` — exploratory design thesis; not authority for another project.
+7. `KERNEL.md` — frozen Gate K revision 7 contract and historical failed bar.
+8. `RUNTIME.md` — accepted R1 revision 4 contract.
+9. `docs/decisions/0021-runtime-revision-4.md` — revision 4's exact
    lifecycle-history repair.
-9. `docs/decisions/0020-runtime-revision-3.md` — revision 3's exact
+10. `docs/decisions/0020-runtime-revision-3.md` — revision 3's exact
    comparison-count repair.
-10. `docs/decisions/0013-gate-k-disposition.md` and
+11. `docs/decisions/0013-gate-k-disposition.md` and
    `docs/decisions/0016-terminate-gate-k-round-two.md` — historical Gate K
    verdicts.
-11. `docs/workspace.md` — crate graph and boundary proof.
+12. `docs/workspace.md` — crate graph and boundary proof.
 
 Read design records under `docs/review/` only for the subsystem being changed.
 The large `docs/evaluation/runs/` tree is immutable historical evidence, not a
@@ -226,26 +240,24 @@ gh run list --branch main --limit 8
 ```
 
 Expected steady state after this handoff merges: clean `main` matching
-`origin/main`, zero open issues, zero open PRs, and successful `verify`,
-`gate-k-evidence`, `nomos viewer`, and `executable gaol pages` runs on the
-handoff merge. Old remote heads may still exist; they do not override that
-state.
+`origin/main`, zero open issues, zero open PRs, and successful applicable main
+workflows. Pages retains its last applicable successful run when its path
+filter does not select the decision change. Old remote heads may still exist;
+they do not override that state.
 
 ## What can happen next
 
 Ordinary bug maintenance against the accepted R1 baseline may start from a new
 issue with falsifiable acceptance.
 
-Decision 0022 authorizes a bounded Mortal Estate presentation-evidence program.
-The adopter must first record its own authority and accept its visual target.
-Nomos then requires separately falsifiable issues for the content-addressed
-evaluation plan, immutable dependency point, any adopter-neutral failing
-fixture, and final disposition. No accepted Nomos implementation, R2, deeper
-adopter boundary, or game-adoption claim follows from decision 0022 by
-implication. Disposable evidence work remains subject to the decision's
-quarantine and stop line.
+Decision 0023 authorizes the R2 epoch boundary and nothing past its stated
+order. The next slice is a separately reviewed `R2.md` contract defining exact
+acceptance, finite input and output grammars, ownership, workspace boundaries,
+budgets, and proof. No implementation begins until the owner authorizes that
+contract.
 
-A new accepted capability family, dependency policy, runtime epoch, Gate K
-attempt, deeper adopter boundary, or adoption into a game still requires a new
-owner decision. Work toward an actual game remains exploratory until the game
-satisfies its own gates and accepts measured cost.
+After the contract, each implementation target still begins from its own
+falsifiable issue and non-author proof. A deeper adopter boundary, platform
+choice, Gate K attempt, R2 scope expansion, or adoption into a game requires its
+own owner decision. Work toward an actual game remains exploratory until the
+game satisfies its own gates and accepts measured cost.
