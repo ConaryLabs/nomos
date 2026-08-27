@@ -49,7 +49,12 @@ Four exact records establish the need and bound its scope.
    `ad8c5577c7d52715eddeac104b273866b015b45db890d29bc3d36a6d7dbadb21`.
    A Luna max non-author rerun matched that normalized projection at reviewed
    tree `85468314caf08fb9f5ef775a0b5f3b625c63d3f9`; the tree merged as commit
-   `bafe68bcf12abf2c34c97560063eeb8b041a3de2`.
+   `bafe68bcf12abf2c34c97560063eeb8b041a3de2`. The tracked source receipt,
+   SHA-256
+   `5be52a188cbe370228d97a35b3ec5d4834129eee39071cf03bb3482011257672`,
+   predates that rerun and still says it is pending; it is not relabelled.
+   [PR #6's non-author receipt](https://github.com/ConaryLabs/the-mortal-estate/pull/6#issuecomment-5436126712)
+   is the durable supplemental record of the later exact-head proof.
 3. **Adopter-neutral failing fixture.** Issue #189 reduced the relevant facts
    to `experiments/observed-scene-gap/fixture.json`, 1,464 bytes with SHA-256
    `9b809bee523c9be04b26c6ab08412f96f9ad4f446a50a83824961dc8be016449`.
@@ -62,14 +67,22 @@ Four exact records establish the need and bound its scope.
    boundary, one positive control compiled byte-identically and four probes
    were refused with the exact expected `RP0202` diagnostics. A Luna max cold
    attack reran the proof and confirmed that the complete fact set is neither
-   honestly representable nor an adopter-only mapping. The owner then
-   classified issue #189 exactly `reusable missing Nomos capability`.
+   honestly representable nor an adopter-only mapping. The committed experiment
+   record predates that review and retains its pending fields; it is not
+   rewritten after disposition. [PR #190's cold-review receipt](https://github.com/ConaryLabs/nomos/pull/190#issuecomment-5436056523)
+   supplements it. The owner then [classified issue #189](https://github.com/ConaryLabs/nomos/issues/189#issuecomment-5436160542)
+   exactly `reusable missing Nomos capability`.
 
 The cold review records two evidence limits. The actor probe proves carrier
 absence, not that every possible fact value has an independently visible
 consequence. The fixture carries overlapping layers, but not every pair of its
 three layers overlaps. R2 acceptance must test consequential values and actual
 overlap directly rather than enlarging those earlier claims.
+
+The TME receipt additionally marks dead-layer, required static-prop, and
+transition-aperture evidence false. R2 receives no credit for any of those
+visual requirements. They require separately authoritative adopter input if a
+later integration needs them.
 
 ## Why this is an epoch rather than a repair
 
@@ -116,18 +129,37 @@ fact families reproduced by issue #189:
   target, and supplied availability; the presentation path may display or
   style it but may not decide legality, execute it, or invent an enabled state.
 
+Every identity in this carrier is local to one observed-scene artifact and
+exists only for within-artifact references. It is not persistence identity,
+network identity, ownership authority, or permission to correlate an actor or
+action across observations. Terrain roles and action availability are supplied
+presentation observations. A terrain role such as a route does not grant or
+assert Nomos traversal, and an enabled action does not grant or assert Nomos
+command legality.
+
 The accepted input and compiled output must be typed, versioned, closed to
-unknown fields, bounded in collection sizes and identifier lengths, integer-only
-for authored spatial facts, canonical where bytes enter evidence, and owned by
-exactly one emitting module per schema. There is no arbitrary tag bag, generic
-JSON payload, raw transform, shader, final-pixel input, or adapter-specific
-extension slot.
+unknown fields, bounded in collection sizes and identifier lengths, and owned
+by exactly one emitting module per schema. Every input and compiled spatial
+field is an integer lattice value; neither an observation nor its compiled
+artifact may carry a float, raw transform, or subcell escape. Bytes entering
+evidence are canonical. There is no arbitrary tag bag, generic JSON payload,
+shader, final-pixel input, or adapter-specific extension slot.
+
+`R2.md` must enumerate the complete input and output object shapes, field sets,
+enum values, identifier grammars, limits, and cross-references. In particular,
+life state, terrain role, and action availability are finite closed sets, while
+scene-local layer, actor, and action identities obey exact bounded grammars.
+The compiled output also has a finite declared grammar: it cannot preserve
+openness by carrying opaque tags, untyped parameters, arbitrary material or
+geometry names, or pass-through payloads. Unknown fields and values fail with
+stable diagnostics.
 
 The compiler may derive geometry-selection, material-selection, layering,
-silhouette, outline, effect, UI, and other presentation consequences. It may
-not derive or override life state, hostility, protection, control, action
-availability, traversal, collision, visibility, pathing, damage, inventory,
-dialogue outcome, persistence, network state, or another gameplay fact.
+silhouette, outline, effect, and UI consequences only when `R2.md` enumerates
+their exact compiled variants. It may not derive or override life state,
+hostility, protection, control, action availability, traversal, collision,
+visibility, pathing, damage, inventory, dialogue outcome, persistence, network
+state, or another gameplay fact.
 
 Nothing in this section fixes the final schema spelling or representation.
 Those are contract decisions whose tests must prove the semantic requirements
@@ -138,14 +170,19 @@ implication.
 ## First targets in dependency order
 
 1. **R2 contract.** Write `R2.md` with falsifiable epoch criteria, exact schema
-   and workspace ownership, limits, budgets, proof commands, and non-claims.
-   This is a separately reviewed documentation issue and is the next slice if
-   this decision is authorized.
+   and workspace ownership, complete finite input and output grammars, limits,
+   budgets, proof commands, and non-claims. This is a separately reviewed
+   documentation issue and is the next slice if this decision is authorized.
 2. **Strict observed-scene carrier and compiler.** Implement the accepted input
    and compiled artifact as clean Nomos-owned code. Prove every issue #189
    refusal has an honest accepted successor, every field has one owner, unknown
    and out-of-budget inputs fail closed with stable diagnostics, compilation is
-   byte-reproducible, and no R1 schema or accepted byte changes.
+   byte-reproducible, and no R1 schema or accepted byte changes. Mutation and
+   independence tests must prove field-for-field preservation of every supplied
+   layer role, actor fact, life state, and action availability: none may be
+   defaulted, dropped, merged into another meaning, inferred from a different
+   field, or recomputed. Consequential positive and negative values and actual
+   layer overlap must reach distinct declared compiled consequences.
 3. **Isolated offline browser consumer.** Consume only the compiled R2 artifact
    plus renderer-owned catalog data. Prove consequential terrain overlap,
    independent actor facts, and supplied action availability at the scene-graph
