@@ -67,3 +67,11 @@ calls. Its staged re-verification reopens the bytes, compares them exactly with
 the typed compiler output, and parses them under the canonical profile; it does
 not redundantly reconstruct semantics that were already validated before
 encoding.
+
+The clean detached candidate at commit
+`74478ace9e7397c8dd4339c806f33041b0500194` repeated the exact method with the
+same binary and output digests: median numerator `79,784,505 ns` (median
+`39,892,252.5 ns`) and p95 `47,682,882 ns`, both pass. Its raw-sample SHA-256 is
+`5445c7678b906242f2ae3776bdaef980c32a2d5c1218a809498e12dee97dd087` and
+summary SHA-256 is
+`68ab4747660f391a356a8b58b9799cc5c8d0d2b6c860587cf6e02f08f5d8c71f`.

@@ -51,6 +51,7 @@ and the exact implementation-commit pass are recorded in `LATENCY_RECEIPT.md`.
 - Compiler-produced plan receipt: `COMPILER_RECEIPT.md`
 - Maximum latency receipt: `LATENCY_RECEIPT.md`
 
-The later evidence commit adds only control records/checkers around this frozen
-implementation. The PR and non-author receipt bind the exact review head and
-tree. Owner merge disposition remains pending.
+The later evidence commits add only control records/checkers around this frozen
+implementation. Clean detached author proof is bound in `CANDIDATE_PROOF.md`.
+The PR and non-author receipt bind the exact review head and tree. Owner merge
+disposition remains pending.
