@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Nomos observed scene</title>
+    <link rel="stylesheet" href="style.css">
+  </head>
+  <body>
+    <main></main>
+    <script type="module">
+      import { boot } from "./src/runtime.mjs";
+      boot(document).catch((failure) => {
+        globalThis.__NOMOS_OBSERVED_ERROR__ = failure;
+        console.error(JSON.stringify(failure));
+      });
+    </script>
+  </body>
+</html>
