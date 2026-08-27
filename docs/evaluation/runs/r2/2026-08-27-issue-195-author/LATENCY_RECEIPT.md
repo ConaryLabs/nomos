@@ -106,3 +106,48 @@ digest: median numerator `76,119,018 ns` (median `38,059,509 ns`) and p95
 `9e3ac3902a814c65dbaa31b22ec859b79441a5aa51d320406b7e3fa4ee87a206` and
 summary SHA-256 is
 `1e104212c204aa14cd2ad623504fe4b1dfd486f7c88ecb4e0c69d0e5c6bea9e2`.
+
+## Cold-review repair result and contemporaneous red evidence
+
+Luna Max found four validation and boundary defects. Commit
+`4c532de7b41f14cb66c3062a8384c19ebe484a81`, tree
+`7e1a181b0fc8fe1c7bbab2b2ac80ab2b1923b7bb`, repairs them. Its release binary
+SHA-256 is
+`dde136c1f2abd66e68ec395ce2fcfb427eec62e17f150d1bf35776a9da41e264`;
+the compiled output remains exactly 111,604 bytes with SHA-256
+`aa36d6befffa48870d8f6cee00663139ec301bb1b606b9270e5e7984566cd6f0`.
+
+Two consecutive exact repaired-binary measurements ran while the host was
+servicing sustained background writes and were red. They are retained rather
+than excluded:
+
+1. median numerator `205,207,952 ns` (median `102,603,976 ns`), p95
+   `149,212,887 ns`; raw SHA-256
+   `ff2e0f505c9cf0ce5c2e79e7ad7a8700f96b62693953870dd8d18efde47e403a`,
+   summary SHA-256
+   `e9495b3c01378494a1be2698671a8f69326988c49864a2e44e4a77f06d65c671`,
+   retained at `target/r2-latency-4c532de/`.
+2. median numerator `216,175,449 ns` (median `108,087,724.5 ns`), p95
+   `143,731,872 ns`; raw SHA-256
+   `9fa64c9a4d3965787c8b0e62c514a7eb62281c418a18563ece3d100771d6cb5f`,
+   summary SHA-256
+   `de2455cbde386042ff9f2c881665466fe439705826537b08a7a969a277f4f857`,
+   retained at `target/r2-latency-4c532de-r2/`.
+
+A contemporaneous control using the previously passing `a853d88b...` binary
+was also red: median numerator `213,092,832 ns` (median `106,546,416 ns`), p95
+`458,331,296 ns`; raw SHA-256
+`e715c1a58a601a076631ba6c43e2c107500fd8eaf54bb87865f162c26080ca2c`,
+summary SHA-256
+`a5a87e215937b21cba7c60293f90f2695358332cf5991d51e974ae97d2001c5b`.
+This control records the host-wide condition; it does not turn either repaired
+run green.
+
+After background writes quiesced, the repaired binary repeated the unchanged
+method and passed: median numerator `75,155,960 ns` (median `37,577,980 ns`),
+p95 `41,394,197 ns`; raw SHA-256
+`3db7e8404b8d1bc78674be1913d14ee967ea5672180363b11ecee59f99e5073b`,
+summary SHA-256
+`9984434b483bf51cace00f170397581f36821aa27fe43c6107ea34e049660d3d`.
+All 112 files are retained at `target/r2-latency-4c532de-r3/`. No workload,
+ceiling, calculation, publication sync, or sample was changed or discarded.
