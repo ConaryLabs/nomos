@@ -156,10 +156,12 @@ run_outer() {
   sudo -n true >/dev/null 2>&1 || fail 'passwordless sudo is required for network isolation'
   sudo -n unshare --net -- true >/dev/null 2>&1 ||
     fail 'sudo unshare --net is unavailable'
-  bwrap --ro-bind / / --dev /dev "$(command -v bash)" -c : >/dev/null 2>&1 ||
-    fail 'bubblewrap read-only root confinement is unavailable'
+  bwrap --die-with-parent --new-session --unshare-pid \
+    --ro-bind / / --dev /dev --proc /proc \
+    "$(command -v bash)" -c : >/dev/null 2>&1 ||
+    fail 'bubblewrap read-only root and PID confinement is unavailable'
 
-  local caller_uid caller_gid caller_user caller_path rustup_home host_netns proof_token
+  local caller_uid caller_gid caller_user caller_path rustup_home host_netns host_pidns proof_token
   caller_uid=$(id -u)
   caller_gid=$(id -g)
   caller_user=$(id -un)
@@ -168,6 +170,8 @@ run_outer() {
   rustup_home=$(realpath -e -- "$rustup_home")
   host_netns=$(readlink /proc/self/ns/net)
   [[ $host_netns == net:\[*\] ]] || fail 'could not identify the caller network namespace'
+  host_pidns=$(readlink /proc/self/ns/pid)
+  [[ $host_pidns == pid:\[*\] ]] || fail 'could not identify the caller PID namespace'
   proof_token=$(printf '%s\n' "$head:$caller_uid:$$:$(date +%s%N)" | sha256sum | cut -d' ' -f1)
   mkdir -p "$repo_root/target"
   [[ $(stat -c %d "$repo_root/target") == "$(stat -c %d "$repo_root")" ]] ||
@@ -216,6 +220,7 @@ run_outer() {
         USER="$8" LOGNAME="$8" \
         NOMOS_R2_PROOF_INNER=1 \
         NOMOS_R2_HOST_NETNS="$9" \
+        NOMOS_R2_HOST_PIDNS="${14}" \
         NOMOS_R2_CALLER_UID="$1" \
         NOMOS_R2_CALLER_GID="$2" \
         NOMOS_R2_EXPECTED_HEAD="${10}" \
@@ -225,14 +230,14 @@ run_outer() {
         NOMOS_R2_PROOF_TOKEN="${13}" \
         NOMOS_R2_EXTERNAL_POSITIVE=connected \
         GIT_OPTIONAL_LOCKS=0 \
-        bwrap --die-with-parent --new-session \
-          --ro-bind / / --dev /dev \
+        bwrap --die-with-parent --new-session --unshare-pid \
+          --ro-bind / / --dev /dev --proc /proc \
           --bind "$4/target" "$4/target" \
           --bind "$5" "$5" \
           "$4/docs/evaluation/r2-complete-proof.sh" --output "$5"
   ' r2-proof "$caller_uid" "$caller_gid" "$caller_path" "$repo_root" \
     "$output_real" "$rustup_home" "$browser" "$caller_user" "$host_netns" \
-    "$head" "$tree" "$output_relative" "$proof_token"
+    "$head" "$tree" "$output_relative" "$proof_token" "$host_pidns"
   cleanup_outer_control
   trap - EXIT INT TERM
 }
@@ -257,6 +262,9 @@ fi
 inner_netns=$(readlink /proc/self/ns/net)
 [[ $inner_netns == net:\[*\] && $inner_netns != "${NOMOS_R2_HOST_NETNS:-}" ]] ||
   fail 'forged isolation marker or unchanged network namespace'
+inner_pidns=$(readlink /proc/self/ns/pid)
+[[ $inner_pidns == pid:\[*\] && $inner_pidns != "${NOMOS_R2_HOST_PIDNS:-}" ]] ||
+  fail 'forged isolation marker or unchanged PID namespace'
 
 evidence_dir=$output_real
 mkdir -p \
@@ -342,7 +350,8 @@ jq -n \
 
 jq -n \
   --arg external "$external_negative_control" \
-  '{outcome:"pass",namespace:"fresh",external_negative_control:$external,loopback_only:true}' \
+  '{outcome:"pass",namespace:"fresh",pid_namespace:"fresh",
+    external_negative_control:$external,loopback_only:true}' \
   >"$evidence_dir/metadata/isolation.json"
 
 porcelain_start=$(git status --porcelain=v1 --untracked-files=all)
@@ -419,6 +428,7 @@ jq -n \
   printf 'locale=%s\n' "$LC_ALL"
   printf 'timezone=%s\n' "${TZ:-system}"
   printf 'network_namespace=%s\n' "$inner_netns"
+  printf 'pid_namespace=%s\n' "$inner_pidns"
   printf 'cargo_net_offline=%s\n' "$CARGO_NET_OFFLINE"
   printf 'cargo_target_tmpdir=%s\n' "${CARGO_TARGET_TMPDIR#"$repo_root/"}"
   printf 'tmpdir=%s\n' "${TMPDIR#"$repo_root/"}"

@@ -6,6 +6,7 @@ import {
   lstatSync,
   readFileSync,
   readdirSync,
+  readlinkSync,
   realpathSync,
   statSync,
   writeFileSync,
@@ -340,8 +341,8 @@ const liveIp = (args) => JSON.parse(execFileSync("ip", ["-j", ...args], { encodi
 
 const validateIsolation = (output, liveChecks) => {
   const isolation = readJson(join(output, "metadata/isolation.json"), "isolation.json");
-  exactKeys(isolation, ["outcome", "namespace", "external_negative_control", "loopback_only"], "isolation.json");
-  required(isolation.outcome === "pass" && isolation.namespace === "fresh" && isolation.external_negative_control === "blocked" && isolation.loopback_only === true, "isolation summary is not a pass");
+  exactKeys(isolation, ["outcome", "namespace", "pid_namespace", "external_negative_control", "loopback_only"], "isolation.json");
+  required(isolation.outcome === "pass" && isolation.namespace === "fresh" && isolation.pid_namespace === "fresh" && isolation.external_negative_control === "blocked" && isolation.loopback_only === true, "isolation summary is not a pass");
   const addresses = readJson(join(output, "metadata/ip-address.json"), "ip-address.json");
   const route4 = readJson(join(output, "metadata/ip-route-v4.json"), "ip-route-v4.json");
   const route6 = readJson(join(output, "metadata/ip-route-v6.json"), "ip-route-v6.json");
@@ -358,7 +359,11 @@ const validateIsolation = (output, liveChecks) => {
     const rawStderr = readText(join(output, `metadata/${prefix}.stderr`), `${prefix}.stderr`);
     required(control[key].stdout === rawStdout && control[key].stderr === rawStderr, `${key.replaceAll("_", "-")} JSON does not match its raw streams`);
   }
-  if (liveChecks) validateIpRows(liveIp(["address", "show"]), liveIp(["-4", "route", "show", "table", "all"]), liveIp(["-6", "route", "show", "table", "all"]), "live namespace");
+  if (liveChecks) {
+    validateIpRows(liveIp(["address", "show"]), liveIp(["-4", "route", "show", "table", "all"]), liveIp(["-6", "route", "show", "table", "all"]), "live namespace");
+    const currentPidNamespace = readlinkSync("/proc/self/ns/pid");
+    required(/^pid:\[\d+\]$/.test(currentPidNamespace) && /^pid:\[\d+\]$/.test(process.env.NOMOS_R2_HOST_PIDNS ?? "") && currentPidNamespace !== process.env.NOMOS_R2_HOST_PIDNS, "live PID namespace is not fresh");
+  }
   return isolation;
 };
 

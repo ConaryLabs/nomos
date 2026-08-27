@@ -159,7 +159,7 @@ const makeTemplate = () => {
     plan_sha256: plans, scene_signature_sha256: signatures,
   });
   for (const name of ["clean-start", "clean-end"]) json(join(template, `metadata/${name}.json`), { outcome: "pass", commit, tree, porcelain: "" });
-  json(join(template, "metadata/isolation.json"), { outcome: "pass", namespace: "fresh", external_negative_control: "blocked", loopback_only: true });
+  json(join(template, "metadata/isolation.json"), { outcome: "pass", namespace: "fresh", pid_namespace: "fresh", external_negative_control: "blocked", loopback_only: true });
   json(join(template, "metadata/ip-address.json"), [{ ifname: "lo", link_type: "loopback", flags: ["LOOPBACK", "UP"], addr_info: [{ family: "inet", local: "127.0.0.1", prefixlen: 8, scope: "host" }, { family: "inet6", local: "::1", prefixlen: 128, scope: "host" }] }]);
   json(join(template, "metadata/ip-route-v4.json"), [
     { type: "local", dst: "127.0.0.0/8", dev: "lo", table: "local", protocol: "kernel", scope: "host", prefsrc: "127.0.0.1" },
@@ -473,6 +473,12 @@ test("major plants fail closed before a receipt can be assembled", async (t) => 
       value[0].addr_info.push({ family: "inet", local: "10.0.0.1", prefixlen: 24, scope: "global" });
       json(path, value);
     }, /address families are not exact loopback/],
+    ["pid-namespace", (out) => {
+      const path = join(out, "metadata/isolation.json");
+      const value = JSON.parse(readFileSync(path));
+      value.pid_namespace = "host";
+      json(path, value);
+    }, /isolation summary is not a pass/],
     ["outer-positive-control", (out) => {
       const path = join(out, "metadata/network-control.json");
       const value = JSON.parse(readFileSync(path));

@@ -16,6 +16,7 @@ fail() {
 unset \
   NOMOS_R2_PROOF_INNER \
   NOMOS_R2_HOST_NETNS \
+  NOMOS_R2_HOST_PIDNS \
   NOMOS_R2_CALLER_UID \
   NOMOS_R2_CALLER_GID \
   NOMOS_R2_EXPECTED_HEAD \
@@ -296,6 +297,20 @@ expect_failure forged-inner-marker 'forged isolation marker or unchanged network
   NOMOS_R2_OUTPUT_REAL="$(realpath -e "$forged_output")" \
   NOMOS_R2_OUTPUT_RELATIVE=target/forged-inner \
   /usr/bin/bash "$harness" --output "$forged_output"
+
+forged_pid_output=$detached/target/forged-pid-inner
+mkdir "$forged_pid_output"
+forged_pidns=$(readlink /proc/self/ns/pid)
+expect_failure forged-pid-marker 'forged isolation marker or unchanged PID namespace' 0 \
+  in_repo "$detached" env R2_TEST_SUDO_LOG="$sudo_log" PATH="$guard_path" \
+  NOMOS_R2_PROOF_INNER=1 NOMOS_R2_HOST_NETNS='net:[0]' \
+  NOMOS_R2_HOST_PIDNS="$forged_pidns" \
+  NOMOS_R2_CALLER_UID="$(id -u)" NOMOS_R2_CALLER_GID="$(id -g)" \
+  NOMOS_R2_EXPECTED_HEAD="$forged_head" NOMOS_R2_EXPECTED_TREE="$forged_tree" \
+  NOMOS_R2_PROOF_TOKEN="$forged_token" \
+  NOMOS_R2_OUTPUT_REAL="$(realpath -e "$forged_pid_output")" \
+  NOMOS_R2_OUTPUT_RELATIVE=target/forged-pid-inner \
+  /usr/bin/bash "$harness" --output "$forged_pid_output"
 
 # Exercise the closure primitive with a real child that clears the proof token,
 # then prove the same namespace is clean after that child is reaped. The full
