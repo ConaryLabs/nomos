@@ -1,6 +1,6 @@
 # R2-1 maximum-scene latency receipt
 
-Status: exact implementation-commit run passed; earlier red runs retained.
+Status: post-audit implementation-commit run passed; earlier red runs retained.
 
 ## Frozen workload and method
 
@@ -75,3 +75,25 @@ same binary and output digests: median numerator `79,784,505 ns` (median
 `5445c7678b906242f2ae3776bdaef980c32a2d5c1218a809498e12dee97dd087` and
 summary SHA-256 is
 `68ab4747660f391a356a8b58b9799cc5c8d0d2b6c860587cf6e02f08f5d8c71f`.
+
+## Post-audit repair result
+
+Commit `c87bddee7ec872fe47053f4684974dbb919b523c`, tree
+`b872fd8f942a74b1ef39f77a84eaa45edc32af17`, repaired identity-phase path
+precedence and prevented cleanup from deleting a pre-existing file that merely
+collided with the compiler's staging name. It repeated the exact method above
+without changing the workload, ceiling, calculation, or synced publication:
+
+- release binary SHA-256:
+  `a853d88b973e6540bfd79c65f363f4052340a3d739901d5959d63e4faed54121`;
+- output: `111604` bytes, SHA-256
+  `aa36d6befffa48870d8f6cee00663139ec301bb1b606b9270e5e7984566cd6f0`
+  for every warmup and recorded process;
+- median numerator: `81,313,106 ns`; median: `40,656,553 ns`; pass;
+- p95: `53,060,187 ns`; pass;
+- raw-sample SHA-256:
+  `cbf84539d58ca764a751556449529d942b12adaa52c3cbc359d2a7660173c4f6`;
+- summary SHA-256:
+  `2e6fcfa133d04319c02e4484269cc969e52c2476758b2f9df9a2caf6f275111f`;
+  and
+- retained directory: `target/r2-latency-c87bdde/` (`112` regular files).
