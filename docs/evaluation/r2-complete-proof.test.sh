@@ -32,7 +32,7 @@ harness_lib_source=$script_directory/r2-complete-proof-lib.sh
 [[ -f $harness_source && ! -L $harness_source ]] || fail 'complete-proof harness is absent'
 [[ -f $harness_lib_source && ! -L $harness_lib_source ]] || fail 'complete-proof library is absent'
 
-for command in git tar cp ln chmod mkdir mktemp grep realpath readlink wc sed find id sleep; do
+for command in git cp ln chmod mkdir mktemp grep realpath readlink wc sed find id sleep; do
   command -v "$command" >/dev/null 2>&1 || fail "required executable not found: $command"
 done
 
@@ -62,13 +62,17 @@ trap cleanup EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
 
-# Give every plant an ordinary repository rather than teaching the proof a test
-# root. The temporary seed includes the current harness even before its feature
-# commit; every checkout used below is then a real local clone of that seed.
-mkdir "$seed"
-git -C "$repo_root" archive --format=tar HEAD | tar -xf - -C "$seed"
+# Give every plant a minimal ordinary repository rather than teaching the
+# proof a test root. Only the exact harness, its library, browser discovery,
+# toolchain pin, and ignore rule are needed before these preflight refusals;
+# copying the full candidate would make the disk-budget sampler measure the
+# plant fixture rather than the candidate workload.
+mkdir -p "$seed/docs/evaluation" "$seed/apps/nomos-viewer/smoke"
+cp "$repo_root/.gitignore" "$repo_root/rust-toolchain.toml" "$seed/"
 cp "$harness_source" "$seed/docs/evaluation/r2-complete-proof.sh"
 cp "$harness_lib_source" "$seed/docs/evaluation/r2-complete-proof-lib.sh"
+cp "$repo_root/apps/nomos-viewer/smoke/chrome.mjs" \
+  "$seed/apps/nomos-viewer/smoke/chrome.mjs"
 chmod 755 "$seed/docs/evaluation/r2-complete-proof.sh"
 git -C "$seed" init -q --object-format=sha1 -b plant-main
 git -C "$seed" add --all
@@ -373,7 +377,7 @@ grep -Fx 'R2 disk sampler: no complete du result after 20 attempts' \
 plant_count=$((plant_count + 1))
 
 async_samples=$temporary/async-disk-samples.tsv
-async_parts=$temporary/async-disk-parts
+async_parts=$temporary/async-disk-state
 async_stop=$temporary/async-disk.stop
 async_started=$(date +%s%N)
 printf 'ordinal\telapsed_ms\tmebibytes\n' >"$async_samples"
@@ -399,6 +403,29 @@ async_count=$(awk 'NR > 1 { count += 1 } END { print count + 0 }' "$async_sample
 async_gap=$(awk 'NR == 2 { previous = $2 } NR > 2 { gap = $2 - previous; if (gap > maximum) maximum = gap; previous = $2 } END { print maximum + 0 }' "$async_samples")
 [[ $async_count -ge 5 && $async_gap -le 100 && ! -e $async_parts ]] ||
   fail 'asynchronous sampler did not preserve cadence across slow walks'
+
+overload_samples=$temporary/overload-disk-samples.tsv
+overload_state=$temporary/overload-disk-state
+overload_stop=$temporary/overload-disk.stop
+overload_started=$(date +%s%N)
+printf 'ordinal\telapsed_ms\tmebibytes\n' >"$overload_samples"
+mkdir "$overload_state"
+set +e
+(
+  export R2_TEST_DU_STABLE=1 R2_TEST_DU_DELAY=0.6
+  export PATH="$fake_disk_bin:$PATH"
+  r2_sample_checkout_disk \
+    "$repo_root" "$overload_samples" "$overload_stop" "$overload_state" \
+    "$overload_started" 50000000
+) >"$temporary/overload.stdout" 2>"$temporary/overload.stderr"
+overload_status=$?
+set -e
+[[ $overload_status -ne 0 && ! -s $temporary/overload.stdout ]] ||
+  fail 'asynchronous sampler permitted unbounded concurrent walks'
+grep -Fx 'R2 disk sampler: eight concurrent du walks are still active' \
+  "$temporary/overload.stderr" >/dev/null ||
+  fail 'asynchronous sampler concurrency-limit diagnostic differs'
+plant_count=$((plant_count + 1))
 
 # `run_step` must not let a later successful command mask an earlier failure
 # inside a compound proof function. Exercise its exact sourceable executor

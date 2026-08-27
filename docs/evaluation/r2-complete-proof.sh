@@ -497,13 +497,13 @@ run_step() {
 disk_samples=$evidence_dir/measurements/checkout-disk-samples.tsv
 printf 'ordinal\telapsed_ms\tmebibytes\n' >"$disk_samples"
 disk_sampler_stop=$evidence_dir/host/disk-sampler.stop
-disk_sample_parts=$evidence_dir/host/tmp/disk-sample-parts
-disk_sampler_ready=$disk_sample_parts/ready
-mkdir "$disk_sample_parts"
+disk_sample_state=$evidence_dir/host/tmp/disk-sample-state
+disk_sampler_ready=$disk_sample_state/ready
+mkdir "$disk_sample_state"
 disk_sampler_started=$(date +%s%N)
 disk_sample_period_ns=50000000
 r2_sample_checkout_disk \
-  "$repo_root" "$disk_samples" "$disk_sampler_stop" "$disk_sample_parts" \
+  "$repo_root" "$disk_samples" "$disk_sampler_stop" "$disk_sample_state" \
   "$disk_sampler_started" "$disk_sample_period_ns" &
 disk_sampler_pid=$!
 sampler_running=1
