@@ -27,7 +27,7 @@ line, and operational gotchas.
 | R1 contract | `RUNTIME.md` revision 4, in force under decision 0021 |
 | Game adoption | not authorized |
 | Mortal Estate evidence | bounded evidence produced one admitted dependency point, representative frame, and classified capability gap |
-| R2 observed-scene epoch | open under decision 0023; `R2.md` not yet authorized; no implementation |
+| R2 observed-scene epoch | revision 1 authorized; R2-1 implementation must begin from its own issue |
 
 R1 is the accepted runtime baseline for this repository. That result does not
 rewrite Gate K, pass a later gate, approve production art, or authorize Nomos
@@ -40,9 +40,10 @@ recorded a representative adopter frame, and reduced its presentation gap to an
 adopter-neutral fixture classified `reusable missing Nomos capability`.
 
 Decision 0023 opens one narrow R2 observed-scene presentation epoch from that
-evidence. Its next slice is the separately reviewed root contract `R2.md`.
-Until that contract is owner-authorized, no R2 implementation, schema,
-dependency, accepted artifact, platform choice, or game adoption is authorized.
+evidence. The separately reviewed root contract `R2.md` revision 1 is now
+owner-authorized. Its first target is R2-1, the strict carrier and compiler,
+which must begin from its own falsifiable issue. No R2 implementation is yet
+admitted, and no platform choice or game adoption is authorized.
 
 The implementation includes:
 
@@ -156,9 +157,9 @@ and follows [AGENTS.md](AGENTS.md). A new capability family, dependency policy,
 runtime epoch, Gate K attempt, or game adoption requires a new owner decision.
 
 Decision 0023 is the narrow exception for the observed-scene R2 epoch. The next
-authorized action is a separately falsifiable documentation issue for `R2.md`.
-No implementation begins before that contract is owner-authorized, and each
-later target still requires its own issue and exact proof.
+authorized action is the separately falsifiable R2-1 issue required by the
+owner-authorized `R2.md` revision 1. Each implementation target still requires
+its own issue and exact proof.
 
 Nomos is authority only for this repository. Nothing here becomes authority for
 another project without that project's own explicit decision.
