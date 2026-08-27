@@ -497,30 +497,14 @@ run_step() {
 disk_samples=$evidence_dir/measurements/checkout-disk-samples.tsv
 printf 'ordinal\telapsed_ms\tmebibytes\n' >"$disk_samples"
 disk_sampler_stop=$evidence_dir/host/disk-sampler.stop
+disk_sample_parts=$evidence_dir/host/tmp/disk-sample-parts
+disk_sampler_ready=$disk_sample_parts/ready
+mkdir "$disk_sample_parts"
 disk_sampler_started=$(date +%s%N)
 disk_sample_period_ns=50000000
-sample_disk() {
-  local ordinal=0 row now elapsed size deadline delay delay_seconds
-  while [[ ! -e $disk_sampler_stop ]]; do
-    row=$(r2_measure_checkout_mib "$repo_root") || return
-    IFS=$'\t' read -r now size <<<"$row"
-    elapsed=$(( (now - disk_sampler_started) / 1000000 ))
-    printf '%s\t%s\t%s\n' "$ordinal" "$elapsed" "$size" >>"$disk_samples"
-    ordinal=$((ordinal + 1))
-    deadline=$((disk_sampler_started + ordinal * disk_sample_period_ns))
-    now=$(date +%s%N)
-    if [[ $deadline -gt $now ]]; then
-      delay=$((deadline - now))
-      printf -v delay_seconds '%d.%09d' "$((delay / 1000000000))" "$((delay % 1000000000))"
-      sleep "$delay_seconds"
-    fi
-  done
-  row=$(r2_measure_checkout_mib "$repo_root") || return
-  IFS=$'\t' read -r now size <<<"$row"
-  elapsed=$(( (now - disk_sampler_started) / 1000000 ))
-  printf '%s\t%s\t%s\n' "$ordinal" "$elapsed" "$size" >>"$disk_samples"
-}
-sample_disk &
+r2_sample_checkout_disk \
+  "$repo_root" "$disk_samples" "$disk_sampler_stop" "$disk_sample_parts" \
+  "$disk_sampler_started" "$disk_sample_period_ns" &
 disk_sampler_pid=$!
 sampler_running=1
 stop_sampler() {
@@ -533,11 +517,13 @@ stop_sampler() {
 trap stop_sampler EXIT
 trap 'stop_sampler; exit 130' INT
 trap 'stop_sampler; exit 143' TERM
-for ((attempt = 0; attempt < 100 && $(wc -l <"$disk_samples") < 2; attempt += 1)); do
+for ((attempt = 0; attempt < 100; attempt += 1)); do
+  [[ ! -e $disk_sampler_ready ]] || break
   kill -0 "$disk_sampler_pid" 2>/dev/null || fail 'disk sampler exited before its initial row'
   sleep 0.01
 done
-[[ $(wc -l <"$disk_samples") -ge 2 ]] || fail 'disk sampler did not publish its initial row'
+[[ -f $disk_sampler_ready && ! -L $disk_sampler_ready ]] ||
+  fail 'disk sampler did not launch its initial row'
 
 # Step 1: accepted workspace proof.
 run_step workspace-fmt \

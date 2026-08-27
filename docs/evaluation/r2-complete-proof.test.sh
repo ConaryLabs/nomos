@@ -337,6 +337,11 @@ fake_disk_state=$temporary/fake-disk-state
 mkdir "$fake_disk_bin"
 printf '%s\n' \
   '#!/usr/bin/env bash' \
+  'if [[ ${R2_TEST_DU_STABLE:-0} == 1 ]]; then' \
+  '  sleep "${R2_TEST_DU_DELAY:-0}"' \
+  '  printf '\''17\t%s\n'\'' "${@: -1}"' \
+  '  exit 0' \
+  'fi' \
   'count=0' \
   '[[ ! -f ${R2_TEST_DU_STATE:?} ]] || read -r count <"$R2_TEST_DU_STATE"' \
   'count=$((count + 1))' \
@@ -366,6 +371,34 @@ grep -Fx 'R2 disk sampler: no complete du result after 20 attempts' \
   "$temporary/disk-failure.stderr" >/dev/null ||
   fail 'disk sampler permanent-failure diagnostic differs'
 plant_count=$((plant_count + 1))
+
+async_samples=$temporary/async-disk-samples.tsv
+async_parts=$temporary/async-disk-parts
+async_stop=$temporary/async-disk.stop
+async_started=$(date +%s%N)
+printf 'ordinal\telapsed_ms\tmebibytes\n' >"$async_samples"
+mkdir "$async_parts"
+(
+  export R2_TEST_DU_STABLE=1 R2_TEST_DU_DELAY=0.2
+  export PATH="$fake_disk_bin:$PATH"
+  r2_sample_checkout_disk \
+    "$repo_root" "$async_samples" "$async_stop" "$async_parts" \
+    "$async_started" 50000000
+) &
+async_sampler_pid=$!
+for ((attempt = 0; attempt < 100; attempt += 1)); do
+  [[ ! -e $async_parts/ready ]] || break
+  kill -0 "$async_sampler_pid" 2>/dev/null || fail 'asynchronous sampler exited before readiness'
+  sleep 0.01
+done
+[[ -f $async_parts/ready ]] || fail 'asynchronous sampler did not become ready'
+sleep 0.26
+: >"$async_stop"
+wait "$async_sampler_pid" || fail 'asynchronous sampler rejected slow complete walks'
+async_count=$(awk 'NR > 1 { count += 1 } END { print count + 0 }' "$async_samples")
+async_gap=$(awk 'NR == 2 { previous = $2 } NR > 2 { gap = $2 - previous; if (gap > maximum) maximum = gap; previous = $2 } END { print maximum + 0 }' "$async_samples")
+[[ $async_count -ge 5 && $async_gap -le 100 && ! -e $async_parts ]] ||
+  fail 'asynchronous sampler did not preserve cadence across slow walks'
 
 # `run_step` must not let a later successful command mask an earlier failure
 # inside a compound proof function. Exercise its exact sourceable executor
