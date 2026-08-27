@@ -1,7 +1,7 @@
 # R2-2 primary implementation-author receipt
 
-Status: implementation source prepared; frozen candidate commit/tree recorded
-by the packet control commit and final exact-head proof.
+Status: implementation source frozen; clean candidate author proof passed;
+exact-head non-author proof pending.
 
 ## Authority and baseline
 
@@ -42,7 +42,9 @@ The author added the isolated browser consumer, canonical decoder, renderer,
 numeric UI, offline build, CDP smoke harness, semantic signature tool, packet
 delivery/audit tooling, manifest and neutrality checks, tests, and control
 records. The first scene and compiler remained byte-unchanged from R2-1. The
-second scene is reserved for the independent packet author.
+second scene and its evidence entered unchanged from the independent packet
+author. `CANDIDATE_PROOF.md` binds the clean candidate measurements and exact
+digests; PR #198 and the Luna Max receipt bind the final review head.
 
 Commands used include repository reads, `apply_patch`, SHA-256 checks, Node's
 test runner, the offline build, the Chromium smoke, the four accepted Cargo
