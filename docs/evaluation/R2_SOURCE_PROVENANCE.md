@@ -1,6 +1,6 @@
 ---
 title: R2 per-file source provenance register
-status: R2-2 prepacket implementation register
+status: R2-2 candidate implementation register
 date: 2026-08-27
 issue: 197
 authority: R2.md revision 1 section 4
@@ -11,8 +11,8 @@ authority: R2.md revision 1 section 4
 This inventory covers every current regular file in the R2 carrier crate,
 isolated browser application, R2 fixtures, R2-specific evaluation source, and
 committed visual-evidence scope, plus the three R1 Three.js vendor files
-referenced by the epoch contract. The prepacket state has no independent scene
-or committed browser-produced row yet; those enter only from the frozen packet.
+referenced by the epoch contract. The independent scene and browser evidence
+entered unchanged from the hash-frozen author packet.
 
 `R2_SOURCE_PROVENANCE.md`, `r2-source-provenance.sh`, and producing receipts
 beneath `docs/evaluation/runs/r2/` are control evidence. Per the contract's
@@ -95,6 +95,12 @@ license bytes in the first inventory row.
 | `docs/evaluation/r2-second-scene-packet/audit-author-output.sh` | `7952c431858ec71029e7e4ce59fd5aa119e6174214e45e579c4ee1df3b452188` | `r2_authored` | `docs/evaluation/runs/r2/2026-08-27-issue-197-author/AUTHOR_RECEIPT.md` | `project_mit` |
 | `docs/evaluation/r2-second-scene-packet/verify.sh` | `e8cd7ebaf74ffdef5a5ed346e799427a16ae1157922c1e5704fd9465fb74e5d2` | `r2_authored` | `docs/evaluation/runs/r2/2026-08-27-issue-197-author/AUTHOR_RECEIPT.md` | `project_mit` |
 | `docs/evaluation/r2-source-provenance.test.sh` | `5787801136d6d571808af5df14b93f64e255aca927a0d694c4da94ca7db884e8` | `r2_authored` | `docs/evaluation/runs/r2/2026-08-27-issue-195-author/AUTHOR_RECEIPT.md` | `project_mit` |
+| `docs/evaluation/runs/r2/2026-08-27-issue-197-second-author/SCENE_SIGNATURES.json` | `6c8e38c78896bf5d5a166427f5f9567044dc00314dc4e65124173c57ccab50c4` | `r2_authored` | `docs/evaluation/runs/r2/2026-08-27-issue-197-second-author/SECOND_AUTHOR_RECEIPT.md` | `project_mit` |
+| `docs/evaluation/runs/r2/2026-08-27-issue-197-second-author/evidence/contact-sheet.png` | `b76edbd9dd03fce5a99c074200ee7311bf87d5d2e5829c800170c129d00bf576` | `browser_produced` | `docs/evaluation/runs/r2/2026-08-27-issue-197-second-author/BROWSER_RECEIPT.json` | `project_mit` |
+| `docs/evaluation/runs/r2/2026-08-27-issue-197-second-author/evidence/scene_1.png` | `27833755cea790f04353c930a2158044d4aab05c87989ee5751dc8dff66f5fb6` | `browser_produced` | `docs/evaluation/runs/r2/2026-08-27-issue-197-second-author/BROWSER_RECEIPT.json` | `project_mit` |
+| `docs/evaluation/runs/r2/2026-08-27-issue-197-second-author/evidence/scene_2.png` | `8846a2cfa68bbd40fea458f8c58fb136f363e26c2e37f1969c05c3ec81dbfe64` | `browser_produced` | `docs/evaluation/runs/r2/2026-08-27-issue-197-second-author/BROWSER_RECEIPT.json` | `project_mit` |
 | `fixtures/r2/maximum-observed-scene.json` | `fe332f711437dab15e4d1315cc3ca57dba6521350ff673941e77feb414585909` | `r2_authored` | `docs/evaluation/runs/r2/2026-08-27-issue-195-author/AUTHOR_RECEIPT.md` | `project_mit` |
 | `fixtures/r2/plans/scene_one.json` | `717b91f3f35d815bfa9f9cc777b38f8a091f7a6339d786c57360e94ffe4c7699` | `compiler_produced` | `docs/evaluation/runs/r2/2026-08-27-issue-195-author/COMPILER_RECEIPT.md` | `project_mit` |
+| `fixtures/r2/plans/scene_two.json` | `1fd08cfb33d07f93a568e4bb337ebfbe8909a22a973d0f137139c92f0481e905` | `compiler_produced` | `docs/evaluation/runs/r2/2026-08-27-issue-197-second-author/SECOND_AUTHOR_RECEIPT.md` | `project_mit` |
 | `fixtures/r2/scenes/scene_one.json` | `e4c04e7d6806aaba3e3ba9e0b94ba761442e00d5dd17a14581c29e1de22c41aa` | `r2_authored` | `docs/evaluation/runs/r2/2026-08-27-issue-195-author/AUTHOR_RECEIPT.md` | `project_mit` |
+| `fixtures/r2/scenes/scene_two.json` | `21af593413804b9ece1df24f38f436ff2288de445589160b22506c98d53f227a` | `r2_authored` | `docs/evaluation/runs/r2/2026-08-27-issue-197-second-author/SECOND_AUTHOR_RECEIPT.md` | `project_mit` |

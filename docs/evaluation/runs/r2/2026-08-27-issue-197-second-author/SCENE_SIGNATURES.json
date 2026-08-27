@@ -1,0 +1,304 @@
+{
+  "outcome": "pass",
+  "scenes": [
+    {
+      "path": "fixtures/r2/scenes/scene_one.json",
+      "axis_sha256": {
+        "actions": "d9498c215739ed6ee5f3dce9d0ce21a19e35af26016f046e482c0ab785159705",
+        "actors": "a170f9a01b67fb0b4681aca6fda680bfa8695d423d8db9c6e382ee4b8c53d779",
+        "crop": "6bc0ba95810359c49e83d612501c8a9319e380e7f227ad72d0a9529c4e02d175",
+        "terrain": "a7c4a7cca62253f9fb9aa62412297184a9413a4cc480a1ce39590aff2cd34c3f"
+      },
+      "normalized": {
+        "actions": [
+          {
+            "availability": "disabled",
+            "target_actor_ordinal": 4
+          },
+          {
+            "availability": "enabled",
+            "target_actor_ordinal": 2
+          }
+        ],
+        "actors": [
+          {
+            "cell": {
+              "x": 1,
+              "y": 1,
+              "z": 0
+            },
+            "controlled": true,
+            "hostile": false,
+            "life_state": "living",
+            "protected": false
+          },
+          {
+            "cell": {
+              "x": 1,
+              "y": 4,
+              "z": 0
+            },
+            "controlled": false,
+            "hostile": false,
+            "life_state": "dead",
+            "protected": true
+          },
+          {
+            "cell": {
+              "x": 2,
+              "y": 2,
+              "z": 0
+            },
+            "controlled": true,
+            "hostile": true,
+            "life_state": "living",
+            "protected": true
+          },
+          {
+            "cell": {
+              "x": 3,
+              "y": 1,
+              "z": 0
+            },
+            "controlled": false,
+            "hostile": true,
+            "life_state": "living",
+            "protected": false
+          },
+          {
+            "cell": {
+              "x": 4,
+              "y": 3,
+              "z": 0
+            },
+            "controlled": false,
+            "hostile": false,
+            "life_state": "dead",
+            "protected": false
+          }
+        ],
+        "crop": {
+          "height": 6,
+          "width": 6
+        },
+        "terrain": [
+          {
+            "cells": [
+              {
+                "x": 0,
+                "y": 0
+              },
+              {
+                "x": 1,
+                "y": 0
+              },
+              {
+                "x": 2,
+                "y": 2
+              }
+            ],
+            "role": "calm_ground"
+          },
+          {
+            "cells": [
+              {
+                "x": 1,
+                "y": 1
+              },
+              {
+                "x": 2,
+                "y": 2
+              },
+              {
+                "x": 3,
+                "y": 3
+              }
+            ],
+            "role": "traversable_route"
+          },
+          {
+            "cells": [
+              {
+                "x": 2,
+                "y": 2
+              },
+              {
+                "x": 4,
+                "y": 2
+              },
+              {
+                "x": 4,
+                "y": 3
+              }
+            ],
+            "role": "structure_footprint"
+          }
+        ]
+      },
+      "sha256": "ef11771f3f8c210fdd8c9366e780ab720349a49dad88ae8dca969fcbe16c30d2"
+    },
+    {
+      "path": "fixtures/r2/scenes/scene_two.json",
+      "axis_sha256": {
+        "actions": "28c07a530e8cf68e8aa6a3e4b2997aa9c4f89f178ce83210262e6d24773d47f1",
+        "actors": "b1e10755b6f8b523ad084e5b8a29cf153be72ec52bec3eb01ebdf628aa3e3181",
+        "crop": "8c1ad689b143df6bdb2bc4c7e08f4b0f60a0bf114dc1a4931f641fa29662abeb",
+        "terrain": "752bc486adc6b77597a1849f23b9de1dff845bfcd6fbf08f7e5937e2eab8d9be"
+      },
+      "normalized": {
+        "actions": [
+          {
+            "availability": "disabled",
+            "target_actor_ordinal": 4
+          },
+          {
+            "availability": "enabled",
+            "target_actor_ordinal": 3
+          },
+          {
+            "availability": "enabled",
+            "target_actor_ordinal": 5
+          }
+        ],
+        "actors": [
+          {
+            "cell": {
+              "x": 0,
+              "y": 1,
+              "z": 0
+            },
+            "controlled": true,
+            "hostile": false,
+            "life_state": "dead",
+            "protected": false
+          },
+          {
+            "cell": {
+              "x": 1,
+              "y": 3,
+              "z": 0
+            },
+            "controlled": false,
+            "hostile": false,
+            "life_state": "living",
+            "protected": false
+          },
+          {
+            "cell": {
+              "x": 2,
+              "y": 4,
+              "z": 0
+            },
+            "controlled": false,
+            "hostile": false,
+            "life_state": "dead",
+            "protected": true
+          },
+          {
+            "cell": {
+              "x": 3,
+              "y": 2,
+              "z": 0
+            },
+            "controlled": true,
+            "hostile": true,
+            "life_state": "living",
+            "protected": true
+          },
+          {
+            "cell": {
+              "x": 4,
+              "y": 0,
+              "z": 0
+            },
+            "controlled": false,
+            "hostile": false,
+            "life_state": "dead",
+            "protected": false
+          },
+          {
+            "cell": {
+              "x": 6,
+              "y": 1,
+              "z": 0
+            },
+            "controlled": false,
+            "hostile": true,
+            "life_state": "living",
+            "protected": false
+          }
+        ],
+        "crop": {
+          "height": 5,
+          "width": 7
+        },
+        "terrain": [
+          {
+            "cells": [
+              {
+                "x": 0,
+                "y": 0
+              },
+              {
+                "x": 1,
+                "y": 0
+              },
+              {
+                "x": 3,
+                "y": 2
+              },
+              {
+                "x": 5,
+                "y": 4
+              }
+            ],
+            "role": "calm_ground"
+          },
+          {
+            "cells": [
+              {
+                "x": 1,
+                "y": 1
+              },
+              {
+                "x": 3,
+                "y": 2
+              },
+              {
+                "x": 3,
+                "y": 3
+              },
+              {
+                "x": 5,
+                "y": 3
+              }
+            ],
+            "role": "structure_footprint"
+          },
+          {
+            "cells": [
+              {
+                "x": 2,
+                "y": 1
+              },
+              {
+                "x": 3,
+                "y": 2
+              },
+              {
+                "x": 4,
+                "y": 2
+              },
+              {
+                "x": 6,
+                "y": 4
+              }
+            ],
+            "role": "traversable_route"
+          }
+        ]
+      },
+      "sha256": "9afb46dc4d7ddb5b79cdcabd63b67d162b3c230aecfde9383e038128572f0f3d"
+    }
+  ]
+}
