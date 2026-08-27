@@ -137,12 +137,6 @@ NODE
 }
 
 run_outer() {
-  sudo -n true >/dev/null 2>&1 || fail 'passwordless sudo is required for network isolation'
-  sudo -n unshare --net -- true >/dev/null 2>&1 ||
-    fail 'sudo unshare --net is unavailable'
-  bwrap --ro-bind / / --dev /dev "$(command -v bash)" -c : >/dev/null 2>&1 ||
-    fail 'bubblewrap read-only root confinement is unavailable'
-
   local node_major active_toolchain installed_targets browser browser_version
   node_major=$(node -p 'Number(process.versions.node.split(".")[0])')
   [[ $node_major =~ ^[0-9]+$ && $node_major -ge 22 ]] || fail 'Node 22 or newer is required'
@@ -158,6 +152,12 @@ run_outer() {
     fail 'the discovered browser is not one executable regular file'
   browser_version=$("$browser" --version) || fail 'the discovered browser cannot report its version'
   [[ -n $browser_version ]] || fail 'the discovered browser reported no version'
+
+  sudo -n true >/dev/null 2>&1 || fail 'passwordless sudo is required for network isolation'
+  sudo -n unshare --net -- true >/dev/null 2>&1 ||
+    fail 'sudo unshare --net is unavailable'
+  bwrap --ro-bind / / --dev /dev "$(command -v bash)" -c : >/dev/null 2>&1 ||
+    fail 'bubblewrap read-only root confinement is unavailable'
 
   local caller_uid caller_gid caller_user caller_path rustup_home host_netns proof_token
   caller_uid=$(id -u)

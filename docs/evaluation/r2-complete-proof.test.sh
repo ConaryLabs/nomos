@@ -256,11 +256,11 @@ expect_failure missing-tool 'required executable not found: jq' 0 \
   in_repo "$detached" env R2_TEST_SUDO_LOG="$sudo_log" PATH="$missing_tools" \
   /usr/bin/bash "$harness" --output "$shared_output"
 
-# Browser failures are tested after two harmless fake-sudo capability probes;
-# the fake never invokes unshare, and a third call would mean proof entry.
+# Browser failures are rejected during unprivileged host validation, before a
+# sudo capability probe, nested bubblewrap attempt, or proof entry.
 missing_browser_output=$detached/target/missing-browser-output
 mkdir "$missing_browser_output"
-expect_failure missing-browser 'Chrome/Chromium is not installed or cannot start' 2 \
+expect_failure missing-browser 'Chrome/Chromium is not installed or cannot start' 0 \
   in_repo "$detached" env R2_TEST_SUDO_LOG="$sudo_log" R2_TEST_SUDO_STATUS=0 \
   CHROME_BIN="$temporary/no-browser" PATH="$guard_path" \
   /usr/bin/bash "$harness" --output "$missing_browser_output"
@@ -270,7 +270,7 @@ printf '#!/usr/bin/env bash\nexit 0\n' >"$fake_browser"
 chmod 755 "$fake_browser"
 wrong_browser_output=$detached/target/wrong-browser-output
 mkdir "$wrong_browser_output"
-expect_failure wrong-browser 'Chrome/Chromium is not installed or cannot start' 2 \
+expect_failure wrong-browser 'Chrome/Chromium is not installed or cannot start' 0 \
   in_repo "$detached" env R2_TEST_SUDO_LOG="$sudo_log" R2_TEST_SUDO_STATUS=0 \
   CHROME_BIN="$fake_browser" PATH="$guard_path" \
   /usr/bin/bash "$harness" --output "$wrong_browser_output"
