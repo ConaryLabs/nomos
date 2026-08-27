@@ -28,7 +28,7 @@ output_argument=$2
 host_tools=(
   git realpath readlink find grep awk sed sort cmp cut sha256sum stat date du jq
   /usr/bin/time ar basename bash bwrap cargo cc chmod cp diff dirname env getconf
-  head id install ip ld ln mkdir mktemp node paste ps rm rustc rustup seq setpriv
+  head id install ionice ip ld ln mkdir mktemp nice node paste ps rm rustc rustup seq setpriv
   sh sleep strings sudo tar timeout touch tr uname unshare wc
 )
 for command in "${host_tools[@]}"; do
@@ -910,7 +910,8 @@ jq -n \
   --argjson maximum "$disk_maximum" \
   --argjson maximum_gap "$disk_maximum_gap" \
   '{outcome:"pass",interval_ms:50,samples:$samples,initial_mib:$initial,
-    final_mib:$final,maximum_mib:$maximum,max_gap_ms:$maximum_gap}' \
+    final_mib:$final,maximum_mib:$maximum,max_gap_ms:$maximum_gap,
+    cpu_nice:19,io_priority_class:"idle",du_arguments:["-sm","--","<checkout>"]}' \
   >"$evidence_dir/measurements/checkout-disk-summary.json"
 
 porcelain_end=$(git status --porcelain=v1 --untracked-files=all)

@@ -91,7 +91,10 @@ r2_measure_checkout_mib() {
     # walks the checkout. Retain only a complete, successful `du -sm` result;
     # a raced walk is not a sample and is retried immediately. The caller's
     # retained start timestamps still enforce the contract's maximum gap.
-    if raw=$(du -sm -- "$root" 2>/dev/null); then
+    # Measurement must not become the dominant workload whose budget it is
+    # observing. Keep the contract's exact `du -sm` walk, but run it at the
+    # host's lowest ordinary CPU and I/O scheduling priorities.
+    if raw=$(nice -n 19 ionice -c 3 du -sm -- "$root" 2>/dev/null); then
       size=${raw%%$'\t'*}
       [[ $size =~ ^[0-9]+$ && $raw == "$size"$'\t'"$root" ]] || {
         printf 'R2 disk sampler: malformed du result\n' >&2

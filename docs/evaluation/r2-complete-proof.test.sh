@@ -253,7 +253,7 @@ expect_failure dangling-proof-target 'pre-existing proof target is forbidden: ta
 missing_tools=$temporary/missing-tools
 mkdir "$missing_tools"
 for command in git realpath readlink find grep awk sed sort cmp cut sha256sum \
-  stat date dirname du; do
+  stat date dirname du ionice nice; do
   ln -s "$(command -v "$command")" "$missing_tools/$command"
 done
 expect_failure missing-tool 'required executable not found: jq' 0 \
@@ -341,6 +341,19 @@ fake_disk_state=$temporary/fake-disk-state
 mkdir "$fake_disk_bin"
 printf '%s\n' \
   '#!/usr/bin/env bash' \
+  '[[ $1 == -n && $2 == 19 ]] || exit 91' \
+  'shift 2' \
+  'exec "$@"' \
+  >"$fake_disk_bin/nice"
+printf '%s\n' \
+  '#!/usr/bin/env bash' \
+  '[[ $1 == -c && $2 == 3 ]] || exit 92' \
+  'shift 2' \
+  'exec "$@"' \
+  >"$fake_disk_bin/ionice"
+printf '%s\n' \
+  '#!/usr/bin/env bash' \
+  '[[ $# -eq 3 && $1 == -sm && $2 == -- && -d $3 ]] || exit 93' \
   'if [[ ${R2_TEST_DU_STABLE:-0} == 1 ]]; then' \
   '  sleep "${R2_TEST_DU_DELAY:-0}"' \
   '  printf '\''17\t%s\n'\'' "${@: -1}"' \
@@ -356,7 +369,7 @@ printf '%s\n' \
   'fi' \
   'printf '\''17\t%s\n'\'' "${@: -1}"' \
   >"$fake_disk_bin/du"
-chmod 755 "$fake_disk_bin/du"
+chmod 755 "$fake_disk_bin/du" "$fake_disk_bin/ionice" "$fake_disk_bin/nice"
 disk_row=$(R2_TEST_DU_STATE="$fake_disk_state" PATH="$fake_disk_bin:$PATH" \
   r2_measure_checkout_mib "$repo_root") || fail 'disk sampler did not recover from a raced walk'
 IFS=$'\t' read -r disk_started disk_mib <<<"$disk_row"
