@@ -9,6 +9,7 @@ members = [
     "crates/nomos-cli",
     "crates/nomos-play",
     "crates/nomos-render-plan",
+    "crates/nomos-observed-scene",
     "xtask",
 ]
 
@@ -36,6 +37,9 @@ nomos-sim = { path = "crates/nomos-sim" }
 # kernel crate and on another declared R1 crate while the graph stays acyclic.
 nomos-play = { path = "crates/nomos-play" }
 nomos-render-plan = { path = "crates/nomos-render-plan" }
+
+# R2.md revision 1 section 4: the isolated observed-scene carrier/compiler.
+nomos-observed-scene = { path = "crates/nomos-observed-scene" }
 
 # Lean build profile: KERNEL.md acceptance 16 measures peak disk, so debug
 # builds carry line tables only instead of full DWARF.

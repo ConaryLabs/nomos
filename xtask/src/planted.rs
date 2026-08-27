@@ -20,7 +20,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use crate::boundary::{Graph, R1_CRATES, Violation};
+use crate::boundary::{Graph, R1_CRATES, R2_CRATES, Violation};
 use crate::load_graph;
 
 /// A planted R1 member. The name is not, and will not become, a workspace
@@ -30,6 +30,7 @@ const PLANTED_R1: &str = "nomos-planted-r1";
 
 /// A second planted R1 member: a cycle needs two crates.
 const PLANTED_PEER: &str = "nomos-planted-peer";
+const PLANTED_EXTERNAL: &str = "nomos-planted-external";
 
 /// The shipped declared members plus the planted ones.
 fn declared_with<'a>(planted: &[&'a str]) -> Vec<&'a str> {
@@ -149,6 +150,88 @@ impl Planted {
             "`{member}` has no `[dependencies]` section to plant into"
         );
         fs::write(&manifest, planted).expect("write a member manifest");
+    }
+
+    fn plant_external_package(&self) {
+        let directory = self.root.join("external").join(PLANTED_EXTERNAL);
+        fs::create_dir_all(directory.join("src")).expect("create external package");
+        fs::write(
+            directory.join("Cargo.toml"),
+            format!(
+                "[package]\nname = \"{PLANTED_EXTERNAL}\"\nversion = \"0.0.0\"\nedition = \"2024\"\n"
+            ),
+        )
+        .expect("write external manifest");
+        fs::write(
+            directory.join("src/lib.rs"),
+            "//! Planted external package.\n",
+        )
+        .expect("write external source");
+
+        let manifest = self.manifest();
+        let text = fs::read_to_string(&manifest).expect("read workspace manifest");
+        let planted = text.replacen(
+            "resolver = \"3\"\n",
+            &format!("resolver = \"3\"\nexclude = [\"external/{PLANTED_EXTERNAL}\"]\n"),
+            1,
+        );
+        fs::write(manifest, planted).expect("exclude external package from workspace");
+    }
+
+    fn plant_r2_external_dependency(&self, section: &str, specification: &str) {
+        self.plant_external_package();
+        let manifest = self.root.join("crates/nomos-observed-scene/Cargo.toml");
+        let mut text = fs::read_to_string(&manifest).expect("read R2 manifest");
+        let dependency = format!(
+            "{PLANTED_EXTERNAL} = {{ path = \"../../external/{PLANTED_EXTERNAL}\"{specification} }}\n"
+        );
+        if section == "dependencies" {
+            text = text.replacen(
+                "[dependencies]\n",
+                &format!("[dependencies]\n{dependency}"),
+                1,
+            );
+        } else {
+            text.push_str(&format!("\n[{section}]\n{dependency}"));
+        }
+        fs::write(manifest, text).expect("plant R2 dependency");
+    }
+
+    fn replace_r2_core_with_external_namesake(&self) {
+        let external = self.root.join("external/fake-nomos-core");
+        fs::create_dir_all(external.join("src")).expect("create fake core package");
+        fs::write(
+            external.join("Cargo.toml"),
+            "[package]\nname = \"nomos-core\"\nversion = \"9.9.9\"\nedition = \"2024\"\n",
+        )
+        .expect("write fake core manifest");
+        fs::write(
+            external.join("src/lib.rs"),
+            "//! External namesake; never accepted as the kernel member.\n",
+        )
+        .expect("write fake core source");
+
+        let workspace = self.manifest();
+        let text = fs::read_to_string(&workspace).expect("read workspace manifest");
+        let text = text.replacen(
+            "resolver = \"3\"\n",
+            "resolver = \"3\"\nexclude = [\"external/fake-nomos-core\"]\n",
+            1,
+        );
+        fs::write(workspace, text).expect("exclude fake core package");
+
+        let manifest = self.root.join("crates/nomos-observed-scene/Cargo.toml");
+        let text = fs::read_to_string(&manifest).expect("read R2 manifest");
+        let planted = text.replacen(
+            "nomos-core.workspace = true",
+            "nomos-core = { path = \"../../external/fake-nomos-core\" }",
+            1,
+        );
+        assert_ne!(
+            planted, text,
+            "R2 manifest no longer declares workspace core"
+        );
+        fs::write(manifest, planted).expect("replace core with external namesake");
     }
 
     fn graph(&self) -> Graph {
@@ -319,6 +402,122 @@ fn the_shipped_workspace_has_no_member_under_apps() {
     let violations = graph.check();
     assert!(
         violations.iter().all(|one| one.rule != "viewer-isolation"),
+        "{violations:?}"
+    );
+}
+
+#[test]
+fn an_undeclared_r2_member_fails_membership() {
+    let planted = Planted::copy_of_the_workspace("undeclared-r2");
+    let violations = planted.graph().check_with_lists(&R1_CRATES, &[]);
+    assert!(violations.iter().any(|violation| {
+        violation.rule == "membership" && violation.detail.contains("nomos-observed-scene")
+    }));
+}
+
+#[test]
+fn every_external_r2_dependency_class_fails_closed() {
+    for (label, section, specification) in [
+        ("normal", "dependencies", ""),
+        ("optional", "dependencies", ", optional = true"),
+        ("dev", "dev-dependencies", ""),
+        ("build", "build-dependencies", ""),
+        (
+            "target",
+            "target.'cfg(target_os = \"none\")'.dependencies",
+            "",
+        ),
+    ] {
+        let planted = Planted::copy_of_the_workspace(label);
+        planted.plant_r2_external_dependency(section, specification);
+        let violations = planted.graph().check();
+        assert!(
+            violations.iter().any(|violation| {
+                violation.rule == "r2-dependency-allowlist"
+                    && violation.detail.contains(PLANTED_EXTERNAL)
+            }),
+            "{label}: {violations:?}"
+        );
+    }
+}
+
+#[test]
+fn an_external_namesake_cannot_impersonate_the_workspace_core() {
+    let planted = Planted::copy_of_the_workspace("r2-core-namesake");
+    planted.replace_r2_core_with_external_namesake();
+    let violations = planted.graph().check();
+    assert!(
+        violations.iter().any(|violation| {
+            violation.rule == "r2-dependency-allowlist"
+                && violation
+                    .detail
+                    .contains("workspace-member edge `nomos-core`")
+        }),
+        "{violations:?}"
+    );
+    assert!(
+        violations.iter().any(|violation| {
+            violation.rule == "r2-transitive-dependency"
+                && violation.detail.contains("fake-nomos-core")
+        }),
+        "{violations:?}"
+    );
+}
+
+#[test]
+fn a_transitive_r2_dependency_fails_closed() {
+    let planted = Planted::copy_of_the_workspace("r2-transitive");
+    planted.plant_external_package();
+    let manifest = planted.root.join("crates/nomos-core/Cargo.toml");
+    let text = fs::read_to_string(&manifest).expect("read core manifest");
+    let text = text.replacen(
+        "[dependencies]\n",
+        &format!(
+            "[dependencies]\n{PLANTED_EXTERNAL} = {{ path = \"../../external/{PLANTED_EXTERNAL}\" }}\n"
+        ),
+        1,
+    );
+    fs::write(manifest, text).expect("plant transitive dependency");
+    let violations = planted.graph().check();
+    assert!(
+        violations.iter().any(|violation| {
+            violation.rule == "r2-transitive-dependency"
+                && violation.detail.contains(PLANTED_EXTERNAL)
+        }),
+        "{violations:?}"
+    );
+}
+
+#[test]
+fn kernel_and_r1_edges_into_r2_fail_closed() {
+    for (label, member) in [("kernel-to-r2", "nomos-sim"), ("r1-to-r2", "nomos-play")] {
+        let planted = Planted::copy_of_the_workspace(label);
+        planted.plant_dependency(member, R2_CRATES[0]);
+        let violations = planted.graph().check();
+        assert!(
+            violations.iter().any(|violation| {
+                violation.rule == "r2-permitted-edges" && violation.detail.contains(member)
+            }),
+            "{label}: {violations:?}"
+        );
+    }
+}
+
+#[test]
+fn an_r2_cycle_fails_closed() {
+    let planted = Planted::copy_of_the_workspace("r2-cycle");
+    let manifest = planted.root.join("crates/nomos-core/Cargo.toml");
+    let mut text = fs::read_to_string(&manifest).expect("read core manifest");
+    text.push_str(&format!(
+        "\n[dev-dependencies]\n{} = {{ path = \"../{}\" }}\n",
+        R2_CRATES[0], R2_CRATES[0]
+    ));
+    fs::write(manifest, text).expect("plant R2 cycle");
+    let violations = planted.graph().check();
+    assert!(
+        violations
+            .iter()
+            .any(|violation| violation.rule == "cycles"),
         "{violations:?}"
     );
 }

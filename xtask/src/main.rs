@@ -132,9 +132,11 @@ fn run_boundary(manifest_path: Option<&str>) -> ExitCode {
             boundary::TOOLING_CRATES.join(", ")
         );
         println!("  r1 members         {}", boundary::R1_CRATES.len());
+        println!("  r2 members         {}", boundary::R2_CRATES.len());
         println!(
-            "  rules checked      membership, permitted-edges, cycles, \
-             forbidden-dependency, tooling-isolation, viewer-isolation"
+            "  rules checked      membership, permitted-edges, r2-dependency-allowlist, \
+             r2-transitive-dependency, cycles, forbidden-dependency, tooling-isolation, \
+             viewer-isolation"
         );
         println!(
             "  forbidden entries  {} exact names, {} prefixes",
@@ -154,8 +156,8 @@ fn run_boundary(manifest_path: Option<&str>) -> ExitCode {
 #[cfg(test)]
 mod tests {
     use crate::boundary::{
-        FORBIDDEN_NAMES, KERNEL_CRATES, PERMITTED_EDGES, R1_CRATES, TOOLING_CRATES,
-        forbidden_category,
+        FORBIDDEN_NAMES, KERNEL_CRATES, PERMITTED_EDGES, R1_CRATES, R2_CRATES, R2_PERMITTED_EDGES,
+        TOOLING_CRATES, forbidden_category,
     };
 
     #[test]
@@ -205,6 +207,20 @@ mod tests {
             assert!(!KERNEL_CRATES.contains(&name), "`{name}` is a kernel crate");
             assert!(!TOOLING_CRATES.contains(&name), "`{name}` is tooling");
         }
+    }
+
+    #[test]
+    fn declared_r2_members_and_edges_are_closed_and_disjoint() {
+        assert_eq!(R2_PERMITTED_EDGES.len(), R2_CRATES.len());
+        for name in R2_CRATES {
+            assert!(!KERNEL_CRATES.contains(&name), "`{name}` is a kernel crate");
+            assert!(!R1_CRATES.contains(&name), "`{name}` is an R1 crate");
+            assert!(!TOOLING_CRATES.contains(&name), "`{name}` is tooling");
+        }
+        assert_eq!(
+            R2_PERMITTED_EDGES,
+            [("nomos-observed-scene", &["nomos-core"] as &[&str])]
+        );
     }
 
     #[test]

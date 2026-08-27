@@ -6,12 +6,12 @@
 //! refuses:
 //!
 //! 1. a workspace member that is not a declared kernel crate, declared tooling,
-//!    or a declared R1 crate;
+//!    declared R1 crate, or declared R2 crate;
 //! 2. an edge between kernel crates that section 10 does not permit, or an edge
 //!    out of an R1 crate that `RUNTIME.md` section 3 does not permit — including
 //!    dev-dependency edges, because a dev-dependency also lets a crate name the
 //!    other's types;
-//! 3. a cycle among the kernel and R1 crates;
+//! 3. a cycle among the kernel, R1, and R2 crates;
 //! 4. a forbidden dependency — renderer, windowing, audio, networking, watcher,
 //!    or hot-reload — anywhere reachable from a kernel crate, transitively;
 //! 5. tooling reaching into the kernel graph it checks;
@@ -62,6 +62,12 @@ pub const KERNEL_CRATES: [&str; 6] = [
 /// section 3 names the same members, or the `membership` rule refuses the
 /// workspace.
 pub const R1_CRATES: [&str; 2] = ["nomos-play", "nomos-render-plan"];
+
+/// The isolated R2 workspace member declared by `R2.md` revision 1.
+pub const R2_CRATES: [&str; 1] = ["nomos-observed-scene"];
+
+/// The complete R2 direct and transitive dependency allowlist.
+pub const R2_PERMITTED_EDGES: [(&str, &[&str]); 1] = [("nomos-observed-scene", &["nomos-core"])];
 
 /// Workspace members that are tooling rather than kernel crates.
 pub const TOOLING_CRATES: [&str; 1] = ["xtask"];
@@ -201,6 +207,8 @@ pub struct Graph {
     /// Workspace member name to its manifest path, relative to the workspace
     /// root. Rule 6 is about where a member lives, not what it depends on.
     member_manifests: BTreeMap<String, String>,
+    /// Every manifest-declared dependency, before target/feature selection.
+    declared_dependencies: BTreeMap<String, Vec<(String, Option<String>)>>,
 }
 
 impl Graph {
@@ -208,6 +216,7 @@ impl Graph {
     pub fn from_metadata(metadata: &Value) -> Result<Self, String> {
         let mut names = BTreeMap::new();
         let mut manifests = BTreeMap::new();
+        let mut declared_dependencies = BTreeMap::new();
         for package in metadata.field_array("packages") {
             let id = package
                 .field_str("id")
@@ -220,6 +229,19 @@ impl Graph {
             if let Some(manifest) = package.field_str("manifest_path") {
                 manifests.insert(id.clone(), manifest.to_owned());
             }
+            let dependencies = package
+                .field_array("dependencies")
+                .iter()
+                .filter_map(|dependency| {
+                    dependency.field_str("name").map(|name| {
+                        (
+                            name.to_owned(),
+                            dependency.field_str("rename").map(str::to_owned),
+                        )
+                    })
+                })
+                .collect();
+            declared_dependencies.insert(name.clone(), dependencies);
             names.insert(id, name);
         }
         let workspace_root = metadata.field_str("workspace_root").unwrap_or_default();
@@ -266,6 +288,7 @@ impl Graph {
             members,
             member_ids,
             member_manifests,
+            declared_dependencies,
         })
     }
 
@@ -279,6 +302,32 @@ impl Graph {
             .and_then(|id| self.edges.get(id))
             .map(|targets| targets.iter().map(|id| self.name_of(id)).collect())
             .unwrap_or_default()
+    }
+
+    fn direct_dependency_ids(&self, member: &str) -> BTreeSet<&str> {
+        self.member_ids
+            .get(member)
+            .and_then(|id| self.edges.get(id))
+            .map(|targets| targets.iter().map(String::as_str).collect())
+            .unwrap_or_default()
+    }
+
+    fn reachable_ids_from(&self, roots: &[&str]) -> BTreeSet<&str> {
+        let mut seen: BTreeSet<&str> = BTreeSet::new();
+        let mut stack: Vec<&str> = roots
+            .iter()
+            .filter_map(|name| self.member_ids.get(*name).map(String::as_str))
+            .collect();
+        while let Some(id) = stack.pop() {
+            if let Some(targets) = self.edges.get(id) {
+                for target in targets {
+                    if seen.insert(target.as_str()) {
+                        stack.push(target.as_str());
+                    }
+                }
+            }
+        }
+        seen
     }
 
     fn reachable_from(&self, roots: &[&str]) -> BTreeSet<&str> {
@@ -302,30 +351,46 @@ impl Graph {
     /// Runs every boundary rule against the declared lists, returning the
     /// violations found.
     pub fn check(&self) -> Vec<Violation> {
-        self.check_with(&R1_CRATES)
+        self.check_with_lists(&R1_CRATES, &R2_CRATES)
     }
 
     /// Runs every boundary rule with an explicitly declared R1 member list.
     ///
-    /// `check` passes `R1_CRATES`. The declaration is a parameter of the rules
-    /// so a planted-violation test can copy this workspace, plant a member, and
-    /// check it both undeclared and declared without a second copy of the rules.
+    /// `check` passes `R1_CRATES` and the frozen R2 declaration. This parameter
+    /// lets legacy planted tests vary R1 without duplicating the rules.
+    #[cfg(test)]
     pub fn check_with<'a>(&'a self, r1_crates: &[&'a str]) -> Vec<Violation> {
+        self.check_with_lists(r1_crates, &R2_CRATES)
+    }
+
+    /// Runs every rule with explicit R1 and R2 declarations for planted tests.
+    pub fn check_with_lists<'a>(
+        &'a self,
+        r1_crates: &[&'a str],
+        r2_crates: &[&'a str],
+    ) -> Vec<Violation> {
         let mut violations = Vec::new();
-        self.check_membership(r1_crates, &mut violations);
-        self.check_permitted_edges(r1_crates, &mut violations);
-        self.check_cycles(r1_crates, &mut violations);
+        self.check_membership(r1_crates, r2_crates, &mut violations);
+        self.check_permitted_edges(r1_crates, r2_crates, &mut violations);
+        self.check_r2_dependencies(r2_crates, &mut violations);
+        self.check_cycles(r1_crates, r2_crates, &mut violations);
         self.check_forbidden(&mut violations);
         self.check_tooling_isolation(&mut violations);
         self.check_viewer_isolation(&mut violations);
         violations
     }
 
-    fn check_membership(&self, r1_crates: &[&str], violations: &mut Vec<Violation>) {
+    fn check_membership(
+        &self,
+        r1_crates: &[&str],
+        r2_crates: &[&str],
+        violations: &mut Vec<Violation>,
+    ) {
         let declared: BTreeSet<&str> = KERNEL_CRATES
             .iter()
             .chain(TOOLING_CRATES.iter())
             .chain(r1_crates.iter())
+            .chain(r2_crates.iter())
             .copied()
             .collect();
         for member in &self.members {
@@ -334,7 +399,7 @@ impl Graph {
                     "membership",
                     format!(
                         "workspace member `{member}` is neither a KERNEL.md section 10 kernel \
-                         crate, declared tooling, nor a RUNTIME.md section 3 declared R1 crate"
+                         crate, declared tooling, RUNTIME.md section 3 R1 crate, nor R2.md section 4 R2 crate"
                     ),
                 ));
             }
@@ -358,9 +423,25 @@ impl Graph {
                 ));
             }
         }
+        for expected in r2_crates {
+            if !self.members.contains(*expected) {
+                violations.push(Violation::new(
+                    "membership",
+                    format!(
+                        "declared R2 crate `{expected}` is missing from the workspace; \
+                         R2.md section 4 declares a member that does not exist"
+                    ),
+                ));
+            }
+        }
     }
 
-    fn check_permitted_edges(&self, r1_crates: &[&str], violations: &mut Vec<Violation>) {
+    fn check_permitted_edges(
+        &self,
+        r1_crates: &[&str],
+        r2_crates: &[&str],
+        violations: &mut Vec<Violation>,
+    ) {
         for (crate_name, permitted) in PERMITTED_EDGES {
             if !self.members.contains(crate_name) {
                 continue;
@@ -402,14 +483,101 @@ impl Graph {
                 ));
             }
         }
+
+        // No kernel, R1, or tooling member may reach into the isolated R2
+        // carrier. These checks intentionally duplicate the source-category
+        // rules above so the R2 violation is named even if those rules evolve.
+        for crate_name in KERNEL_CRATES
+            .iter()
+            .chain(r1_crates.iter())
+            .chain(TOOLING_CRATES.iter())
+            .copied()
+        {
+            for dependency in self.direct_dependency_names(crate_name) {
+                if r2_crates.contains(&dependency) {
+                    violations.push(Violation::new(
+                        "r2-permitted-edges",
+                        format!("`{crate_name}` depends on isolated R2 crate `{dependency}`"),
+                    ));
+                }
+            }
+        }
     }
 
-    fn check_cycles<'a>(&'a self, r1_crates: &[&'a str], violations: &mut Vec<Violation>) {
+    fn check_r2_dependencies(&self, r2_crates: &[&str], violations: &mut Vec<Violation>) {
+        for crate_name in r2_crates {
+            if !self.members.contains(*crate_name) {
+                continue;
+            }
+            let permitted = R2_PERMITTED_EDGES
+                .iter()
+                .find_map(|(name, edges)| (*name == *crate_name).then_some(*edges))
+                .unwrap_or(&[]);
+            let declared = self
+                .declared_dependencies
+                .get(*crate_name)
+                .map(Vec::as_slice)
+                .unwrap_or(&[]);
+            for (dependency, rename) in declared {
+                if !permitted.contains(&dependency.as_str()) || rename.is_some() {
+                    violations.push(Violation::new(
+                        "r2-dependency-allowlist",
+                        format!(
+                            "R2 crate `{crate_name}` declares dependency `{dependency}`{}; \
+                             R2.md section 4 permits only {}",
+                            rename
+                                .as_deref()
+                                .map(|alias| format!(" renamed as `{alias}`"))
+                                .unwrap_or_default(),
+                            permitted.join(", ")
+                        ),
+                    ));
+                }
+            }
+            let direct = self.direct_dependency_ids(crate_name);
+            for expected in permitted {
+                let expected_id = self.member_ids.get(*expected).map(String::as_str);
+                if expected_id.is_none_or(|expected_id| !direct.contains(expected_id)) {
+                    violations.push(Violation::new(
+                        "r2-dependency-allowlist",
+                        format!(
+                            "R2 crate `{crate_name}` is missing required workspace-member edge `{expected}`"
+                        ),
+                    ));
+                }
+            }
+            let permitted_ids: BTreeSet<&str> = permitted
+                .iter()
+                .filter_map(|name| self.member_ids.get(*name).map(String::as_str))
+                .collect();
+            for dependency_id in self.reachable_ids_from(&[*crate_name]) {
+                if !permitted_ids.contains(dependency_id) {
+                    let dependency = self.name_of(dependency_id);
+                    violations.push(Violation::new(
+                        "r2-transitive-dependency",
+                        format!(
+                            "package `{dependency}` (`{dependency_id}`) is transitively reachable from R2 crate `{crate_name}`; \
+                             R2.md section 4 permits only {}",
+                            permitted.join(", ")
+                        ),
+                    ));
+                }
+            }
+        }
+    }
+
+    fn check_cycles<'a>(
+        &'a self,
+        r1_crates: &[&'a str],
+        r2_crates: &[&'a str],
+        violations: &mut Vec<Violation>,
+    ) {
         let mut state: BTreeMap<&str, u8> = BTreeMap::new();
         for crate_name in KERNEL_CRATES
             .iter()
             .copied()
             .chain(r1_crates.iter().copied())
+            .chain(r2_crates.iter().copied())
         {
             if self.members.contains(crate_name) {
                 self.visit(crate_name, &mut state, &mut Vec::new(), violations);

@@ -1,0 +1,19 @@
+[package]
+name = "nomos-observed-scene"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[dependencies]
+nomos-core.workspace = true
+
+[lib]
+name = "nomos_observed_scene"
+path = "src/lib.rs"
+
+[[bin]]
+name = "nomos-observed-scene"
+path = "src/bin/nomos-observed-scene.rs"
