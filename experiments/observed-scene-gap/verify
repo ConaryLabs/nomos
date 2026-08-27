@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+experiment_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+repo_root=$(git -C "$experiment_dir" rev-parse --show-toplevel)
+
+cd "$repo_root"
+experiments/executable-gaol/gaol verify
+node experiments/observed-scene-gap/probe.mjs

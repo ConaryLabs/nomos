@@ -1,0 +1,70 @@
+{
+  "schema": "nomos.experiment.observed_scene_gap@1",
+  "crop": {
+    "height": 4,
+    "width": 6
+  },
+  "terrain_layers": [
+    {
+      "id": "ground_layer",
+      "region": {
+        "max": { "x": 6, "y": 4 },
+        "min": { "x": 0, "y": 0 }
+      },
+      "role": "calm_ground"
+    },
+    {
+      "cells": [
+        { "x": 0, "y": 2 },
+        { "x": 1, "y": 2 },
+        { "x": 2, "y": 2 },
+        { "x": 3, "y": 2 },
+        { "x": 4, "y": 2 },
+        { "x": 5, "y": 2 }
+      ],
+      "id": "route_layer",
+      "role": "traversable_route"
+    },
+    {
+      "id": "structure_layer",
+      "region": {
+        "max": { "x": 5, "y": 2 },
+        "min": { "x": 3, "y": 0 }
+      },
+      "role": "structure_footprint"
+    }
+  ],
+  "actors": [
+    {
+      "cell": { "x": 1, "y": 2, "z": 0 },
+      "controlled": true,
+      "hostile": false,
+      "id": "controlled_actor",
+      "life_state": "living",
+      "protected": false
+    },
+    {
+      "cell": { "x": 2, "y": 2, "z": 0 },
+      "controlled": false,
+      "hostile": true,
+      "id": "hostile_actor",
+      "life_state": "living",
+      "protected": false
+    },
+    {
+      "cell": { "x": 3, "y": 2, "z": 0 },
+      "controlled": false,
+      "hostile": false,
+      "id": "protected_actor",
+      "life_state": "living",
+      "protected": true
+    }
+  ],
+  "observed_actions": [
+    {
+      "action": "converse",
+      "actor": "protected_actor",
+      "availability": "enabled"
+    }
+  ]
+}

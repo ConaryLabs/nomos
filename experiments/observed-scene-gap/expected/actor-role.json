@@ -1,0 +1,1 @@
+{"code":"RP0202","command":"render-plan","input":"target/observed-scene-gap/actor-role.presentation.json","message":"`actors[].role` must be `player` or `pursuer`; `protected_interactive` is neither","status":"rejected"}
