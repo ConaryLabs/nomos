@@ -174,3 +174,85 @@ jobs:
             target/nomos-viewer-build/receipt.json
           if-no-files-found: error
           retention-days: 90
+
+  r2-observed-viewer:
+    name: R2 offline two-scene proof
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      - name: Record the host proof tools
+        run: |
+          rustc --version
+          cargo --version
+          node --version
+          google-chrome --version
+
+      - name: Build the frozen packet compiler
+        run: cargo build --release --locked -p nomos-observed-scene
+
+      - name: Reconstruct and attack the independent-author packet
+        run: docs/evaluation/r2-second-scene-packet.test.sh
+
+      - name: Reproduce both compiler plans
+        run: |
+          set -euo pipefail
+          target/release/nomos-observed-scene compile \
+            --input fixtures/r2/scenes/scene_one.json \
+            --out target/r2-ci-scene-one.json
+          target/release/nomos-observed-scene compile \
+            --input fixtures/r2/scenes/scene_two.json \
+            --out target/r2-ci-scene-two.json
+          cmp fixtures/r2/plans/scene_one.json target/r2-ci-scene-one.json
+          cmp fixtures/r2/plans/scene_two.json target/r2-ci-scene-two.json
+
+      - name: R2 registers, plants, signatures, and Node tests
+        run: |
+          set -euo pipefail
+          docs/evaluation/r2-schema-ownership.sh
+          docs/evaluation/r2-source-provenance.sh
+          docs/evaluation/r2-source-provenance.test.sh
+          docs/evaluation/r2-adopter-neutrality.sh
+          docs/evaluation/r2-adopter-neutrality.test.sh
+          node docs/evaluation/r2-maximum.test.mjs
+          node docs/evaluation/r2-scene-signature.mjs \
+            fixtures/r2/scenes/scene_one.json \
+            fixtures/r2/scenes/scene_two.json >target/r2-ci-signatures.json
+          node --test \
+            apps/nomos-observed-viewer/test/*.test.mjs \
+            docs/evaluation/r2-scene-signature.test.mjs
+
+      - name: Build and scan the two-scene artifact
+        run: |
+          node apps/nomos-observed-viewer/build.mjs \
+            --plan fixtures/r2/plans/scene_one.json \
+            --plan fixtures/r2/plans/scene_two.json \
+            --out target/r2-observed-dist \
+            --receipt target/r2-observed-build.json
+
+      - name: Ten fresh browser profiles per scene
+        run: |
+          CHROME_BIN=$(command -v google-chrome) \
+            node apps/nomos-observed-viewer/smoke/smoke.mjs \
+              --dist target/r2-observed-dist \
+              --out target/r2-observed-smoke \
+              --samples 10
+
+      - name: Upload R2 build, timing, and frame evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: r2-observed-viewer-proof
+          path: |
+            target/r2-ci-signatures.json
+            target/r2-observed-build.json
+            target/r2-observed-smoke
+          if-no-files-found: error
+          retention-days: 90
