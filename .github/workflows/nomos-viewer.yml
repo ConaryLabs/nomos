@@ -197,15 +197,51 @@ jobs:
           node --version
           google-chrome --version
 
-      - name: Build the frozen packet compiler
-        env:
-          # Release diagnostics otherwise retain the checkout root. Remap the
-          # hosted path to the path used by the hash-frozen packet build.
-          RUSTFLAGS: --remap-path-prefix=${{ github.workspace }}=/data/dev/src/nomos-issue-197
+      - name: Build the host packet compiler
         run: cargo build --release --locked -p nomos-observed-scene
 
-      - name: Reconstruct and attack the independent-author packet
-        run: docs/evaluation/r2-second-scene-packet.test.sh
+      - name: Reconstruct and attack the host-portable packet controls
+        run: |
+          set -euo pipefail
+          frozen=docs/evaluation/r2-second-scene-packet/MANIFEST.sha256
+          packet=target/r2-ci-packet
+          manifest_digest=$(sha256sum "$frozen" | cut -d ' ' -f 1)
+          test "$manifest_digest" = d5708087cf7967a420667c56a7b02ed052b7058ed8545af06e6771170003c948
+
+          docs/evaluation/r2-second-scene-packet/assemble.sh \
+            f64d374ee001ef0e51b66e3b2b4078ad6d1d770e \
+            target/release/nomos-observed-scene \
+            "$packet"
+
+          # The released ELF is bound to the reference-host linker. Compare
+          # every portable packet row exactly and record the hosted binary.
+          grep -v '  bin/nomos-observed-scene$' "$frozen" >target/r2-frozen-portable.sha256
+          grep -v '  bin/nomos-observed-scene$' "$packet/MANIFEST.sha256" >target/r2-host-portable.sha256
+          cmp target/r2-frozen-portable.sha256 target/r2-host-portable.sha256
+          sha256sum target/release/nomos-observed-scene
+
+          cp -a "$packet" target/r2-ci-packet-drift
+          printf '\n' >>target/r2-ci-packet-drift/R2.md
+          if docs/evaluation/r2-second-scene-packet/verify.sh target/r2-ci-packet-drift >/dev/null 2>&1; then
+            exit 1
+          fi
+          cp -a "$packet" target/r2-ci-packet-extra
+          printf 'extra\n' >target/r2-ci-packet-extra/extra.txt
+          if docs/evaluation/r2-second-scene-packet/verify.sh target/r2-ci-packet-extra >/dev/null 2>&1; then
+            exit 1
+          fi
+
+          cp --parents \
+            fixtures/r2/scenes/scene_two.json \
+            fixtures/r2/plans/scene_two.json \
+            docs/evaluation/runs/r2/2026-08-27-issue-197-second-author/BROWSER_RECEIPT.json \
+            docs/evaluation/runs/r2/2026-08-27-issue-197-second-author/SCENE_SIGNATURES.json \
+            docs/evaluation/runs/r2/2026-08-27-issue-197-second-author/SECOND_AUTHOR_RECEIPT.md \
+            docs/evaluation/runs/r2/2026-08-27-issue-197-second-author/evidence/contact-sheet.png \
+            docs/evaluation/runs/r2/2026-08-27-issue-197-second-author/evidence/scene_1.png \
+            docs/evaluation/runs/r2/2026-08-27-issue-197-second-author/evidence/scene_2.png \
+            "$packet"
+          docs/evaluation/r2-second-scene-packet/audit-author-output.sh "$packet"
 
       - name: Reproduce both compiler plans
         run: |
