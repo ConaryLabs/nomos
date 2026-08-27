@@ -55,6 +55,15 @@ cmp -s "$tmp_dir/rows" "$tmp_dir/sorted-rows" || fail 'register rows are not LC_
   find docs/evaluation -maxdepth 1 -type f \
     \( -name 'R2_*' -o -name 'r2-*' -o -name 'generate-r2-*' -o -name 'measure-r2-*' \) \
     ! -name 'R2_SOURCE_PROVENANCE.md' ! -name 'r2-source-provenance.sh' -printf '%p\n'
+  if [[ -d docs/evaluation/r2-second-scene-packet ]]; then
+    find docs/evaluation/r2-second-scene-packet -type f -printf '%p\n'
+  fi
+  if [[ -f docs/evaluation/runs/r2/2026-08-27-issue-197-second-author/SCENE_SIGNATURES.json ]]; then
+    printf '%s\n' docs/evaluation/runs/r2/2026-08-27-issue-197-second-author/SCENE_SIGNATURES.json
+  fi
+  if [[ -d docs/evaluation/runs/r2/2026-08-27-issue-197-second-author/evidence ]]; then
+    find docs/evaluation/runs/r2/2026-08-27-issue-197-second-author/evidence -type f -printf '%p\n'
+  fi
   printf '%s\n' \
     apps/nomos-viewer/vendor/three/LICENSE \
     apps/nomos-viewer/vendor/three/three.core.min.js \
@@ -76,6 +85,12 @@ check_tree() {
 
 check_tree crates/nomos-observed-scene
 check_tree fixtures/r2
+if [[ -e $repo_root/docs/evaluation/r2-second-scene-packet ]]; then
+  check_tree docs/evaluation/r2-second-scene-packet
+fi
+if [[ -e $repo_root/docs/evaluation/runs/r2/2026-08-27-issue-197-second-author/evidence ]]; then
+  check_tree docs/evaluation/runs/r2/2026-08-27-issue-197-second-author/evidence
+fi
 if [[ -e $repo_root/apps/nomos-observed-viewer ]]; then
   [[ -d $repo_root/apps/nomos-observed-viewer && ! -L $repo_root/apps/nomos-observed-viewer ]] ||
     fail 'R2 browser source tree is non-directory or symlinked'
@@ -102,14 +117,40 @@ while IFS=$'\t' read -r path digest origin receipt license; do
 
   case $origin in
     r2_authored)
-      [[ $receipt == docs/evaluation/runs/r2/2026-08-27-issue-195-author/AUTHOR_RECEIPT.md ]] ||
-        fail "unexpected R2 author receipt for $path"
+      case $path in
+        crates/nomos-observed-scene/* | \
+        docs/evaluation/R2_SCHEMA_OWNERSHIP.md | \
+        docs/evaluation/generate-r2-maximum.mjs | \
+        docs/evaluation/measure-r2-compile.mjs | \
+        docs/evaluation/r2-maximum.test.mjs | \
+        docs/evaluation/r2-schema-ownership.sh | \
+        docs/evaluation/r2-source-provenance.test.sh | \
+        fixtures/r2/maximum-observed-scene.json | \
+        fixtures/r2/scenes/scene_one.json)
+          [[ $receipt == docs/evaluation/runs/r2/2026-08-27-issue-195-author/AUTHOR_RECEIPT.md ]] ||
+            fail "unexpected R2-1 author receipt for $path"
+          ;;
+        fixtures/r2/scenes/scene_two.json | \
+        docs/evaluation/runs/r2/2026-08-27-issue-197-second-author/SCENE_SIGNATURES.json)
+          [[ $receipt == docs/evaluation/runs/r2/2026-08-27-issue-197-second-author/SECOND_AUTHOR_RECEIPT.md ]] ||
+            fail "unexpected independent-author receipt for $path"
+          ;;
+        *)
+          [[ $receipt == docs/evaluation/runs/r2/2026-08-27-issue-197-author/AUTHOR_RECEIPT.md ]] ||
+            fail "unexpected R2-2 primary-author receipt for $path"
+          ;;
+      esac
       ;;
     compiler_produced)
-      [[ $path == fixtures/r2/plans/scene_one.json ]] ||
-        fail "unexpected compiler-produced path in R2-1: $path"
-      [[ $receipt == docs/evaluation/runs/r2/2026-08-27-issue-195-author/COMPILER_RECEIPT.md ]] ||
-        fail "unexpected compiler receipt for $path"
+      if [[ $path == fixtures/r2/plans/scene_one.json ]]; then
+        [[ $receipt == docs/evaluation/runs/r2/2026-08-27-issue-195-author/COMPILER_RECEIPT.md ]] ||
+          fail "unexpected scene-one compiler receipt"
+      elif [[ $path == fixtures/r2/plans/scene_two.json ]]; then
+        [[ $receipt == docs/evaluation/runs/r2/2026-08-27-issue-197-second-author/SECOND_AUTHOR_RECEIPT.md ]] ||
+          fail "unexpected scene-two compiler receipt"
+      else
+        fail "unexpected compiler-produced path: $path"
+      fi
       ;;
     r1_vendor_reuse)
       [[ $path == apps/nomos-viewer/vendor/three/* ]] ||
@@ -118,7 +159,10 @@ while IFS=$'\t' read -r path digest origin receipt license; do
         fail "unexpected R1 vendor receipt for $path"
       ;;
     browser_produced)
-      fail "R2-1 contains no admissible browser-produced file: $path"
+      [[ $path == docs/evaluation/runs/r2/2026-08-27-issue-197-second-author/evidence/*.png ]] ||
+        fail "browser origin assigned outside the exact evidence path: $path"
+      [[ $receipt == docs/evaluation/runs/r2/2026-08-27-issue-197-second-author/BROWSER_RECEIPT.json ]] ||
+        fail "unexpected browser receipt for $path"
       ;;
     *) fail "unknown origin class for $path: $origin" ;;
   esac
