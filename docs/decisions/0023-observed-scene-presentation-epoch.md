@@ -1,6 +1,6 @@
 ---
 title: Narrow observed-scene presentation epoch (R2)
-status: Proposed; owner disposition pending; no R2 authority
+status: Owner-authorized; R2 epoch open; R2 contract pending
 number: 0023
 date: 2026-08-27
 owner: Peter Permenter
@@ -19,18 +19,17 @@ future_contract: R2.md
 
 # Narrow observed-scene presentation epoch (R2)
 
-## Proposal authority
+## Decision authority
 
-This record was prepared under issue #191 after the owner asked to continue
-from the reusable missing-capability finding on 2026-08-27. Its exact wording
-has not yet received an owner disposition. Until that happens, this record
-authorizes nothing: R1 stays closed, no R2 contract exists, and no
-implementation may begin.
+This record was prepared under issue #191 after the owner asked to continue from
+the reusable missing-capability finding. Peter Permenter approved the exact
+reviewed wording on 2026-08-27. The decision takes effect as written: R2 opens,
+but no R2 contract exists and no implementation may begin.
 
-The proposed decision chooses disposition 3 from decision 0022: authorize a
-separately decided narrow R2 based on minimal failing evidence. It does not
-choose browser or Godot for production and does not adopt Nomos into The Mortal
-Estate or any other game.
+This decision chooses disposition 3 from decision 0022: authorize a separately
+decided narrow R2 based on minimal failing evidence. It does not choose browser
+or Godot for production and does not adopt Nomos into The Mortal Estate or any
+other game.
 
 ## Evidence relied on
 
@@ -100,7 +99,7 @@ a masonry mass changes its meaning; and deriving an observed action inside the
 presenter creates a second gameplay authority. The honest route is a new,
 strictly bounded presentation epoch with successor schemas and its own proof.
 
-## Proposed decision
+## Decision
 
 Open R2 as one narrow observed-scene presentation epoch. R2 asks whether Nomos
 can accept already-resolved scene observations, compile only their presentation
@@ -247,7 +246,7 @@ Pause for owner disposition if any target exposes:
 - evidence that the capability is specific to one adopter or requires a deeper
   gameplay-runtime replacement.
 
-The permitted owner dispositions at a stop are repair the proposed R2 contract
+The permitted owner dispositions at a stop are repair the R2 contract candidate
 without weakening it, authorize a separately evidenced expansion, or stop.
 
 ## Explicit non-authorizations
@@ -287,6 +286,8 @@ integration evidence, measured cost acceptance, and final project decision.
 
 ## Owner disposition
 
-**Pending.** The owner may authorize this decision exactly as written, narrow
-or repair it explicitly, or refuse it. Until that disposition is recorded, no
-R2 epoch, contract, implementation, schema, or dependency is authorized.
+**Authorize.** Peter Permenter authorized this decision exactly as written on
+2026-08-27. Open the narrow observed-scene presentation epoch and make `R2.md`
+the next separately reviewed, owner-authorized slice. This disposition
+authorizes no implementation, schema, dependency, accepted artifact, platform
+choice, or game-adoption claim before that contract takes effect.
