@@ -26,6 +26,13 @@ name = "nomos-core"
 version = "0.0.0"
 
 [[package]]
+name = "nomos-observed-scene"
+version = "0.0.0"
+dependencies = [
+ "nomos-core",
+]
+
+[[package]]
 name = "nomos-play"
 version = "0.0.0"
 dependencies = [
