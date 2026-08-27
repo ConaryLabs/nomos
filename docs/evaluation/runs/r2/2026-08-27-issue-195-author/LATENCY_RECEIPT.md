@@ -97,3 +97,12 @@ without changing the workload, ceiling, calculation, or synced publication:
   `2e6fcfa133d04319c02e4484269cc969e52c2476758b2f9df9a2caf6f275111f`;
   and
 - retained directory: `target/r2-latency-c87bdde/` (`112` regular files).
+
+The clean detached evidence commit
+`50897ad8b9429d0a62693b5769645b6bd314feca`, tree
+`db8666633fdd11548dafff0a48af0982d5ad9a46`, repeated that binary and output
+digest: median numerator `76,119,018 ns` (median `38,059,509 ns`) and p95
+`42,049,356 ns`, both pass. Its raw-sample SHA-256 is
+`9e3ac3902a814c65dbaa31b22ec859b79441a5aa51d320406b7e3fa4ee87a206` and
+summary SHA-256 is
+`1e104212c204aa14cd2ad623504fe4b1dfd486f7c88ecb4e0c69d0e5c6bea9e2`.

@@ -4,9 +4,9 @@ Status: author proof passed; exact-head non-author proof pending.
 
 ## Candidate binding
 
-- Candidate commit: `74478ace9e7397c8dd4339c806f33041b0500194`
-- Candidate tree: `cd2d05f4022154100173c7ac2f64c48fff315e59`
-- Detached proof worktree: `/data/dev/src/nomos-issue-195-proof`
+- Candidate commit: `50897ad8b9429d0a62693b5769645b6bd314feca`
+- Candidate tree: `db8666633fdd11548dafff0a48af0982d5ad9a46`
+- Detached proof worktree: `/data/dev/src/nomos-issue-195-proof-2`
 - Host: `remi`, Linux `7.0.0-30-generic`, x86_64, 12 logical CPUs
 - Rust: `rustc 1.98.0 (88d9e12ae 2026-08-18)`
 - Node: `v22.22.1`
@@ -36,7 +36,7 @@ Results:
 - R2 schema register: 2 identities, SHA-256
   `948dae85d6cbcedc0ffc55629bfbf633a8b934bb99e23a84a11bada43fe11531`;
 - R2 source register: 31 rows, SHA-256
-  `41481c7a44db30479e5db2c9ac03a6ac23db0d8c18c530cfc986067bfa145fb3`;
+  `e23ffa6dfe7573308184885edd23ade16e4149d3bf9907a0b6a323d9c926200e`;
 - exact maximum fixture: 98,421 bytes, SHA-256
   `fe332f711437dab15e4d1315cc3ca57dba6521350ff673941e77feb414585909`.
 
@@ -47,18 +47,18 @@ receipt cases.
 ## Exact-head latency confirmation
 
 The detached candidate built the release compiler and ran the exact 10+100
-fresh-process method into `target/r2-latency-74478ac/`. All 110 outputs were
+fresh-process method into `target/r2-latency-50897ad/`. All 110 outputs were
 retained and had the same 111,604-byte SHA-256
 `aa36d6befffa48870d8f6cee00663139ec301bb1b606b9270e5e7984566cd6f0`.
 
 - Binary SHA-256:
-  `8948aa69c094e6af964ddef6c46506cdce1bb18f75ddbced036b18f951e7cff4`
-- Median numerator: `79,784,505 ns`; median: `39,892,252.5 ns`; pass.
-- p95: `47,682,882 ns`; pass.
+  `a853d88b973e6540bfd79c65f363f4052340a3d739901d5959d63e4faed54121`
+- Median numerator: `76,119,018 ns`; median: `38,059,509 ns`; pass.
+- p95: `42,049,356 ns`; pass.
 - Raw-sample SHA-256:
-  `5445c7678b906242f2ae3776bdaef980c32a2d5c1218a809498e12dee97dd087`
+  `9e3ac3902a814c65dbaa31b22ec859b79441a5aa51d320406b7e3fa4ee87a206`
 - Summary SHA-256:
-  `68ab4747660f391a356a8b58b9799cc5c8d0d2b6c860587cf6e02f08f5d8c71f`
+  `1e104212c204aa14cd2ad623504fe4b1dfd486f7c88ecb4e0c69d0e5c6bea9e2`
 
 The two earlier red runs remain recorded in `LATENCY_RECEIPT.md`; neither the
 ceiling nor method changed.
@@ -77,12 +77,12 @@ Chromium smoke and native replay.
   zero external requests; negative external fetch failed as required.
 - Native replay: 77 commands and receipts; pass; chain head
   `43a1b2164f18bc54738d0402013419659576e2d866c3fca630321a2ca641f143`.
-- Process closure: pass in 21 ms; no browser, server, smoke, or play process
+- Process closure: pass in 24 ms; no browser, server, smoke, or play process
   remained.
 - Viewer-build receipt SHA-256:
   `03f79d195f388d7aea105365cc0e8d28697d06ce031387ae10fac408175cd227`.
 - Smoke receipt SHA-256:
-  `a4be57f3c2616f507d1fa03455866743c078a7e3bd1cfd6194d5fc6897161235`.
+  `ca321ec5e3c7a84a7f8bf7b8981b5e43f82337692026a39ee67607fd274caac1`.
 - Session SHA-256:
   `9e05713fe5568fa76ff5e346e4f4de351972c774827a0e58318b910c7add1cea`.
 
