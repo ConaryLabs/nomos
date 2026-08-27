@@ -1,6 +1,6 @@
 # Nomos handoff
 
-Status snapshot: 2026-08-27, at the decision 0023 authorization slice. This file
+Status snapshot: 2026-08-27, at the R2 contract authorization slice. This file
 is an operational map; owner decisions and revisioned contracts remain the
 authority when prose conflicts.
 
@@ -15,17 +15,17 @@ point, recorded one representative adopter frame, and reduced the observed gap
 to an adopter-neutral fixture classified `reusable missing Nomos capability`.
 
 Decision 0023 opens one narrow R2 observed-scene presentation epoch. It does
-not authorize implementation directly. The root R2 contract does not yet
-exist; the next authorized action is a separately falsifiable documentation
-issue proposing `R2.md`. No R2 code, schema, dependency, accepted artifact,
-platform choice, or game-adoption claim may precede that contract's separate
-owner authorization.
+not authorize implementation directly. The separately reviewed root `R2.md`
+revision 1 is now owner-authorized. Its first target is R2-1, the strict carrier
+and compiler, and must begin from its own falsifiable issue. No R2 code, schema,
+dependency, or artifact is admitted merely by the contract; no platform choice
+or game-adoption claim is authorized.
 
-At decision 0023's input baseline commit
-`d12f56ec7f8a1f4a26db4d8482d5c4571ce1735d`, tree
-`ed33da33797bc58006c72a0ed8f5e048a471a65f`, GitHub had zero open issues and
-zero open pull requests. Issue #191 and its decision PR are the expected
-temporary exception while this authorization lands.
+At the authorized R2 contract baseline commit
+`7c0d2e1e1ec2239179e23ff294d3ab29d50ba088`, tree
+`c50720762ec0221e2bed2783f1594930a56834fd`, decision 0023 was merged and its
+issue was closed. Issue #193 and PR #194 are the expected temporary exceptions
+while the contract disposition lands.
 
 A fresh agent must not infer active work from an old remote branch. The
 repository intentionally retains evidence branches and annotated tags. Check
@@ -67,8 +67,8 @@ missing Nomos capability`. Decision 0023 is the resulting epoch stop.
 | R1 contract | revision 4 in force | `RUNTIME.md`, decision 0021 |
 | Game adoption | not authorized; thesis applies to no game | decision 0019 |
 | Mortal Estate presentation evidence | bounded prerequisite evidence complete; no adoption | decisions 0022 and 0023 evidence |
-| R2 observed-scene presentation epoch | open; contract pending; no implementation | decision 0023 |
-| Current queue | decision issue #191 while this slice lands; `R2.md` is next | GitHub issues and PRs, decision 0023 |
+| R2 observed-scene presentation epoch | revision 1 authorized; no implementation admitted | `R2.md`, decision 0023 |
+| Current queue | issue #193 and PR #194 while the contract lands; R2-1 is next | GitHub issues and PRs, `R2.md` |
 
 The accepted R1 surface consists of:
 
@@ -251,10 +251,10 @@ Ordinary bug maintenance against the accepted R1 baseline may start from a new
 issue with falsifiable acceptance.
 
 Decision 0023 authorizes the R2 epoch boundary and nothing past its stated
-order. The next slice is a separately reviewed `R2.md` contract defining exact
-acceptance, finite input and output grammars, ownership, workspace boundaries,
-budgets, and proof. No implementation begins until the owner authorizes that
-contract.
+order. The separately reviewed `R2.md` revision 1 now defines exact acceptance,
+finite input and output grammars, ownership, workspace boundaries, budgets, and
+proof. The next slice is its R2-1 strict carrier and compiler, starting from a
+new falsifiable issue.
 
 After the contract, each implementation target still begins from its own
 falsifiable issue and non-author proof. A deeper adopter boundary, platform
