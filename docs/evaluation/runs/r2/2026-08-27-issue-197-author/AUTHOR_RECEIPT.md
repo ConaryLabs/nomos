@@ -15,6 +15,18 @@ by the packet control commit and final exact-head proof.
   command's final LF
 - Author: Codex primary agent, GPT-5 family
 
+## Frozen implementation and packet
+
+- Implementation commit: `f64d374ee001ef0e51b66e3b2b4078ad6d1d770e`
+- Implementation tree: `2cae2ec952ccd21cff9c6e9e91424922551b35e5`
+- Release compiler SHA-256:
+  `dde136c1f2abd66e68ec395ce2fcfb427eec62e17f150d1bf35776a9da41e264`
+- Renderer catalog SHA-256:
+  `6259520fbf318ae0393ea4ae69649864acb154db4034d081435416be2ffa9323`
+- Second-scene packet manifest SHA-256:
+  `d5708087cf7967a420667c56a7b02ed052b7058ed8545af06e6771170003c948`
+- Packet inventory: 42 regular files; the manifest excludes only itself.
+
 ## Consulted inputs
 
 The implementation used the baseline repository authority named by
