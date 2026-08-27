@@ -448,6 +448,8 @@ sleep 0.8
 wait "$history_sampler_pid" || fail 'history sampler rejected quick complete walks'
 history_count=$(awk 'NR > 1 { count += 1 } END { print count + 0 }' "$history_samples")
 history_probe_count=$(wc -l <"$history_probes")
+# These quick two-period walks should need only a small active set; sixteen
+# probes per launch is deliberately generous but still rejects O(n²) history.
 [[ $history_count -ge 40 && $history_probe_count -gt 0 &&
   $history_probe_count -le $(((history_count + 1) * 16)) &&
   ! -e $history_parts ]] ||
@@ -499,7 +501,7 @@ printf 'ordinal\telapsed_ms\tmebibytes\n' >"$overload_samples"
 mkdir "$overload_state"
 set +e
 (
-  export R2_TEST_DU_STABLE=1 R2_TEST_DU_DELAY=1.0
+  export R2_TEST_DU_STABLE=1 R2_TEST_DU_DELAY=2.0
   export PATH="$fake_disk_bin:$PATH"
   r2_sample_checkout_disk \
     "$repo_root" "$overload_samples" "$overload_stop" "$overload_state" \
@@ -509,7 +511,7 @@ overload_status=$?
 set -e
 [[ $overload_status -ne 0 && ! -s $temporary/overload.stdout ]] ||
   fail 'asynchronous sampler permitted unbounded concurrent walks'
-grep -Fx 'R2 disk sampler: sixteen concurrent du walks are still active' \
+grep -Fx 'R2 disk sampler: thirty-two concurrent du walks are still active' \
   "$temporary/overload.stderr" >/dev/null ||
   fail 'asynchronous sampler concurrency-limit diagnostic differs'
 plant_count=$((plant_count + 1))

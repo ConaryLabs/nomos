@@ -173,8 +173,8 @@ r2_sample_checkout_disk() {
   launch_sample() {
     reap_finished_samples || return
     active=${#sample_pids[@]}
-    [[ $active -lt 16 ]] || {
-      printf 'R2 disk sampler: sixteen concurrent du walks are still active\n' >&2
+    [[ $active -lt 32 ]] || {
+      printf 'R2 disk sampler: thirty-two concurrent du walks are still active\n' >&2
       return 3
     }
     sample_started=$(date +%s%N) || return 2

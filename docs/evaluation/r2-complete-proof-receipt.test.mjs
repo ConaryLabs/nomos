@@ -234,7 +234,7 @@ const makeTemplate = () => {
 
   writeFileSync(join(template, "measurements/clean-release-time.txt"), "\tElapsed (wall clock) time (h:mm:ss or m:ss): 0:12.34\n\tExit status: 0\n");
   writeFileSync(join(template, "measurements/checkout-disk-samples.tsv"), "ordinal\telapsed_ms\tmebibytes\n0\t0\t100\n1\t50\t120\n");
-  json(join(template, "measurements/checkout-disk-summary.json"), { outcome: "pass", interval_ms: 50, samples: 2, initial_mib: 100, final_mib: 120, maximum_mib: 120, max_gap_ms: 50, cpu_priority: "ordinary", io_priority_class: "idle", concurrency_limit: 16, du_arguments: ["-sm", "--", "<checkout>"] });
+  json(join(template, "measurements/checkout-disk-summary.json"), { outcome: "pass", interval_ms: 50, samples: 2, initial_mib: 100, final_mib: 120, maximum_mib: 120, max_gap_ms: 50, cpu_priority: "ordinary", io_priority_class: "idle", concurrency_limit: 32, du_arguments: ["-sm", "--", "<checkout>"] });
 
   mkdir(join(template, "r1/wasm"));
   writeFileSync(join(template, "r1/wasm/nomos_play.wasm"), wasm);

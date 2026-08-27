@@ -911,7 +911,7 @@ jq -n \
   --argjson maximum_gap "$disk_maximum_gap" \
   '{outcome:"pass",interval_ms:50,samples:$samples,initial_mib:$initial,
     final_mib:$final,maximum_mib:$maximum,max_gap_ms:$maximum_gap,
-    cpu_priority:"ordinary",io_priority_class:"idle",concurrency_limit:16,
+    cpu_priority:"ordinary",io_priority_class:"idle",concurrency_limit:32,
     du_arguments:["-sm","--","<checkout>"]}' \
   >"$evidence_dir/measurements/checkout-disk-summary.json"
 
