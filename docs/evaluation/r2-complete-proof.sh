@@ -446,18 +446,20 @@ record_tool() {
     "$(dirname "$rustc_toolchain")/../lib/rustlib/$host_triple/bin/rust-lld"
   record_tool chrome "$CHROME_BIN"
 } >"$evidence_dir/metadata/tools.txt"
+tools_record=$evidence_dir/metadata/tools.txt
 {
-  printf 'git='; git --version
-  printf 'bash=%s\n' "$BASH_VERSION"
-  printf 'rustc='; rustc --version
-  printf 'cargo='; cargo --version
-  printf 'rustup='; rustup --version 2>/dev/null | head -1
-  printf 'node='; node --version
-  printf 'jq='; jq --version
-  printf 'bubblewrap='; bwrap --version
-  printf 'cc='; cc --version | head -1
-  printf 'ld='; ld --version | head -1
-  printf 'chrome='; "$CHROME_BIN" --version
+  r2_emit_recorded_tool_version "$tools_record" git git --version
+  r2_emit_recorded_tool_version "$tools_record" bash bash \
+    -c 'printf '\''%s\n'\'' "$BASH_VERSION"'
+  r2_emit_recorded_tool_version "$tools_record" rustc rustc-toolchain --version
+  r2_emit_recorded_tool_version "$tools_record" cargo cargo-toolchain --version
+  r2_emit_recorded_tool_version "$tools_record" rustup rustup --version
+  r2_emit_recorded_tool_version "$tools_record" node node --version
+  r2_emit_recorded_tool_version "$tools_record" jq jq --version
+  r2_emit_recorded_tool_version "$tools_record" bubblewrap bwrap --version
+  r2_emit_recorded_tool_version "$tools_record" cc cc --version
+  r2_emit_recorded_tool_version "$tools_record" ld ld --version
+  r2_emit_recorded_tool_version "$tools_record" chrome chrome --version
 } >"$evidence_dir/metadata/tool-versions.txt"
 
 commands_ledger=$evidence_dir/commands.tsv

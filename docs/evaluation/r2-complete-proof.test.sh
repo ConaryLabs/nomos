@@ -333,6 +333,27 @@ r2_measure_process_closure "$closure_namespace" "$closure_token" "$closure_repor
   fail 'closure primitive did not pass after the planted child closed'
 [[ ! -s $closure_report ]] || fail 'clean closure report is not empty'
 
+# Version evidence must invoke the exact canonical path recorded and digested
+# in tools.txt. This fake reports its argv[0] basename, so invoking its `cc`
+# symlink would produce different evidence from invoking the recorded file.
+fake_version_real=$temporary/version-real
+fake_version_link=$temporary/cc
+fake_version_tools=$temporary/version-tools.tsv
+printf '%s\n' \
+  '#!/usr/bin/env bash' \
+  'printf '\''%s\n'\'' "${0##*/}"' \
+  >"$fake_version_real"
+chmod 755 "$fake_version_real"
+ln -s "$fake_version_real" "$fake_version_link"
+printf 'tool\tpath\tsha256\ncc\t%s\t%s\n' \
+  "$fake_version_real" "$(sha256sum "$fake_version_real" | cut -d' ' -f1)" \
+  >"$fake_version_tools"
+fake_version=$(PATH="$temporary:$PATH" \
+  r2_emit_recorded_tool_version "$fake_version_tools" cc cc --version) ||
+  fail 'recorded tool version helper rejected a canonical executable'
+[[ $fake_version == 'cc=version-real' ]] ||
+  fail 'tool version evidence invoked a command symlink instead of its recorded path'
+
 # A `du` walk can race Cargo's atomic deletion of an intermediate file. The
 # sampler must discard that incomplete walk, retain a subsequent complete
 # result, and fail closed if no complete result can be obtained.

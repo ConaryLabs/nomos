@@ -78,6 +78,40 @@ r2_execute_step() {
   ) >"$stdout_file" 2>"$stderr_file"
 }
 
+r2_emit_recorded_tool_version() {
+  [[ $# -ge 4 && -f $1 && ! -L $1 && $2 =~ ^[a-z0-9-]+$ &&
+    $3 =~ ^[a-z0-9-]+$ ]] || {
+    printf 'R2 tool version: invalid arguments\n' >&2
+    return 2
+  }
+  local register=$1
+  local key=$2
+  local label=$3
+  shift 3
+  local path output first
+  path=$(awk -F '\t' -v label="$label" '
+    $1 == label { count += 1; path = $2 }
+    END { if (count != 1 || path !~ /^\//) exit 1; print path }
+  ' "$register") || {
+    printf 'R2 tool version: recorded path differs for %s\n' "$label" >&2
+    return 2
+  }
+  [[ -f $path && -x $path && ! -L $path && $(realpath -e -- "$path") == "$path" ]] || {
+    printf 'R2 tool version: recorded path is not one canonical executable: %s\n' "$label" >&2
+    return 2
+  }
+  output=$("$path" "$@" 2>/dev/null) || {
+    printf 'R2 tool version: recorded executable failed: %s\n' "$label" >&2
+    return 1
+  }
+  first=${output%%$'\n'*}
+  [[ -n $first && $first != *$'\r'* ]] || {
+    printf 'R2 tool version: recorded executable emitted no canonical line: %s\n' "$label" >&2
+    return 2
+  }
+  printf '%s=%s\n' "$key" "$first"
+}
+
 r2_measure_checkout_mib() {
   [[ $# -eq 1 && -d $1 ]] || {
     printf 'R2 disk sampler: invalid checkout root\n' >&2
