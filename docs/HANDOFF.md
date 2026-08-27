@@ -1,7 +1,7 @@
 # Nomos handoff
 
-Status snapshot: 2026-08-27, at the R2 contract authorization slice. This file
-is an operational map; owner decisions and revisioned contracts remain the
+Status snapshot: 2026-08-27, at the R2-2 implementation stop line. This file is
+an operational map; owner decisions and revisioned contracts remain the
 authority when prose conflicts.
 
 **Play the accepted six-area viewer:** <https://conarylabs.github.io/nomos/>
@@ -14,18 +14,15 @@ baseline. Decision 0019 expressly does **not** adopt Nomos into a game. Decision
 point, recorded one representative adopter frame, and reduced the observed gap
 to an adopter-neutral fixture classified `reusable missing Nomos capability`.
 
-Decision 0023 opens one narrow R2 observed-scene presentation epoch. It does
-not authorize implementation directly. The separately reviewed root `R2.md`
-revision 1 is now owner-authorized. Its first target is R2-1, the strict carrier
-and compiler, and must begin from its own falsifiable issue. No R2 code, schema,
-dependency, or artifact is admitted merely by the contract; no platform choice
-or game-adoption claim is authorized.
-
-At the authorized R2 contract baseline commit
-`7c0d2e1e1ec2239179e23ff294d3ab29d50ba088`, tree
-`c50720762ec0221e2bed2783f1594930a56834fd`, decision 0023 was merged and its
-issue was closed. Issue #193 and PR #194 are the expected temporary exceptions
-while the contract disposition lands.
+Decision 0023 opens one narrow R2 observed-scene presentation epoch. The
+separately reviewed root `R2.md` revision 1 is owner-authorized. R2-1's strict
+carrier and compiler landed through PR #196 at
+`cc47a7235f92d0ed460c7db5d178448b12fdba02`, tree
+`2bce614d2df94464c20042cdf059a7b22ec39c09`. R2-2's isolated offline consumer
+and independent second scene land through PR #198. Those implementation
+targets do not themselves admit R2. The next target is a new, separately
+falsifiable final-evidence-and-disposition issue; no platform choice or
+game-adoption claim is authorized.
 
 A fresh agent must not infer active work from an old remote branch. The
 repository intentionally retains evidence branches and annotated tags. Check
@@ -55,7 +52,10 @@ dependency point after a Luna max rerun. TME issue #5 and PR #6 recorded and
 independently reproduced the representative observer frame. Nomos issue #189
 and PR #190 reduced the gap to a quarantined generic fixture, received a Luna
 max cold attack, and closed on the owner's exact classification `reusable
-missing Nomos capability`. Decision 0023 is the resulting epoch stop.
+missing Nomos capability`. Decision 0023 is the resulting epoch boundary.
+R2-1 then landed through PR #196. R2-2's packet-frozen second scene was authored
+by an independent Luna Max agent without repository or adopter access; its
+source, compiled plan, signatures, browser receipt, and pixels entered unchanged.
 
 ## Authoritative state
 
@@ -67,8 +67,8 @@ missing Nomos capability`. Decision 0023 is the resulting epoch stop.
 | R1 contract | revision 4 in force | `RUNTIME.md`, decision 0021 |
 | Game adoption | not authorized; thesis applies to no game | decision 0019 |
 | Mortal Estate presentation evidence | bounded prerequisite evidence complete; no adoption | decisions 0022 and 0023 evidence |
-| R2 observed-scene presentation epoch | revision 1 authorized; no implementation admitted | `R2.md`, decision 0023 |
-| Current queue | issue #193 and PR #194 while the contract lands; R2-1 is next | GitHub issues and PRs, `R2.md` |
+| R2 observed-scene presentation epoch | R2-1 and R2-2 implementation complete; epoch not yet admitted | `R2.md`, PRs #196 and #198 |
+| Current queue | after PR #198, a new R2 final-evidence-and-disposition issue is next | GitHub issues and PRs, `R2.md` section 11 |
 
 The accepted R1 surface consists of:
 
@@ -89,6 +89,12 @@ specification and comparison target, not accepted source.
 The public viewer is evidence for this repository runtime, not a production-art
 claim. Audio, networking, replication, combat, production scaling, an adopting
 game's Gate 0 target pack, and that game's Gate 1 proof remain absent.
+
+The unadmitted R2 implementation adds one dependency-isolated
+`nomos-observed-scene` crate and `apps/nomos-observed-viewer`. It proves a
+finite observed-scene carrier through two independently different scenes and a
+render-only isometric browser boundary. It is evidence awaiting the R2 final
+disposition, not an extension of the accepted R1 play runtime.
 
 ## Read in this order
 
@@ -200,6 +206,40 @@ CDP, Chrome-process-group, and HTTP-server shutdown. PR #181 independently ran
 the full browser proof ten consecutive times; every process closed within 9 ms
 of the reviewer observing PASS, against a 2-second acceptance limit.
 
+The R2-2 local proof is:
+
+```bash
+cargo build --release --locked -p nomos-observed-scene
+docs/evaluation/r2-second-scene-packet.test.sh
+docs/evaluation/r2-schema-ownership.sh
+docs/evaluation/r2-source-provenance.sh
+docs/evaluation/r2-source-provenance.test.sh
+docs/evaluation/r2-adopter-neutrality.sh
+docs/evaluation/r2-adopter-neutrality.test.sh
+node docs/evaluation/r2-maximum.test.mjs
+node docs/evaluation/r2-scene-signature.mjs \
+  fixtures/r2/scenes/scene_one.json fixtures/r2/scenes/scene_two.json
+node --test apps/nomos-observed-viewer/test/*.test.mjs \
+  docs/evaluation/r2-scene-signature.test.mjs
+node apps/nomos-observed-viewer/build.mjs \
+  --plan fixtures/r2/plans/scene_one.json \
+  --plan fixtures/r2/plans/scene_two.json \
+  --out target/r2-observed-dist \
+  --receipt target/r2-observed-build.json
+CHROME_BIN=/absolute/path/to/chrome \
+  node apps/nomos-observed-viewer/smoke/smoke.mjs \
+    --dist target/r2-observed-dist \
+    --out target/r2-observed-smoke \
+    --samples 10
+```
+
+The two committed plans must also reproduce byte-for-byte from their canonical
+scene inputs. R2-2 acceptance requires 10 fresh browser profiles per scene,
+zero external requests, per-scene and combined p95 at most 5 seconds, process
+closure within 2 seconds, distribution size at most 2,000,000 bytes, and an
+exact-head Luna Max rerun. This is not the later complete network-isolated R2
+disposition proof.
+
 The formal archived Gate K harnesses are historical and materially heavier.
 Do not launch a new cold-agent attempt, checker, retry, or evidence assembly:
 decision 0016 authorizes none.
@@ -251,13 +291,13 @@ Ordinary bug maintenance against the accepted R1 baseline may start from a new
 issue with falsifiable acceptance.
 
 Decision 0023 authorizes the R2 epoch boundary and nothing past its stated
-order. The separately reviewed `R2.md` revision 1 now defines exact acceptance,
-finite input and output grammars, ownership, workspace boundaries, budgets, and
-proof. The next slice is its R2-1 strict carrier and compiler, starting from a
-new falsifiable issue.
+order. `R2.md` revision 1 defines exact acceptance, finite input and output
+grammars, ownership, workspace boundaries, budgets, and proof. R2-1 and R2-2
+are complete after PR #198. The next slice is R2 final evidence and disposition,
+starting from a new falsifiable issue and stopping for the owner's explicit
+`accept`, `repair and rerun`, or `stop` verdict.
 
-After the contract, each implementation target still begins from its own
-falsifiable issue and non-author proof. A deeper adopter boundary, platform
-choice, Gate K attempt, R2 scope expansion, or adoption into a game requires its
-own owner decision. Work toward an actual game remains exploratory until the
-game satisfies its own gates and accepts measured cost.
+A deeper adopter boundary, platform choice, Gate K attempt, R2 scope expansion,
+or adoption into a game requires its own owner decision. Work toward an actual
+game remains exploratory until the game satisfies its own gates and accepts
+measured cost.

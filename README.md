@@ -27,7 +27,7 @@ line, and operational gotchas.
 | R1 contract | `RUNTIME.md` revision 4, in force under decision 0021 |
 | Game adoption | not authorized |
 | Mortal Estate evidence | bounded evidence produced one admitted dependency point, representative frame, and classified capability gap |
-| R2 observed-scene epoch | revision 1 authorized; R2-1 implementation must begin from its own issue |
+| R2 observed-scene epoch | revision 1 authorized; R2-1 and R2-2 implementation targets complete; final evidence and disposition remain |
 
 R1 is the accepted runtime baseline for this repository. That result does not
 rewrite Gate K, pass a later gate, approve production art, or authorize Nomos
@@ -40,10 +40,12 @@ recorded a representative adopter frame, and reduced its presentation gap to an
 adopter-neutral fixture classified `reusable missing Nomos capability`.
 
 Decision 0023 opens one narrow R2 observed-scene presentation epoch from that
-evidence. The separately reviewed root contract `R2.md` revision 1 is now
-owner-authorized. Its first target is R2-1, the strict carrier and compiler,
-which must begin from its own falsifiable issue. No R2 implementation is yet
-admitted, and no platform choice or game adoption is authorized.
+evidence. The separately reviewed root contract `R2.md` revision 1 is
+owner-authorized. R2-1's strict carrier and compiler landed at
+`cc47a7235f92d0ed460c7db5d178448b12fdba02`; R2-2 adds the isolated offline
+consumer and hash-frozen independent second-scene evidence through PR #198.
+R2 is not admitted until its separately authorized final evidence and owner
+disposition target passes. No platform choice or game adoption is authorized.
 
 The implementation includes:
 
@@ -56,7 +58,10 @@ The implementation includes:
   receipts, sessions, and replay; and
 - `apps/nomos-viewer`, an accepted offline viewer with vendored Three.js,
   strict decoders, scanned artifacts, native/browser session identity, and a
-  bounded headless-Chromium proof.
+  bounded headless-Chromium proof; plus
+- the unadmitted R2 `nomos-observed-scene` carrier/compiler and isolated
+  `apps/nomos-observed-viewer`, with strict render-only decoding and two-scene
+  offline browser evidence awaiting the R2 final disposition.
 
 The proof corpus connects six independently authored areas from the
 quarantined executable-gaol study through one route. Two were cold-authored
@@ -104,6 +109,10 @@ The browser lane requires Node 22 or newer and Chrome/Chromium; set
 `CHROME_BIN` when discovery cannot find the binary. See
 [docs/HANDOFF.md](docs/HANDOFF.md) for complete setup and worktree rules.
 
+Run the R2-2 checks and two-scene browser proof with the commands recorded in
+the handoff. They require no npm installation and reuse only the accepted,
+digest-checked Three.js bytes.
+
 ## Read in this order
 
 1. [docs/HANDOFF.md](docs/HANDOFF.md) — current state, fresh-box setup, stop
@@ -142,8 +151,9 @@ docs/HANDOFF.md    current operational state and fresh-box setup
 docs/decisions/    owner-authorized contract and architecture decisions
 docs/evaluation/   reproducible proofs and immutable run archive
 docs/review/       subsystem designs, audits, and review receipts
-crates/            six kernel crates plus two declared R1 crates
+crates/            six kernel crates, two declared R1 crates, and one isolated R2 crate
 apps/nomos-viewer/ accepted offline viewer and browser harness
+apps/nomos-observed-viewer/ isolated unadmitted R2 viewer and browser harness
 experiments/       quarantined studies; never authority for accepted code
 xtask/             dependency-boundary checker
 .github/workflows/ verification, viewer, evidence, and Pages lanes
@@ -156,10 +166,12 @@ remote branches do not. Ordinary maintenance begins with a falsifiable issue
 and follows [AGENTS.md](AGENTS.md). A new capability family, dependency policy,
 runtime epoch, Gate K attempt, or game adoption requires a new owner decision.
 
-Decision 0023 is the narrow exception for the observed-scene R2 epoch. The next
-authorized action is the separately falsifiable R2-1 issue required by the
-owner-authorized `R2.md` revision 1. Each implementation target still requires
-its own issue and exact proof.
+Decision 0023 is the narrow exception for the observed-scene R2 epoch. With
+R2-1 and R2-2 complete, the next authorized action is the separately
+falsifiable R2 final-evidence-and-disposition issue required by `R2.md`
+section 11. It must bind one combined candidate, run the complete
+network-isolated proof, obtain an exact-head non-author rerun, and stop for the
+owner's R2 verdict.
 
 Nomos is authority only for this repository. Nothing here becomes authority for
 another project without that project's own explicit decision.
