@@ -1,6 +1,6 @@
 # R2-1 maximum-scene latency receipt
 
-Status: post-audit implementation-commit run passed; earlier red runs retained.
+Status: cold-review-repaired candidate passed; all earlier red runs retained.
 
 ## Frozen workload and method
 
@@ -151,3 +151,25 @@ summary SHA-256
 `9984434b483bf51cace00f170397581f36821aa27fe43c6107ea34e049660d3d`.
 All 112 files are retained at `target/r2-latency-4c532de-r3/`. No workload,
 ceiling, calculation, publication sync, or sample was changed or discarded.
+
+## Exact repaired-candidate confirmation
+
+The clean detached candidate at commit
+`32ae37d61cd71bb7be11c43de56b83a64bf006a3`, tree
+`2152165c2e07c0e23a023d17975723bc293bf348`, repeated the unchanged method
+with the repaired binary and output digests:
+
+- release binary SHA-256:
+  `dde136c1f2abd66e68ec395ce2fcfb427eec62e17f150d1bf35776a9da41e264`;
+- output: `111604` bytes, SHA-256
+  `aa36d6befffa48870d8f6cee00663139ec301bb1b606b9270e5e7984566cd6f0`
+  for every warmup and recorded process;
+- median numerator: `76,740,574 ns`; median: `38,370,287 ns`; pass;
+- p95: `43,190,202 ns`; pass;
+- raw-sample SHA-256:
+  `3feda73d21ea1c8482c5930a8cc1f295054d6aba5caab324f4df238c836a0821`;
+- summary SHA-256:
+  `dfd259f931a6fda1f59da42733179b13b7b877eff62a5d5ae1fd7996ae83f8b9`.
+
+All 112 files are retained at
+`/data/dev/src/nomos-issue-195-proof-3/target/r2-latency-32ae37d/`.

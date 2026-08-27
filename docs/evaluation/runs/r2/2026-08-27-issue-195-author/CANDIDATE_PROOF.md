@@ -1,12 +1,12 @@
-# R2-1 clean detached candidate proof
+# R2-1 repaired clean detached candidate proof
 
 Status: author proof passed; exact-head non-author proof pending.
 
 ## Candidate binding
 
-- Candidate commit: `50897ad8b9429d0a62693b5769645b6bd314feca`
-- Candidate tree: `db8666633fdd11548dafff0a48af0982d5ad9a46`
-- Detached proof worktree: `/data/dev/src/nomos-issue-195-proof-2`
+- Candidate commit: `32ae37d61cd71bb7be11c43de56b83a64bf006a3`
+- Candidate tree: `2152165c2e07c0e23a023d17975723bc293bf348`
+- Detached proof worktree: `/data/dev/src/nomos-issue-195-proof-3`
 - Host: `remi`, Linux `7.0.0-30-generic`, x86_64, 12 logical CPUs
 - Rust: `rustc 1.98.0 (88d9e12ae 2026-08-18)`
 - Node: `v22.22.1`
@@ -27,41 +27,59 @@ cargo test --workspace --locked
 cargo xtask boundary
 docs/evaluation/r2-schema-ownership.sh
 docs/evaluation/r2-source-provenance.sh
+docs/evaluation/r2-source-provenance.test.sh
 node docs/evaluation/r2-maximum.test.mjs
 ```
 
 Results:
 
-- boundary: clean, including all 17 xtask tests and every R2 dependency class;
+- boundary: clean, including all 18 xtask tests and every R2 dependency class;
 - R2 schema register: 2 identities, SHA-256
   `948dae85d6cbcedc0ffc55629bfbf633a8b934bb99e23a84a11bada43fe11531`;
 - R2 source register: 31 rows, SHA-256
-  `e23ffa6dfe7573308184885edd23ade16e4149d3bf9907a0b6a323d9c926200e`;
+  `9640718f61f0033500fa2844927f0ea358ceb5748834b895196b7c4fbfb9f228`;
 - exact maximum fixture: 98,421 bytes, SHA-256
   `fe332f711437dab15e4d1315cc3ca57dba6521350ff673941e77feb414585909`.
 
-The committed-archive provenance plant suite separately passed all seven
+The committed-archive provenance plant suite passed all seven
 missing, extra, symlink, digest-drift, unknown-origin, unlicensed, and dangling-
 receipt cases.
 
 ## Exact-head latency confirmation
 
 The detached candidate built the release compiler and ran the exact 10+100
-fresh-process method into `target/r2-latency-50897ad/`. All 110 outputs were
+fresh-process method into `target/r2-latency-32ae37d/`. All 110 outputs were
 retained and had the same 111,604-byte SHA-256
 `aa36d6befffa48870d8f6cee00663139ec301bb1b606b9270e5e7984566cd6f0`.
 
 - Binary SHA-256:
-  `a853d88b973e6540bfd79c65f363f4052340a3d739901d5959d63e4faed54121`
-- Median numerator: `76,119,018 ns`; median: `38,059,509 ns`; pass.
-- p95: `42,049,356 ns`; pass.
+  `dde136c1f2abd66e68ec395ce2fcfb427eec62e17f150d1bf35776a9da41e264`
+- Median numerator: `76,740,574 ns`; median: `38,370,287 ns`; pass.
+- p95: `43,190,202 ns`; pass.
 - Raw-sample SHA-256:
-  `9e3ac3902a814c65dbaa31b22ec859b79441a5aa51d320406b7e3fa4ee87a206`
+  `3feda73d21ea1c8482c5930a8cc1f295054d6aba5caab324f4df238c836a0821`
 - Summary SHA-256:
-  `1e104212c204aa14cd2ad623504fe4b1dfd486f7c88ecb4e0c69d0e5c6bea9e2`
+  `dfd259f931a6fda1f59da42733179b13b7b877eff62a5d5ae1fd7996ae83f8b9`
 
-The two earlier red runs remain recorded in `LATENCY_RECEIPT.md`; neither the
-ceiling nor method changed.
+Every earlier red run and the contemporaneous old-binary control remain
+recorded in `LATENCY_RECEIPT.md`; neither the ceiling nor method changed.
+
+## Cold-review repairs
+
+A Luna Max cold review of the preceding candidate reran all eight required
+commands successfully and then found four defects. The repaired candidate:
+
+1. binds a decoded plan's source digest to the exact canonical source rebuilt
+   from its copied facts;
+2. rejects `i64::MIN` crop dimensions without arithmetic overflow or panic;
+3. enforces lexical aggregate-bound precedence even when unsigned dimensions
+   exceed `i64::MAX`; and
+4. proves R2 dependency edges by Cargo package identity, so an external package
+   merely named `nomos-core` cannot impersonate the workspace member.
+
+Each repair has a direct regression test. The fourth also has a planted
+external-namesake boundary failure. Publication staging remained sound under
+review and was not weakened.
 
 ## Unchanged R1 proof
 
@@ -77,12 +95,12 @@ Chromium smoke and native replay.
   zero external requests; negative external fetch failed as required.
 - Native replay: 77 commands and receipts; pass; chain head
   `43a1b2164f18bc54738d0402013419659576e2d866c3fca630321a2ca641f143`.
-- Process closure: pass in 24 ms; no browser, server, smoke, or play process
+- Process closure: pass in 19 ms; no browser, server, smoke, or play process
   remained.
 - Viewer-build receipt SHA-256:
   `03f79d195f388d7aea105365cc0e8d28697d06ce031387ae10fac408175cd227`.
 - Smoke receipt SHA-256:
-  `ca321ec5e3c7a84a7f8bf7b8981b5e43f82337692026a39ee67607fd274caac1`.
+  `7a08305c11db26de7999a80e7676d52e4a65d112639bd09c5a017fd370d0d18f`.
 - Session SHA-256:
   `9e05713fe5568fa76ff5e346e4f4de351972c774827a0e58318b910c7add1cea`.
 
