@@ -183,6 +183,8 @@ jobs:
       - uses: actions/checkout@v7
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          # The packet plants reconstruct the frozen pre-author commit.
+          fetch-depth: 0
 
       - uses: actions/setup-node@v5
         with:
@@ -196,6 +198,10 @@ jobs:
           google-chrome --version
 
       - name: Build the frozen packet compiler
+        env:
+          # Release diagnostics otherwise retain the checkout root. Remap the
+          # hosted path to the path used by the hash-frozen packet build.
+          RUSTFLAGS: --remap-path-prefix=${{ github.workspace }}=/data/dev/src/nomos-issue-197
         run: cargo build --release --locked -p nomos-observed-scene
 
       - name: Reconstruct and attack the independent-author packet
