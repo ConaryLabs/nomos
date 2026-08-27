@@ -57,7 +57,7 @@ plant_unknown_origin() {
 }
 
 plant_unlicensed() {
-  sed -i '0,/`project_mit`/s//`unlicensed`/' "$1/docs/evaluation/R2_SOURCE_PROVENANCE.md"
+  sed -i '0,/| `project_mit` |/s//| `unlicensed` |/' "$1/docs/evaluation/R2_SOURCE_PROVENANCE.md"
 }
 
 plant_dangling_receipt() {
