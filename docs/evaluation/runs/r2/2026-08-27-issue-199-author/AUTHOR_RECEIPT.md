@@ -90,10 +90,10 @@ idle-I/O-priority `du -sm -- <checkout>` without per-sample affinity setup.
 Workers retain canonical integer-nanosecond start times taken immediately
 before each successful walk. The controller publishes them in chronological
 order while independently requiring unique contiguous launch ordinals. All 32
-workers are ready before use, but no more than three exact walks may be active
-across the reference host's three isolated disk physical-core groups. A full gate waits
+workers are ready before use, but no more than four exact walks may be active
+on the reference host's isolated three-group disk mask. A full gate waits
 against its own four-second monotonic deadline, remains subject to an earlier
-active drain deadline, and never dispatches a fourth walk concurrently. One
+active drain deadline, and never dispatches a fifth walk concurrently. One
 controller derives the exact absolute schedule
 `origin + ordinal * 50 ms`; it never turns that schedule into a relative delay.
 The recorded nominal interval remains 50 ms and the unchanged maximum
@@ -139,7 +139,7 @@ still-live worker whose structural identity changes during shutdown aborts the
 dedicated group instead of being marked reaped. Worker result collection never
 waits a live or mismatched PID. A monotonic-clock, deadline-construction, or
 sleep failure during orderly shutdown also aborts the group rather than
-returning with live children. A saturated three-walk gate receives a fresh
+returning with live children. A saturated four-walk gate receives a fresh
 four-second Linux-monotonic deadline but cannot outlive an already-running
 drain deadline. Drain-time bridge scheduling and result collection, the
 terminal set, and orderly pool shutdown receive their applicable bounded
@@ -741,6 +741,45 @@ failure for both readers, while the parent handshake injects an indeterminate
 closure scan. The complete 45-plant suite passed; separate live diagnostics
 then completed 20,000 identity checks and 100 parent handshakes with zero
 failures. These are development results, not acceptance evidence.
+
+Development commit `d2e87d7f5e9e1047c1b750b621aa8cc63384cb0f` (tree
+`90ad0293bbcb17ceb42cd9ba16d67a31080d854a`) then ran the exact complete
+harness once in the fresh, detached, full, clean standalone clone
+`/data/dev/src/nomos-r2-rehearsal-d2e87d7.p9WTZF/checkout`. This was
+deliberately a development rehearsal whose result could be recorded into a
+different final tree, not a formal author attempt. All 33 workload commands
+exited zero. The clean release build took 23.57 seconds; maximum-scene compile
+latency passed with median numerator `78446703/2` ns and p95 43,397,020 ns;
+browser smoke reproduced the exact contact sheet; and peak checkout disk was
+1,356 MiB.
+
+The three-walk observer remained red at full scale. It retained 3,337 complete
+scheduled rows with p50 49,963,598 ns, p90 54,529,075 ns, p95 57,228,026 ns,
+and p99 63,697,137 ns consecutive-start gaps, but 14 gaps exceeded the
+unchanged 100,000,000 ns ceiling. The maximum was 112,018,736 ns between
+chronological rows with launch ordinals 1,770 and 1,771. Violations occurred
+during R1 viewer tests, provenance plants, R2 viewer tests, R2 browser smoke,
+and the clean release build rather than one isolated command. The exact new
+retained-gap diagnostic preceded the existing generic sampler diagnostic;
+drain validation correctly withheld readiness, stop, terminal, disk summary,
+evidence manifest, and final receipt. The preserved report is
+`/data/dev/src/nomos-r2-rehearsal-d2e87d7.p9WTZF/rehearsal-failure-report.md`,
+SHA-256
+`e4d043fa620b58c5a0db8172e398935b8ac4c482d8d198bbf7d040f49e45f895`.
+This development commit remains red and will not be retried.
+
+The selected follow-up changes only fixed observer capacity from three to four
+active walks while retaining the controller-one/disk-three/workload-two
+physical-group split. It does not alter the 32-worker pool, exact disk method,
+idle I/O class, authentic timestamps, absolute 50 ms schedule, 100 ms gap
+ceiling, workload, or any resource ceiling. The full rehearsal left large
+workload margin—56.6 ms at compile p95 and 36.43 seconds at clean build—while
+its cadence misses were only 0.27--12.02 ms over the limit. The fourth
+in-flight walk supplies bounded coverage without reducing the workload to one
+physical group. Deterministic overload, stop-selection, drain-deadline, and
+terminal-order plants saturate exactly four walks and prove that a fifth is
+withheld. A new development commit must pass full standalone rehearsals before
+another exact candidate may enter the formal author protocol.
 
 Commands used during implementation include repository reads, `apply_patch`,
 shell and Node syntax/tests, the four accepted workspace checks, output-local
