@@ -12,7 +12,7 @@ source "$r2_complete_proof_lib_directory/r2-disk-control-lib.sh"
 source "$r2_complete_proof_lib_directory/r2-disk-sampler-lib.sh"
 unset r2_complete_proof_lib_directory
 
-r2_read_process_stat() {
+r2_read_process_stat_once() {
   [[ $# -eq 1 && -n $1 ]] || return 2
   local process_stat process_fields
   local -a fields=()
@@ -31,6 +31,20 @@ r2_read_process_stat() {
   R2_PROC_GROUP=${fields[2]}
   R2_PROC_SESSION=${fields[3]}
   R2_PROC_START=${fields[19]}
+}
+
+r2_read_process_stat() {
+  [[ $# -eq 1 && -n $1 ]] || return 2
+  local attempt read_status
+  # The same live-task procfs race as status snapshots can expose an empty
+  # stat read. Retry only that incomplete-read result; parsed malformation is
+  # immediately terminal and three empty reads preserve the absent status.
+  for ((attempt = 0; attempt < 3; attempt += 1)); do
+    if r2_read_process_stat_once "$1"; then return 0
+    else read_status=$?; fi
+    [[ $read_status -eq 1 ]] || return "$read_status"
+  done
+  return 1
 }
 
 r2_expand_cpu_list() {
@@ -167,10 +181,12 @@ r2_partition_cpu_topology() {
     done
   done
 
-  # Give the observer side the first half of complete physical-core groups,
-  # rounding up. Its first group is controller-only; the remaining observer
-  # groups execute disk walks. The measured workload receives the rest.
-  observer_group_count=$(( (${#groups[@]} + 1) / 2 ))
+  # Reserve the first complete physical-core group for the controller, then
+  # split the remaining groups between disk walks and measured work. When that
+  # remainder is odd, disk walks receive the extra group: checkout-wide walks
+  # are the observer's sustained bottleneck, while the workload still retains
+  # at least one complete group on every admitted topology.
+  observer_group_count=$(( (${#groups[@]} + 2) / 2 ))
   for cpu in "${cpus[@]}"; do
     group=${cpu_group[$cpu]}
     index=${group_index[$group]}
@@ -217,10 +233,11 @@ r2_partition_cpu_topology() {
   R2_EXPANDED_CPU_LIST=$allowed_text
 }
 
-r2_read_allowed_cpu_list() {
-  [[ $# -eq 1 && -f $1 ]] || return 2
-  local line found=0 value
+r2_read_allowed_cpu_list_once() {
+  [[ $# -eq 1 ]] || return 2
+  local line found=0 line_count=0 value
   while IFS= read -r line; do
+    line_count=$((line_count + 1))
     [[ $line != Cpus_allowed_list:* ]] || {
       [[ $found -eq 0 ]] || return 2
       value=${line#*:}
@@ -228,11 +245,28 @@ r2_read_allowed_cpu_list() {
       value=${value// /}
       found=1
     }
-  done <"$1"
-  [[ $found -eq 1 ]] || return 2
+  done <"$1" 2>/dev/null || return 1
+  [[ $found -eq 1 ]] || {
+    [[ $line_count -eq 0 ]] && return 1
+    return 2
+  }
   r2_expand_cpu_list "$value" || return
   # shellcheck disable=SC2034 # Returned global is consumed after sourcing.
   R2_ALLOWED_CPU_LIST=$value
+}
+
+r2_read_allowed_cpu_list() {
+  [[ $# -eq 1 && -f $1 ]] || return 2
+  local attempt read_status
+  # procfs may transiently return an empty status snapshot for a live task.
+  # Retry only that incomplete-read class; malformed content still fails now,
+  # and three incomplete reads remain fail-closed.
+  for ((attempt = 0; attempt < 3; attempt += 1)); do
+    if r2_read_allowed_cpu_list_once "$1"; then return 0
+    else read_status=$?; fi
+    [[ $read_status -eq 1 ]] || return "$read_status"
+  done
+  return 2
 }
 
 r2_sampler_identity_stable() {
@@ -242,7 +276,10 @@ r2_sampler_identity_stable() {
     [[ $R2_PROC_GROUP == "$pid" && $R2_PROC_SESSION == "$pid" &&
       $R2_PROC_START == "$start" && $R2_PROC_STATE != Z ]] &&
     r2_read_allowed_cpu_list "/proc/$pid/status" &&
-    [[ $R2_EXPANDED_CPU_LIST == "$expected_cpu_list" ]]
+    [[ $R2_EXPANDED_CPU_LIST == "$expected_cpu_list" ]] &&
+    r2_read_process_stat "/proc/$pid/stat" &&
+    [[ $R2_PROC_GROUP == "$pid" && $R2_PROC_SESSION == "$pid" &&
+      $R2_PROC_START == "$start" && $R2_PROC_STATE != Z ]]
 }
 
 r2_sampler_session_has_members() {
@@ -266,7 +303,7 @@ r2_stop_disk_sampler() {
     $5 =~ ^[0-9]+$ && $5 -le 255 ]] || return 2
   local pid=$1 start=$2 expected_cpu_list=$3 stop=$4 incoming=$5
   local marker_ns marker_status=0 wait_status=0 forced=0 attempt session_status
-  local stat_status can_wait=0
+  local stat_status can_wait=0 session_closed=0
 
   if [[ -z $start ]] ||
     ! r2_sampler_identity_stable "$pid" "$start" "$expected_cpu_list"; then
@@ -335,15 +372,19 @@ r2_stop_disk_sampler() {
   fi
   for ((attempt = 0; attempt < 100; attempt += 1)); do
     if r2_sampler_session_has_members "$pid"; then
-      sleep 0.01 || break
+      [[ $attempt -lt 99 ]] && sleep 0.01 || break
       continue
     else
       session_status=$?
-      [[ $session_status -eq 1 ]] || wait_status=1
-      break
+      if [[ $session_status -eq 1 ]]; then
+        session_closed=1
+        break
+      fi
+      [[ $session_status -eq 2 ]] || break
+      [[ $attempt -lt 99 ]] && sleep 0.01 || break
     fi
   done
-  if r2_sampler_session_has_members "$pid"; then wait_status=1; fi
+  [[ $session_closed -eq 1 ]] || wait_status=1
   [[ $incoming -eq 0 ]] || return "$incoming"
   [[ $marker_status -eq 0 ]] || return "$marker_status"
   [[ $forced -eq 0 ]] || return 1

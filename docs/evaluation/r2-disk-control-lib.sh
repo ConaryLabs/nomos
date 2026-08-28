@@ -268,9 +268,9 @@ r2_validate_disk_drain_handoff() {
       seen_count += 1
       if (row_count > 0 &&
           (decimal_compare($2, previous_started) <= 0 ||
-           decimal_compare($3, previous_elapsed) <= 0 ||
-           decimal_compare($3,
-             decimal_add(previous_elapsed, "100000000")) > 0)) refuse(1)
+           decimal_compare($3, previous_elapsed) <= 0)) refuse(2)
+      if (row_count > 0 && decimal_compare($3,
+          decimal_add(previous_elapsed, "100000000")) > 0) refuse(3)
       if ($1 == bridge) {
         bridge_seen = 1
         bridge_started = $2
@@ -293,6 +293,10 @@ r2_validate_disk_drain_handoff() {
     validation_status=0
   else
     validation_status=$?
+  fi
+  if [[ $validation_status -eq 3 ]]; then
+    printf 'R2 disk sampler: retained sample-start gap exceeds 100000000 ns\n' >&2
+    return 1
   fi
   [[ $validation_status -eq 0 ]] || return "$validation_status"
   [[ $latest =~ ^(0|[1-9][0-9]*)$ ]] || return 2

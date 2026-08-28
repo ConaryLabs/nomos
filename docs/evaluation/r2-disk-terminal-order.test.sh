@@ -61,6 +61,9 @@ r2_expand_cpu_list "$test_affinity" || fail 'test CPU affinity is malformed'
 test_controller_cpu=${R2_EXPANDED_CPU_LIST%%,*}
 export R2_DISK_WALK_CPUS=$R2_EXPANDED_CPU_LIST
 
+# shellcheck source=docs/evaluation/r2-procfs-read-plants.sh
+source "$script_directory/r2-procfs-read-plants.sh"
+
 # Handoff validation must stay exact above IEEE-754 integer precision while
 # finishing inside the freshness window. The fast path sorts externally and
 # uses decimal-string arithmetic in awk; plant both a valid out-of-order ledger
@@ -126,11 +129,15 @@ set +e
   r2_validate_disk_drain_handoff \
     "$handoff_bad_gap" "$handoff_bad_gap_sorted" "$handoff_origin" 2 \
     1787900000000000000 1 75000000
-)
+) 2>"$temporary/handoff-bad-gap.stderr"
 handoff_bad_gap_status=$?
 set -e
 [[ $handoff_bad_gap_status -eq 1 ]] ||
   fail 'fast handoff validator admitted a 100000001 ns retained-start gap'
+[[ $(wc -l <"$temporary/handoff-bad-gap.stderr") -eq 1 ]] &&
+  grep -Fx 'R2 disk sampler: retained sample-start gap exceeds 100000000 ns' \
+    "$temporary/handoff-bad-gap.stderr" >/dev/null ||
+  fail 'fast handoff retained-gap diagnostic differs'
 
 topology_root=$temporary/topology
 write_sibling_group() {
@@ -145,12 +152,12 @@ for pair in '0 6' '1 7' '2 8' '3 9' '4 10' '5 11'; do
 done
 r2_partition_cpu_topology 0-11 "$topology_root" ||
   fail 'canonical sibling topology was refused'
-[[ $R2_CONTROLLER_CPUS == 0,6 && $R2_DISK_CPUS == 1,2,7,8 &&
-  $R2_WORKLOAD_CPUS == 3,4,5,9,10,11 &&
+[[ $R2_CONTROLLER_CPUS == 0,6 && $R2_DISK_CPUS == 1,2,3,7,8,9 &&
+  $R2_WORKLOAD_CPUS == 4,5,10,11 &&
   $R2_CPU_TOPOLOGY_GROUPS == '0,6;1,7;2,8;3,9;4,10;5,11' &&
   $R2_CONTROLLER_PHYSICAL_GROUPS == '0,6' &&
-  $R2_DISK_PHYSICAL_GROUPS == '1,7;2,8' &&
-  $R2_WORKLOAD_PHYSICAL_GROUPS == '3,9;4,10;5,11' ]] ||
+  $R2_DISK_PHYSICAL_GROUPS == '1,7;2,8;3,9' &&
+  $R2_WORKLOAD_PHYSICAL_GROUPS == '4,10;5,11' ]] ||
   fail 'canonical three-way physical-core role split differs'
 r2_validate_physical_cpu_isolation "$R2_CONTROLLER_CPUS" "$R2_DISK_CPUS" \
   "$topology_root" || fail 'controller and disk walks share a physical core'
@@ -159,6 +166,16 @@ r2_validate_physical_cpu_isolation "$R2_DISK_CPUS" "$R2_WORKLOAD_CPUS" \
 if r2_validate_physical_cpu_isolation 0-5 6-11 "$topology_root"; then
   fail 'the former SMT-overlapping role split was accepted'
 fi
+r2_partition_cpu_topology '0-3,6-9' "$topology_root" ||
+  fail 'four-group sibling topology was refused'
+[[ $R2_CONTROLLER_CPUS == 0,6 && $R2_DISK_CPUS == 1,2,7,8 &&
+  $R2_WORKLOAD_CPUS == 3,9 ]] ||
+  fail 'four-group physical-core role split differs'
+r2_partition_cpu_topology '0-4,6-10' "$topology_root" ||
+  fail 'five-group sibling topology was refused'
+[[ $R2_CONTROLLER_CPUS == 0,6 && $R2_DISK_CPUS == 1,2,7,8 &&
+  $R2_WORKLOAD_CPUS == 3,4,9,10 ]] ||
+  fail 'five-group physical-core role split differs'
 r2_partition_cpu_topology '1,3-4,7,9-10' "$topology_root" ||
   fail 'irregular complete sibling topology was refused'
 [[ $R2_CONTROLLER_CPUS == 1,7 && $R2_DISK_CPUS == 3,9 &&
@@ -338,14 +355,30 @@ for ((attempt = 0; attempt < 100; attempt += 1)); do
   sleep 0.001
 done
 [[ $handshake_start =~ ^[0-9]+$ ]] || fail 'drain-handshake identity was not stable'
+session_members_source=$(declare -f r2_sampler_session_has_members)
+eval "$(declare -f r2_sampler_session_has_members | sed \
+  '1s/r2_sampler_session_has_members/r2_sampler_session_has_members_live/')"
+session_indeterminate=0
+r2_sampler_session_has_members() {
+  if [[ $1 == "$handshake_pid" && ! -e /proc/$1 &&
+    $session_indeterminate -eq 0 ]]; then
+    session_indeterminate=1
+    return 2
+  fi
+  r2_sampler_session_has_members_live "$@"
+}
 unset R2_DISK_STOP_REQUESTED_NS
 r2_prepare_and_stop_disk_sampler "$handshake_pid" "$handshake_start" \
   "$test_controller_cpu" "$handshake_stop" "$handshake_state" 0 ||
   fail 'parent-side drain handshake was refused'
 [[ ${R2_DISK_STOP_REQUESTED_NS:-} =~ ^(0|[1-9][0-9]*)$ &&
+  $session_indeterminate -eq 1 &&
   $(<"$handshake_stop") == "$R2_DISK_STOP_REQUESTED_NS" &&
   $(<"$handshake_state/drain-request") == $(<"$handshake_state/drain-ready") &&
   ! -e /proc/$handshake_pid ]] || fail 'drain handshake did not precede stop and closure'
+eval "$session_members_source"
+unset -f r2_sampler_session_has_members_live
+unset session_members_source
 handshake_pid=
 find "$handshake_state/drain-request" "$handshake_state/drain-ready" -delete
 
@@ -567,9 +600,9 @@ awk -F '\t' -v origin="$origin" -v stop="$stop_requested" '
   }
 ' "$samples" || fail 'drain bridges or terminal ordering differ'
 
-# A scripted monotonic clock makes the two-walk backpressure deadline exact
+# A scripted monotonic clock makes the three-walk backpressure deadline exact
 # and proves that a fixed polling-iteration count cannot define or lengthen it.
-# Two workers retain their starts and remain live; the third nominal launch
+# Three workers retain their starts and remain live; the fourth nominal launch
 # must time out and abort the dedicated session without publishing a ledger.
 deadline_samples=$temporary/deadline-samples.tsv
 deadline_stop=$temporary/deadline.stop
@@ -625,18 +658,18 @@ deadline_trace_text=$(paste -sd, "$deadline_trace")
   '1000000000,2000000000,3000000000,4000000000,5000000000' &&
   $((deadline_wall_end - deadline_wall_start)) -lt 2000000000 &&
   $(wc -l <"$deadline_samples") -eq 1 ]] ||
-  fail 'scripted two-walk deadline was extended or published a ledger'
+  fail 'scripted three-walk deadline was extended or published a ledger'
 [[ $(grep -Fxc \
-  'R2 disk sampler: two concurrent du walks did not make room before timeout' \
+  'R2 disk sampler: three concurrent du walks did not make room before timeout' \
   "$temporary/deadline-controller.stderr") -eq 1 ]] ||
-  fail 'scripted two-walk timeout diagnostic differs'
+  fail 'scripted three-walk timeout diagnostic differs'
 if r2_sampler_session_has_members "$deadline_session"; then
   fail 'scripted worker-set deadline left a live session member'
 else
   deadline_session_status=$?
 fi
 [[ $deadline_session_status -eq 1 ]] ||
-  fail 'scripted two-walk session closure could not be proved'
+  fail 'scripted three-walk session closure could not be proved'
 deadline_sampler_pid=
 
 # A sampler with one live worker that never acknowledges the drain must be
@@ -705,7 +738,7 @@ hung_deadline_diagnostics=$(grep -Ec \
   "$temporary/hung-controller.stderr")
 [[ $hung_deadline_diagnostics -eq 1 ]] ||
   fail 'hung sampler did not reach exactly one shared drain-deadline abort'
-if grep -F 'two concurrent du walks' \
+if grep -F 'three concurrent du walks' \
   "$temporary/hung-controller.stderr" >/dev/null; then
   fail 'single hung worker incorrectly reached the concurrency cap'
 fi

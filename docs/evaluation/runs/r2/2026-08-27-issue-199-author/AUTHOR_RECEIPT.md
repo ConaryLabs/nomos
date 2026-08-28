@@ -74,13 +74,14 @@ require a new run.
 The checkout-wide disk observer reads each allowed logical CPU's Linux
 `thread_siblings_list` and fails closed on an absent, malformed, contradictory,
 partial, or fewer-than-three-physical-core topology. It assigns one complete
-sibling group to the sampler controller, the next complete groups to disk
-walks, and the remaining groups to the proof workload; when the non-controller
-groups are odd, the workload receives the extra group. On the 12-logical-CPU,
-six-core reference host, the controller uses CPUs `0,6`, a bounded pool of 32
-persistent workers uses CPUs `1,2,7,8`, and the proof workload uses CPUs
-`3,4,5,9,10,11`. The workload enters its mask before the sampler is launched;
-all three roles are pairwise physically disjoint.
+sibling group to the sampler controller, then splits the remaining complete
+groups between disk walks and the proof workload; when that remainder is odd,
+the disk-walk side receives the extra group while the workload retains at
+least one. On the 12-logical-CPU, six-core reference host, the controller uses
+CPUs `0,6`, a bounded pool of 32 persistent workers uses CPUs
+`1,2,3,7,8,9`, and the proof workload uses CPUs `4,5,10,11`. The workload
+enters its mask before the sampler is launched; all three roles are pairwise
+physically disjoint.
 
 Each pool worker is a direct child in the sampler's dedicated session, enters
 the walk mask once before reporting readiness, and receives ordinal-bound work
@@ -89,10 +90,10 @@ idle-I/O-priority `du -sm -- <checkout>` without per-sample affinity setup.
 Workers retain canonical integer-nanosecond start times taken immediately
 before each successful walk. The controller publishes them in chronological
 order while independently requiring unique contiguous launch ordinals. All 32
-workers are ready before use, but no more than two exact walks may be active:
-one per isolated physical-core group on the reference host. A full gate waits
+workers are ready before use, but no more than three exact walks may be active
+across the reference host's three isolated disk physical-core groups. A full gate waits
 against its own four-second monotonic deadline, remains subject to an earlier
-active drain deadline, and never dispatches a third walk concurrently. One
+active drain deadline, and never dispatches a fourth walk concurrently. One
 controller derives the exact absolute schedule
 `origin + ordinal * 50 ms`; it never turns that schedule into a relative delay.
 The recorded nominal interval remains 50 ms and the unchanged maximum
@@ -121,8 +122,12 @@ freshness bound, but compares and adds absolute nanoseconds as canonical
 decimal strings rather than lossy IEEE-754 numbers. Final publication then
 independently repeats the full ledger validation in Bash.
 Sampler identity includes PID, process group, session, start ticks, and
-affinity. Each pool-worker identity additionally includes its direct sampler
-parent. A failed process-substitution channel launch first closes its owned
+affinity. Empty live-task procfs `stat` or `status` snapshots receive at most
+three immediate reads; a nonempty malformed snapshot fails immediately, and a
+third incomplete read remains closed. A successful affinity read is bounded
+by a second matching stat identity. Each pool-worker identity additionally
+includes its direct sampler parent. A failed process-substitution channel
+launch first closes its owned
 result descriptor, restoring the descriptor capacity needed for the
 controller's identity check, then closes the already-verified dedicated
 sampler group. After a successful launch, every child and owned descriptor is
@@ -134,7 +139,7 @@ still-live worker whose structural identity changes during shutdown aborts the
 dedicated group instead of being marked reaped. Worker result collection never
 waits a live or mismatched PID. A monotonic-clock, deadline-construction, or
 sleep failure during orderly shutdown also aborts the group rather than
-returning with live children. A saturated two-walk gate receives a fresh
+returning with live children. A saturated three-walk gate receives a fresh
 four-second Linux-monotonic deadline but cannot outlive an already-running
 drain deadline. Drain-time bridge scheduling and result collection, the
 terminal set, and orderly pool shutdown receive their applicable bounded
@@ -655,6 +660,87 @@ rows at a 1,852 MiB peak with zero violations and a 90,762,496 ns maximum gap.
 These load probes and the green 45-plant suite are development evidence, not
 acceptance; they justify freezing a new candidate without relabeling any prior
 run.
+
+Candidate `ab0c219f5a442756ba1e9c5c64624a91388fd8e9` (tree
+`6013d5935777e39f02d1aca73b02f434be0e54b2`) then passed the clean exact-head
+matrix and three read-only Luna Max audit lanes. Its single formal author
+invocation used a fresh, detached, full, clean
+`git clone --no-local --no-hardlinks` at
+`/data/dev/src/nomos-r2-author-ab0c219.2BEGSn/checkout`, with the exact
+checkout-local output directory already present, real, and empty. All 33
+workload commands exited zero. The clean release build took 16.65 seconds;
+100 compile outputs were byte-identical, with median numerator `90984889/2`
+ns and p95 57,869,989 ns; browser smoke reproduced the exact committed contact
+sheet; and peak checkout disk was 1,355 MiB. All four workload and resource
+ceilings passed.
+
+The observer nevertheless rejected its drain handoff. Its 2,897 complete,
+contiguous scheduled rows contained 57 retained-start gaps over 100,000,000
+ns, with a maximum of 146,686,568 ns between ordinals 1,336 and 1,337. The
+drain-request marker exists, but validation therefore published no
+drain-readiness marker, stop marker, terminal row, public disk rows beyond the
+header, disk summary, evidence manifest, or final receipt. The only outer
+diagnostic was the then-generic
+`R2 disk sampler: one or more scheduled samples failed`; the row evidence and
+missing handoff publications establish a retained-gap validation failure, not
+a failed `du` worker or workload command. The preserved independently audited
+report is
+`/data/dev/src/nomos-r2-author-ab0c219.2BEGSn/author-failure-report.md`,
+SHA-256
+`886e1e0f185c221afecd37b38a214340890a56ae060f8a0c07c0f0e40dd052e9`.
+It binds both external streams and every retained artifact available from the
+failed run. This exact candidate remains formal red and will not be retried.
+
+Development probes then separated the concurrency cap from physical-core
+allocation. Three active walks on the former two-group disk mask produced one
+108,816,640 ns red browser maximum followed by a 90,198,272 ns green maximum.
+With one controller group, three disk groups, and two workload groups on the
+same six-group host, two browser probes passed at 84,058,368 ns and 77,169,664
+ns maximum gaps. An observed maximum-scene compile passed at median numerator
+`78446561/2` ns and p95 43,529,976 ns while the disk observer's maximum was
+85,816,832 ns. An observed clean release build took 23.51 seconds while its
+maximum retained gap was 82,980,096 ns. The checkout was 1,865--1,906 MiB,
+larger than every prior formal peak. These short probes are development
+evidence only.
+
+The selected repair therefore keeps the fixed 50 ms schedule, exact disk
+method, authentic successful-start timestamps, 100 ms retained-gap ceiling,
+32-worker identity pool, and every workload/resource ceiling unchanged. It
+admits at most three walks and derives a topology split that reserves the first
+complete sibling group for the controller, gives the disk side the extra group
+when the remaining count is odd, and still leaves the workload at least one
+complete group. On the reference host this is controller CPUs `0,6`, one
+shared disk-worker mask `1,2,3,7,8,9` spanning three complete sibling groups,
+and workload CPUs `4,5,10,11`. Deterministic plants saturate exactly three
+walks, withhold the fourth, and bind that topology. Drain-handoff gap rejection
+now emits the same exact retained-gap diagnostic already used by final summary
+validation, so a future failure identifies the violated criterion directly.
+Only a new exact candidate may enter the author protocol.
+
+The first post-repair terminal-order run then retained a development red at
+`target/r2-disk-terminal-order.OEAqyd`: request, readiness, and stop markers
+were complete, but the parent-side helper refused closure. A focused live-task
+diagnostic established that this host's procfs can return an empty
+`/proc/<pid>/status` snapshot while the same task's stat identity and affinity
+remain stable: 20 of 21,768 single reads were empty. The unmodified handshake
+reproduced three false failures in 120 iterations even though its child exited
+zero. A status-only retry still allowed another development red, so the repair
+was completed across both identity snapshots and definitive session closure
+rather than assigning an unproved cause to that second run.
+
+The bounded procfs reader now retries only an empty snapshot up to
+three immediate attempts. Nonempty files with a missing canonical row,
+duplicate rows, malformed values, or malformed stat content fail on the first
+attempt; three incomplete status reads return the prior closed status, and
+three incomplete stat reads preserve process absence. Identity is read again
+after affinity to exclude a PID-reuse splice. Session closure retries an
+indeterminate scan only inside its existing 100-probe, 10 ms polling bound and
+accepts only a definitive absent result. The decomposed source-only procfs
+plant injects transient success, persistent failure, and immediate malformed
+failure for both readers, while the parent handshake injects an indeterminate
+closure scan. The complete 45-plant suite passed; separate live diagnostics
+then completed 20,000 identity checks and 100 parent handshakes with zero
+failures. These are development results, not acceptance evidence.
 
 Commands used during implementation include repository reads, `apply_patch`,
 shell and Node syntax/tests, the four accepted workspace checks, output-local
