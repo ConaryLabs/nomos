@@ -78,10 +78,15 @@ CPUs 1–5 with idle I/O priority, and proof workloads to CPUs 6–11.
 Workers retain canonical integer-nanosecond start times taken immediately
 before each successful walk, and the controller publishes them in
 chronological order while independently requiring unique contiguous launch
-ordinals. A distinct final row must start after the canonical timestamp stored
-in `host/disk-sampler.stop`. Sampler identity includes PID, process group,
-session, start ticks, and affinity; shutdown is bounded and proves that the
-dedicated session has closed.
+ordinals. One controller interleaves two phases of the absolute 50 ms schedule:
+each parity's deadlines remain 50 ms apart and their phase offset is 25 ms.
+This uses the contract's explicit permission to sample more frequently while
+retaining the 50 ms nominal interval and unchanged 100 ms maximum retained gap.
+After the stop marker, the controller waits for all scheduled walks and only
+then launches the distinct final row, so its retained start is chronologically
+last as well as after the canonical timestamp in `host/disk-sampler.stop`.
+Sampler identity includes PID, process group, session, start ticks, and
+affinity; shutdown is bounded and proves that the dedicated session has closed.
 
 ## Preserved execution history and repair disposition
 
@@ -119,6 +124,45 @@ acknowledgement files inside the measured checkout with one ordinal-bound,
 ephemeral acknowledgement, restores ordinary CPU priority while retaining
 idle I/O priority and the isolated CPU set, and makes the bookkeeping-history
 plant deterministic rather than host-schedule-sensitive.
+
+Candidate `3e9e1732264f69aec7daec4b6b7f3f8cf1851105` (tree
+`87fcb8c5de70de2e0cae4d00fc3ca43e6a80a04f`) then failed closed in a new
+fresh, detached, standalone author clone. All 25 closed command-ledger rows,
+including 111 Node tests and 37 shell plants in command 25, exited zero. The
+outer observer nevertheless accumulated 32 active walks while command 25's
+synthetic receipt suite deleted its large accumulated fixture set, so the
+harness rejected the sampler's lost identity. No final receipt or evidence
+manifest was emitted. The preserved failure report is
+`/data/dev/src/nomos-r2-author-3e9e173.qzqf3H/author-failure-report.md`,
+SHA-256
+`1938c1c3c629d47274e1434a72853e195400ea553fa68c57eecba3cda9c7d545`.
+It binds the external streams, complete 25-row command ledger, command-25
+logs, and unfinished raw sampler rows. This run remains red.
+
+The following repair changes no verifier assertion, existing mutation plant's
+failure criterion, disk method, or ceiling. It adds a terminal-order plant and
+shortens the asynchronous plant's fake walk without changing the closure or
+cadence behaviour that plant asserts. The synthetic receipt test constructs a
+clean, detached,
+standalone SHA-1 repository from `git archive HEAD` containing every exact
+source byte read by the verifier or fixture builder. Its synthetic commit and
+tree exercise all standalone-root and candidate-binding assertions; the
+top-level final verifier, rather than this unit fixture, binds the real complete
+candidate tree. The test creates one path-bound synthetic output, snapshots its
+canonical files in memory, and between sequential cases removes only generated
+extras and restores only the missing or changed baseline files. It therefore
+no longer accumulates outputs or recursively deletes and recopies a complete
+fixture for every plant. This reduces the measured transient fixture peak from
+roughly 507 MiB to 16 MiB and removes the sustained metadata churn. Like the
+neighboring viewer tests, it retains its final scratch fixture beneath
+`host/tmp`; those bytes remain inside the measured write boundary and the final
+evidence manifest binds them instead of racing the live observer with an
+unrequired recursive teardown. The shell plant suite likewise retains its
+closed fixture beneath checkout-local `target/`, which is within the measured
+and permitted boundary; the final clean-worktree and write-boundary checks
+still fail closed on any input or outside-target write. The interleaved 25 ms
+phase offset provides the more-frequent coverage the contract permits without
+changing its 50 ms nominal interval or 100 ms ceiling.
 
 On 2026-08-28 the owner authorized an implementation repair, not a contract or
 ceiling change. The repair preserves the failed rerun as red evidence, does not

@@ -14,7 +14,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, relative, resolve } from "node:path";
-import test, { after, before } from "node:test";
+import test, { before } from "node:test";
 import { fileURLToPath } from "node:url";
 
 import { assembleReceipt, verifyReceipt } from "./r2-complete-proof-receipt.mjs";
@@ -24,6 +24,20 @@ const sourceRepo = resolve(here, "../..");
 const temporary = mkdtempSync(join(tmpdir(), "nomos-r2-receipt-test-"));
 const repo = join(temporary, "repo");
 const template = join(repo, "target/template");
+const fixtureOutput = join(repo, "target/receipt-test-output");
+let fixtureSnapshot;
+const fixtureSourcePaths = [
+  ".gitignore",
+  "R2.md",
+  "RUNTIME.md",
+  "apps/nomos-viewer",
+  "apps/nomos-observed-viewer",
+  "fixtures/r2",
+  "docs/decisions/0024-r2-final-proof-finalization-order.md",
+  "docs/evaluation/r2-second-scene-packet/MANIFEST.sha256",
+  "docs/evaluation/runs/r2/2026-08-27-issue-197-second-author/SCENE_SIGNATURES.json",
+  "docs/evaluation/runs/r2/2026-08-27-issue-197-second-author/evidence/contact-sheet.png",
+];
 const sha256 = (bytes) => createHash("sha256").update(bytes).digest("hex");
 const issueBody = "8ffd30e7a213e991732ea6031743542eb68d9b80fe6d4989ed58052617352dcc";
 const plans = {
@@ -399,15 +413,32 @@ const makeTemplate = () => {
   });
 };
 
-const retarget = (name) => {
-  const output = join(repo, `target/${name}`);
-  cpSync(template, output, { recursive: true });
+const restoreFixture = () => {
+  const current = new Set(inventory(fixtureOutput).map((row) => row.path));
+  for (const path of current) {
+    if (!fixtureSnapshot.has(path)) rmSync(join(fixtureOutput, path));
+  }
+  for (const [path, bytes] of fixtureSnapshot) {
+    const destination = join(fixtureOutput, path);
+    if (!current.has(path) || !readFileSync(destination).equals(bytes)) {
+      mkdirSync(dirname(destination), { recursive: true });
+      writeFileSync(destination, bytes);
+    }
+  }
+};
+const fixtureForCase = () => {
+  if (fixtureSnapshot) {
+    restoreFixture();
+    return fixtureOutput;
+  }
+  cpSync(template, fixtureOutput, { recursive: true });
+  const output = fixtureOutput;
   const boundary = JSON.parse(readFileSync(join(output, "metadata/write-boundary.json")));
-  boundary.output_relative = `target/${name}`;
-  boundary.allowed_roots = [`target/${name}`, "target"];
+  boundary.output_relative = relative(repo, output);
+  boundary.allowed_roots = [relative(repo, output), "target"];
   json(join(output, "metadata/write-boundary.json"), boundary);
   const filesystem = JSON.parse(readFileSync(join(output, "metadata/filesystem-isolation.json")));
-  filesystem.writable_roots = [`target/${name}`, "target"];
+  filesystem.writable_roots = [relative(repo, output), "target"];
   json(join(output, "metadata/filesystem-isolation.json"), filesystem);
   const mountinfo = join(output, "metadata/mountinfo.txt");
   writeFileSync(mountinfo, readFileSync(mountinfo, "utf8").replaceAll(template, output));
@@ -415,7 +446,32 @@ const retarget = (name) => {
   writeFileSync(samples, readFileSync(samples, "utf8").replaceAll(template, output));
   const browser = join(output, "r2/browser-smoke/receipt.json");
   writeFileSync(browser, readFileSync(browser, "utf8").replaceAll(template, output));
+  fixtureSnapshot = new Map(inventory(output).map((row) => [row.path, readFileSync(join(output, row.path))]));
+  rmSync(template, { recursive: true, force: true });
   return output;
+};
+
+const makeFixtureRepository = () => {
+  const archive = join(temporary, "source.tar");
+  mkdirSync(repo, { recursive: true });
+  execFileSync("git", ["-C", sourceRepo, "archive", "--format=tar", `--output=${archive}`, "HEAD", "--", ...fixtureSourcePaths]);
+  execFileSync("tar", ["-xf", archive, "-C", repo]);
+  rmSync(archive);
+  execFileSync("git", ["-C", repo, "init", "--quiet", "--object-format=sha1"]);
+  execFileSync("git", ["-C", repo, "config", "core.autocrlf", "false"]);
+  execFileSync("git", ["-C", repo, "add", "--all"]);
+  const tree = execFileSync("git", ["-C", repo, "write-tree"], { encoding: "utf8" }).trim();
+  const env = {
+    ...process.env,
+    GIT_AUTHOR_NAME: "Nomos synthetic verifier fixture",
+    GIT_AUTHOR_EMAIL: "nomos-fixture@example.invalid",
+    GIT_AUTHOR_DATE: "2000-01-01T00:00:00Z",
+    GIT_COMMITTER_NAME: "Nomos synthetic verifier fixture",
+    GIT_COMMITTER_EMAIL: "nomos-fixture@example.invalid",
+    GIT_COMMITTER_DATE: "2000-01-01T00:00:00Z",
+  };
+  const commit = execFileSync("git", ["-C", repo, "commit-tree", tree, "-m", "synthetic verifier fixture"], { encoding: "utf8", env }).trim();
+  execFileSync("git", ["-C", repo, "checkout", "--quiet", "--detach", commit]);
 };
 
 const candidate = () => ({
@@ -426,15 +482,14 @@ const candidate = () => ({
 const assemble = (output) => assembleReceipt({ repo, output, ...candidate(), issue: 199, issueBodySha256: issueBody, liveChecks: false });
 
 before(() => {
-  execFileSync("git", ["clone", "--quiet", "--no-hardlinks", sourceRepo, repo]);
-  execFileSync("git", ["-C", repo, "checkout", "--quiet", "--detach", "HEAD"]);
+  // Exercise the real standalone-root checks without duplicating irrelevant
+  // candidate history or source that the synthetic verifier never reads.
+  makeFixtureRepository();
   makeTemplate();
 });
 
-after(() => rmSync(temporary, { recursive: true, force: true }));
-
 test("synthetic complete evidence assembles and verifies without trusting summaries", () => {
-  const output = retarget("pass");
+  const output = fixtureForCase();
   const receipt = assemble(output);
   assert.equal(receipt.outcome, "pass");
   assert.equal(receipt.summary.r2.compile.samples, 100);
@@ -448,12 +503,12 @@ test("synthetic complete evidence assembles and verifies without trusting summar
   writeFileSync(commands, readFileSync(commands, "utf8").replace(commandDisplays[0], "forged workspace-fmt"));
   assert.throws(() => verifyReceipt({ repo, output, liveChecks: false }), /digest\/path drift/);
 
-  const missing = retarget("manifest-missing");
+  const missing = fixtureForCase();
   assemble(missing);
   rmSync(join(missing, "logs/01-workspace-fmt.stdout"));
   assert.throws(() => verifyReceipt({ repo, output: missing, liveChecks: false }), /missing or extra path|digest\/path drift/);
 
-  const falsified = retarget("receipt-falsified");
+  const falsified = fixtureForCase();
   assemble(falsified);
   const receiptPath = join(falsified, "receipt.json");
   const forged = JSON.parse(readFileSync(receiptPath));
@@ -463,7 +518,7 @@ test("synthetic complete evidence assembles and verifies without trusting summar
 });
 
 test("disk cadence accepts the exact 100000000 ns boundary", () => {
-  const output = retarget("disk-gap-boundary-pass");
+  const output = fixtureForCase();
   const samples = join(output, "measurements/checkout-disk-samples.tsv");
   writeFileSync(samples, readFileSync(samples, "utf8").replace("1\t10000000060000000\t60000000\t120\tterminal", "1\t10000000110000000\t110000000\t120\tterminal"));
   const summaryPath = join(output, "measurements/checkout-disk-summary.json");
@@ -474,7 +529,7 @@ test("disk cadence accepts the exact 100000000 ns boundary", () => {
 });
 
 test("disk rows can be chronological independently of launch ordinal order", () => {
-  const output = retarget("disk-chronological-order-pass");
+  const output = fixtureForCase();
   writeFileSync(join(output, "measurements/checkout-disk-samples.tsv"), [
     "ordinal\tsample_start_ns\telapsed_ns\tmebibytes\tkind",
     "1\t10000000010000000\t10000000\t100\tscheduled",
@@ -743,18 +798,22 @@ test("major plants fail closed before a receipt can be assembled", async (t) => 
     ["write-boundary", (out) => json(join(out, "metadata/write-boundary.json"), { outcome: "pass", output_relative: relative(repo, out), allowed_roots: [relative(repo, out), "target"], outside_writes: ["elsewhere"], inputs_unchanged: true }), /write boundary is not clean/],
   ];
   for (const [name, mutate, pattern] of plants) await t.test(name, () => {
-    const output = retarget(`plant-${name}`);
+    const output = fixtureForCase();
     mutate(output);
     assert.throws(() => assemble(output), pattern);
   });
 
   await t.test("wrong-candidate", () => {
-    const output = retarget("plant-wrong-candidate");
+    const output = fixtureForCase();
     assert.throws(() => assembleReceipt({ repo, output, commit: "0".repeat(40), tree: candidate().tree, issue: 199, issueBodySha256: issueBody, liveChecks: false }), /HEAD differs/);
   });
   await t.test("outside-output", () => {
     const output = join(temporary, "outside-output");
-    cpSync(template, output, { recursive: true });
-    assert.throws(() => assembleReceipt({ repo, output, ...candidate(), issue: 199, issueBodySha256: issueBody, liveChecks: false }), /physically inside/);
+    try {
+      cpSync(fixtureOutput, output, { recursive: true });
+      assert.throws(() => assembleReceipt({ repo, output, ...candidate(), issue: 199, issueBodySha256: issueBody, liveChecks: false }), /physically inside/);
+    } finally {
+      rmSync(output, { recursive: true, force: true });
+    }
   });
 });

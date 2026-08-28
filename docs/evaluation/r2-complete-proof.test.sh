@@ -71,10 +71,10 @@ cleanup() {
         kill -KILL -- "-$stop_test_pid" 2>/dev/null || true
         wait "$stop_test_pid" 2>/dev/null || true
       fi
-      if [[ -n ${linked:-} && -d $seed/.git ]]; then
-        git -C "$seed" worktree remove --force "$linked" >/dev/null 2>&1 || true
-      fi
-      [[ ! -e $temporary ]] || find "$temporary" -depth -delete
+      # Retain the closed plant fixture beneath checkout-local target. Its
+      # bytes stay inside the measured write boundary, and deleting the Git
+      # trees here would make the exact checkout-wide `du` observer race a
+      # test-only recursive teardown after every assertion has already passed.
       ;;
     *)
       printf 'R2 complete proof plants: refusing unsafe cleanup path: %s\n' "$temporary" >&2
@@ -686,7 +686,7 @@ printf 'ordinal\tsample_start_ns\telapsed_ns\tmebibytes\tkind\n' >"$async_sample
 mkdir "$async_parts"
 setsid taskset -c "$disk_test_controller_cpus" env \
   R2_TEST_DU_STABLE=1 \
-  R2_TEST_DU_DELAY=0.2 \
+  R2_TEST_DU_DELAY=0.02 \
   R2_DISK_WALK_CPUS="$R2_DISK_WALK_CPUS" \
   PATH="$fake_disk_bin:$PATH" \
   bash -c '
@@ -984,6 +984,8 @@ plant_count=$((plant_count + 1))
 [[ -z $(find "$temporary" -name commands.tsv -print -quit) ]] ||
   fail 'a plant reached the heavy command ledger'
 
+bash "$script_directory/r2-disk-terminal-order.test.sh"
 printf 'R2_COMPLETE_PROOF_PLANTS PASS\n'
 printf 'planted_failures %s\n' "$plant_count"
+printf 'plant_scratch retained_in_checkout_target\n'
 printf 'clean_outer_preflight not_run_no_documented_test_hook\n'

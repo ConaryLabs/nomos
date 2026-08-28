@@ -537,6 +537,18 @@ r2_write_checkout_disk_summary() {
     >"$summary"
 }
 
+r2_disk_deadline_ns() {
+  [[ $# -eq 3 && $1 =~ ^(0|[1-9][0-9]*)$ &&
+    $2 =~ ^(0|[1-9][0-9]*)$ && $3 =~ ^[1-9][0-9]*$ ]] || return 2
+  local origin=$1 ordinal=$2 period=$3 phase deadline
+  [[ $((period % 2)) -eq 0 ]] || return 2
+  phase=$((period / 2))
+  deadline=$((origin + ordinal * phase))
+  [[ $phase -gt 0 && $deadline -ge $origin ]] || return 2
+  # shellcheck disable=SC2034 # Returned global avoids a command-substitution fork per sample.
+  R2_DISK_DEADLINE_NS=$deadline
+}
+
 r2_sample_checkout_disk() {
   [[ $# -eq 6 && -d $1 && -f $2 && ! -L $2 && -n $3 &&
     -d $4 && ! -L $4 && $5 =~ ^[0-9]+$ && $6 =~ ^[1-9][0-9]*$ ]] || {
@@ -557,6 +569,12 @@ r2_sample_checkout_disk() {
   local signal_ready active initial_ready=0
   local -a sample_pids=()
   local -A sample_starts=()
+
+  # One controller interleaves two phases of the contract's absolute 50 ms
+  # nominal schedule. Each parity's deadlines remain 50 ms apart; the 25 ms
+  # phase offset exercises the permission to sample more frequently and gives
+  # raced `du` retries non-real-time headroom.
+  r2_disk_deadline_ns "$sampler_started" 0 "$period_ns" || return
 
   : >"$raw_samples"
 
@@ -648,7 +666,11 @@ r2_sample_checkout_disk() {
       [[ $status -eq 0 ]] || break
       continue
     fi
-    deadline=$((sampler_started + ordinal * period_ns))
+    if ! r2_disk_deadline_ns "$sampler_started" "$ordinal" "$period_ns"; then
+      status=1
+      break
+    fi
+    deadline=$R2_DISK_DEADLINE_NS
     if ! now=$(date +%s%N); then
       status=1
       break
@@ -668,7 +690,18 @@ r2_sample_checkout_disk() {
     fi
   done
 
-  # This distinct final walk begins only after the stop marker exists.
+  # Quiesce every scheduled walk after the stop marker. A worker may have
+  # raced a deletion and begun a later retry, so merely launching the terminal
+  # worker last would not make its retained start chronologically final.
+  reap_finished_samples || status=1
+  for pid in "${sample_pids[@]}"; do
+    wait "$pid" || status=1
+    unset 'sample_starts[$pid]'
+  done
+  sample_pids=()
+
+  # This distinct final walk begins only after the stop marker exists and all
+  # scheduled workers have retained their rows.
   [[ $status -ne 0 ]] || launch_sample terminal || status=1
 
   reap_finished_samples || status=1
