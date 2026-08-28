@@ -17,8 +17,8 @@ overload_lanes="${disk_test_cpu_array[0]};${disk_test_cpu_array[1]};${disk_test_
 printf 'ordinal\tsample_start_ns\telapsed_ns\tmebibytes\tkind\n' >"$overload_samples"
 mkdir "$overload_state" "$overload_launches"
 # Hold exact fake walks and advance only the launch-slot clock. All 32 pool
-# workers still bind normally; four walks must occupy lanes 2/1/1 and no fifth
-# exact walk may begin.
+# workers still bind normally; three walks must occupy lanes 1/1/1 and no
+# fourth exact walk may begin.
 set +e
 setsid taskset -c "$disk_test_controller_cpus" env \
   R2_TEST_DU_STABLE=1 \
@@ -58,11 +58,11 @@ overload_lane_counts=$(awk -F '\t' -v a="${disk_test_cpu_array[0]}" \
   '{ if ($5 != $9) bad += 1; if ($5 == a) x += 1; else if ($5 == b) y += 1; else if ($5 == c) z += 1; else bad += 1 } END { printf "%d,%d,%d,%d", x, y, z, bad }' \
   "$overload_launches"/*)
 [[ $overload_status -eq 137 && ! -s $temporary/overload.stdout &&
-  $(wc -l <"$overload_samples") -eq 1 && $overload_launch_count -eq 4 &&
-  $overload_lane_counts == 2,1,1,0 ]] ||
+  $(wc -l <"$overload_samples") -eq 1 && $overload_launch_count -eq 3 &&
+  $overload_lane_counts == 1,1,1,0 ]] ||
   fail 'asynchronous sampler did not balance or bound concurrent walks'
 [[ $(grep -Fxc \
-  'R2 disk sampler: four concurrent du walks did not make room before timeout' \
+  'R2 disk sampler: three concurrent du walks did not make room before timeout' \
   "$temporary/overload.stderr") -eq 1 ]] ||
   fail 'asynchronous sampler concurrency-limit diagnostic differs'
 if r2_sampler_session_has_members "$overload_session"; then

@@ -55,29 +55,31 @@ fi
 lane_active=(0 0 0)
 lane_next=0
 lane_trace=()
-for ((lane_launch = 0; lane_launch < 4; lane_launch += 1)); do
-  r2_select_disk_lane "$lane_next" 2 "${lane_active[@]}" ||
+for ((lane_launch = 0; lane_launch < 3; lane_launch += 1)); do
+  r2_select_disk_lane "$lane_next" 1 "${lane_active[@]}" ||
     fail 'balanced disk-lane selection refused an available lane'
   lane_selected=$R2_DISK_SELECTED_LANE
   lane_trace+=("$lane_selected")
   lane_active[lane_selected]=$((lane_active[lane_selected] + 1))
   lane_next=$(( (lane_selected + 1) % 3 ))
 done
-[[ ${lane_trace[*]} == '0 1 2 0' && ${lane_active[*]} == '2 1 1' ]] ||
-  fail 'four active walks were not balanced two-one-one across three lanes'
+[[ ${lane_trace[*]} == '0 1 2' && ${lane_active[*]} == '1 1 1' ]] ||
+  fail 'three active walks did not occupy one exact walk per lane'
 lane_active[0]=$((lane_active[0] - 1))
-r2_select_disk_lane "$lane_next" 2 "${lane_active[@]}" ||
+lane_active[1]=$((lane_active[1] - 1))
+lane_next=1
+r2_select_disk_lane "$lane_next" 1 "${lane_active[@]}" ||
   fail 'rotating least-active selection refused a released lane'
 [[ $R2_DISK_SELECTED_LANE -eq 1 ]] ||
   fail 'least-active lane tie-breaking did not rotate'
-if r2_select_disk_lane 0 2 2 2 2; then
-  fail 'a third active walk on every saturated lane was admitted'
+if r2_select_disk_lane 0 1 1 1 1; then
+  fail 'a second active walk on every saturated lane was admitted'
 else
   lane_selection_status=$?
 fi
 [[ $lane_selection_status -eq 1 ]] ||
   fail 'fully saturated disk lanes did not report capacity exhaustion'
-if r2_select_disk_lane 0 2 3 0 0; then
+if r2_select_disk_lane 0 1 2 0 0; then
   fail 'an over-capacity disk-lane counter was accepted'
 else
   lane_selection_status=$?

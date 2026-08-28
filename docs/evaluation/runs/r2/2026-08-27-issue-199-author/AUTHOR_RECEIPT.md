@@ -96,8 +96,8 @@ order while independently requiring unique contiguous launch ordinals. All 32
 workers are ready before use and are assigned by index modulo lane count; the
 reference allocation is 11, 11, and 10 workers. The controller selects the
 least-active lane with rotating tie-breaking, caps any reference-host lane at
-two live walks, and caps the complete pool at four. A held four-walk set is
-therefore `2/1/1`; a fifth walk is never dispatched concurrently. A full gate
+one live walk, and caps the complete pool at three. A held three-walk set is
+therefore `1/1/1`; a fourth walk is never dispatched concurrently. A full gate
 checks for completion after five-millisecond poll delays, waits against its
 own four-second monotonic deadline, and remains subject to an earlier active
 drain deadline. One
@@ -157,7 +157,7 @@ still-live worker whose structural identity changes during shutdown aborts the
 dedicated group instead of being marked reaped. Worker result collection never
 waits a live or mismatched PID. A monotonic-clock, deadline-construction, or
 sleep failure during orderly shutdown also aborts the group rather than
-returning with live children. A saturated four-walk gate receives a fresh
+returning with live children. A saturated three-walk gate receives a fresh
 four-second Linux-monotonic deadline but cannot outlive an already-running
 drain deadline. Drain-time bridge scheduling and result collection, the
 terminal set, and orderly pool shutdown receive their applicable bounded
@@ -1012,3 +1012,45 @@ drift refusal, held-four `2/1/1` occupancy, fifth-walk refusal, and complete
 session cleanup. A new development commit must pass the complete local matrix
 and fresh standalone rehearsals before any candidate can enter the formal
 author protocol.
+
+Development commit `032913203113843fb775b21d335cff4f8970c714` (tree
+`22ea37581edca558b78f5698218c89ccc3f1ad4b`) then ran the exact complete
+harness once in a new fresh, detached, full, clean standalone clone at
+`/data/dev/src/nomos-r2-rehearsal-lanes-a.ELNOo9/checkout`. All 33 workload
+commands exited zero. The clean release build took 32.52 seconds; 100 compile
+outputs were byte-identical with median numerator `81252632/2` ns and p95
+44,986,567 ns; browser smoke reproduced the exact contact sheet; and the
+maximum private complete scheduled disk row was 1,356 MiB. Every
+contract-defined non-cadence budget summary passed.
+
+The exact-lane observer nevertheless remained red. Its 3,703 complete
+scheduled rows had p50 49,921,807 ns, p90 57,597,433 ns, p95 69,417,841 ns,
+p99 118,281,066 ns, and maximum 221,153,013 ns retained-start gaps. Seventy-
+four gaps exceeded the unchanged 100,000,000 ns ceiling, including 57 during
+the clean release build. Cadence validation correctly withheld drain
+readiness, stop, the terminal row, public rows beyond the header, the official
+disk summary, evidence manifest, and final receipt. Direct audit found no
+remaining run process, but the absent finalization artifacts mean formal
+post-sampler closure was not produced. The preserved independently audited
+report is
+`/data/dev/src/nomos-r2-rehearsal-lanes-a.ELNOo9/rehearsal-failure-report.md`,
+SHA-256
+`26d84e003e7ae312dc1dda562fde73c313a044c69d9ea447289d53f23c3e508c`.
+This development commit remains red and will not be retried.
+
+Forced `2/1/1` placement was materially worse than both the prior same-
+topology active-four rehearsal and the one-millisecond-poll rehearsal, so that
+lane arrangement is retired. The final controlled implementation experiment
+keeps the exact three physical-core lanes and changes total admission from four
+walks to three. On the reference host the existing lane-capacity derivation is
+therefore one, so each saturated lane holds exactly one walk and a fourth is
+withheld. The 32-worker pool, worker-to-lane assignment, least-active rotating
+selection, five-millisecond saturated-slot polling, controller-one/disk-three/
+workload-two topology, exact `ionice -c 3 du -sm -- <checkout>` method,
+authentic timestamp, absolute 50 ms schedule, 100 ms retained-gap ceiling,
+workload, and every resource ceiling remain unchanged. Deterministic plants
+bind the `1/1/1` occupancy, one-walk reference-lane capacity, fourth-walk
+refusal, and the existing stop/drain boundaries. If the single fresh full
+rehearsal of the new commit remains red, observer implementation tuning ends
+and any further attempt requires an owner-authorized measurement-method
+contract repair.

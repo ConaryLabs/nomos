@@ -200,10 +200,10 @@ r2_sample_checkout_disk() {
   local ready=$state/ready drain_request=$state/drain-request
   local drain_ready=$state/drain-ready raw_samples=$state/samples.unsorted.tsv
   # Keep the full prestarted identity pool, bind every worker to one exact disk
-  # lane, and admit only four exact walks at once. Least-active-lane selection
+  # lane, and admit only three exact walks at once. Least-active-lane selection
   # prevents the shared union mask from clustering otherwise independent walks
   # on one physical core; the retained-start validator remains final authority.
-  local sorted_samples=$state/samples.sorted.tsv pool_size=32 active_limit=4
+  local sorted_samples=$state/samples.sorted.tsv pool_size=32 active_limit=3
   local ordinal=0 deadline now monotonic_now delay delay_seconds status=0 attempt
   local launch_status lane lane_count lane_capacity selected_lane=-1
   local active=0 initial_ready=0 draining=0 drain_remaining request_ns=''
@@ -457,7 +457,7 @@ r2_sample_checkout_disk() {
       slot_now=$R2_MONOTONIC_NS
       [[ $slot_now -lt $slot_deadline ]] || {
         status=1
-        printf 'R2 disk sampler: four concurrent du walks did not make room before timeout\n' >&2
+        printf 'R2 disk sampler: three concurrent du walks did not make room before timeout\n' >&2
         abort_dedicated_sampler_group || true
         return 1
       }
