@@ -579,10 +579,32 @@ scheduled-launch boundary or in request-time result collection; the synthetic
 slot plant independently pins the former. The complete 45-plant suite passed
 after these repairs; this remains development evidence, not acceptance.
 
+Candidate `8b5dc036d097e2a7b3c5341e3f4c344787795c5c` (tree
+`1863b4c873ccf23aebd985243145b65c2c00f3da`) then passed the clean exact-head
+matrix and three read-only Luna Max audit lanes. Its single formal author
+invocation used a full, detached, clean `git clone --no-local --no-hardlinks`
+at `/data/dev/src/nomos-r2-author-8b5dc03.cb2qiJ/checkout`, but failed the
+harness output preflight with exit 1. The operator had created checkout-local
+`target/` while incorrectly requiring the exact
+`target/r2-complete-proof` path to be absent; the harness requires that exact
+output path to exist already as a real directory. Standard output was empty
+and standard error was exactly
+`R2 complete proof: FAIL: output must already exist as a real directory`.
+No command ledger, sampler session, build, browser process, evidence artifact,
+or generated receipt was created, and the checkout remained clean. The
+preserved report is
+`/data/dev/src/nomos-r2-author-8b5dc03.cb2qiJ/author-failure-report.md`,
+SHA-256
+`adf3c189cc7c2e5b11b9c87c78265bfd69240a5a4afa93253ca77658a643789e`.
+This operator-preparation failure is formal red evidence and will not be
+retried at that commit. The next candidate changes only this source receipt;
+its preparation must create and validate the exact empty output directory
+before the one formal invocation.
+
 Commands used during implementation include repository reads, `apply_patch`,
 shell and Node syntax/tests, the four accepted workspace checks, output-local
 R1/R2 rehearsals, failure-injection plants, and fresh-checkout load probes.
-Development failures and rehearsals are not acceptance evidence. The formal
-standalone author proof has not run at this source-receipt freeze; its external
-receipt and the later exact-head non-author receipt must bind the exact green
-commands, environment, outputs, and candidate identity.
+Development failures and rehearsals are not acceptance evidence. The repaired
+source still lacks a green formal standalone author proof; a new exact
+candidate's external receipt and the later exact-head non-author receipt must
+bind the exact green commands, environment, outputs, and candidate identity.
