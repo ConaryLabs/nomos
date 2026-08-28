@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
-# Control-marker publication and pre-stop ledger validation for the R2 disk
-# sampler. This file is sourced by r2-complete-proof-lib.sh.
+# Timing, control publication, and ledger validation/finalization for the R2
+# disk sampler. This file is sourced by r2-complete-proof-lib.sh.
 
 r2_disk_deadline_ns() {
   [[ $# -eq 3 && $1 =~ ^(0|[1-9][0-9]*)$ &&
@@ -49,6 +49,22 @@ r2_disk_interleaved_deadline_ns() {
   R2_DISK_DEADLINE_NS=$deadline
 }
 
+r2_monotonic_now_ns() {
+  [[ $# -eq 0 ]] || return 2
+  local uptime idle extra='' seconds fraction
+  { IFS=' ' read -r uptime idle extra && [[ -z $extra ]]; } </proc/uptime || return 1
+  [[ $uptime =~ ^(0|[1-9][0-9]*)\.([0-9][0-9])$ ]] || return 2
+  seconds=${BASH_REMATCH[1]}
+  fraction=${BASH_REMATCH[2]}
+  [[ $idle =~ ^(0|[1-9][0-9]*)\.[0-9][0-9]$ ]] || return 2
+  # Compare equal-length canonical decimals lexically.
+  # shellcheck disable=SC2071
+  [[ ${#seconds} -lt 10 ||
+    ( ${#seconds} -eq 10 && $seconds < 9223372036 ) ]] || return 2
+  # shellcheck disable=SC2034 # Returned global is consumed by controller waits.
+  R2_MONOTONIC_NS=$((10#$seconds * 1000000000 + 10#$fraction * 10000000))
+}
+
 r2_read_decimal_control_marker() {
   [[ $# -eq 1 && -f $1 && ! -L $1 ]] || return 2
   local line extra=''
@@ -80,6 +96,94 @@ r2_publish_decimal_control_marker() {
     trap - EXIT HUP INT TERM
   ) || return 1
   r2_read_decimal_control_marker "$marker" && [[ $R2_CONTROL_MARKER == "$value" ]]
+}
+
+r2_publish_checkout_disk_samples() {
+  [[ $# -eq 6 && -f $1 && ! -L $1 && -d $2 && ! -L $2 &&
+    -f $3 && ! -L $3 && -n $4 && $5 =~ ^[0-9]+$ &&
+    $6 =~ ^[1-9][0-9]*$ ]] || return 2
+  local samples=$1 state=$2 raw_samples=$3 sorted_samples=$4
+  local sampler_started=$5 expected_count=$6
+  local index=0 line row_ordinal sample_started elapsed size kind extra
+  local previous_started=0 previous_elapsed=0 gap terminal_ordinal
+  local -A seen_ordinals=()
+
+  terminal_ordinal=$((expected_count - 1))
+  LC_ALL=C sort -t $'\t' -k2,2n -k1,1n "$raw_samples" >"$sorted_samples"
+  [[ $(wc -l <"$sorted_samples") -eq $expected_count ]] || return 2
+  while IFS= read -r line; do
+    IFS=$'\t' read -r row_ordinal sample_started elapsed size kind extra <<<"$line"
+    [[ $row_ordinal =~ ^(0|[1-9][0-9]*)$ &&
+      $sample_started =~ ^(0|[1-9][0-9]*)$ &&
+      $elapsed =~ ^(0|[1-9][0-9]*)$ && $size =~ ^(0|[1-9][0-9]*)$ &&
+      -z $extra && -z ${seen_ordinals[$row_ordinal]+present} &&
+      $sample_started -ge $sampler_started &&
+      $elapsed -eq $((sample_started - sampler_started)) ]] || return 2
+    seen_ordinals["$row_ordinal"]=1
+    if [[ $index -eq $terminal_ordinal ]]; then
+      [[ $kind == terminal && $row_ordinal == "$terminal_ordinal" ]] || return 2
+    else
+      [[ $kind == scheduled ]] || return 2
+    fi
+    if [[ $index -gt 0 ]]; then
+      [[ $sample_started -gt $previous_started &&
+        $elapsed -gt $previous_elapsed ]] || return 2
+      gap=$((elapsed - previous_elapsed))
+      [[ $gap -le 100000000 ]] || {
+        printf 'R2 disk sampler: retained sample-start gap exceeds 100000000 ns\n' >&2
+        return 1
+      }
+    fi
+    previous_started=$sample_started
+    previous_elapsed=$elapsed
+    index=$((index + 1))
+  done <"$sorted_samples"
+  [[ $index -eq $expected_count && ${#seen_ordinals[@]} -eq $expected_count ]] || return 2
+  for ((index = 0; index < expected_count; index += 1)); do
+    [[ -n ${seen_ordinals[$index]+present} ]] || return 2
+  done
+  while IFS= read -r line; do
+    printf '%s\n' "$line" >>"$samples"
+  done <"$sorted_samples"
+  find "$raw_samples" "$sorted_samples" -delete
+  [[ -z $(find "$state" -mindepth 1 -print -quit) ]] || return 2
+  find "$state" -depth -delete
+}
+
+r2_write_checkout_disk_summary() {
+  [[ $# -eq 6 && -f $1 && ! -L $1 && -f $2 && ! -L $2 &&
+    ! -e $3 && $4 =~ ^(0|[1-9][0-9]*)$ &&
+    $5 =~ ^(0|[1-9][0-9]*)$ && $6 =~ ^(0|[1-9][0-9]*)$ ]] || return 2
+  local samples=$1 stop=$2 summary=$3 sampler_started=$4
+  local period_ns=$5 stop_requested_ns=$6
+  local count initial final maximum maximum_gap integer marker
+
+  IFS= read -r marker <"$stop" || return 2
+  [[ $marker == "$stop_requested_ns" && $(<"$stop") == "$marker" ]] || return 2
+  count=$(awk 'NR > 1 { count += 1 } END { print count + 0 }' "$samples")
+  initial=$(awk 'NR == 2 { print $4 }' "$samples")
+  final=$(awk 'END { print $4 }' "$samples")
+  maximum=$(awk 'NR > 1 && $4 > maximum { maximum = $4 } END { print maximum + 0 }' "$samples")
+  maximum_gap=$(awk 'NR == 2 { previous = $3 } NR > 2 { gap = $3 - previous; if (gap > maximum) maximum = gap; previous = $3 } END { printf "%.0f\n", maximum + 0 }' "$samples")
+  for integer in "$count" "$initial" "$final" "$maximum" "$maximum_gap"; do
+    [[ $integer =~ ^[0-9]+$ ]] || return 2
+  done
+  [[ $count -ge 2 && $maximum -le 8192 && $maximum_gap -le 100000000 ]] || return 1
+  jq -n \
+    --arg sampler_origin_ns "$sampler_started" \
+    --arg stop_requested_ns "$stop_requested_ns" \
+    --arg nominal_interval_ns "$period_ns" \
+    --argjson samples "$count" \
+    --argjson initial "$initial" \
+    --argjson final "$final" \
+    --argjson maximum "$maximum" \
+    --arg maximum_gap_ns "$maximum_gap" \
+    '{outcome:"pass",sampler_origin_ns:$sampler_origin_ns,
+      stop_requested_ns:$stop_requested_ns,
+      nominal_interval_ns:$nominal_interval_ns,samples:$samples,
+      initial_mib:$initial,final_mib:$final,maximum_mib:$maximum,
+      maximum_gap_ns:$maximum_gap_ns,du_arguments:["-sm","--","<checkout>"]}' \
+    >"$summary"
 }
 
 r2_validate_disk_drain_handoff() {

@@ -52,13 +52,15 @@ mkdir -p "$repo_root/target"
 temporary=$(mktemp -d "$repo_root/target/r2-disk-terminal-order.XXXXXX")
 atomic_publisher=
 handshake_pid=
+deadline_sampler_pid=
 hung_sampler_pid=
 capture_sampler_pid=
 cleanup() {
   local session_pid
   [[ -z ${atomic_publisher:-} ]] || kill "$atomic_publisher" 2>/dev/null || true
   [[ -z ${atomic_publisher:-} ]] || wait "$atomic_publisher" 2>/dev/null || true
-  for session_pid in "${handshake_pid:-}" "${hung_sampler_pid:-}" \
+  for session_pid in "${handshake_pid:-}" "${deadline_sampler_pid:-}" \
+    "${hung_sampler_pid:-}" \
     "${capture_sampler_pid:-}"; do
     [[ -n $session_pid ]] || continue
     kill -KILL -- "-$session_pid" 2>/dev/null || true
@@ -385,9 +387,83 @@ awk -F '\t' -v origin="$origin" -v stop="$stop_requested" '
   }
 ' "$samples" || fail 'drain bridges or terminal ordering differ'
 
-# A sampler with live workers that never acknowledge the drain must be killed
-# as its exact dedicated session before either a ledger or terminal row can be
-# published. This exercises the controller deadline and the parent watchdog.
+# A scripted monotonic clock makes the worker-set deadline exact and proves
+# that a fixed polling-iteration count cannot define or lengthen it. The
+# initial worker retains its row and then stays live; a pre-existing stop drives
+# the controller directly into the bounded reap without involving parent timing.
+deadline_samples=$temporary/deadline-samples.tsv
+deadline_stop=$temporary/deadline.stop
+deadline_state=$temporary/deadline-state
+deadline_clock=$temporary/deadline-clock
+deadline_trace=$temporary/deadline-trace
+deadline_origin=$(date +%s%N)
+printf 'ordinal\tsample_start_ns\telapsed_ns\tmebibytes\tkind\n' >"$deadline_samples"
+mkdir "$deadline_state"
+printf '1000000000\n' >"$deadline_clock"
+: >"$deadline_trace"
+r2_publish_decimal_control_marker "$deadline_stop" "$deadline_origin" ||
+  fail 'could not publish scripted-deadline stop marker'
+deadline_wall_start=$(date +%s%N)
+setsid taskset -c "$test_controller_cpu" bash -c '
+  set -euo pipefail
+  source "$1"
+  deadline_clock=$7
+  deadline_trace=$8
+  r2_monotonic_now_ns() {
+    local current
+    current=$(<"$deadline_clock")
+    [[ $current =~ ^(0|[1-9][0-9]*)$ ]] || return 2
+    printf "%s\n" "$current" >>"$deadline_trace"
+    printf "%s\n" "$((current + 1000000000))" >"$deadline_clock"
+    R2_MONOTONIC_NS=$current
+  }
+  r2_record_checkout_mib() {
+    [[ $# -eq 5 ]] || return 2
+    local raw=$2 origin=$3 ordinal=$4 kind=$5 started
+    started=$(date +%s%N)
+    printf "%s\t%s\t%s\t17\t%s\n" \
+      "$ordinal" "$started" "$((started - origin))" "$kind" >>"$raw"
+    while :; do sleep 30; done
+  }
+  r2_sample_checkout_disk "$2" "$3" "$4" "$5" "$6" 50000000
+' r2-deadline-sampler "$script_directory/r2-complete-proof-lib.sh" \
+  "$repo_root" "$deadline_samples" "$deadline_stop" "$deadline_state" \
+  "$deadline_origin" "$deadline_clock" "$deadline_trace" \
+  >"$temporary/deadline-controller.stdout" \
+  2>"$temporary/deadline-controller.stderr" &
+deadline_sampler_pid=$!
+deadline_session=$deadline_sampler_pid
+set +e
+wait "$deadline_sampler_pid" 2>"$temporary/deadline-wait.stderr"
+deadline_status=$?
+set -e
+deadline_sampler_pid=
+deadline_wall_end=$(date +%s%N)
+deadline_trace_text=$(paste -sd, "$deadline_trace")
+[[ $deadline_status -ne 0 && $deadline_trace_text == \
+  '1000000000,2000000000,3000000000,4000000000,5000000000' &&
+  $((deadline_wall_end - deadline_wall_start)) -lt 2000000000 &&
+  $(wc -l <"$deadline_samples") -eq 1 ]] ||
+  fail 'scripted worker-set deadline was extended or published a ledger'
+[[ $(grep -Fxc 'R2 disk sampler: sample workers did not close before timeout' \
+  "$temporary/deadline-controller.stderr") -eq 1 ]] ||
+  fail 'scripted worker-set timeout diagnostic differs'
+if grep -F 'thirty-two concurrent du walks' \
+  "$temporary/deadline-controller.stderr" >/dev/null; then
+  fail 'scripted worker-set deadline reached the concurrency cap'
+fi
+if r2_sampler_session_has_members "$deadline_session"; then
+  fail 'scripted worker-set deadline left a live session member'
+else
+  deadline_session_status=$?
+fi
+[[ $deadline_session_status -eq 1 ]] ||
+  fail 'scripted worker-set session closure could not be proved'
+
+# A sampler with one live worker that never acknowledges the drain must be
+# killed as its exact dedicated session before either a ledger or terminal row
+# can be published. Later bridge workers complete, so this reaches the absolute
+# drain deadline without relying on the separately planted concurrency cap.
 hung_samples=$temporary/hung-samples.tsv
 hung_stop=$temporary/hung.stop
 hung_state=$temporary/hung-state
@@ -399,13 +475,12 @@ setsid taskset -c "$test_controller_cpu" bash -c '
   source "$1"
   r2_record_checkout_mib() {
     local raw=$2 origin=$3 ordinal=$4 kind=$5 started
-    if [[ $ordinal -eq 0 ]]; then
-      started=$(date +%s%N)
-      printf "%s\t%s\t%s\t17\t%s\n" \
-        "$ordinal" "$started" "$((started - origin))" "$kind" >>"$raw"
-      return
+    if [[ $ordinal -eq 1 ]]; then
+      while :; do sleep 30; done
     fi
-    while :; do sleep 30; done
+    started=$(date +%s%N)
+    printf "%s\t%s\t%s\t17\t%s\n" \
+      "$ordinal" "$started" "$((started - origin))" "$kind" >>"$raw"
   }
   r2_sample_checkout_disk "$2" "$3" "$4" "$5" "$6" 50000000
 ' r2-hung-sampler "$script_directory/r2-complete-proof-lib.sh" \
@@ -429,24 +504,35 @@ for ((attempt = 0; attempt < 200; attempt += 1)); do
   sleep 0.01
 done
 [[ -f $hung_state/ready ]] || fail 'hung sampler did not retain its initial row'
-hung_started_seconds=$SECONDS
+r2_monotonic_now_ns || fail 'could not start the hung-sampler clock'
+hung_started_ns=$R2_MONOTONIC_NS
 set +e
 r2_prepare_and_stop_disk_sampler "$hung_sampler_pid" "$hung_sampler_start" \
   "$test_controller_cpu" "$hung_stop" "$hung_state" 0 \
   >"$temporary/hung-stop.stdout" 2>"$temporary/hung-stop.stderr"
 hung_status=$?
 set -e
-hung_elapsed_seconds=$((SECONDS - hung_started_seconds))
-[[ $hung_status -ne 0 && $hung_elapsed_seconds -le 15 &&
+r2_monotonic_now_ns || fail 'could not stop the hung-sampler clock'
+hung_elapsed_ns=$((R2_MONOTONIC_NS - hung_started_ns))
+[[ $hung_status -ne 0 && $hung_elapsed_ns -ge 3000000000 &&
+  $hung_elapsed_ns -le 8000000000 &&
   ! -e /proc/$hung_sampler_pid && $(wc -l <"$hung_samples") -eq 1 &&
   -f $hung_state/drain-request ]] ||
   fail 'hung sampler was accepted, leaked, published, or exceeded its bound'
 grep -Fx 'R2 disk sampler: sample workers did not close before timeout' \
   "$temporary/hung-controller.stderr" >/dev/null ||
   fail 'hung sampler did not reach its bounded worker abort'
+if grep -F 'thirty-two concurrent du walks' \
+  "$temporary/hung-controller.stderr" >/dev/null; then
+  fail 'single hung worker incorrectly reached the concurrency cap'
+fi
 if r2_sampler_session_has_members "$hung_sampler_pid"; then
   fail 'hung sampler left a live session member'
+else
+  hung_session_status=$?
 fi
+[[ $hung_session_status -eq 1 ]] ||
+  fail 'hung sampler session closure could not be proved'
 hung_sampler_pid=
 
 # A live child whose captured identity differs is never passed to `wait` and

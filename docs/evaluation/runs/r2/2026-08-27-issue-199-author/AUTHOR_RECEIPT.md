@@ -102,9 +102,10 @@ remain within the 100 ms handoff window, launches no scheduled row after it,
 and launches the distinct final row.
 Sampler identity includes PID, process group, session, start ticks, and
 affinity. Worker capture and reaping never block on a live or mismatched PID;
-one shared deadline per active worker set and the parent's identity-bound
-TERM/KILL watchdog bound shutdown and prove that the dedicated session has
-closed.
+one four-second Linux-monotonic deadline spans drain-time bridge scheduling
+and reaping, the terminal worker set receives its own deadline, and the
+parent allows a separate six-second monotonic preparation window before its
+identity-bound TERM/KILL watchdog proves that the dedicated session has closed.
 
 ## Preserved execution history and repair disposition
 
@@ -279,6 +280,40 @@ multiple delayed timestamps arriving out of launch order, and bounded cleanup
 of a hung dedicated sampler session. This resolves shutdown coverage without
 reinterpreting “stop,” fabricating a timestamp, or changing the accepted
 method.
+
+Candidate `41cd82765f88ce22d8bc66baa55db2cdab81e1c8` (tree
+`836a76944faa63ac154d5cc188943eed18bb0cc3`) then ran once in a new fresh,
+detached, standalone author clone. Commands 1 through 24 exited zero. Within
+command 25 all 111 Node tests passed, but the dedicated hung-sampler plant
+failed. Its deliberately blocked workers reached the independent 32-worker
+cap; scanning that active set made the controller's nominal four-second,
+400-iteration wait outlive the parent watchdog, so the controller closed
+without emitting the worker-timeout diagnostic the plant required. Failure
+cleanup then retained two outer-sampler gaps of 105,693,440 ns and 111,628,800
+ns. That cleanup intentionally bypasses the normal request/ready handoff after
+an already-red workload and is not green-path terminal evidence. No command
+after 25 ran, and no final receipt, evidence manifest, disk summary, compile
+benchmark, or browser benchmark was emitted. The preserved failure report is
+`/data/dev/src/nomos-r2-author-41cd827.yklBao/author-failure-report.md`,
+SHA-256
+`2238ca6f8b4912e4057702835ee0c4a0acb6141a2b2112b11f8c752028cb388b`.
+It binds both external streams, the command ledger, raw sampler rows,
+environment, command-25 logs, and the retained hung-sampler fixture. This run
+remains red.
+
+The following repair replaces iteration counting with an absolute
+Linux-monotonic deadline. The same deadline begins when drain intent is first
+observed, is checked while bridge launches continue, and is reused while that
+active set is reaped; scan work therefore cannot silently extend the bound.
+The terminal worker set gets a fresh deadline. The hung plant now leaves one
+request-time worker blocked while later bridges complete, proving deadline
+closure without conflating it with the separately retained 32-worker-cap and
+parent-watchdog plants. A controller-only scripted monotonic-clock plant
+advances one second per probe and requires exactly the five values from one
+through five seconds, so the former 400-iteration loop cannot pass by waiting
+longer. Disk publication and summary helpers move into the already-separated
+disk-control library so routinely edited code files remain below 1,000 lines;
+their behaviour is unchanged.
 
 On 2026-08-28 the owner authorized an implementation repair, not a contract or
 ceiling change. The repair preserves the failed rerun as red evidence, does not

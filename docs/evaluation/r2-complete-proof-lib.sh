@@ -334,6 +334,7 @@ r2_prepare_and_stop_disk_sampler() {
   local pid=$1 start=$2 expected_cpu_list=$3 stop=$4 state=$5 incoming=$6
   local request=$state/drain-request ready=$state/drain-ready
   local request_ns='' prepare_status=0 prepared=0 attempt cleanup_status
+  local prepare_timeout_ns=6000000000 prepare_deadline_ns monotonic_now
 
   if [[ $incoming -ne 0 ]]; then
     r2_stop_disk_sampler "$pid" "$start" "$expected_cpu_list" "$stop" "$incoming"
@@ -349,7 +350,19 @@ r2_prepare_and_stop_disk_sampler() {
   fi
 
   if [[ $prepare_status -eq 0 ]]; then
-    for ((attempt = 0; attempt < 500; attempt += 1)); do
+    if ! r2_monotonic_now_ns || ! r2_disk_deadline_ns \
+      "$R2_MONOTONIC_NS" 1 "$prepare_timeout_ns"; then
+      prepare_status=1
+    else
+      prepare_deadline_ns=$R2_DISK_DEADLINE_NS
+    fi
+  fi
+
+  if [[ $prepare_status -eq 0 ]]; then
+    for ((attempt = 0; attempt < 1000; attempt += 1)); do
+      r2_monotonic_now_ns || break
+      monotonic_now=$R2_MONOTONIC_NS
+      [[ $monotonic_now -lt $prepare_deadline_ns ]] || break
       if r2_read_decimal_control_marker "$ready" 2>/dev/null &&
         [[ $R2_CONTROL_MARKER == "$request_ns" ]]; then
         prepared=1
@@ -622,94 +635,6 @@ r2_record_checkout_mib() {
     "$ordinal" "$measured_started" "$elapsed" "$size" "$kind" >>"$raw_samples"
 }
 
-r2_publish_checkout_disk_samples() {
-  [[ $# -eq 6 && -f $1 && ! -L $1 && -d $2 && ! -L $2 &&
-    -f $3 && ! -L $3 && -n $4 && $5 =~ ^[0-9]+$ &&
-    $6 =~ ^[1-9][0-9]*$ ]] || return 2
-  local samples=$1 state=$2 raw_samples=$3 sorted_samples=$4
-  local sampler_started=$5 expected_count=$6
-  local index=0 line row_ordinal sample_started elapsed size kind extra
-  local previous_started=0 previous_elapsed=0 gap terminal_ordinal
-  local -A seen_ordinals=()
-
-  terminal_ordinal=$((expected_count - 1))
-  LC_ALL=C sort -t $'\t' -k2,2n -k1,1n "$raw_samples" >"$sorted_samples"
-  [[ $(wc -l <"$sorted_samples") -eq $expected_count ]] || return 2
-  while IFS= read -r line; do
-    IFS=$'\t' read -r row_ordinal sample_started elapsed size kind extra <<<"$line"
-    [[ $row_ordinal =~ ^(0|[1-9][0-9]*)$ &&
-      $sample_started =~ ^(0|[1-9][0-9]*)$ &&
-      $elapsed =~ ^(0|[1-9][0-9]*)$ && $size =~ ^(0|[1-9][0-9]*)$ &&
-      -z $extra && -z ${seen_ordinals[$row_ordinal]+present} &&
-      $sample_started -ge $sampler_started &&
-      $elapsed -eq $((sample_started - sampler_started)) ]] || return 2
-    seen_ordinals["$row_ordinal"]=1
-    if [[ $index -eq $terminal_ordinal ]]; then
-      [[ $kind == terminal && $row_ordinal == "$terminal_ordinal" ]] || return 2
-    else
-      [[ $kind == scheduled ]] || return 2
-    fi
-    if [[ $index -gt 0 ]]; then
-      [[ $sample_started -gt $previous_started &&
-        $elapsed -gt $previous_elapsed ]] || return 2
-      gap=$((elapsed - previous_elapsed))
-      [[ $gap -le 100000000 ]] || {
-        printf 'R2 disk sampler: retained sample-start gap exceeds 100000000 ns\n' >&2
-        return 1
-      }
-    fi
-    previous_started=$sample_started
-    previous_elapsed=$elapsed
-    index=$((index + 1))
-  done <"$sorted_samples"
-  [[ $index -eq $expected_count && ${#seen_ordinals[@]} -eq $expected_count ]] || return 2
-  for ((index = 0; index < expected_count; index += 1)); do
-    [[ -n ${seen_ordinals[$index]+present} ]] || return 2
-  done
-  while IFS= read -r line; do
-    printf '%s\n' "$line" >>"$samples"
-  done <"$sorted_samples"
-  find "$raw_samples" "$sorted_samples" -delete
-  [[ -z $(find "$state" -mindepth 1 -print -quit) ]] || return 2
-  find "$state" -depth -delete
-}
-
-r2_write_checkout_disk_summary() {
-  [[ $# -eq 6 && -f $1 && ! -L $1 && -f $2 && ! -L $2 &&
-    ! -e $3 && $4 =~ ^(0|[1-9][0-9]*)$ &&
-    $5 =~ ^(0|[1-9][0-9]*)$ && $6 =~ ^(0|[1-9][0-9]*)$ ]] || return 2
-  local samples=$1 stop=$2 summary=$3 sampler_started=$4
-  local period_ns=$5 stop_requested_ns=$6
-  local count initial final maximum maximum_gap integer marker
-
-  IFS= read -r marker <"$stop" || return 2
-  [[ $marker == "$stop_requested_ns" && $(<"$stop") == "$marker" ]] || return 2
-  count=$(awk 'NR > 1 { count += 1 } END { print count + 0 }' "$samples")
-  initial=$(awk 'NR == 2 { print $4 }' "$samples")
-  final=$(awk 'END { print $4 }' "$samples")
-  maximum=$(awk 'NR > 1 && $4 > maximum { maximum = $4 } END { print maximum + 0 }' "$samples")
-  maximum_gap=$(awk 'NR == 2 { previous = $3 } NR > 2 { gap = $3 - previous; if (gap > maximum) maximum = gap; previous = $3 } END { printf "%.0f\n", maximum + 0 }' "$samples")
-  for integer in "$count" "$initial" "$final" "$maximum" "$maximum_gap"; do
-    [[ $integer =~ ^[0-9]+$ ]] || return 2
-  done
-  [[ $count -ge 2 && $maximum -le 8192 && $maximum_gap -le 100000000 ]] || return 1
-  jq -n \
-    --arg sampler_origin_ns "$sampler_started" \
-    --arg stop_requested_ns "$stop_requested_ns" \
-    --arg nominal_interval_ns "$period_ns" \
-    --argjson samples "$count" \
-    --argjson initial "$initial" \
-    --argjson final "$final" \
-    --argjson maximum "$maximum" \
-    --arg maximum_gap_ns "$maximum_gap" \
-    '{outcome:"pass",sampler_origin_ns:$sampler_origin_ns,
-      stop_requested_ns:$stop_requested_ns,
-      nominal_interval_ns:$nominal_interval_ns,samples:$samples,
-      initial_mib:$initial,final_mib:$final,maximum_mib:$maximum,
-      maximum_gap_ns:$maximum_gap_ns,du_arguments:["-sm","--","<checkout>"]}' \
-    >"$summary"
-}
-
 r2_sample_checkout_disk() {
   [[ $# -eq 6 && -d $1 && -f $2 && ! -L $2 && -n $3 &&
     -d $4 && ! -L $4 && $5 =~ ^[0-9]+$ && $6 =~ ^[1-9][0-9]*$ ]] || {
@@ -727,9 +652,10 @@ r2_sample_checkout_disk() {
   local drain_ready=$state/drain-ready
   local raw_samples=$state/samples.unsorted.tsv
   local sorted_samples=$state/samples.sorted.tsv
-  local ordinal=0 deadline now delay delay_seconds pid status=0 attempt
+  local ordinal=0 deadline now monotonic_now delay delay_seconds pid status=0 attempt
   local child_start child_reaped active initial_ready=0 draining=0 drain_remaining
   local request_ns='' stop_ns='' bridge_ordinal='' bridge_pending=0 stat_status
+  local worker_timeout_ns=4000000000 drain_deadline_ns=''
   local controller_start controller_group controller_session
   local -a sample_pids=()
   local -A sample_starts=()
@@ -792,9 +718,25 @@ r2_sample_checkout_disk() {
   }
 
   wait_for_sample_set() {
-    for ((attempt = 0; attempt < 400; attempt += 1)); do
+    [[ $# -le 1 ]] || return 2
+    local wait_deadline=${1:-} wait_now
+    if [[ -n $wait_deadline ]]; then
+      r2_disk_deadline_ns "$wait_deadline" 0 1 || return 2
+    else
+      r2_monotonic_now_ns || { status=1; return 1; }
+      wait_now=$R2_MONOTONIC_NS
+      r2_disk_deadline_ns "$wait_now" 1 "$worker_timeout_ns" || {
+        status=1
+        return 1
+      }
+      wait_deadline=$R2_DISK_DEADLINE_NS
+    fi
+    while :; do
       reap_finished_samples || true
       [[ ${#sample_pids[@]} -ne 0 ]] || { [[ $status -eq 0 ]]; return; }
+      r2_monotonic_now_ns || { status=1; break; }
+      wait_now=$R2_MONOTONIC_NS
+      [[ $wait_now -lt $wait_deadline ]] || break
       sleep 0.01 || { status=1; break; }
     done
     status=1
@@ -885,6 +827,20 @@ r2_sample_checkout_disk() {
       if [[ $draining -eq 0 ]]; then
         draining=1
         request_ns=$R2_CONTROL_MARKER
+        # Epoch time validates that the control marker was not future-dated;
+        # only the independent monotonic clock below governs the timeout.
+        if ! now=$(date +%s%N) || ! r2_disk_deadline_ns "$now" 0 1 ||
+          [[ $request_ns -gt $now ]] || ! r2_monotonic_now_ns; then
+          status=1
+          break
+        fi
+        monotonic_now=$R2_MONOTONIC_NS
+        if ! r2_disk_deadline_ns \
+          "$monotonic_now" 1 "$worker_timeout_ns"; then
+          status=1
+          break
+        fi
+        drain_deadline_ns=$R2_DISK_DEADLINE_NS
         bridge_pending=1
         for pid in "${sample_pids[@]}"; do
           drain_roots["$pid"]=1
@@ -909,15 +865,29 @@ r2_sample_checkout_disk() {
       break
     fi
     deadline=$R2_DISK_DEADLINE_NS
-    if ! now=$(date +%s%N); then
+    if ! now=$(date +%s%N) || ! r2_disk_deadline_ns "$now" 0 1; then
       status=1
       break
+    fi
+    if [[ $draining -eq 1 ]]; then
+      if ! r2_monotonic_now_ns ||
+        [[ $R2_MONOTONIC_NS -ge $drain_deadline_ns ]]; then
+        status=1
+        break
+      fi
     fi
     if [[ $deadline -gt $now ]]; then
       delay=$((deadline - now))
       printf -v delay_seconds '%d.%09d' \
         "$((delay / 1000000000))" "$((delay % 1000000000))"
       if ! sleep "$delay_seconds"; then
+        status=1
+        break
+      fi
+    fi
+    if [[ $draining -eq 1 ]]; then
+      if ! r2_monotonic_now_ns ||
+        [[ $R2_MONOTONIC_NS -ge $drain_deadline_ns ]]; then
         status=1
         break
       fi
@@ -938,7 +908,7 @@ r2_sample_checkout_disk() {
   # the absolute schedule while every worker that was live at the drain request
   # quiesces, then wait the bounded bridge set. This prevents controller
   # shutdown itself from opening an uncovered interval.
-  wait_for_sample_set || status=1
+  wait_for_sample_set "$drain_deadline_ns" || status=1
 
   if [[ $status -eq 0 && $draining -eq 1 ]]; then
     [[ ! -e $stop && ! -L $stop && ! -e $drain_ready && ! -L $drain_ready &&
