@@ -54,6 +54,8 @@ atomic_publisher=
 handshake_pid=
 deadline_sampler_pid=
 hung_sampler_pid=
+partial_ready_sampler_pid=
+wait_setup_sampler_pid=
 shutdown_sampler_pid=
 capture_sampler_pid=
 cleanup() {
@@ -61,7 +63,8 @@ cleanup() {
   [[ -z ${atomic_publisher:-} ]] || kill "$atomic_publisher" 2>/dev/null || true
   [[ -z ${atomic_publisher:-} ]] || wait "$atomic_publisher" 2>/dev/null || true
   for session_pid in "${handshake_pid:-}" "${deadline_sampler_pid:-}" \
-    "${hung_sampler_pid:-}" "${shutdown_sampler_pid:-}" \
+    "${hung_sampler_pid:-}" "${partial_ready_sampler_pid:-}" \
+    "${wait_setup_sampler_pid:-}" "${shutdown_sampler_pid:-}" \
     "${capture_sampler_pid:-}"; do
     [[ -n $session_pid ]] || continue
     kill -KILL -- "-$session_pid" 2>/dev/null || true
@@ -619,7 +622,6 @@ set +e
 wait "$deadline_sampler_pid" 2>"$temporary/deadline-wait.stderr"
 deadline_status=$?
 set -e
-deadline_sampler_pid=
 deadline_wall_end=$(date +%s%N)
 deadline_trace_text=$(paste -sd, "$deadline_trace")
 [[ $deadline_status -ne 0 && $deadline_trace_text == \
@@ -641,6 +643,7 @@ else
 fi
 [[ $deadline_session_status -eq 1 ]] ||
   fail 'scripted worker-set session closure could not be proved'
+deadline_sampler_pid=
 
 # A sampler with one live worker that never acknowledges the drain must be
 # killed as its exact dedicated session before either a ledger or terminal row
@@ -716,6 +719,112 @@ fi
 [[ $hung_session_status -eq 1 ]] ||
   fail 'hung sampler session closure could not be proved'
 hung_sampler_pid=
+
+# Readiness and wait-reaping are distinct lifecycle states. Make worker 31
+# publish a malformed readiness record only after workers 0-30 have published
+# valid ones, then require cleanup to explicitly wait all 32 children.
+partial_samples=$temporary/partial-ready-samples.tsv
+partial_state=$temporary/partial-ready-state
+partial_stop=$temporary/partial-ready.stop
+partial_waits=$temporary/partial-ready-waits.txt
+partial_origin=$(date +%s%N)
+printf 'ordinal\tsample_start_ns\telapsed_ns\tmebibytes\tkind\n' >"$partial_samples"
+: >"$partial_waits"
+mkdir "$partial_state"
+setsid taskset -c "$test_controller_cpu" bash -c '
+  set -euo pipefail
+  source "$1"
+  partial_waits=$7
+  eval "$(declare -f r2_disk_pool_worker | sed \
+    "1s/r2_disk_pool_worker/r2_real_disk_pool_worker/")"
+  r2_disk_pool_worker() {
+    [[ $1 == 31 ]] || { r2_real_disk_pool_worker "$@"; return; }
+    local descriptor command ordinal kind extra
+    local -a inherited_fds=()
+    IFS=, read -r -a inherited_fds <<<"$5"
+    for descriptor in "${inherited_fds[@]}"; do eval "exec ${descriptor}>&-"; done
+    taskset -pc "$R2_DISK_WALK_CPUS" "$BASHPID" >/dev/null || return 2
+    r2_read_allowed_cpu_list "/proc/$BASHPID/status" || return 2
+    [[ $R2_EXPANDED_CPU_LIST == "$R2_DISK_WALK_CPUS" ]] || return 2
+    printf "broken\t31\t%s\n" "$BASHPID"
+    while IFS=$'\''\t'\'' read -r command ordinal kind extra; do
+      [[ $command == stop && -z $ordinal && -z $kind && -z $extra ]] || return 2
+      return 0
+    done
+  }
+  wait() { printf "%s\n" "$1" >>"$partial_waits"; builtin wait "$@"; }
+  r2_sample_checkout_disk "$2" "$3" "$4" "$5" "$6" 50000000
+' r2-partial-ready "$script_directory/r2-complete-proof-lib.sh" \
+  "$repo_root" "$partial_samples" "$partial_stop" "$partial_state" \
+  "$partial_origin" "$partial_waits" \
+  >"$temporary/partial-ready.stdout" 2>"$temporary/partial-ready.stderr" &
+partial_ready_sampler_pid=$!
+set +e
+wait "$partial_ready_sampler_pid" 2>/dev/null
+partial_status=$?
+set -e
+partial_wait_count=$(wc -l <"$partial_waits")
+partial_unique_waits=$(sort -u "$partial_waits" | wc -l)
+[[ $partial_status -ne 0 && $partial_wait_count -eq 32 &&
+  $partial_unique_waits -eq 32 && $(wc -l <"$partial_samples") -eq 1 ]] ||
+  fail 'partial readiness did not explicitly reap the complete worker pool'
+if grep -Ev '^[1-9][0-9]*$' "$partial_waits" >/dev/null; then
+  fail 'partial-readiness wait log contains a non-PID argument'
+fi
+if r2_sampler_session_has_members "$partial_ready_sampler_pid"; then
+  fail 'partial-readiness cleanup left a live session member'
+else
+  partial_session_status=$?
+fi
+[[ $partial_session_status -eq 1 ]] ||
+  fail 'partial-readiness session closure could not be proved'
+partial_ready_sampler_pid=
+
+# A failure while constructing the active-set wait deadline must abort instead
+# of falling through to a stop helper that refuses `active > 0`.
+wait_setup_samples=$temporary/wait-setup-samples.tsv
+wait_setup_state=$temporary/wait-setup-state
+wait_setup_stop=$temporary/wait-setup.stop
+wait_setup_origin=$(date +%s%N)
+printf 'ordinal\tsample_start_ns\telapsed_ns\tmebibytes\tkind\n' >"$wait_setup_samples"
+mkdir "$wait_setup_state"
+r2_publish_decimal_control_marker "$wait_setup_stop" "$wait_setup_origin" ||
+  fail 'could not publish wait-setup stop marker'
+setsid taskset -c "$test_controller_cpu" bash -c '
+  set -euo pipefail
+  source "$1"
+  eval "$(declare -f r2_monotonic_now_ns | sed \
+    "1s/r2_monotonic_now_ns/r2_real_monotonic_now_ns/")"
+  r2_monotonic_now_ns() {
+    [[ ${FUNCNAME[1]:-} != wait_for_sample_set ]] || return 1
+    r2_real_monotonic_now_ns
+  }
+  r2_record_checkout_mib() {
+    local started
+    started=$(date +%s%N) || return 2
+    printf "%s\t%s\t%s\t17\t%s\n" "$4" "$started" \
+      "$((started - $3))" "$5" >>"$2"
+    while :; do sleep 30; done
+  }
+  r2_sample_checkout_disk "$2" "$3" "$4" "$5" "$6" 50000000
+' r2-wait-setup "$script_directory/r2-complete-proof-lib.sh" \
+  "$repo_root" "$wait_setup_samples" "$wait_setup_stop" "$wait_setup_state" \
+  "$wait_setup_origin" >"$temporary/wait-setup.stdout" \
+  2>"$temporary/wait-setup.stderr" &
+wait_setup_sampler_pid=$!
+set +e
+wait "$wait_setup_sampler_pid" 2>>"$temporary/wait-setup.stderr"
+wait_setup_status=$?
+set -e
+[[ $wait_setup_status -eq 137 && $(wc -l <"$wait_setup_samples") -eq 1 ]] ||
+  fail 'active-set wait setup failure returned or published evidence'
+wait_setup_session_status=0
+for ((attempt = 0; attempt < 5000 && wait_setup_session_status == 0; attempt += 1)); do
+  if r2_sampler_session_has_members "$wait_setup_sampler_pid"; then sleep 0.001; else wait_setup_session_status=$?; fi
+done
+[[ $wait_setup_session_status -eq 1 ]] ||
+  fail 'active-set wait setup failure did not close the sampler session'
+wait_setup_sampler_pid=
 
 # A shutdown helper failure cannot return while the ready worker pool remains
 # live. Fail the first monotonic probe whose caller is `stop_worker_pool` and
@@ -814,7 +923,11 @@ set -e
   fail 'capture mismatch waited, leaked, or published sampler evidence'
 if r2_sampler_session_has_members "$capture_sampler_pid"; then
   fail 'capture mismatch left a live session member'
+else
+  capture_session_status=$?
 fi
+[[ $capture_session_status -eq 1 ]] ||
+  fail 'capture mismatch session closure could not be proved'
 capture_sampler_pid=
 
 printf 'R2_DISK_TERMINAL_ORDER_PLANT PASS\n'

@@ -20,26 +20,42 @@ history_started=$(date +%s%N)
 printf 'ordinal\tsample_start_ns\telapsed_ns\tmebibytes\tkind\n' >"$history_samples"
 : >"$history_probes"
 mkdir "$history_parts"
-run_history_sampler() {
+setsid bash -c '
+  set -euo pipefail
+  source "$1"
+  history_probes=$7
   eval "$(declare -f r2_read_process_stat | sed \
-    '1s/r2_read_process_stat/r2_read_process_stat_unprobed/')"
+    "1s/r2_read_process_stat/r2_read_process_stat_unprobed/")"
   r2_read_process_stat() {
-    printf 'probe\n' >>"$history_probes"
+    printf "probe\n" >>"$history_probes"
     r2_read_process_stat_unprobed "$@"
   }
   r2_record_checkout_mib() {
     [[ $# -eq 5 ]] || return 2
     local raw=$2 origin=$3 ordinal=$4 kind=$5
     local started=$((origin + ordinal * 10000000))
-    printf '%s\t%s\t%s\t17\t%s\n' \
+    printf "%s\t%s\t%s\t17\t%s\n" \
       "$ordinal" "$started" "$((started - origin))" "$kind" >>"$raw"
   }
   r2_sample_checkout_disk \
-    "$repo_root" "$history_samples" "$history_stop" "$history_parts" \
-    "$history_started" 10000000
-}
-run_history_sampler &
+    "$2" "$3" "$4" "$5" "$6" 10000000
+' r2-history-sampler "$script_directory/r2-complete-proof-lib.sh" \
+  "$repo_root" "$history_samples" "$history_stop" "$history_parts" \
+  "$history_started" "$history_probes" &
 history_sampler_pid=$!
+history_sampler_bound=0
+for ((attempt = 0; attempt < 100; attempt += 1)); do
+  if r2_read_process_stat "/proc/$history_sampler_pid/stat" &&
+    [[ $R2_PROC_GROUP == "$history_sampler_pid" &&
+      $R2_PROC_SESSION == "$history_sampler_pid" && $R2_PROC_STATE != Z ]]; then
+    history_sampler_bound=1
+    break
+  fi
+  kill -0 "$history_sampler_pid" 2>/dev/null || break
+  sleep 0.001
+done
+[[ $history_sampler_bound -eq 1 ]] ||
+  fail 'history sampler did not own its dedicated session'
 r2_monotonic_now_ns || fail 'could not start history-sampler readiness deadline'
 r2_disk_deadline_ns "$R2_MONOTONIC_NS" 1 12000000000 ||
   fail 'history-sampler readiness deadline overflowed'
@@ -70,7 +86,13 @@ done
 r2_publish_decimal_control_marker "$history_stop" "$(date +%s%N)" ||
   fail 'could not publish history-sampler stop marker'
 wait "$history_sampler_pid" || fail 'history sampler rejected quick complete walks'
-history_sampler_pid=
+if r2_sampler_session_has_members "$history_sampler_pid"; then
+  fail 'history sampler left a live session member'
+else
+  history_session_status=$?
+fi
+[[ $history_session_status -eq 1 ]] ||
+  fail 'history sampler session closure could not be proved'
 history_count=$(awk 'NR > 1 { count += 1 } END { print count + 0 }' "$history_samples")
 history_probe_count=$(wc -l <"$history_probes")
 # Deterministic quick workers need only a small active set; sixteen probes per
@@ -79,3 +101,4 @@ history_probe_count=$(wc -l <"$history_probes")
   $history_probe_count -le $(((history_count + 1) * 16)) &&
   ! -e $history_parts ]] ||
   fail 'disk sampler retained historical jobs instead of the bounded active set'
+history_sampler_pid=

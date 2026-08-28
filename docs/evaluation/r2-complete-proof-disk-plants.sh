@@ -145,11 +145,15 @@ r2_stop_disk_sampler "$stop_test_pid" "$stop_test_start" \
 blocked_stop_status=$?
 set -e
 blocked_stop_elapsed_seconds=$((SECONDS - blocked_stop_started_seconds))
-if [[ $blocked_stop_status -eq 0 || $blocked_stop_elapsed_seconds -gt 5 ||
-  -e /proc/$stop_test_pid ]] ||
-  r2_sampler_session_has_members "$stop_test_pid"; then
+blocked_stop_session_status=0
+if r2_sampler_session_has_members "$stop_test_pid"; then
   fail 'failed stop marker leaked or hung its stopped sampler group'
+else
+  blocked_stop_session_status=$?
 fi
+[[ $blocked_stop_status -ne 0 && $blocked_stop_elapsed_seconds -le 5 &&
+  ! -e /proc/$stop_test_pid && $blocked_stop_session_status -eq 1 ]] ||
+  fail 'failed stop marker cleanup result could not be proved'
 stop_test_pid=
 plant_count=$((plant_count + 1))
 

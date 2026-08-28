@@ -439,6 +439,37 @@ and 8-second row-accumulation monotonic deadlines before publishing stop. Its
 probe ceiling, production sampler, disk method, concurrency bound, schedules,
 and acceptance ceilings are unchanged.
 
+Candidate `ba06cc9df3a9e08f3b241cd5c3fecd70339eeee8` (tree
+`7e1329f46add263f515575820c16d079fe004fe9`) then passed its exact-head local
+matrix, including the workspace checks, 111 Node tests, 87-row provenance
+inventory, nine provenance plants, and complete 42-plant suite. A read-only
+Luna Max lifecycle audit nevertheless blocked candidate promotion before any
+formal proof. It found that active-set wait setup could return before aborting
+live work, partial readiness reused the wait-reaped flag, and four plants
+either disarmed cleanup early or treated an indeterminate session inspection
+as closure. This candidate remains a local red review result and did not enter
+the standalone author protocol.
+
+The follow-up separates `worker_ready` from `worker_reaped`; every successfully
+launched child now remains wait-owned even if another readiness record fails.
+Monotonic or deadline setup failure while an active sample set is waiting now
+aborts the verified dedicated group. Deterministic plants make worker 31 emit
+a malformed readiness record after workers 0-30 are ready and require 32
+distinct explicit waits, then fail the first active-set wait clock probe and
+require exit 137 with no publication. The blocked-stop, scripted-deadline,
+capture-mismatch, and history plants keep their cleanup PID armed and require
+session inspection status exactly 1 before accepting closure.
+
+A second read-only Luna Max audit then found that the extracted history plant
+had retained its cleanup PID but had launched an ordinary background function,
+not a session leader. Its session-membership query could therefore report
+closure for an ID that had never owned the workers. This was found before a
+candidate freeze or formal run. The plant now launches under `setsid`, proves
+that its root owns both its process group and session before accepting
+readiness, and keeps the PID armed until status-1 session closure. The parent
+trap kills that exact process group, with a root-PID fallback if session setup
+itself fails.
+
 Deterministic plants reject partial or fewer-than-three-group topology and
 bind the exact six-core split. A real process plant verifies one affinity
 operation for each of the 32 persistent direct children and proves that more
@@ -465,8 +496,10 @@ and expires with the exact diagnostic at its synthetic six-second monotonic
 boundary. Existing retry, chronological-publication, exact-gap,
 absolute-schedule, drain, terminal-order, deadline, identity-mismatch, and
 parent-watchdog plants remain green. Two consecutive complete 42-plant suites
-passed after all lifecycle and history-plant repairs. These runs are
-development rehearsals, not acceptance evidence.
+passed after the subsequent readiness, active-wait, and exact-session-closure
+repairs. A further complete 42-plant suite passed after the history plant's
+dedicated-session correction. These runs are development rehearsals, not
+acceptance evidence.
 
 Commands used during implementation include repository reads, `apply_patch`,
 shell and Node syntax/tests, the four accepted workspace checks, output-local

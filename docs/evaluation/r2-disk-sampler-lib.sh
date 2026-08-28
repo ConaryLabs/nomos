@@ -137,7 +137,7 @@ r2_sample_checkout_disk() {
   local pool_started=0 stat_status
   local -a worker_pids=() worker_starts=() worker_results=()
   local -a worker_result_fds=() worker_request_fds=() worker_jobs=()
-  local -a worker_reaped=() inherited_fds=()
+  local -a worker_ready=() worker_reaped=() inherited_fds=()
   local -A drain_jobs=()
 
   r2_disk_interleaved_deadline_ns "$sampler_started" 0 "$period_ns" || return
@@ -207,6 +207,7 @@ r2_sample_checkout_disk() {
       worker_result_fds[index]=$result_fd
       worker_request_fds[index]=$request_fd
       worker_jobs[index]=''
+      worker_ready[index]=0
       worker_reaped[index]=0
       pool_started=$((pool_started + 1))
       worker_start=
@@ -243,13 +244,13 @@ r2_sample_checkout_disk() {
     ready_deadline=$R2_DISK_DEADLINE_NS
     while [[ $ready_count -lt $pool_size ]]; do
       for ((index = 0; index < pool_size; index += 1)); do
-        [[ ${worker_reaped[$index]} -eq 0 ]] || continue
+        [[ ${worker_ready[$index]} -eq 0 ]] || continue
         if IFS=$'\t' read -r -u "${worker_result_fds[$index]}" \
           tag result_index worker_pid extra; then
           [[ $tag == ready && $result_index == "$index" &&
             $worker_pid == "${worker_pids[$index]}" && -z $extra ]] || return 2
           pool_worker_identity_stable "$index" || return 1
-          worker_reaped[index]=1
+          worker_ready[index]=1
           ready_count=$((ready_count + 1))
         fi
       done
@@ -258,9 +259,6 @@ r2_sample_checkout_disk() {
       ready_now=$R2_MONOTONIC_NS
       [[ $ready_now -lt $ready_deadline ]] || return 1
       sleep 0.005 || return 1
-    done
-    for ((index = 0; index < pool_size; index += 1)); do
-      worker_reaped[index]=0
     done
   }
 
@@ -325,12 +323,21 @@ r2_sample_checkout_disk() {
     [[ $# -le 1 ]] || return 2
     wait_deadline=${1:-}
     if [[ -n $wait_deadline ]]; then
-      r2_disk_deadline_ns "$wait_deadline" 0 1 || return 2
+      r2_disk_deadline_ns "$wait_deadline" 0 1 || {
+        status=1
+        abort_dedicated_sampler_group || true
+        return 1
+      }
     else
-      r2_monotonic_now_ns || { status=1; return 1; }
+      r2_monotonic_now_ns || {
+        status=1
+        abort_dedicated_sampler_group || true
+        return 1
+      }
       wait_now=$R2_MONOTONIC_NS
       r2_disk_deadline_ns "$wait_now" 1 "$worker_timeout_ns" || {
         status=1
+        abort_dedicated_sampler_group || true
         return 1
       }
       wait_deadline=$R2_DISK_DEADLINE_NS

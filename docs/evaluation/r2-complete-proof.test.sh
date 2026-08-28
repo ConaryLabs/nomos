@@ -81,7 +81,9 @@ cleanup() {
         [[ -z $sampler_pid ]] || kill -KILL -- "-$sampler_pid" 2>/dev/null || true
         [[ -z $sampler_pid ]] || wait "$sampler_pid" 2>/dev/null || true
       done
-      [[ -z ${history_sampler_pid:-} ]] || kill "$history_sampler_pid" 2>/dev/null || true
+      [[ -z ${history_sampler_pid:-} ]] ||
+        kill -KILL -- "-$history_sampler_pid" 2>/dev/null ||
+        kill -KILL "$history_sampler_pid" 2>/dev/null || true
       [[ -z ${history_sampler_pid:-} ]] || wait "$history_sampler_pid" 2>/dev/null || true
       # Retain the closed plant fixture beneath checkout-local target. Its
       # bytes stay inside the measured write boundary, and deleting the Git
