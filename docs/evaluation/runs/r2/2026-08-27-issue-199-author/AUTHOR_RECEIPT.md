@@ -1,8 +1,9 @@
 # R2 final-proof implementation-author receipt
 
-Status: final-proof source authored for issue #199; the exact candidate and
-author/non-author executions are bound by the generated external proof receipts,
-not recursively by this source receipt.
+Status: R2 final proof remains red; bounded observer implementation tuning is
+retired pending an owner-authorized measurement-method contract repair. Exact
+candidate and author/non-author executions are bound by generated external
+proof receipts, not recursively by this source receipt.
 
 ## Authority and baseline
 
@@ -1054,3 +1055,43 @@ refusal, and the existing stop/drain boundaries. If the single fresh full
 rehearsal of the new commit remains red, observer implementation tuning ends
 and any further attempt requires an owner-authorized measurement-method
 contract repair.
+
+Development commit `4b12ed0cff29962885536723beb1e28d31c79acb` (tree
+`831edad7b8ce1915c9f79ec2ef5a7ea0806efede`) then ran the exact complete
+harness once in a new fresh, detached, full, clean standalone clone at
+`/data/dev/src/nomos-r2-rehearsal-lanes3-a.u8Zv71/checkout`. All 33 workload
+commands exited zero. The clean release build took 24.39 seconds; 100 compile
+outputs were byte-identical with median numerator `82706912/2` ns and p95
+46,433,654 ns; browser smoke reproduced the exact contact sheet; and the
+maximum private complete scheduled disk row was 1,356 MiB. Every
+contract-defined non-cadence budget summary passed.
+
+The one-walk-per-reference-lane observer remained red. Its 3,586 complete
+scheduled rows had p50 49,913,251 ns, p90 60,363,919 ns, p95 61,777,327 ns,
+p99 93,376,688 ns, and maximum 120,139,206 ns retained-start gaps. Nineteen
+gaps exceeded the unchanged 100,000,000 ns ceiling across workspace tests, R1
+and R2 browser smoke, provenance plants, compiler tests, viewer tests, the
+clean release build, and the maximum compile benchmark. Cadence validation
+correctly withheld drain readiness, stop, the terminal row, public rows beyond
+the header, the official disk summary, clean-end and formal process/write
+closure metadata, evidence manifest, and final receipt. Direct audit found no
+remaining run process, but the absent finalization artifacts mean formal post-
+sampler closure was not produced. The preserved independently audited report
+is
+`/data/dev/src/nomos-r2-rehearsal-lanes3-a.u8Zv71/rehearsal-failure-report.md`,
+SHA-256
+`1e5c7b8a5628986b7db85cf557d98f039a864c71e5779243ff1b9d3f95a8beb4`.
+This development commit remains red and will not be retried.
+
+Reducing exact-lane occupancy from `2/1/1` to `1/1/1` improved the preceding
+lane run from 74 cadence violations and a 221,153,013 ns maximum to 19 and
+120,139,206 ns, and reduced the clean build from 32.52 to 24.39 seconds. It
+still did not satisfy the unchanged zero-violation criterion and remained
+worse than the earlier unpinned active-three and active-four results.
+Polling, added concurrency, added disk-core allocation, forced exact lanes,
+and one walk per reference lane are therefore all retired as sufficient
+implementation repairs. No further observer tuning will be attempted under
+revision 2. Any next candidate requires an owner-authorized R2 contract
+revision replacing repeated recursive checkout traversal with a
+non-perturbing, continuously enforceable disk-usage method while preserving
+the budget and coverage claim.
