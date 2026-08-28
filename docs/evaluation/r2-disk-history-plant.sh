@@ -31,7 +31,7 @@ setsid bash -c '
     r2_read_process_stat_unprobed "$@"
   }
   r2_record_checkout_mib() {
-    [[ $# -eq 5 ]] || return 2
+    [[ $# -eq 6 ]] || return 2
     local raw=$2 origin=$3 ordinal=$4 kind=$5
     local started=$((origin + ordinal * 10000000))
     printf "%s\t%s\t%s\t17\t%s\n" \

@@ -16,6 +16,7 @@ printf 'ordinal\tsample_start_ns\telapsed_ns\tmebibytes\tkind\n' >"$slot_stop_sa
 mkdir "$slot_stop_state"
 setsid taskset -c "$disk_test_controller_cpus" env \
   R2_DISK_WALK_CPUS="$async_walk_cpus" \
+  R2_DISK_WALK_GROUPS="$async_walk_cpus" \
   bash -c '
   set -euo pipefail
   source "$1"
@@ -48,8 +49,9 @@ setsid taskset -c "$disk_test_controller_cpus" env \
     R2_MONOTONIC_NS=1000000000
   }
   r2_read_allowed_cpu_list() {
-    if [[ ${FUNCNAME[1]:-} == pool_worker_identity_stable &&
-      ${FUNCNAME[2]:-} == find_available_worker &&
+    if [[ ${FUNCNAME[1]:-} == r2_disk_worker_affinity_stable &&
+      ${FUNCNAME[2]:-} == pool_worker_identity_stable &&
+      ${FUNCNAME[3]:-} == find_available_worker &&
       ${launch_kind:-} == scheduled && $ordinal -eq 4 ]]; then
       : >"$selection"
       return 2
@@ -57,7 +59,7 @@ setsid taskset -c "$disk_test_controller_cpus" env \
     r2_real_read_allowed_cpu_list "$@"
   }
   r2_record_checkout_mib() {
-    [[ $# -eq 5 ]] || return 2
+    [[ $# -eq 6 ]] || return 2
     local raw_output=$2 sample_origin=$3 ordinal=$4 kind=$5 started
     if [[ $kind == scheduled && $ordinal -lt 4 ]]; then
       while [[ ! -e $release ]]; do command sleep 0.001; done
@@ -110,6 +112,7 @@ printf 'ordinal\tsample_start_ns\telapsed_ns\tmebibytes\tkind\n' \
 mkdir "$dispatch_stop_state"
 setsid taskset -c "$disk_test_controller_cpus" env \
   R2_DISK_WALK_CPUS="$async_walk_cpus" \
+  R2_DISK_WALK_GROUPS="$async_walk_cpus" \
   bash -c '
   set -euo pipefail
   source "$1"
@@ -128,15 +131,16 @@ setsid taskset -c "$disk_test_controller_cpus" env \
   r2_monotonic_now_ns() { R2_MONOTONIC_NS=1000000000; }
   r2_read_allowed_cpu_list() {
     r2_real_read_allowed_cpu_list "$@" || return
-    if [[ ${FUNCNAME[1]:-} == pool_worker_identity_stable &&
-      ${FUNCNAME[2]:-} == find_available_worker && $ordinal -eq 1 &&
+    if [[ ${FUNCNAME[1]:-} == r2_disk_worker_affinity_stable &&
+      ${FUNCNAME[2]:-} == pool_worker_identity_stable &&
+      ${FUNCNAME[3]:-} == find_available_worker && $ordinal -eq 1 &&
       $injected -eq 0 ]]; then
       injected=1
       r2_publish_decimal_control_marker "$stop" "$((origin + 25000000))"
     fi
   }
   r2_record_checkout_mib() {
-    [[ $# -eq 5 ]] || return 2
+    [[ $# -eq 6 ]] || return 2
     local raw_output=$2 sample_origin=$3 ordinal=$4 kind=$5 started
     started=$((sample_origin + ordinal * 50000000))
     printf "%s\t%s\t%s\t17\t%s\n" "$ordinal" "$started" \
@@ -186,6 +190,7 @@ mkdir "$drain_slot_state"
 set +e
 setsid taskset -c "$disk_test_controller_cpus" env \
   R2_DISK_WALK_CPUS="$async_walk_cpus" \
+  R2_DISK_WALK_GROUPS="$async_walk_cpus" \
   bash -c '
   set -euo pipefail
   source "$1"
@@ -224,7 +229,7 @@ setsid taskset -c "$disk_test_controller_cpus" env \
     fi
   }
   r2_record_checkout_mib() {
-    [[ $# -eq 5 ]] || return 2
+    [[ $# -eq 6 ]] || return 2
     if [[ $4 -eq 0 ]]; then
       r2_publish_decimal_control_marker \
         "$state/drain-request" "$((origin + 25000000))"

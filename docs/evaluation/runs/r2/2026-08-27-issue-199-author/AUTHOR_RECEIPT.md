@@ -79,22 +79,28 @@ groups between disk walks and the proof workload; when that remainder is odd,
 the disk-walk side receives the extra group while the workload retains at
 least one. On the 12-logical-CPU, six-core reference host, the controller uses
 CPUs `0,6`, a bounded pool of 32 persistent workers uses CPUs
-`1,2,3,7,8,9`, and the proof workload uses CPUs `4,5,10,11`. The workload
+`1,2,3,7,8,9`, and the proof workload uses CPUs `4,5,10,11`. The disk mask
+is carried as three exact worker lanes, `1,7`, `2,8`, and `3,9`, whose
+disjoint union is the recorded disk mask. The workload
 enters its mask before the sampler is launched; all three roles are pairwise
 physically disjoint.
 
 Each pool worker is a direct child in the sampler's dedicated session, enters
-the walk mask once before reporting readiness, and receives ordinal-bound work
-over its private controller-owned channel. It invokes ordinary-CPU-priority,
-idle-I/O-priority `du -sm -- <checkout>` without per-sample affinity setup.
+one exact lane once before reporting readiness, and receives ordinal-bound work
+over its private controller-owned channel. Its `du` child inherits that lane.
+It invokes ordinary-CPU-priority, idle-I/O-priority `du -sm -- <checkout>`
+without per-sample affinity setup.
 Workers retain canonical integer-nanosecond start times taken immediately
 before each successful walk. The controller publishes them in chronological
 order while independently requiring unique contiguous launch ordinals. All 32
-workers are ready before use, but no more than four exact walks may be active
-on the reference host's isolated three-group disk mask. A full gate checks for
-completion after one-millisecond poll delays, waits against its own four-second
-monotonic deadline, remains subject to an earlier active drain deadline, and
-never dispatches a fifth walk concurrently. One
+workers are ready before use and are assigned by index modulo lane count; the
+reference allocation is 11, 11, and 10 workers. The controller selects the
+least-active lane with rotating tie-breaking, caps any reference-host lane at
+two live walks, and caps the complete pool at four. A held four-walk set is
+therefore `2/1/1`; a fifth walk is never dispatched concurrently. A full gate
+checks for completion after five-millisecond poll delays, waits against its
+own four-second monotonic deadline, and remains subject to an earlier active
+drain deadline. One
 controller derives the exact absolute schedule
 `origin + ordinal * 50 ms`; it never turns that schedule into a relative delay.
 The recorded nominal interval remains 50 ms and the unchanged maximum
@@ -144,8 +150,9 @@ controller's identity check, then closes the already-verified dedicated
 sampler group. After a successful launch, every child and owned descriptor is
 registered before `/proc` identity capture; an unbound launched child
 therefore closes through that same group rather than escaping the tracked
-pool. Affinity is rechecked after a successful result, before idle reuse,
-before stop is sent, and while a live worker is polled for shutdown. A
+pool. Exact per-worker lane affinity is rechecked after a successful result,
+before idle reuse, before stop is sent, and while a live worker is polled for
+shutdown. A
 still-live worker whose structural identity changes during shutdown aborts the
 dedicated group instead of being marked reaped. Worker result collection never
 waits a live or mismatched PID. A monotonic-clock, deadline-construction, or
@@ -960,3 +967,48 @@ resource ceiling remain unchanged. This is a diagnostic development
 experiment, not a presumed fix; if its fresh full rehearsal remains red,
 polling is retired and the next design question is explicit per-core worker
 lanes rather than another scheduler-delay tweak.
+
+Development commit `c36a78367b5ed9dfcfd8bf55a95aac267911866d` (tree
+`1df7748e3c50746721e990b3e35c5c2daf696a4d`) then ran the exact complete
+harness once in a new fresh, detached, full, clean standalone clone at
+`/data/dev/src/nomos-r2-rehearsal-poll1-a.izJyAg/checkout`. An unused sibling
+checkout ending in `.CfkArk` was abandoned during preflight and contains no
+proof output or invocation artifacts; it is not a second run. All 33 workload
+commands exited zero. The clean release build took 23.60 seconds; 100 compile
+outputs were byte-identical with median numerator `77075884/2` ns and p95
+41,487,728 ns; browser smoke reproduced the exact contact sheet; and peak
+checkout disk was 1,356 MiB. All non-cadence workload and resource ceilings
+passed.
+
+The one-millisecond-poll observer remained red. Its 3,443 complete scheduled
+rows had p50 49,945,007 ns, p90 54,628,837 ns, p95 57,071,670 ns, p99
+67,697,297 ns, and maximum 106,793,012 ns retained-start gaps. Twelve gaps
+exceeded the unchanged 100,000,000 ns ceiling across the R1 wasm build,
+provenance plants, the R2 compiler/scene transition, R2 viewer tests, R2
+browser smoke, and the clean release build. Drain validation withheld
+readiness, stop, terminal, disk summary, evidence manifest, and final receipt.
+The preserved independently audited report is
+`/data/dev/src/nomos-r2-rehearsal-poll1-a.izJyAg/rehearsal-failure-report.md`,
+SHA-256
+`ea789ca440b01c09968a0847e1b350bf9c4052a1c4496137502e0884529f49cd`.
+This development commit remains red and will not be retried.
+
+Against the prior same-topology active-four rehearsal, the shorter poll raised
+violations from five to twelve and worsened p95 and p99, despite lowering the
+single maximum by 2,847,828 ns. Saturated-slot polling is therefore retired as
+both an explanation and a tuning direction. The next controlled experiment
+restores the five-millisecond poll, retains the controller-one/disk-three/
+workload-two topology and four-walk total cap, and changes only steady-state
+worker placement: each of the 32 persistent workers is assigned by index to
+one exact physical-core lane, and the controller selects the least-active lane
+with rotating ties and a two-walk per-lane cap. On the reference host the
+first four held walks occupy lanes `0,1,2,0`, or `2/1/1`; no lane may admit a
+third and no fifth total walk may launch. The combined mask, exact `du -sm`
+method, idle I/O class, authentic timestamp, absolute 50 ms schedule, 100 ms
+gap ceiling, workload, and every resource ceiling remain unchanged.
+Deterministic plants bind the lane grammar and exact union, 11/11/10 worker
+assignment, least-active selection, exact worker/child affinity, affinity
+drift refusal, held-four `2/1/1` occupancy, fifth-walk refusal, and complete
+session cleanup. A new development commit must pass the complete local matrix
+and fresh standalone rehearsals before any candidate can enter the formal
+author protocol.

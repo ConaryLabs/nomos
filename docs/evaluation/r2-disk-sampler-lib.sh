@@ -3,6 +3,79 @@
 # Exact checkout measurement and the bounded, pre-affinitized worker-pool
 # controller. This file is sourced by r2-complete-proof-lib.sh.
 
+r2_configure_disk_walk_lanes() {
+  [[ -n ${R2_DISK_WALK_CPUS:-} && -n ${R2_DISK_WALK_GROUPS:-} ]] || return 2
+  local combined groups=$R2_DISK_WALK_GROUPS lane cpu normalized
+  local -a combined_cpus=() lanes=() lane_cpus=()
+  local -A combined_set=() seen=()
+  r2_expand_cpu_list "$R2_DISK_WALK_CPUS" || return
+  combined=$R2_EXPANDED_CPU_LIST
+  [[ $combined == "$R2_DISK_WALK_CPUS" && $groups != \;* &&
+    $groups != *\; && $groups != *\;\;* ]] || return 2
+  IFS=, read -r -a combined_cpus <<<"$combined"
+  for cpu in "${combined_cpus[@]}"; do combined_set["$cpu"]=1; done
+  IFS=';' read -r -a lanes <<<"$groups"
+  [[ ${#lanes[@]} -gt 0 && ${#lanes[@]} -le 32 ]] || return 2
+  R2_DISK_LANE_MASKS=()
+  for lane in "${lanes[@]}"; do
+    r2_expand_cpu_list "$lane" || return
+    normalized=$R2_EXPANDED_CPU_LIST
+    [[ $normalized == "$lane" ]] || return 2
+    IFS=, read -r -a lane_cpus <<<"$normalized"
+    for cpu in "${lane_cpus[@]}"; do
+      [[ -n ${combined_set[$cpu]+present} && -z ${seen[$cpu]+present} ]] ||
+        return 2
+      seen["$cpu"]=1
+    done
+    R2_DISK_LANE_MASKS+=("$normalized")
+  done
+  [[ ${#seen[@]} -eq ${#combined_cpus[@]} ]] || return 2
+  # shellcheck disable=SC2034 # Returned globals are consumed by the controller and plants.
+  R2_DISK_LANE_COUNT=${#R2_DISK_LANE_MASKS[@]}
+}
+
+r2_disk_lane_for_worker() {
+  [[ $# -eq 2 && $1 =~ ^(0|[1-9][0-9]*)$ &&
+    $2 =~ ^[1-9][0-9]*$ && $2 -le 32 ]] || return 2
+  # shellcheck disable=SC2034 # Returned global is consumed by the controller and plants.
+  R2_DISK_WORKER_LANE=$(( $1 % $2 ))
+}
+
+r2_select_disk_lane() {
+  [[ $# -ge 3 && $1 =~ ^(0|[1-9][0-9]*)$ &&
+    $2 =~ ^[1-9][0-9]*$ ]] || return 2
+  local next=$1 capacity=$2 count offset lane value selected=-1
+  local minimum=$((capacity + 1))
+  shift 2
+  local -a lane_counts=("$@")
+  count=${#lane_counts[@]}
+  [[ $count -gt 0 && $next -lt $count ]] || return 2
+  for value in "${lane_counts[@]}"; do
+    [[ $value =~ ^(0|[1-9][0-9]*)$ && $value -le $capacity ]] || return 2
+  done
+  for ((offset = 0; offset < count; offset += 1)); do
+    lane=$(( (next + offset) % count ))
+    value=${lane_counts[$lane]}
+    [[ $value -lt $capacity ]] || continue
+    if [[ $value -lt $minimum ]]; then
+      minimum=$value
+      selected=$lane
+    fi
+  done
+  [[ $selected -ge 0 ]] || return 1
+  # shellcheck disable=SC2034 # Returned global is consumed by the controller and plants.
+  R2_DISK_SELECTED_LANE=$selected
+}
+
+r2_disk_worker_affinity_stable() {
+  [[ $# -eq 2 && $1 =~ ^[1-9][0-9]*$ && -n $2 ]] || return 2
+  local expected=$2
+  r2_expand_cpu_list "$expected" || return
+  [[ $R2_EXPANDED_CPU_LIST == "$expected" ]] || return 2
+  r2_read_allowed_cpu_list "/proc/$1/status" &&
+    [[ $R2_EXPANDED_CPU_LIST == "$expected" ]]
+}
+
 r2_measure_checkout_mib() {
   [[ ( $# -eq 1 || $# -eq 3 ) && -d $1 &&
     ( $# -eq 1 || ( -n ${2:-} && ! -L ${2:-} &&
@@ -42,9 +115,9 @@ r2_measure_checkout_mib() {
 }
 
 r2_record_checkout_mib() {
-  [[ ( $# -eq 5 || $# -eq 6 ) && -d $1 && -f $2 && ! -L $2 && $3 =~ ^[0-9]+$ &&
+  [[ ( $# -eq 6 || $# -eq 7 ) && -d $1 && -f $2 && ! -L $2 && $3 =~ ^[0-9]+$ &&
     $4 =~ ^[0-9]+$ && ( $5 == scheduled || $5 == terminal ) &&
-    ( $# -eq 5 || ( -n ${6:-} && ! -L ${6:-} ) ) &&
+    -n $6 && ( $# -eq 6 || ( -n ${7:-} && ! -L ${7:-} ) ) &&
     -n ${R2_DISK_WALK_CPUS:-} ]] || {
     printf 'R2 disk sampler: invalid sample arguments\n' >&2
     return 2
@@ -54,10 +127,10 @@ r2_record_checkout_mib() {
   local sampler_started=$3
   local ordinal=$4
   local kind=$5
-  local started_signal=${6:-}
+  local expected_cpus=$6
+  local started_signal=${7:-}
   local row measured_started size elapsed
-  r2_read_allowed_cpu_list "/proc/$BASHPID/status" || return 2
-  [[ $R2_EXPANDED_CPU_LIST == "$R2_DISK_WALK_CPUS" ]] || return 2
+  r2_disk_worker_affinity_stable "$BASHPID" "$expected_cpus" || return 2
   if [[ -n $started_signal ]]; then
     row=$(r2_measure_checkout_mib "$root" "$started_signal" "$ordinal") || return
   else
@@ -74,11 +147,12 @@ r2_record_checkout_mib() {
 }
 
 r2_disk_pool_worker() {
-  [[ $# -eq 5 && $1 =~ ^(0|[1-9][0-9]*)$ && -d $2 && -f $3 && ! -L $3 &&
+  [[ $# -eq 6 && $1 =~ ^(0|[1-9][0-9]*)$ && -d $2 && -f $3 && ! -L $3 &&
     $4 =~ ^(0|[1-9][0-9]*)$ &&
-    $5 =~ ^(-|[1-9][0-9]*(,[1-9][0-9]*)*)$ &&
+    -n $5 && $6 =~ ^(-|[1-9][0-9]*(,[1-9][0-9]*)*)$ &&
     -n ${R2_DISK_WALK_CPUS:-} ]] || return 2
-  local worker_index=$1 root=$2 raw_samples=$3 sampler_started=$4 close_fds=$5
+  local worker_index=$1 root=$2 raw_samples=$3 sampler_started=$4
+  local expected_cpus=$5 close_fds=$6
   local descriptor command ordinal kind extra result
   local -a inherited_fds=()
   if [[ $close_fds != - ]]; then
@@ -88,9 +162,8 @@ r2_disk_pool_worker() {
       eval "exec ${descriptor}>&-"
     done
   fi
-  taskset -pc "$R2_DISK_WALK_CPUS" "$BASHPID" >/dev/null || return 2
-  r2_read_allowed_cpu_list "/proc/$BASHPID/status" || return 2
-  [[ $R2_EXPANDED_CPU_LIST == "$R2_DISK_WALK_CPUS" ]] || return 2
+  taskset -pc "$expected_cpus" "$BASHPID" >/dev/null || return 2
+  r2_disk_worker_affinity_stable "$BASHPID" "$expected_cpus" || return 2
   printf 'ready\t%s\t%s\n' "$worker_index" "$BASHPID"
   while IFS=$'\t' read -r command ordinal kind extra; do
     case $command in
@@ -98,7 +171,8 @@ r2_disk_pool_worker() {
         [[ $ordinal =~ ^(0|[1-9][0-9]*)$ &&
           ( $kind == scheduled || $kind == terminal ) && -z $extra ]] || return 2
         if r2_record_checkout_mib \
-          "$root" "$raw_samples" "$sampler_started" "$ordinal" "$kind"; then
+          "$root" "$raw_samples" "$sampler_started" "$ordinal" "$kind" \
+          "$expected_cpus"; then
           result=0
         else
           result=$?
@@ -125,26 +199,33 @@ r2_sample_checkout_disk() {
   local root=$1 samples=$2 stop=$3 state=$4 sampler_started=$5 period_ns=$6
   local ready=$state/ready drain_request=$state/drain-request
   local drain_ready=$state/drain-ready raw_samples=$state/samples.unsorted.tsv
-  # Keep the full prestarted identity pool, but admit only four exact walks at
-  # once on the reference host's isolated three-group disk mask. The fourth
-  # buffered walk sustains coverage through the measured full-workload tail;
-  # the retained-start validator remains the final cadence authority.
+  # Keep the full prestarted identity pool, bind every worker to one exact disk
+  # lane, and admit only four exact walks at once. Least-active-lane selection
+  # prevents the shared union mask from clustering otherwise independent walks
+  # on one physical core; the retained-start validator remains final authority.
   local sorted_samples=$state/samples.sorted.tsv pool_size=32 active_limit=4
   local ordinal=0 deadline now monotonic_now delay delay_seconds status=0 attempt
-  local launch_status
+  local launch_status lane lane_count lane_capacity selected_lane=-1
   local active=0 initial_ready=0 draining=0 drain_remaining request_ns=''
   local bridge_ordinal='' bridge_pending=0 worker_timeout_ns=4000000000
   local stop_wait_timeout_ns=6000000000
   local drain_deadline_ns='' controller_start controller_group controller_session
   local worker_index worker_pid worker_start result_file result_fd request_fd
   local close_fds tag result_index result_ordinal result_status extra
-  local next_worker=0 available_worker=-1 wait_deadline wait_now
+  local next_worker=0 next_lane=0 available_worker=-1 wait_deadline wait_now
   local pool_started=0 stat_status
+  local -a lane_masks=() lane_active=() worker_lanes=() worker_masks=()
   local -a worker_pids=() worker_starts=() worker_results=()
   local -a worker_result_fds=() worker_request_fds=() worker_jobs=()
   local -a worker_ready=() worker_reaped=() inherited_fds=()
   local -A drain_jobs=()
 
+  r2_configure_disk_walk_lanes || return 2
+  lane_count=$R2_DISK_LANE_COUNT
+  lane_masks=("${R2_DISK_LANE_MASKS[@]}")
+  [[ $lane_count -le $pool_size ]] || return 2
+  lane_capacity=$(( (active_limit + lane_count - 1) / lane_count ))
+  for ((lane = 0; lane < lane_count; lane += 1)); do lane_active[lane]=0; done
   r2_disk_deadline_ns "$sampler_started" 0 "$period_ns" || return
   r2_read_process_stat "/proc/$BASHPID/stat" || return 2
   controller_start=$R2_PROC_START
@@ -165,8 +246,8 @@ r2_sample_checkout_disk() {
 
   pool_worker_identity_stable() {
     pool_worker_process_stable "$1" &&
-      r2_read_allowed_cpu_list "/proc/${worker_pids[$1]}/status" &&
-      [[ $R2_EXPANDED_CPU_LIST == "$R2_DISK_WALK_CPUS" ]]
+      r2_disk_worker_affinity_stable \
+        "${worker_pids[$1]}" "${worker_masks[$1]}"
   }
 
   close_pool_fd() {
@@ -186,6 +267,9 @@ r2_sample_checkout_disk() {
   start_worker_pool() {
     local index ready_count=0 ready_deadline ready_now
     for ((index = 0; index < pool_size; index += 1)); do
+      r2_disk_lane_for_worker "$index" "$lane_count" || return 2
+      worker_lanes[index]=$R2_DISK_WORKER_LANE
+      worker_masks[index]=${lane_masks[$R2_DISK_WORKER_LANE]}
       result_file=$state/worker-$index.results
       : >"$result_file" || return 1
       [[ -f $result_file && ! -L $result_file ]] || return 2
@@ -195,7 +279,8 @@ r2_sample_checkout_disk() {
       close_fds=${close_fds%,}
       if ! exec {request_fd}> >(
         r2_disk_pool_worker "$index" "$root" "$raw_samples" \
-          "$sampler_started" "$close_fds" >>"$result_file"
+          "$sampler_started" "${worker_masks[$index]}" "$close_fds" \
+          >>"$result_file"
       ); then
         close_pool_fd "$result_fd" || true
         printf 'R2 disk sampler: worker channel launch failed\n' >&2
@@ -268,7 +353,7 @@ r2_sample_checkout_disk() {
   }
 
   collect_finished_samples() {
-    local index job
+    local index job worker_lane
     for ((index = 0; index < pool_started; index += 1)); do
       job=${worker_jobs[$index]}
       [[ -n $job ]] || continue
@@ -278,8 +363,14 @@ r2_sample_checkout_disk() {
           $result_ordinal == "$job" &&
           $result_status =~ ^(0|[1-9][0-9]*)$ && $result_status -le 255 &&
           -z $extra ]] || { status=1; return 1; }
+        worker_lane=${worker_lanes[$index]}
+        [[ $active -gt 0 && ${lane_active[$worker_lane]} -gt 0 ]] || {
+          status=1
+          return 1
+        }
         worker_jobs[index]=''
         active=$((active - 1))
+        lane_active[worker_lane]=$((lane_active[worker_lane] - 1))
         unset 'drain_jobs[$job]'
         if [[ $result_status -eq 0 ]]; then
           pool_worker_identity_stable "$index" || { status=1; return 1; }
@@ -295,14 +386,22 @@ r2_sample_checkout_disk() {
   }
 
   find_available_worker() {
-    local offset index
+    local offset index worker_lane
     available_worker=-1
+    r2_select_disk_lane "$next_lane" "$lane_capacity" "${lane_active[@]}" || {
+      status=1
+      return 1
+    }
+    selected_lane=$R2_DISK_SELECTED_LANE
     for ((offset = 0; offset < pool_size; offset += 1)); do
       index=$(( (next_worker + offset) % pool_size ))
       [[ -z ${worker_jobs[$index]} ]] || continue
+      worker_lane=${worker_lanes[$index]}
+      [[ $worker_lane -eq $selected_lane ]] || continue
       pool_worker_identity_stable "$index" || { status=1; return 1; }
       available_worker=$index
       next_worker=$(( (index + 1) % pool_size ))
+      next_lane=$(( (selected_lane + 1) % lane_count ))
       return 0
     done
     return 1
@@ -362,7 +461,7 @@ r2_sample_checkout_disk() {
         abort_dedicated_sampler_group || true
         return 1
       }
-      sleep 0.001 || {
+      sleep 0.005 || {
         status=1
         abort_dedicated_sampler_group || true
         return 1
@@ -372,7 +471,7 @@ r2_sample_checkout_disk() {
 
   launch_sample() {
     [[ $# -eq 1 && ( $1 == scheduled || $1 == terminal ) ]] || return 2
-    local launch_kind=$1 boundary_status slot_status
+    local launch_kind=$1 boundary_status slot_status worker_lane
     collect_finished_samples || return
     if wait_for_launch_slot "$launch_kind"; then slot_status=0
     else slot_status=$?; fi
@@ -383,10 +482,14 @@ r2_sample_checkout_disk() {
     if scheduled_launch_boundary "$launch_kind"; then boundary_status=0
     else boundary_status=$?; fi
     [[ $boundary_status -eq 0 ]] || return "$boundary_status"
+    worker_lane=${worker_lanes[$available_worker]}
+    [[ $worker_lane -eq $selected_lane &&
+      ${lane_active[$worker_lane]} -lt $lane_capacity ]] || return 2
     printf 'sample\t%s\t%s\n' "$ordinal" "$launch_kind" \
       >&"${worker_request_fds[$available_worker]}" || { status=1; return 1; }
     worker_jobs[available_worker]=$ordinal
     active=$((active + 1))
+    lane_active[worker_lane]=$((lane_active[worker_lane] + 1))
     ordinal=$((ordinal + 1))
   }
 
@@ -430,6 +533,9 @@ r2_sample_checkout_disk() {
   stop_worker_pool() {
     local index live=0 pool_deadline pool_now wait_result
     [[ $active -eq 0 ]] || return 2
+    for ((index = 0; index < lane_count; index += 1)); do
+      [[ ${lane_active[$index]} -eq 0 ]] || return 2
+    done
     for ((index = 0; index < pool_started; index += 1)); do
       if pool_worker_identity_stable "$index"; then
         printf 'stop\n' >&"${worker_request_fds[$index]}" || status=1

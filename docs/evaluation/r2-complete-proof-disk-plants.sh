@@ -96,7 +96,7 @@ r2_expand_cpu_list "$disk_test_affinity" || fail 'disk sampler test affinity is 
 disk_test_affinity=$R2_EXPANDED_CPU_LIST
 plant_count=$((plant_count + 1))
 disk_test_controller_cpus=${disk_test_affinity%%,*}
-export R2_DISK_WALK_CPUS=$disk_test_affinity
+export R2_DISK_WALK_CPUS=$disk_test_affinity R2_DISK_WALK_GROUPS=$disk_test_affinity
 
 # Stop requests carry their own timestamp and wait only for an identity-bound
 # session. Exercise both normal closure and a stopped root whose unwritable
@@ -195,7 +195,7 @@ R2_TEST_DU_STATE="$fake_disk_state" \
   R2_TEST_DU_AFFINITY_FILE="$retry_affinity" \
   PATH="$fake_retry_clock_bin:$fake_disk_bin:$PATH" \
   r2_record_checkout_mib "$repo_root" "$retry_raw" 900000000 7 scheduled \
-  "$retry_started_signal" ||
+  "$R2_DISK_WALK_CPUS" "$retry_started_signal" ||
   fail 'disk record worker rejected a successful retry'
 [[ $(<"$retry_raw") == $'7\t1200000000\t300000000\t17\tscheduled' &&
   $(<"$retry_started_signal") == $'7\t1000000000' &&
@@ -237,8 +237,8 @@ async_started=$(date +%s%N)
 printf 'ordinal\tsample_start_ns\telapsed_ns\tmebibytes\tkind\n' >"$async_samples"
 mkdir "$async_parts" "$async_affinity_directory" "$async_taskset_bin"
 IFS=, read -r -a disk_test_cpu_array <<<"$disk_test_affinity"
-[[ ${#disk_test_cpu_array[@]} -ge 2 ]] ||
-  fail 'the real pool-affinity plant requires two allowed logical CPUs'
+[[ ${#disk_test_cpu_array[@]} -ge 3 ]] ||
+  fail 'the real pool-affinity plant requires three allowed logical CPUs'
 printf -v async_walk_cpus '%s,' "${disk_test_cpu_array[@]:1}"
 async_walk_cpus=${async_walk_cpus%,}
 real_taskset=$(type -P taskset)
@@ -265,6 +265,7 @@ setsid taskset -c "$disk_test_controller_cpus" env \
   R2_TEST_REAL_TASKSET="$real_taskset" \
   R2_TEST_WALK_CPUS="$async_walk_cpus" \
   R2_DISK_WALK_CPUS="$async_walk_cpus" \
+  R2_DISK_WALK_GROUPS="$async_walk_cpus" \
   PATH="$async_taskset_bin:$fake_disk_bin:$PATH" \
   bash -c '
   set -euo pipefail
@@ -273,7 +274,7 @@ setsid taskset -c "$disk_test_controller_cpus" env \
   # retained rows ordinal-derived timestamps so unrelated host scheduling
   # cannot duplicate the separately planted 100 ms cadence boundary.
   r2_record_checkout_mib() {
-    [[ $# -eq 5 ]] || return 2
+    [[ $# -eq 6 ]] || return 2
     local root=$1 raw=$2 origin=$3 ordinal=$4 kind=$5
     local measured measured_started size started
     r2_read_allowed_cpu_list "/proc/$BASHPID/status" || return 2
@@ -467,6 +468,7 @@ printf 'ordinal\tsample_start_ns\telapsed_ns\tmebibytes\tkind\n' >"$channel_samp
 mkdir "$channel_state"
 setsid taskset -c "$disk_test_controller_cpus" env \
   R2_DISK_WALK_CPUS="$async_walk_cpus" \
+  R2_DISK_WALK_GROUPS="$async_walk_cpus" \
   bash -c '
   set -euo pipefail
   source "$1"
@@ -483,11 +485,11 @@ setsid taskset -c "$disk_test_controller_cpus" env \
     r2_real_read_process_stat "$1"
   }
   r2_disk_pool_worker() {
-    [[ $# -eq 5 ]] || return 2
+    [[ $# -eq 6 ]] || return 2
     local descriptor
     local -a inherited_descriptors=()
     for descriptor in {3..9}; do eval "exec ${descriptor}>&-"; done
-    IFS=, read -r -a inherited_descriptors <<<"$5"
+    IFS=, read -r -a inherited_descriptors <<<"$6"
     for descriptor in "${inherited_descriptors[@]}"; do eval "exec ${descriptor}>&-"; done
     r2_real_read_process_stat "/proc/$BASHPID/stat" || return 2
     printf "held\t%s\t%s\t%s\t%s\t%s\n" "$1" "$BASHPID" \
@@ -541,6 +543,7 @@ printf 'ordinal\tsample_start_ns\telapsed_ns\tmebibytes\tkind\n' >"$startup_samp
 mkdir "$startup_state"
 setsid taskset -c "$disk_test_controller_cpus" env \
   R2_DISK_WALK_CPUS="$async_walk_cpus" \
+  R2_DISK_WALK_GROUPS="$async_walk_cpus" \
   R2_TEST_STARTUP_CHILD_RECORD="$startup_child_record" \
   R2_TEST_STARTUP_ATTEMPTS="$startup_attempts" \
   bash -c '
@@ -568,7 +571,7 @@ setsid taskset -c "$disk_test_controller_cpus" env \
     fi
   }
   r2_disk_pool_worker() {
-    [[ $# -eq 5 ]] || return 2
+    [[ $# -eq 6 ]] || return 2
     r2_real_read_process_stat "/proc/$BASHPID/stat" || return 2
     printf "%s\t%s\t%s\t%s\n" "$BASHPID" "$R2_PROC_PARENT" \
       "$R2_PROC_GROUP" "$R2_PROC_SESSION" >"$R2_TEST_STARTUP_CHILD_RECORD"
@@ -628,13 +631,14 @@ r2_publish_decimal_control_marker "$idle_stop" "$idle_started" ||
   fail 'could not publish idle-affinity stop marker'
 setsid taskset -c "$disk_test_controller_cpus" env \
   R2_DISK_WALK_CPUS="$async_walk_cpus" \
+  R2_DISK_WALK_GROUPS="$async_walk_cpus" \
   R2_TEST_IDLE_ENTERED="$idle_entered" \
   R2_TEST_IDLE_RELEASE="$idle_release" \
   bash -c '
   set -euo pipefail
   source "$1"
   r2_record_checkout_mib() {
-    [[ $# -eq 5 ]] || return 2
+    [[ $# -eq 6 ]] || return 2
     local raw=$2 origin=$3 ordinal=$4 kind=$5 started
     if [[ $ordinal -eq 0 ]]; then
       : >"$R2_TEST_IDLE_ENTERED"
@@ -706,6 +710,7 @@ r2_publish_decimal_control_marker "$structural_stop" "$structural_started" ||
   fail 'could not publish structural-identity stop marker'
 setsid taskset -c "$disk_test_controller_cpus" env \
   R2_DISK_WALK_CPUS="$async_walk_cpus" \
+  R2_DISK_WALK_GROUPS="$async_walk_cpus" \
   R2_TEST_STRUCTURAL_ENTERED="$structural_entered" \
   R2_TEST_STRUCTURAL_RELEASE="$structural_release" \
   R2_TEST_STRUCTURAL_TARGET="$structural_target" \
@@ -715,22 +720,21 @@ setsid taskset -c "$disk_test_controller_cpus" env \
   eval "$(declare -f r2_disk_pool_worker |
     sed "1s/^r2_disk_pool_worker /r2_real_disk_pool_worker /")"
   r2_disk_pool_worker() {
-    [[ $# -eq 5 ]] || return 2
+    [[ $# -eq 6 ]] || return 2
     if [[ $1 != 31 ]]; then
       r2_real_disk_pool_worker "$@"
       return
     fi
     local descriptor
     local -a inherited_descriptors=()
-    if [[ $5 != - ]]; then
-      IFS=, read -r -a inherited_descriptors <<<"$5"
+    if [[ $6 != - ]]; then
+      IFS=, read -r -a inherited_descriptors <<<"$6"
       for descriptor in "${inherited_descriptors[@]}"; do
         eval "exec ${descriptor}>&-"
       done
     fi
-    taskset -pc "$R2_DISK_WALK_CPUS" "$BASHPID" >/dev/null || return 2
-    r2_read_allowed_cpu_list "/proc/$BASHPID/status" || return 2
-    [[ $R2_EXPANDED_CPU_LIST == "$R2_DISK_WALK_CPUS" ]] || return 2
+    taskset -pc "$5" "$BASHPID" >/dev/null || return 2
+    r2_disk_worker_affinity_stable "$BASHPID" "$5" || return 2
     printf "ready\t31\t%s\n" "$BASHPID"
     while :; do sleep 1; done
   }
@@ -747,7 +751,7 @@ setsid taskset -c "$disk_test_controller_cpus" env \
     fi
   }
   r2_record_checkout_mib() {
-    [[ $# -eq 5 ]] || return 2
+    [[ $# -eq 6 ]] || return 2
     local raw=$2 origin=$3 ordinal=$4 kind=$5 started
     if [[ $ordinal -eq 0 ]]; then
       : >"$R2_TEST_STRUCTURAL_ENTERED"
@@ -837,7 +841,7 @@ run_exact_gap_sampler() {
   local planted_origin=1000000000
   (
     r2_record_checkout_mib() {
-      [[ $# -eq 5 ]] || return 2
+      [[ $# -eq 6 ]] || return 2
       local raw=$2 origin=$3 ordinal=$4 kind=$5
       local started=$((origin + ordinal * planted_gap))
       printf '%s\t%s\t%s\t17\t%s\n' \
@@ -924,65 +928,8 @@ grep -Fx 'R2 disk sampler: one or more scheduled samples failed' \
   fail 'disk sampler child-failure diagnostic differs'
 plant_count=$((plant_count + 1))
 
-overload_samples=$temporary/overload-disk-samples.tsv
-overload_state=$temporary/overload-disk-state
-overload_stop=$temporary/overload-disk.stop
-overload_launches=$temporary/overload-disk-launches
-overload_hold=$temporary/overload-disk.release
-overload_started=$(date +%s%N)
-printf 'ordinal\tsample_start_ns\telapsed_ns\tmebibytes\tkind\n' >"$overload_samples"
-mkdir "$overload_state" "$overload_launches"
-# Hold exact fake walks and advance only the launch-slot clock. All 32 pool
-# workers still start and bind normally, but no fifth exact walk may begin.
-set +e
-setsid taskset -c "$disk_test_controller_cpus" env \
-  R2_TEST_DU_STABLE=1 \
-  R2_TEST_DU_HOLD_MARKER="$overload_hold" \
-  R2_TEST_DU_AFFINITY_DIRECTORY="$overload_launches" \
-  R2_DISK_WALK_CPUS="$R2_DISK_WALK_CPUS" \
-  PATH="$fake_disk_bin:$PATH" \
-  bash -c '
-  set -euo pipefail
-  source "$1"
-  eval "$(declare -f r2_monotonic_now_ns | sed \
-    "1s/r2_monotonic_now_ns/r2_real_monotonic_now_ns/")"
-  gate_probe=0
-  r2_monotonic_now_ns() {
-    if [[ ${FUNCNAME[1]:-} == wait_for_launch_slot ]]; then
-      gate_probe=$((gate_probe + 1))
-      R2_MONOTONIC_NS=$((gate_probe * 1000000000))
-      return 0
-    fi
-    r2_real_monotonic_now_ns
-  }
-  shift
-  r2_sample_checkout_disk "$@"
-' r2-overload-sampler "$harness_lib_source" \
-  "$repo_root" "$overload_samples" "$overload_stop" "$overload_state" \
-  "$overload_started" 50000000 \
-  >"$temporary/overload.stdout" 2>"$temporary/overload.stderr" &
-overload_sampler_pid=$!
-overload_session=$overload_sampler_pid
-wait "$overload_sampler_pid" 2>>"$temporary/overload.stderr"
-overload_status=$?
-set -e
-overload_launch_count=$(find "$overload_launches" -maxdepth 1 -type f | wc -l)
-[[ $overload_status -eq 137 && ! -s $temporary/overload.stdout &&
-  $(wc -l <"$overload_samples") -eq 1 && $overload_launch_count -eq 4 ]] ||
-  fail 'asynchronous sampler permitted unbounded concurrent walks'
-[[ $(grep -Fxc \
-  'R2 disk sampler: four concurrent du walks did not make room before timeout' \
-  "$temporary/overload.stderr") -eq 1 ]] ||
-  fail 'asynchronous sampler concurrency-limit diagnostic differs'
-if r2_sampler_session_has_members "$overload_session"; then
-  fail 'concurrency-limit sampler left a live session member'
-else
-  overload_session_status=$?
-fi
-[[ $overload_session_status -eq 1 ]] ||
-  fail 'concurrency-limit sampler session closure could not be proved'
-overload_sampler_pid=
-plant_count=$((plant_count + 1))
+# shellcheck source=docs/evaluation/r2-disk-overload-plant.sh
+source "$script_directory/r2-disk-overload-plant.sh"
 
 # Keep timing-boundary races separate from the already-large lifecycle suite.
 # shellcheck source=docs/evaluation/r2-disk-slot-race-plants.sh

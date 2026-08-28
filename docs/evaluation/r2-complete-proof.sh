@@ -254,6 +254,7 @@ cpu_topology_groups=$R2_CPU_TOPOLOGY_GROUPS
 controller_physical_groups=$R2_CONTROLLER_PHYSICAL_GROUPS
 disk_physical_groups=$R2_DISK_PHYSICAL_GROUPS
 workload_physical_groups=$R2_WORKLOAD_PHYSICAL_GROUPS
+disk_worker_lane_affinities=$disk_physical_groups
 disk_walk_nice=$(ps -o ni= -p "$BASHPID") || fail 'could not read proof CPU priority'
 disk_walk_nice=${disk_walk_nice//[$'\t ']/}
 [[ $disk_walk_nice =~ ^-?[0-9]+$ ]] || fail 'proof CPU priority is malformed'
@@ -422,6 +423,7 @@ jq -n \
     "$cpu_topology_groups" "$controller_physical_groups"
   printf 'disk_physical_core_groups=%s\nworkload_physical_core_groups=%s\n' \
     "$disk_physical_groups" "$workload_physical_groups"
+  printf 'disk_worker_lane_affinities=%s\n' "$disk_worker_lane_affinities"
   printf 'locale=%s\n' "$LC_ALL"
   printf 'timezone=%s\n' "${TZ:-system}"
   printf 'network_namespace=%s\n' "$inner_netns"
@@ -554,9 +556,10 @@ taskset -pc "$workload_cpu_affinity" "$BASHPID" >/dev/null || fail 'CPU isolatio
 r2_read_allowed_cpu_list /proc/self/status || fail 'could not verify workload CPU affinity'
 [[ $R2_EXPANDED_CPU_LIST == "$workload_cpu_affinity" ]] || fail 'workload CPU affinity differs'
 setsid taskset -c "$sampler_controller_affinity" bash -c \
-  'set -euo pipefail; source "$1"; export R2_DISK_WALK_CPUS=$2; shift 2; r2_sample_checkout_disk "$@"' \
+  'set -euo pipefail; source "$1"; export R2_DISK_WALK_CPUS=$2 R2_DISK_WALK_GROUPS=$3; shift 3; r2_sample_checkout_disk "$@"' \
   r2-disk-sampler "$script_directory/r2-complete-proof-lib.sh" \
-  "$disk_walk_cpu_affinity" "$repo_root" "$disk_samples" \
+  "$disk_walk_cpu_affinity" "$disk_worker_lane_affinities" \
+  "$repo_root" "$disk_samples" \
   "$disk_sampler_stop" "$disk_sample_state" "$disk_sampler_started" \
   "$disk_sample_period_ns" &
 disk_sampler_pid=$!

@@ -41,10 +41,13 @@ partial_ready_sampler_pid=
 wait_setup_sampler_pid=
 shutdown_sampler_pid=
 capture_sampler_pid=
+lane_affinity_pid=
 cleanup() {
   local session_pid
   [[ -z ${atomic_publisher:-} ]] || kill "$atomic_publisher" 2>/dev/null || true
   [[ -z ${atomic_publisher:-} ]] || wait "$atomic_publisher" 2>/dev/null || true
+  [[ -z ${lane_affinity_pid:-} ]] || kill "$lane_affinity_pid" 2>/dev/null || true
+  [[ -z ${lane_affinity_pid:-} ]] || wait "$lane_affinity_pid" 2>/dev/null || true
   for session_pid in "${handshake_pid:-}" "${deadline_sampler_pid:-}" \
     "${hung_sampler_pid:-}" "${partial_ready_sampler_pid:-}" \
     "${wait_setup_sampler_pid:-}" "${shutdown_sampler_pid:-}" \
@@ -59,7 +62,7 @@ test_affinity_line=$(taskset -pc $$)
 test_affinity=${test_affinity_line##*: }
 r2_expand_cpu_list "$test_affinity" || fail 'test CPU affinity is malformed'
 test_controller_cpu=${R2_EXPANDED_CPU_LIST%%,*}
-export R2_DISK_WALK_CPUS=$R2_EXPANDED_CPU_LIST
+export R2_DISK_WALK_CPUS=$R2_EXPANDED_CPU_LIST R2_DISK_WALK_GROUPS=$R2_EXPANDED_CPU_LIST
 
 # shellcheck source=docs/evaluation/r2-procfs-read-plants.sh
 source "$script_directory/r2-procfs-read-plants.sh"
@@ -424,7 +427,7 @@ mkdir "$zero_root_state"
   ) &
   zero_root_coordinator=$!
   r2_record_checkout_mib() {
-    [[ $# -eq 5 ]] || return 2
+    [[ $# -eq 6 ]] || return 2
     local raw=$2 sampler_origin=$3 ordinal=$4 kind=$5 started request
     started=$(date +%s%N)
     printf '%s\t%s\t%s\t17\t%s\n' \
@@ -495,7 +498,7 @@ mkdir "$absolute_state"
     fi
   }
   r2_record_checkout_mib() {
-    [[ $# -eq 5 ]] || return 2
+    [[ $# -eq 6 ]] || return 2
     local raw=$2 sampler_origin=$3 ordinal=$4 kind=$5 started
     started=$((sampler_origin + ordinal * 50000000))
     [[ $ordinal -ne 1 ]] || started=$((started + 7000000))
@@ -559,7 +562,7 @@ mkdir "$state"
     return "$validation_status"
   }
   r2_record_checkout_mib() {
-    [[ $# -eq 5 ]] || return 2
+    [[ $# -eq 6 ]] || return 2
     local raw=$2 sampler_origin=$3 ordinal=$4 kind=$5 started
     started=$((sampler_origin + ordinal * 50000000))
     if [[ $ordinal -eq 1 ]]; then
@@ -650,14 +653,14 @@ setsid taskset -c "$test_controller_cpu" bash -c '
   }
   sleep() {
     if [[ ${FUNCNAME[1]:-} == wait_for_launch_slot ]]; then
-      [[ $# -eq 1 && $1 == 0.001 ]] || return 2
+      [[ $# -eq 1 && $1 == 0.005 ]] || return 2
       printf "%s\n" "$1" >>"$deadline_sleeps"
       return 0
     fi
     command sleep "$@"
   }
   r2_record_checkout_mib() {
-    [[ $# -eq 5 ]] || return 2
+    [[ $# -eq 6 ]] || return 2
     local raw=$2 origin=$3 ordinal=$4 kind=$5 started
     started=$((origin + ordinal * 50000000))
     printf "%s\t%s\t%s\t17\t%s\n" \
@@ -681,7 +684,7 @@ deadline_trace_text=$(paste -sd, "$deadline_trace")
 deadline_sleep_text=$(paste -sd, "$deadline_sleeps")
 [[ $deadline_status -eq 137 && $deadline_trace_text == \
   '1000000000,2000000000,3000000000,4000000000,5000000000' &&
-  $deadline_sleep_text == '0.001,0.001,0.001' &&
+  $deadline_sleep_text == '0.005,0.005,0.005' &&
   $((deadline_wall_end - deadline_wall_start)) -lt 2000000000 &&
   $(wc -l <"$deadline_samples") -eq 1 ]] ||
   fail 'scripted four-walk deadline was extended or published a ledger'
@@ -798,11 +801,10 @@ setsid taskset -c "$test_controller_cpu" bash -c '
     [[ $1 == 31 ]] || { r2_real_disk_pool_worker "$@"; return; }
     local descriptor command ordinal kind extra
     local -a inherited_fds=()
-    IFS=, read -r -a inherited_fds <<<"$5"
+    IFS=, read -r -a inherited_fds <<<"$6"
     for descriptor in "${inherited_fds[@]}"; do eval "exec ${descriptor}>&-"; done
-    taskset -pc "$R2_DISK_WALK_CPUS" "$BASHPID" >/dev/null || return 2
-    r2_read_allowed_cpu_list "/proc/$BASHPID/status" || return 2
-    [[ $R2_EXPANDED_CPU_LIST == "$R2_DISK_WALK_CPUS" ]] || return 2
+    taskset -pc "$5" "$BASHPID" >/dev/null || return 2
+    r2_disk_worker_affinity_stable "$BASHPID" "$5" || return 2
     printf "broken\t31\t%s\n" "$BASHPID"
     while IFS=$'\''\t'\'' read -r command ordinal kind extra; do
       [[ $command == stop && -z $ordinal && -z $kind && -z $extra ]] || return 2
@@ -986,6 +988,9 @@ fi
 [[ $capture_session_status -eq 1 ]] ||
   fail 'capture mismatch session closure could not be proved'
 capture_sampler_pid=
+
+# shellcheck source=docs/evaluation/r2-disk-lane-plants.sh
+source "$script_directory/r2-disk-lane-plants.sh"
 
 printf 'R2_DISK_TERMINAL_ORDER_PLANT PASS\n'
 printf 'retained_fixture %s\n' "${temporary#"$repo_root/"}"

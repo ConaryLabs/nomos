@@ -161,6 +161,8 @@ while IFS=$'\t' read -r path digest origin receipt license; do
         docs/evaluation/r2-complete-proof.test.sh | \
         docs/evaluation/r2-disk-control-lib.sh | \
         docs/evaluation/r2-disk-history-plant.sh | \
+        docs/evaluation/r2-disk-lane-plants.sh | \
+        docs/evaluation/r2-disk-overload-plant.sh | \
         docs/evaluation/r2-disk-sampler-lib.sh | \
         docs/evaluation/r2-disk-slot-race-plants.sh | \
         docs/evaluation/r2-disk-terminal-order.test.sh | \
