@@ -192,28 +192,92 @@ r2_validate_disk_drain_handoff() {
     $5 =~ ^(0|[1-9][0-9]*)$ && $6 =~ ^(0|[1-9][0-9]*)$ &&
     $6 -lt $4 && $7 =~ ^[1-9][0-9]*$ ]] || return 2
   local raw=$1 sorted=$2 origin=$3 expected=$4 request=$5 bridge=$6 freshness=$7
-  local index=0 line ordinal started elapsed size kind extra previous=0
-  local bridge_started='' latest=0 now
-  local -A seen=()
+  local latest now validation_status
   LC_ALL=C sort -t $'\t' -k2,2n -k1,1n "$raw" >"$sorted" || return 1
   [[ -f $sorted && ! -L $sorted && $(wc -l <"$sorted") -eq $expected ]] || return 2
-  while IFS= read -r line; do
-    IFS=$'\t' read -r ordinal started elapsed size kind extra <<<"$line"
-    [[ $ordinal =~ ^(0|[1-9][0-9]*)$ && $ordinal -lt $expected &&
-      $started =~ ^(0|[1-9][0-9]*)$ && $started -ge $origin &&
-      $elapsed =~ ^(0|[1-9][0-9]*)$ && $elapsed -eq $((started - origin)) &&
-      $size =~ ^(0|[1-9][0-9]*)$ && $kind == scheduled && -z $extra &&
-      -z ${seen[$ordinal]+present} ]] || return 2
-    seen["$ordinal"]=1
-    [[ $index -eq 0 || ( $started -gt $previous &&
-      $((started - previous)) -le 100000000 ) ]] || return 1
-    [[ $ordinal -ne $bridge ]] || bridge_started=$started
-    previous=$started
-    latest=$started
-    index=$((index + 1))
-  done <"$sorted"
-  [[ $index -eq $expected && ${#seen[@]} -eq $expected &&
-    $bridge_started =~ ^[0-9]+$ && $bridge_started -ge $request ]] || return 2
+  # The handoff freshness window includes validation work. A Bash row loop
+  # takes hundreds of milliseconds once a proof has accumulated thousands of
+  # samples, so validate the already-sorted ledger in one awk process. Absolute
+  # nanoseconds exceed IEEE-754 integer precision: the helpers below compare
+  # and add canonical decimals as strings, while small row counts are the only
+  # values converted to awk numbers.
+  if latest=$(LC_ALL=C awk -F $'\t' \
+    -v origin="$origin" -v expected="$expected" \
+    -v request="$request" -v bridge="$bridge" '
+    function canonical(value) {
+      return value ~ /^(0|[1-9][0-9]*)$/
+    }
+    function decimal_compare(left, right) {
+      if (length(left) != length(right))
+        return length(left) < length(right) ? -1 : 1
+      # Prefix both operands so awk cannot classify canonical decimal fields
+      # as numeric strings and compare them through an imprecise double.
+      if (("x" left) == ("x" right)) return 0
+      return ("x" left) < ("x" right) ? -1 : 1
+    }
+    function decimal_add(left, right, output, carry, digit, i, j, l, r) {
+      output = ""
+      carry = 0
+      i = length(left)
+      j = length(right)
+      while (i > 0 || j > 0 || carry > 0) {
+        l = i > 0 ? substr(left, i, 1) + 0 : 0
+        r = j > 0 ? substr(right, j, 1) + 0 : 0
+        digit = l + r + carry
+        output = (digit % 10) output
+        carry = int(digit / 10)
+        i -= 1
+        j -= 1
+      }
+      sub(/^0+/, "", output)
+      return output == "" ? "0" : output
+    }
+    function refuse(code) {
+      failure = code
+      exit code
+    }
+    BEGIN {
+      if (!canonical(origin) || !canonical(expected) || expected == "0" ||
+          !canonical(request) || !canonical(bridge)) refuse(2)
+    }
+    {
+      if (NF != 5 || !canonical($1) || !canonical($2) ||
+          !canonical($3) || !canonical($4) || $5 != "scheduled" ||
+          decimal_compare($2, origin) < 0 ||
+          decimal_compare(decimal_add(origin, $3), $2) != 0 ||
+          seen[$1]) refuse(2)
+      seen[$1] = 1
+      seen_count += 1
+      if (row_count > 0 &&
+          (decimal_compare($2, previous_started) <= 0 ||
+           decimal_compare($3, previous_elapsed) <= 0 ||
+           decimal_compare($3,
+             decimal_add(previous_elapsed, "100000000")) > 0)) refuse(1)
+      if ($1 == bridge) {
+        bridge_seen = 1
+        bridge_started = $2
+      }
+      previous_started = $2
+      previous_elapsed = $3
+      latest = $2
+      row_count += 1
+    }
+    END {
+      if (failure) exit failure
+      if (row_count != expected + 0 || seen_count != row_count ||
+          !bridge_seen || decimal_compare(bridge_started, request) < 0)
+        exit 2
+      for (ordinal_index = 0; ordinal_index < expected + 0; ordinal_index += 1)
+        if (!((ordinal_index "") in seen)) exit 2
+      print latest
+    }
+  ' "$sorted"); then
+    validation_status=0
+  else
+    validation_status=$?
+  fi
+  [[ $validation_status -eq 0 ]] || return "$validation_status"
+  [[ $latest =~ ^(0|[1-9][0-9]*)$ ]] || return 2
   now=$(date +%s%N) || return 2
   [[ $now =~ ^(0|[1-9][0-9]*)$ && $now -ge $latest &&
     $((now - latest)) -le $freshness ]] || return 1

@@ -72,6 +72,78 @@ test_affinity_line=$(taskset -pc $$)
 test_affinity=${test_affinity_line##*: }
 r2_expand_cpu_list "$test_affinity" || fail 'test CPU affinity is malformed'
 test_controller_cpu=${R2_EXPANDED_CPU_LIST%%,*}
+export R2_DISK_WALK_CPUS=$R2_EXPANDED_CPU_LIST
+
+# Handoff validation must stay exact above IEEE-754 integer precision while
+# finishing inside the freshness window. The fast path sorts externally and
+# uses decimal-string arithmetic in awk; plant both a valid out-of-order ledger
+# and one-nanosecond method/coverage mutations.
+handoff_origin=1787900000000000000
+handoff_raw=$temporary/handoff-fast-raw.tsv
+handoff_sorted=$temporary/handoff-fast-sorted.tsv
+printf '%s\n' \
+  $'0\t1787900000000000000\t0\t17\tscheduled' \
+  $'2\t1787900000050000000\t50000000\t17\tscheduled' \
+  $'1\t1787900000025000000\t25000000\t17\tscheduled' \
+  $'3\t1787900000100000000\t100000000\t17\tscheduled' >"$handoff_raw"
+(
+  date() {
+    [[ $# -eq 1 && $1 == +%s%N ]] || return 2
+    printf '1787900000100000000\n'
+  }
+  r2_validate_disk_drain_handoff \
+    "$handoff_raw" "$handoff_sorted" "$handoff_origin" 4 \
+    1787900000020000000 1 75000000
+) || fail 'fast exact handoff validator refused a complete ledger'
+[[ ! -e $handoff_sorted ]] || fail 'fast handoff validator retained its sorted scratch'
+
+# Adjacent integer nanoseconds above 2^53 must remain distinct. An awk numeric
+# comparison rounds these values together even though both rows are valid.
+handoff_one_ns=$temporary/handoff-one-ns.tsv
+handoff_one_ns_sorted=$temporary/handoff-one-ns-sorted.tsv
+printf '%s\n' \
+  $'0\t1787900000000000000\t0\t17\tscheduled' \
+  $'1\t1787900000000000001\t1\t17\tscheduled' >"$handoff_one_ns"
+(
+  date() { printf '1787900000000000001\n'; }
+  r2_validate_disk_drain_handoff \
+    "$handoff_one_ns" "$handoff_one_ns_sorted" "$handoff_origin" 2 \
+    1787900000000000001 1 75000000
+) || fail 'fast handoff validator rounded adjacent nanoseconds together'
+[[ ! -e $handoff_one_ns_sorted ]] ||
+  fail 'one-nanosecond handoff retained its sorted scratch'
+
+handoff_bad_arithmetic=$temporary/handoff-bad-arithmetic.tsv
+handoff_bad_arithmetic_sorted=$temporary/handoff-bad-arithmetic-sorted.tsv
+sed 's/25000000\t17/25000001\t17/' "$handoff_raw" >"$handoff_bad_arithmetic"
+set +e
+(
+  date() { printf '1787900000100000000\n'; }
+  r2_validate_disk_drain_handoff \
+    "$handoff_bad_arithmetic" "$handoff_bad_arithmetic_sorted" \
+    "$handoff_origin" 4 1787900000020000000 1 75000000
+)
+handoff_bad_arithmetic_status=$?
+set -e
+[[ $handoff_bad_arithmetic_status -eq 2 ]] ||
+  fail 'fast handoff validator admitted a one-nanosecond arithmetic mutation'
+
+handoff_bad_gap=$temporary/handoff-bad-gap.tsv
+handoff_bad_gap_sorted=$temporary/handoff-bad-gap-sorted.tsv
+printf '%s\n' \
+  $'0\t1787900000000000000\t0\t17\tscheduled' \
+  $'1\t1787900000100000001\t100000001\t17\tscheduled' >"$handoff_bad_gap"
+set +e
+(
+  date() { printf '1787900000100000001\n'; }
+  r2_validate_disk_drain_handoff \
+    "$handoff_bad_gap" "$handoff_bad_gap_sorted" "$handoff_origin" 2 \
+    1787900000000000000 1 75000000
+)
+handoff_bad_gap_status=$?
+set -e
+[[ $handoff_bad_gap_status -eq 1 ]] ||
+  fail 'fast handoff validator admitted a 100000001 ns retained-start gap'
 
 topology_root=$temporary/topology
 write_sibling_group() {
@@ -86,12 +158,15 @@ for pair in '0 6' '1 7' '2 8' '3 9' '4 10' '5 11'; do
 done
 r2_partition_cpu_topology 0-11 "$topology_root" ||
   fail 'canonical sibling topology was refused'
-[[ $R2_CONTROLLER_CPUS == 0 && $R2_DISK_CPUS == 0,1,2,6,7,8 &&
+[[ $R2_CONTROLLER_CPUS == 0,6 && $R2_DISK_CPUS == 1,2,7,8 &&
   $R2_WORKLOAD_CPUS == 3,4,5,9,10,11 &&
   $R2_CPU_TOPOLOGY_GROUPS == '0,6;1,7;2,8;3,9;4,10;5,11' &&
-  $R2_DISK_PHYSICAL_GROUPS == '0,6;1,7;2,8' &&
+  $R2_CONTROLLER_PHYSICAL_GROUPS == '0,6' &&
+  $R2_DISK_PHYSICAL_GROUPS == '1,7;2,8' &&
   $R2_WORKLOAD_PHYSICAL_GROUPS == '3,9;4,10;5,11' ]] ||
-  fail 'canonical physical-core role split differs'
+  fail 'canonical three-way physical-core role split differs'
+r2_validate_physical_cpu_isolation "$R2_CONTROLLER_CPUS" "$R2_DISK_CPUS" \
+  "$topology_root" || fail 'controller and disk walks share a physical core'
 r2_validate_physical_cpu_isolation "$R2_DISK_CPUS" "$R2_WORKLOAD_CPUS" \
   "$topology_root" || fail 'canonical physical-core role split overlaps'
 if r2_validate_physical_cpu_isolation 0-5 6-11 "$topology_root"; then
@@ -99,9 +174,13 @@ if r2_validate_physical_cpu_isolation 0-5 6-11 "$topology_root"; then
 fi
 r2_partition_cpu_topology '1,3-4,7,9-10' "$topology_root" ||
   fail 'irregular complete sibling topology was refused'
-[[ $R2_CONTROLLER_CPUS == 1 && $R2_DISK_CPUS == 1,7 &&
-  $R2_WORKLOAD_CPUS == 3,4,9,10 ]] || fail 'irregular physical-core split differs'
+[[ $R2_CONTROLLER_CPUS == 1,7 && $R2_DISK_CPUS == 3,9 &&
+  $R2_WORKLOAD_CPUS == 4,10 ]] || fail 'irregular three-way physical-core split differs'
+if r2_partition_cpu_topology '0-2,7-8' "$topology_root"; then
+  fail 'a sibling group partly outside the allowed affinity was accepted'
+fi
 if r2_partition_cpu_topology 0,6 "$topology_root" ||
+  r2_partition_cpu_topology 0-1,6-7 "$topology_root" ||
   r2_partition_cpu_topology 0,12 "$topology_root"; then
   fail 'an undersized or unreadable topology was accepted'
 fi
@@ -330,6 +409,20 @@ mkdir "$state"
     r2_publish_decimal_control_marker "$stop" "$((origin + 150000000))"
   ) &
   stop_coordinator=$!
+  eval "$(declare -f r2_validate_disk_drain_handoff | sed \
+    '1s/r2_validate_disk_drain_handoff/r2_validate_disk_drain_handoff_live/')"
+  r2_validate_disk_drain_handoff() {
+    local latest validation_status
+    latest=$(sort -t $'\t' -k2,2n "$1" | tail -n 1 | cut -f 2)
+    date() {
+      [[ $# -eq 1 && $1 == +%s%N ]] || return 2
+      printf '%s\n' "$latest"
+    }
+    if r2_validate_disk_drain_handoff_live "$@"; then validation_status=0
+    else validation_status=$?; fi
+    unset -f date
+    return "$validation_status"
+  }
   r2_record_checkout_mib() {
     [[ $# -eq 5 ]] || return 2
     local raw=$2 sampler_origin=$3 ordinal=$4 kind=$5 started
@@ -441,7 +534,7 @@ deadline_sampler_pid=
 deadline_wall_end=$(date +%s%N)
 deadline_trace_text=$(paste -sd, "$deadline_trace")
 [[ $deadline_status -ne 0 && $deadline_trace_text == \
-  '1000000000,2000000000,3000000000,4000000000,5000000000' &&
+  '1000000000,2000000000,3000000000,4000000000,5000000000,6000000000' &&
   $((deadline_wall_end - deadline_wall_start)) -lt 2000000000 &&
   $(wc -l <"$deadline_samples") -eq 1 ]] ||
   fail 'scripted worker-set deadline was extended or published a ledger'
@@ -555,14 +648,9 @@ setsid taskset -c "$test_controller_cpu" bash -c '
   eval "$(declare -f r2_read_process_stat | sed \
     "1s/r2_read_process_stat/r2_read_process_stat_original/")"
   r2_read_process_stat() {
-    local attempt
     r2_read_process_stat_original "$@" || return
-    if [[ $1 != "/proc/$BASHPID/stat" && $R2_PROC_PARENT == "$BASHPID" ]]; then
-      for ((attempt = 0; attempt < 100; attempt += 1)); do
-        [[ ! -e $capture_child_started ]] || break
-        sleep 0.001
-      done
-      [[ -f $capture_child_started ]] || return 2
+    if [[ $1 != "/proc/$BASHPID/stat" && $R2_PROC_PARENT == "$BASHPID" &&
+      -f $capture_child_started ]]; then
       R2_PROC_PARENT=1
     fi
   }

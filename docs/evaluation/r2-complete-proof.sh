@@ -246,11 +246,12 @@ inner_pidns=$(readlink /proc/self/ns/pid)
 r2_read_allowed_cpu_list /proc/self/status || fail 'could not read proof CPU affinity'
 initial_cpu_affinity=$R2_ALLOWED_CPU_LIST
 r2_partition_cpu_topology "$initial_cpu_affinity" /sys/devices/system/cpu ||
-  fail 'the proof requires two readable, physically disjoint CPU-core groups'
+  fail 'the proof requires three readable, physically disjoint CPU-core groups'
 sampler_controller_affinity=$R2_CONTROLLER_CPUS
 disk_walk_cpu_affinity=$R2_DISK_CPUS
 workload_cpu_affinity=$R2_WORKLOAD_CPUS
 cpu_topology_groups=$R2_CPU_TOPOLOGY_GROUPS
+controller_physical_groups=$R2_CONTROLLER_PHYSICAL_GROUPS
 disk_physical_groups=$R2_DISK_PHYSICAL_GROUPS
 workload_physical_groups=$R2_WORKLOAD_PHYSICAL_GROUPS
 disk_walk_nice=$(ps -o ni= -p "$BASHPID") || fail 'could not read proof CPU priority'
@@ -417,8 +418,10 @@ jq -n \
     "$initial_cpu_affinity" "$sampler_controller_affinity"
   printf 'disk_walk_cpu_affinity=%s\nworkload_cpu_affinity=%s\ndisk_walk_nice=%s\n' \
     "$disk_walk_cpu_affinity" "$workload_cpu_affinity" "$disk_walk_nice"
-  printf 'physical_core_groups=%s\ndisk_physical_core_groups=%s\nworkload_physical_core_groups=%s\n' \
-    "$cpu_topology_groups" "$disk_physical_groups" "$workload_physical_groups"
+  printf 'physical_core_groups=%s\ncontroller_physical_core_groups=%s\n' \
+    "$cpu_topology_groups" "$controller_physical_groups"
+  printf 'disk_physical_core_groups=%s\nworkload_physical_core_groups=%s\n' \
+    "$disk_physical_groups" "$workload_physical_groups"
   printf 'locale=%s\n' "$LC_ALL"
   printf 'timezone=%s\n' "${TZ:-system}"
   printf 'network_namespace=%s\n' "$inner_netns"
@@ -544,6 +547,12 @@ sampler_launch_signal=0
 # EXIT cleanup always has the child PID/start identity and knows to stop it.
 trap 'sampler_launch_signal=130' INT
 trap 'sampler_launch_signal=143' TERM
+# Vacate both observer roles before their controller or pool exists. The child
+# launch below explicitly enters the controller mask; every remaining proof
+# command inherits only the workload mask.
+taskset -pc "$workload_cpu_affinity" "$BASHPID" >/dev/null || fail 'CPU isolation failed'
+r2_read_allowed_cpu_list /proc/self/status || fail 'could not verify workload CPU affinity'
+[[ $R2_EXPANDED_CPU_LIST == "$workload_cpu_affinity" ]] || fail 'workload CPU affinity differs'
 setsid taskset -c "$sampler_controller_affinity" bash -c \
   'set -euo pipefail; source "$1"; export R2_DISK_WALK_CPUS=$2; shift 2; r2_sample_checkout_disk "$@"' \
   r2-disk-sampler "$script_directory/r2-complete-proof-lib.sh" \
@@ -572,9 +581,6 @@ trap 'exit 130' INT
 trap 'exit 143' TERM
 [[ $sampler_launch_signal -eq 0 ]] || exit "$sampler_launch_signal"
 [[ $sampler_session_bound -eq 1 ]] || fail 'disk sampler does not own its session'
-taskset -pc "$workload_cpu_affinity" "$BASHPID" >/dev/null || fail 'CPU isolation failed'
-r2_read_allowed_cpu_list /proc/self/status || fail 'could not verify workload CPU affinity'
-[[ $R2_EXPANDED_CPU_LIST == "$workload_cpu_affinity" ]] || fail 'workload CPU affinity differs'
 for ((attempt = 0; attempt < 100; attempt += 1)); do
   [[ ! -e $disk_sampler_ready ]] || break
   r2_sampler_identity_stable "$disk_sampler_pid" "$disk_sampler_start_ticks" \

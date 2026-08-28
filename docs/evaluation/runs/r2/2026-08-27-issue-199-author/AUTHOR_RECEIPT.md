@@ -21,7 +21,7 @@ not recursively by this source receipt.
   over `gh api repos/ConaryLabs/nomos/issues/199 --jq .body`, including the
   command's final LF
 - Author: Codex primary agent and its bounded GPT-5 family implementation
-subagents
+  subagents
 
 Decision 0024's front matter retains
 `4320dbdee1fcc52204809a9896c6e5a9a460d033a1ceba2c2aab7091bc55f929`,
@@ -73,18 +73,25 @@ require a new run.
 
 The checkout-wide disk observer reads each allowed logical CPU's Linux
 `thread_siblings_list` and fails closed on an absent, malformed, contradictory,
-or fewer-than-two-physical-core topology. It assigns complete physical-core
-sibling groups to the observer and the remaining complete groups to the proof
-workload, giving an odd extra group to the workload. On the 12-logical-CPU,
-six-core reference host, the sampler controller is pinned to CPU 0,
-ordinary-priority `du -sm -- <checkout>` walks use CPUs `0,1,2,6,7,8` with idle
-I/O priority, and proof workloads use CPUs `3,4,5,9,10,11`. Thus neither role
-shares a physical core with the other.
+partial, or fewer-than-three-physical-core topology. It assigns one complete
+sibling group to the sampler controller, the next complete groups to disk
+walks, and the remaining groups to the proof workload; when the non-controller
+groups are odd, the workload receives the extra group. On the 12-logical-CPU,
+six-core reference host, the controller uses CPUs `0,6`, a bounded pool of 32
+persistent workers uses CPUs `1,2,7,8`, and the proof workload uses CPUs
+`3,4,5,9,10,11`. The workload enters its mask before the sampler is launched;
+all three roles are pairwise physically disjoint.
+
+Each pool worker is a direct child in the sampler's dedicated session, enters
+the walk mask once before reporting readiness, and receives ordinal-bound work
+over its private controller-owned channel. It invokes ordinary-CPU-priority,
+idle-I/O-priority `du -sm -- <checkout>` without per-sample affinity setup.
 Workers retain canonical integer-nanosecond start times taken immediately
-before each successful walk, and the controller publishes them in
-chronological order while independently requiring unique contiguous launch
-ordinals. One controller derives two explicit absolute 50 ms phases from the
-fixed origin: even ordinals are `origin + n * 50 ms`, and odd ordinals are
+before each successful walk. The controller publishes them in chronological
+order while independently requiring unique contiguous launch ordinals, and it
+fails rather than dispatch a thirty-third concurrent walk. One controller
+derives two explicit absolute 50 ms phases from the fixed origin: even ordinals
+are `origin + n * 50 ms`, and odd ordinals are
 `origin + 25 ms + n * 50 ms`. It never turns either phase into a relative
 delay. Their union samples every 25 ms, as the contract expressly permits,
 while the recorded nominal interval remains 50 ms and the unchanged maximum
@@ -100,12 +107,20 @@ unchanged 100 ms maximum gap, and a 75 ms freshness bound. The parent then
 writes `host/disk-sampler.stop`; the controller requires its timestamp to
 remain within the 100 ms handoff window, launches no scheduled row after it,
 and launches the distinct final row.
+The handoff validator preserves the existing numeric sort, row grammar,
+contiguous-ordinal, arithmetic, ordering, gap, bridge, and freshness checks. It
+scans the sorted ledger in one `awk` process so validation work itself fits the
+freshness bound, but compares and adds absolute nanoseconds as canonical
+decimal strings rather than lossy IEEE-754 numbers. Final publication then
+independently repeats the full ledger validation in Bash.
 Sampler identity includes PID, process group, session, start ticks, and
-affinity. Worker capture and reaping never block on a live or mismatched PID;
-one four-second Linux-monotonic deadline spans drain-time bridge scheduling
-and reaping, the terminal worker set receives its own deadline, and the
-parent allows a separate six-second monotonic preparation window before its
-identity-bound TERM/KILL watchdog proves that the dedicated session has closed.
+affinity. Each pool-worker identity additionally includes its direct sampler
+parent. Worker result collection never waits a live or mismatched PID; one
+four-second Linux-monotonic deadline spans drain-time bridge scheduling and
+result collection, the terminal set and orderly pool shutdown receive fresh
+deadlines, and the parent allows a separate six-second monotonic preparation
+window before its identity-bound TERM/KILL watchdog proves that the dedicated
+session has closed.
 
 ## Preserved execution history and repair disposition
 
@@ -309,19 +324,67 @@ The terminal worker set gets a fresh deadline. The hung plant now leaves one
 request-time worker blocked while later bridges complete, proving deadline
 closure without conflating it with the separately retained 32-worker-cap and
 parent-watchdog plants. A controller-only scripted monotonic-clock plant
-advances one second per probe and requires exactly the five values from one
-through five seconds, so the former 400-iteration loop cannot pass by waiting
+advances one second per probe and requires exactly the six values from one
+through six seconds, including the pool-readiness deadline and the single
+active-set deadline, so the former 400-iteration loop cannot pass by waiting
 longer. Disk publication and summary helpers move into the already-separated
 disk-control library so routinely edited code files remain below 1,000 lines;
 their behaviour is unchanged.
+
+Candidate `35abe10213aa6c12b58bf2e328979351e499d8ff` (tree
+`98c67276e58cff3d9ff00dfcb2e1af1bcbfa5dc3`) then ran once in a new fresh,
+detached, standalone author clone. All 33 workload commands exited zero. The
+clean release build completed in 22.58 seconds; the compile-latency median was
+40,848,116 ns and the p95 was 54,298,290 ns; peak checkout disk was 1,357 MiB.
+All four measurements were below their unchanged ceilings, and the browser
+smoke reproduced the committed contact-sheet bytes. The observer retained
+6,156 complete, contiguous scheduled rows but rejected nine successful-attempt
+start gaps over 100,000,000 ns during browser smoke and the clean release
+build; the maximum was 158,897,664 ns. Worker-side affinity setup and attempt
+startup remained exposed to observer-core contention, so more frequent nominal
+launch deadlines did not ensure retained-start coverage. Handoff validation
+therefore did not publish readiness, the stop marker, a terminal row, disk
+summary, evidence manifest, or final receipt. The preserved failure report is
+`/data/dev/src/nomos-r2-author-35abe10.fXY8zx/author-failure-report.md`,
+SHA-256
+`e08e67d527cd8d518ae80400458eeedbeda56d79c6c562ed143ad877dfa92ef5`.
+It binds both external streams, the complete command ledger, rejected raw and
+sorted sampler rows, drain request, environment, build measurement, compile
+summary, browser receipt, and contact sheet. This run remains red and will not
+be retried at that commit.
 
 On 2026-08-28 the owner authorized an implementation repair, not a contract or
 ceiling change. The repair preserves the failed rerun as red evidence, does not
 relabel it, and requires new author and non-author executions at the repaired
 exact head before any R2 disposition.
 
+That repair reserves a third complete physical-core role for the controller,
+moves the proof workload to its disjoint mask before sampler creation, and
+replaces per-sample worker creation with the bounded ready-before-use pool
+described above. The successful-attempt timestamp, exact `du -sm -- <checkout>`
+invocation, idle I/O class, 32-walk concurrency bound, 50 ms nominal absolute
+schedule, 100 ms retained-start-gap limit, and 8,192 MiB ceiling are unchanged.
+The former monolithic proof library and plant suite are decomposed into a
+sampler library and source-only disk-plant file so every routinely edited code
+file remains below 1,000 lines.
+
+Deterministic plants reject partial or fewer-than-three-group topology and
+bind the exact six-core split. A real process plant verifies one affinity
+operation for each of the 32 persistent direct children and proves that more
+than 32 exact fake-`du` invocations all remain in the walk-only mask while the
+controller remains in its own mask. The cap plant holds and counts exactly 32
+walks, refuses the next dispatch with the existing diagnostic, publishes no
+ledger row, and proves complete session closure. Exact-integer handoff plants
+also distinguish adjacent nanoseconds above 2^53, reject a one-nanosecond
+origin/elapsed mismatch, and reject a 100,000,001 ns retained-start gap.
+Existing retry, chronological-publication, exact-gap, absolute-schedule,
+drain, terminal-order, deadline, identity-mismatch, and parent-watchdog plants
+remain green.
+
 Commands used during implementation include repository reads, `apply_patch`,
 shell and Node syntax/tests, the four accepted workspace checks, output-local
-R1/R2 rehearsals, and the final standalone network-isolated proof. Development
-failures are not evidence. The PR and external author/non-author receipts bind
-the exact final green commands, environment, outputs, and candidate identity.
+R1/R2 rehearsals, failure-injection plants, and fresh-checkout load probes.
+Development failures and rehearsals are not acceptance evidence. The formal
+standalone author proof has not run at this source-receipt freeze; its external
+receipt and the later exact-head non-author receipt must bind the exact green
+commands, environment, outputs, and candidate identity.

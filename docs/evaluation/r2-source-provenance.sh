@@ -151,6 +151,7 @@ while IFS=$'\t' read -r path digest origin receipt license; do
         apps/nomos-observed-viewer/SOURCE_MANIFEST | \
         apps/nomos-observed-viewer/smoke/smoke.mjs | \
         apps/nomos-observed-viewer/test/smoke.test.mjs | \
+        docs/evaluation/r2-complete-proof-disk-plants.sh | \
         docs/evaluation/r2-complete-proof.sh | \
         docs/evaluation/r2-complete-proof-lib.sh | \
         docs/evaluation/r2-complete-proof-process.mjs | \
@@ -159,6 +160,7 @@ while IFS=$'\t' read -r path digest origin receipt license; do
         docs/evaluation/r2-complete-proof-receipt.test.mjs | \
         docs/evaluation/r2-complete-proof.test.sh | \
         docs/evaluation/r2-disk-control-lib.sh | \
+        docs/evaluation/r2-disk-sampler-lib.sh | \
         docs/evaluation/r2-disk-terminal-order.test.sh | \
         docs/evaluation/r2-schema-ownership-plants.sh | \
         docs/evaluation/r2-source-provenance.test.sh)
