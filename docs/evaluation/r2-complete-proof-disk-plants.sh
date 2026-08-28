@@ -61,6 +61,11 @@ printf '%s\n' \
   '    [[ $line != Cpus_allowed_list:* ]] || printf '\''%s\n'\'' "${line#*:}" >"$R2_TEST_DU_AFFINITY_FILE"' \
   '  done </proc/self/status' \
   'fi' \
+  'if [[ -n ${R2_TEST_DU_HOLD_MARKER:-} ]]; then' \
+  '  [[ $R2_TEST_DU_HOLD_MARKER == */* ]] || exit 97' \
+  '  while [[ ! -e $R2_TEST_DU_HOLD_MARKER && ! -L $R2_TEST_DU_HOLD_MARKER ]]; do sleep 0.01; done' \
+  '  [[ -f $R2_TEST_DU_HOLD_MARKER && ! -L $R2_TEST_DU_HOLD_MARKER ]] || exit 97' \
+  'fi' \
   'if [[ ${R2_TEST_DU_STABLE:-0} == 1 ]]; then' \
   '  sleep "${R2_TEST_DU_DELAY:-0}"' \
   '  [[ ${R2_TEST_DU_FAIL:-0} != 1 ]] || exit 94' \
@@ -285,26 +290,50 @@ done
 r2_sampler_identity_stable "$async_sampler_pid" "$async_sampler_start" \
   "$disk_test_controller_cpus" ||
   fail 'asynchronous sampler left its controller-only CPU mask'
-for ((attempt = 0; attempt < 500; attempt += 1)); do
+r2_monotonic_now_ns || fail 'could not start real pool-affinity readiness deadline'
+r2_disk_deadline_ns "$R2_MONOTONIC_NS" 1 12000000000 ||
+  fail 'real pool-affinity readiness deadline overflowed'
+async_ready_deadline=$R2_DISK_DEADLINE_NS
+while :; do
   [[ ! -e $async_parts/ready ]] || break
   kill -0 "$async_sampler_pid" 2>/dev/null || fail 'asynchronous sampler exited before readiness'
+  r2_monotonic_now_ns || fail 'real pool-affinity readiness clock failed'
+  [[ $R2_MONOTONIC_NS -lt $async_ready_deadline ]] || break
   sleep 0.01
 done
 [[ -f $async_parts/ready ]] || fail 'asynchronous sampler did not become ready'
 async_live_rows=0
-for ((attempt = 0; attempt < 500; attempt += 1)); do
+r2_monotonic_now_ns || fail 'could not start real pool-affinity row deadline'
+r2_disk_deadline_ns "$R2_MONOTONIC_NS" 1 8000000000 ||
+  fail 'real pool-affinity row deadline overflowed'
+async_row_deadline=$R2_DISK_DEADLINE_NS
+while :; do
   async_live_rows=$(wc -l <"$async_parts/samples.unsorted.tsv")
   [[ $async_live_rows -lt 40 ]] || break
+  kill -0 "$async_sampler_pid" 2>/dev/null ||
+    fail 'asynchronous sampler exited before its fortieth row'
+  r2_monotonic_now_ns || fail 'real pool-affinity row clock failed'
+  [[ $R2_MONOTONIC_NS -lt $async_row_deadline ]] || break
   sleep 0.01
 done
 [[ $async_live_rows -ge 40 ]] ||
   fail 'real pool-affinity plant did not dispatch more than its pool size'
-unset R2_DISK_STOP_REQUESTED_NS
-r2_prepare_and_stop_disk_sampler "$async_sampler_pid" "$async_sampler_start" \
-  "$disk_test_controller_cpus" "$async_stop" "$async_parts" 0 ||
-  fail 'asynchronous sampler rejected complete walks'
-async_stop_started=$R2_DISK_STOP_REQUESTED_NS
+# Drain/request/ready ordering is independently planted by the terminal-order
+# suite. Keep this process-level affinity plant focused on the real pool and
+# exact walks: publish its canonical stop directly instead of making success
+# depend on the host scheduling a second parent-side handoff within 100 ms.
+async_stop_started=$(date +%s%N)
+r2_publish_decimal_control_marker "$async_stop" "$async_stop_started" ||
+  fail 'could not publish asynchronous sampler stop marker'
+wait "$async_sampler_pid" || fail 'asynchronous sampler rejected complete walks'
 async_sampler_identity=$async_sampler_pid
+if r2_sampler_session_has_members "$async_sampler_identity"; then
+  fail 'asynchronous sampler left a live session member'
+else
+  async_session_status=$?
+fi
+[[ $async_session_status -eq 1 ]] ||
+  fail 'asynchronous sampler session closure could not be proved'
 async_sampler_pid=
 async_count=0
 async_gap_ns=0
@@ -376,8 +405,8 @@ for async_affinity_record in "$async_affinity_directory"/*; do
   async_affinity_parent_workers["$async_worker_parent"]=1
   async_affinity_count=$((async_affinity_count + 1))
 done
-[[ $async_affinity_count -ge 5 ]] ||
-  fail 'real pool-affinity plant observed too few exact du walks'
+[[ $async_affinity_count -gt 32 ]] ||
+  fail 'real pool-affinity plant did not observe more walks than the pool size'
 async_taskset_count=0
 declare -A async_taskset_workers=()
 while IFS=$'\t' read -r async_taskset_mode async_taskset_mask \
@@ -400,8 +429,351 @@ for async_worker_parent in "${!async_affinity_parent_workers[@]}"; do
 done
 [[ $async_taskset_count -eq 32 &&
   ${#async_taskset_workers[@]} -eq 32 &&
-  $async_affinity_count -gt 0 && $async_taskset_count -lt $async_count ]] ||
+  $async_affinity_count -gt 32 && $async_taskset_count -lt $async_count ]] ||
   fail 'worker affinity was applied per sample or the bounded pool size differs'
+plant_count=$((plant_count + 1))
+# Bash can start a process-substitution child even when the dynamic descriptor
+# duplication then fails. Exhaust the child's descriptor limit at that exact
+# boundary and require the launch-failure branch to close its dedicated group;
+# returning normally would leave the deliberately held child in that session.
+channel_samples=$temporary/channel-failure-samples.tsv
+channel_state=$temporary/channel-failure-state
+channel_stop=$temporary/channel-failure.stop
+channel_stdout=$temporary/channel-failure.stdout
+channel_stderr=$temporary/channel-failure.stderr
+channel_started=$(date +%s%N)
+printf 'ordinal\tsample_start_ns\telapsed_ns\tmebibytes\tkind\n' >"$channel_samples"
+mkdir "$channel_state"
+setsid taskset -c "$disk_test_controller_cpus" env \
+  R2_DISK_WALK_CPUS="$async_walk_cpus" \
+  bash -c '
+  set -euo pipefail
+  source "$1"
+  R2_TEST_CHANNEL_RECORD=$5/worker-0.results
+  eval "$(declare -f r2_read_process_stat |
+    sed "1s/^r2_read_process_stat /r2_real_read_process_stat /")"
+  r2_channel_controller_reads=0
+  r2_read_process_stat() {
+    [[ $# -eq 1 ]] || return 2
+    if [[ $1 == "/proc/$BASHPID/stat" ]]; then
+      r2_channel_controller_reads=$((r2_channel_controller_reads + 1))
+      if [[ $r2_channel_controller_reads -eq 2 ]]; then for ((attempt = 0; attempt < 5000; attempt += 1)); do [[ -s $R2_TEST_CHANNEL_RECORD ]] && break; sleep 0.001; done; fi
+    fi
+    r2_real_read_process_stat "$1"
+  }
+  r2_disk_pool_worker() {
+    [[ $# -eq 5 ]] || return 2
+    local descriptor
+    local -a inherited_descriptors=()
+    for descriptor in {3..9}; do eval "exec ${descriptor}>&-"; done
+    IFS=, read -r -a inherited_descriptors <<<"$5"
+    for descriptor in "${inherited_descriptors[@]}"; do eval "exec ${descriptor}>&-"; done
+    r2_real_read_process_stat "/proc/$BASHPID/stat" || return 2
+    printf "held\t%s\t%s\t%s\t%s\t%s\n" "$1" "$BASHPID" \
+      "$R2_PROC_PARENT" "$R2_PROC_GROUP" "$R2_PROC_SESSION"
+    while :; do sleep 1; done
+  }
+  ulimit -n 13
+  for descriptor in {3..9}; do eval "exec ${descriptor}<>/dev/null"; done
+  r2_sample_checkout_disk "$2" "$3" "$4" "$5" "$6" 50000000
+' r2-channel-failure "$harness_lib_source" "$repo_root" "$channel_samples" \
+  "$channel_stop" "$channel_state" "$channel_started" \
+  >"$channel_stdout" 2>"$channel_stderr" &
+stop_test_pid=$!
+set +e
+wait "$stop_test_pid" 2>>"$channel_stderr"
+channel_status=$?
+set -e
+IFS=$'\t' read -r channel_tag channel_index channel_child channel_parent \
+  channel_group channel_session channel_extra <"$channel_state/worker-0.results" ||
+  fail 'worker-channel plant did not retain its started child record'
+[[ $channel_status -eq 137 && $(wc -l <"$channel_samples") -eq 1 ]] ||
+  fail 'failed worker-channel launch published a sample or returned success'
+[[ $channel_tag == held && $channel_index == 0 &&
+  $channel_child =~ ^[1-9][0-9]*$ && $channel_parent == "$stop_test_pid" &&
+  $channel_group == "$stop_test_pid" && $channel_session == "$stop_test_pid" &&
+  -z $channel_extra ]] || fail 'worker-channel plant did not bind its live child'
+grep -Fx 'R2 disk sampler: worker channel launch failed' "$channel_stderr" >/dev/null ||
+  fail 'worker-channel launch failure diagnostic differs'
+channel_session_status=0
+for ((attempt = 0; attempt < 500 && channel_session_status == 0; attempt += 1)); do
+  if r2_sampler_session_has_members "$stop_test_pid"; then sleep 0.001; else channel_session_status=$?; fi
+done
+[[ $channel_session_status -eq 1 ]] ||
+  fail 'worker-channel failure could not prove sampler-session closure'
+stop_test_pid=
+plant_count=$((plant_count + 1))
+
+# A process-substitution child exists as soon as `$!` is assigned. Refuse its
+# /proc identity capture while the child deliberately remains live: the
+# controller must already have registered the child, then close its verified
+# dedicated group instead of returning and orphaning an untracked worker.
+startup_samples=$temporary/startup-capture-samples.tsv
+startup_state=$temporary/startup-capture-state
+startup_stop=$temporary/startup-capture.stop
+startup_child_record=$temporary/startup-capture-child.tsv
+startup_attempts=$temporary/startup-capture-attempts.txt
+startup_stdout=$temporary/startup-capture.stdout
+startup_stderr=$temporary/startup-capture.stderr
+startup_started=$(date +%s%N)
+printf 'ordinal\tsample_start_ns\telapsed_ns\tmebibytes\tkind\n' >"$startup_samples"
+mkdir "$startup_state"
+setsid taskset -c "$disk_test_controller_cpus" env \
+  R2_DISK_WALK_CPUS="$async_walk_cpus" \
+  R2_TEST_STARTUP_CHILD_RECORD="$startup_child_record" \
+  R2_TEST_STARTUP_ATTEMPTS="$startup_attempts" \
+  bash -c '
+  set -euo pipefail
+  source "$1"
+  eval "$(declare -f r2_read_process_stat |
+    sed "1s/^r2_read_process_stat /r2_real_read_process_stat /")"
+  r2_read_process_stat() {
+    [[ $# -eq 1 ]] || return 2
+    if [[ $1 == "/proc/$BASHPID/stat" ]]; then
+      r2_real_read_process_stat "$1"
+    else
+      if [[ ! -s $R2_TEST_STARTUP_CHILD_RECORD ]]; then
+        r2_monotonic_now_ns || return 2
+        r2_disk_deadline_ns "$R2_MONOTONIC_NS" 1 6000000000 || return 2
+        startup_record_deadline=$R2_DISK_DEADLINE_NS
+        while [[ ! -s $R2_TEST_STARTUP_CHILD_RECORD ]]; do
+          r2_monotonic_now_ns || return 2
+          [[ $R2_MONOTONIC_NS -lt $startup_record_deadline ]] || return 2
+          sleep 0.001 || return 2
+        done
+      fi
+      printf "%s\n" "$1" >>"$R2_TEST_STARTUP_ATTEMPTS"
+      return 1
+    fi
+  }
+  r2_disk_pool_worker() {
+    [[ $# -eq 5 ]] || return 2
+    r2_real_read_process_stat "/proc/$BASHPID/stat" || return 2
+    printf "%s\t%s\t%s\t%s\n" "$BASHPID" "$R2_PROC_PARENT" \
+      "$R2_PROC_GROUP" "$R2_PROC_SESSION" >"$R2_TEST_STARTUP_CHILD_RECORD"
+    while :; do sleep 1; done
+  }
+  r2_sample_checkout_disk "$2" "$3" "$4" "$5" "$6" 50000000
+' r2-startup-capture "$harness_lib_source" "$repo_root" "$startup_samples" \
+  "$startup_stop" "$startup_state" "$startup_started" \
+  >"$startup_stdout" 2>"$startup_stderr" &
+stop_test_pid=$!
+for ((attempt = 0; attempt < 5000; attempt += 1)); do
+  [[ ! -s $startup_child_record ]] || break
+  kill -0 "$stop_test_pid" 2>/dev/null || break
+  sleep 0.001
+done
+[[ -s $startup_child_record ]] ||
+  fail 'startup-capture plant did not hold its process-substitution child'
+set +e
+wait "$stop_test_pid" 2>/dev/null
+startup_status=$?
+set -e
+IFS=$'\t' read -r startup_child_pid startup_child_parent startup_child_group \
+  startup_child_session startup_extra <"$startup_child_record"
+[[ $startup_status -ne 0 && $startup_child_pid =~ ^[1-9][0-9]*$ &&
+  $startup_child_parent == "$stop_test_pid" &&
+  $startup_child_group == "$stop_test_pid" &&
+  $startup_child_session == "$stop_test_pid" && -z $startup_extra ]] ||
+  fail 'startup-capture child was not bound to the dedicated sampler group'
+grep -Fx "/proc/$startup_child_pid/stat" "$startup_attempts" >/dev/null ||
+  fail 'startup-capture plant did not refuse the launched child identity'
+if r2_sampler_session_has_members "$stop_test_pid"; then
+  fail 'failed startup identity capture orphaned a live pool worker'
+else
+  startup_session_status=$?
+fi
+[[ $startup_session_status -eq 1 && ! -e /proc/$startup_child_pid ]] ||
+  fail 'startup identity failure did not close the dedicated sampler session'
+stop_test_pid=
+plant_count=$((plant_count + 1))
+
+# A worker that changes affinity after its last result is no longer an
+# admissible idle worker. Gate ordinal zero, move worker 31 onto the
+# controller-only mask, then release the sample under a pre-existing stop. The
+# controller must reject the idle worker before orderly shutdown; this record
+# override intentionally removes the independent per-walk affinity defense.
+idle_samples=$temporary/idle-affinity-samples.tsv
+idle_state=$temporary/idle-affinity-state
+idle_stop=$temporary/idle-affinity.stop
+idle_entered=$temporary/idle-affinity-entered
+idle_release=$temporary/idle-affinity-release
+idle_stdout=$temporary/idle-affinity.stdout
+idle_stderr=$temporary/idle-affinity.stderr
+idle_started=$(date +%s%N)
+printf 'ordinal\tsample_start_ns\telapsed_ns\tmebibytes\tkind\n' >"$idle_samples"
+mkdir "$idle_state"
+r2_publish_decimal_control_marker "$idle_stop" "$idle_started" ||
+  fail 'could not publish idle-affinity stop marker'
+setsid taskset -c "$disk_test_controller_cpus" env \
+  R2_DISK_WALK_CPUS="$async_walk_cpus" \
+  R2_TEST_IDLE_ENTERED="$idle_entered" \
+  R2_TEST_IDLE_RELEASE="$idle_release" \
+  bash -c '
+  set -euo pipefail
+  source "$1"
+  r2_record_checkout_mib() {
+    [[ $# -eq 5 ]] || return 2
+    local raw=$2 origin=$3 ordinal=$4 kind=$5 started
+    if [[ $ordinal -eq 0 ]]; then
+      : >"$R2_TEST_IDLE_ENTERED"
+      while [[ ! -e $R2_TEST_IDLE_RELEASE ]]; do sleep 0.001; done
+    fi
+    started=$(date +%s%N) || return 2
+    printf "%s\t%s\t%s\t17\t%s\n" "$ordinal" "$started" \
+      "$((started - origin))" "$kind" >>"$raw"
+  }
+  r2_sample_checkout_disk "$2" "$3" "$4" "$5" "$6" 50000000
+' r2-idle-affinity "$harness_lib_source" "$repo_root" "$idle_samples" \
+  "$idle_stop" "$idle_state" "$idle_started" \
+  >"$idle_stdout" 2>"$idle_stderr" &
+stop_test_pid=$!
+idle_worker_record=$idle_state/worker-31.results
+for ((attempt = 0; attempt < 5000; attempt += 1)); do
+  [[ -s $idle_worker_record && -e $idle_entered ]] && break
+  kill -0 "$stop_test_pid" 2>/dev/null ||
+    fail 'idle-affinity sampler exited before its worker became mutable'
+  sleep 0.001
+done
+[[ -s $idle_worker_record && -e $idle_entered ]] ||
+  fail 'idle-affinity plant did not reach its gated idle-worker state'
+IFS=$'\t' read -r idle_ready_tag idle_worker_index idle_worker_pid idle_extra \
+  <"$idle_worker_record"
+[[ $idle_ready_tag == ready && $idle_worker_index == 31 &&
+  $idle_worker_pid =~ ^[1-9][0-9]*$ && -z $idle_extra ]] ||
+  fail 'idle-affinity worker readiness record differs'
+"$real_taskset" -pc "$disk_test_controller_cpus" "$idle_worker_pid" >/dev/null ||
+  fail 'could not plant idle-worker affinity drift'
+r2_read_allowed_cpu_list "/proc/$idle_worker_pid/status" ||
+  fail 'mutated idle-worker affinity is unreadable'
+[[ $R2_EXPANDED_CPU_LIST == "$disk_test_controller_cpus" ]] ||
+  fail 'idle-worker affinity mutation did not take effect'
+: >"$idle_release"
+set +e
+wait "$stop_test_pid"
+idle_status=$?
+set -e
+[[ $idle_status -ne 0 && $(wc -l <"$idle_samples") -eq 1 ]] ||
+  fail 'sampler accepted an idle worker whose affinity changed'
+if r2_sampler_session_has_members "$stop_test_pid"; then
+  fail 'idle-affinity refusal leaked a sampler-session member'
+else
+  idle_session_status=$?
+fi
+[[ $idle_session_status -eq 1 ]] ||
+  fail 'idle-affinity refusal could not prove sampler-session closure'
+stop_test_pid=
+plant_count=$((plant_count + 1))
+
+# A live worker whose recorded PID/start/parent/group/session tuple changes is
+# not safe to mark reaped. Override only the controller's /proc view after all
+# workers are ready, report a false PGID for idle worker 31, and require the
+# controller to abort the real dedicated group rather than merely forgetting
+# that still-live child.
+structural_samples=$temporary/structural-identity-samples.tsv
+structural_state=$temporary/structural-identity-state
+structural_stop=$temporary/structural-identity.stop
+structural_entered=$temporary/structural-identity-entered
+structural_release=$temporary/structural-identity-release
+structural_target=$temporary/structural-identity-target
+structural_stdout=$temporary/structural-identity.stdout
+structural_stderr=$temporary/structural-identity.stderr
+structural_started=$(date +%s%N)
+printf 'ordinal\tsample_start_ns\telapsed_ns\tmebibytes\tkind\n' >"$structural_samples"
+mkdir "$structural_state"
+r2_publish_decimal_control_marker "$structural_stop" "$structural_started" ||
+  fail 'could not publish structural-identity stop marker'
+setsid taskset -c "$disk_test_controller_cpus" env \
+  R2_DISK_WALK_CPUS="$async_walk_cpus" \
+  R2_TEST_STRUCTURAL_ENTERED="$structural_entered" \
+  R2_TEST_STRUCTURAL_RELEASE="$structural_release" \
+  R2_TEST_STRUCTURAL_TARGET="$structural_target" \
+  bash -c '
+  set -euo pipefail
+  source "$1"
+  eval "$(declare -f r2_disk_pool_worker |
+    sed "1s/^r2_disk_pool_worker /r2_real_disk_pool_worker /")"
+  r2_disk_pool_worker() {
+    [[ $# -eq 5 ]] || return 2
+    if [[ $1 != 31 ]]; then
+      r2_real_disk_pool_worker "$@"
+      return
+    fi
+    local descriptor
+    local -a inherited_descriptors=()
+    if [[ $5 != - ]]; then
+      IFS=, read -r -a inherited_descriptors <<<"$5"
+      for descriptor in "${inherited_descriptors[@]}"; do
+        eval "exec ${descriptor}>&-"
+      done
+    fi
+    taskset -pc "$R2_DISK_WALK_CPUS" "$BASHPID" >/dev/null || return 2
+    r2_read_allowed_cpu_list "/proc/$BASHPID/status" || return 2
+    [[ $R2_EXPANDED_CPU_LIST == "$R2_DISK_WALK_CPUS" ]] || return 2
+    printf "ready\t31\t%s\n" "$BASHPID"
+    while :; do sleep 1; done
+  }
+  eval "$(declare -f r2_read_process_stat |
+    sed "1s/^r2_read_process_stat /r2_real_read_process_stat /")"
+  r2_read_process_stat() {
+    [[ $# -eq 1 ]] || return 2
+    r2_real_read_process_stat "$1" || return
+    if [[ -s $R2_TEST_STRUCTURAL_TARGET ]]; then
+      structural_worker=$(<"$R2_TEST_STRUCTURAL_TARGET")
+      if [[ $1 == "/proc/$structural_worker/stat" ]]; then
+        R2_PROC_GROUP=$((R2_PROC_GROUP + 1))
+      fi
+    fi
+  }
+  r2_record_checkout_mib() {
+    [[ $# -eq 5 ]] || return 2
+    local raw=$2 origin=$3 ordinal=$4 kind=$5 started
+    if [[ $ordinal -eq 0 ]]; then
+      : >"$R2_TEST_STRUCTURAL_ENTERED"
+      while [[ ! -e $R2_TEST_STRUCTURAL_RELEASE ]]; do sleep 0.001; done
+    fi
+    started=$(date +%s%N) || return 2
+    printf "%s\t%s\t%s\t17\t%s\n" "$ordinal" "$started" \
+      "$((started - origin))" "$kind" >>"$raw"
+  }
+  r2_sample_checkout_disk "$2" "$3" "$4" "$5" "$6" 50000000
+' r2-structural-identity "$harness_lib_source" "$repo_root" \
+  "$structural_samples" "$structural_stop" "$structural_state" \
+  "$structural_started" >"$structural_stdout" 2>"$structural_stderr" &
+stop_test_pid=$!
+structural_worker_record=$structural_state/worker-31.results
+for ((attempt = 0; attempt < 5000; attempt += 1)); do
+  [[ -s $structural_worker_record && -e $structural_entered ]] && break
+  kill -0 "$stop_test_pid" 2>/dev/null ||
+    fail 'structural-identity sampler exited before its mutation point'
+  sleep 0.001
+done
+[[ -s $structural_worker_record && -e $structural_entered ]] ||
+  fail 'structural-identity plant did not reach its gated idle-worker state'
+IFS=$'\t' read -r structural_ready_tag structural_worker_index \
+  structural_worker_pid structural_extra <"$structural_worker_record"
+[[ $structural_ready_tag == ready && $structural_worker_index == 31 &&
+  $structural_worker_pid =~ ^[1-9][0-9]*$ && -z $structural_extra ]] ||
+  fail 'structural-identity worker readiness record differs'
+printf '%s\n' "$structural_worker_pid" >"$structural_target"
+: >"$structural_release"
+set +e
+wait "$stop_test_pid" 2>>"$structural_stderr"
+structural_status=$?
+set -e
+[[ $structural_status -eq 137 && $(wc -l <"$structural_samples") -eq 1 ]] ||
+  fail 'live structural worker mismatch did not abort the dedicated group'
+grep -Fx 'R2 disk sampler: live worker identity changed during shutdown' \
+  "$structural_stderr" >/dev/null ||
+  fail 'live structural worker mismatch diagnostic differs'
+if r2_sampler_session_has_members "$stop_test_pid"; then
+  fail 'structural-identity refusal leaked a sampler-session member'
+else
+  structural_session_status=$?
+fi
+[[ $structural_session_status -eq 1 ]] ||
+  fail 'structural-identity refusal could not prove sampler-session closure'
+stop_test_pid=
 plant_count=$((plant_count + 1))
 
 # Publication is chronological even when workers start out of launch order;
@@ -490,57 +862,8 @@ grep -Fx 'R2 disk sampler: retained sample-start gap exceeds 100000000 ns' \
   fail 'disk sampler gap-overflow diagnostic differs'
 plant_count=$((plant_count + 1))
 
-# A long proof launches thousands of samples. Reaping must consult only the
-# bounded active child set on every launch rather than retaining and rescanning
-# every historical PID. Count the process probes and bind them to the number of
-# retained samples while quick walks repeatedly finish.
-history_samples=$temporary/history-disk-samples.tsv
-history_parts=$temporary/history-disk-state
-history_stop=$temporary/history-disk.stop
-history_probes=$temporary/history-disk-probes.txt
-history_started=$(date +%s%N)
-printf 'ordinal\tsample_start_ns\telapsed_ns\tmebibytes\tkind\n' >"$history_samples"
-: >"$history_probes"
-mkdir "$history_parts"
-run_history_sampler() {
-  eval "$(declare -f r2_read_process_stat | sed \
-    '1s/r2_read_process_stat/r2_read_process_stat_unprobed/')"
-  r2_read_process_stat() {
-    printf 'probe\n' >>"$history_probes"
-    r2_read_process_stat_unprobed "$@"
-  }
-  r2_record_checkout_mib() {
-    [[ $# -eq 5 ]] || return 2
-    local raw=$2 origin=$3 ordinal=$4 kind=$5
-    local started=$((origin + ordinal * 10000000))
-    printf '%s\t%s\t%s\t17\t%s\n' \
-      "$ordinal" "$started" "$((started - origin))" "$kind" >>"$raw"
-  }
-  r2_sample_checkout_disk \
-    "$repo_root" "$history_samples" "$history_stop" "$history_parts" \
-    "$history_started" 10000000
-}
-run_history_sampler &
-history_sampler_pid=$!
-for ((attempt = 0; attempt < 100; attempt += 1)); do
-  [[ ! -e $history_parts/ready ]] || break
-  kill -0 "$history_sampler_pid" 2>/dev/null || fail 'history sampler exited before readiness'
-  sleep 0.01
-done
-[[ -f $history_parts/ready ]] || fail 'history sampler did not become ready'
-sleep 0.8
-r2_publish_decimal_control_marker "$history_stop" "$(date +%s%N)" ||
-  fail 'could not publish history-sampler stop marker'
-wait "$history_sampler_pid" || fail 'history sampler rejected quick complete walks'
-history_sampler_pid=
-history_count=$(awk 'NR > 1 { count += 1 } END { print count + 0 }' "$history_samples")
-history_probe_count=$(wc -l <"$history_probes")
-# Deterministic quick workers need only a small active set; sixteen probes per
-# launch is deliberately generous but still rejects O(n²) history.
-[[ $history_count -ge 40 && $history_probe_count -gt 0 &&
-  $history_probe_count -le $(((history_count + 1) * 16)) &&
-  ! -e $history_parts ]] ||
-  fail 'disk sampler retained historical jobs instead of the bounded active set'
+# shellcheck source=docs/evaluation/r2-disk-history-plant.sh
+source "$script_directory/r2-disk-history-plant.sh"
 
 # A failed asynchronous walk must be reaped, make the controller fail without
 # publishing a row, and leave no live child behind in the controller shell.
@@ -584,13 +907,14 @@ overload_samples=$temporary/overload-disk-samples.tsv
 overload_state=$temporary/overload-disk-state
 overload_stop=$temporary/overload-disk.stop
 overload_launches=$temporary/overload-disk-launches
+overload_hold=$temporary/overload-disk.release
 overload_started=$(date +%s%N)
 printf 'ordinal\tsample_start_ns\telapsed_ns\tmebibytes\tkind\n' >"$overload_samples"
 mkdir "$overload_state" "$overload_launches"
 set +e
 setsid taskset -c "$disk_test_controller_cpus" env \
   R2_TEST_DU_STABLE=1 \
-  R2_TEST_DU_DELAY=2.0 \
+  R2_TEST_DU_HOLD_MARKER="$overload_hold" \
   R2_TEST_DU_AFFINITY_DIRECTORY="$overload_launches" \
   R2_DISK_WALK_CPUS="$R2_DISK_WALK_CPUS" \
   PATH="$fake_disk_bin:$PATH" \
@@ -605,9 +929,8 @@ setsid taskset -c "$disk_test_controller_cpus" env \
   >"$temporary/overload.stdout" 2>"$temporary/overload.stderr" &
 overload_sampler_pid=$!
 overload_session=$overload_sampler_pid
-wait "$overload_sampler_pid"
+wait "$overload_sampler_pid" 2>>"$temporary/overload.stderr"
 overload_status=$?
-overload_sampler_pid=
 set -e
 overload_launch_count=$(find "$overload_launches" -maxdepth 1 -type f | wc -l)
 [[ $overload_status -ne 0 && ! -s $temporary/overload.stdout &&
@@ -623,4 +946,5 @@ else
 fi
 [[ $overload_session_status -eq 1 ]] ||
   fail 'concurrency-limit sampler session closure could not be proved'
+overload_sampler_pid=
 plant_count=$((plant_count + 1))

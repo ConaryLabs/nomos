@@ -104,9 +104,14 @@ until the request-time workers quiesce and always retains at least one
 post-intent bridge, including when no worker is live at intent. Before
 readiness it validates the complete scheduled-only ledger, bridge timestamp,
 unchanged 100 ms maximum gap, and a 75 ms freshness bound. The parent then
-writes `host/disk-sampler.stop`; the controller requires its timestamp to
-remain within the 100 ms handoff window, launches no scheduled row after it,
-and launches the distinct final row.
+writes `host/disk-sampler.stop`; after publishing readiness the controller
+starts its own fresh six-second Linux-monotonic wait, revalidates the unchanged
+request marker on every poll, and requires the stop timestamp to remain within
+the 100 ms handoff window. The parent's separate six-second preparation window
+begins before readiness, so a count-dependent controller wait cannot expire
+first merely because host scheduling makes one-millisecond sleeps expensive.
+The controller launches no scheduled row after stop and launches the distinct
+final row.
 The handoff validator preserves the existing numeric sort, row grammar,
 contiguous-ordinal, arithmetic, ordering, gap, bridge, and freshness checks. It
 scans the sorted ledger in one `awk` process so validation work itself fits the
@@ -115,12 +120,23 @@ decimal strings rather than lossy IEEE-754 numbers. Final publication then
 independently repeats the full ledger validation in Bash.
 Sampler identity includes PID, process group, session, start ticks, and
 affinity. Each pool-worker identity additionally includes its direct sampler
-parent. Worker result collection never waits a live or mismatched PID; one
-four-second Linux-monotonic deadline spans drain-time bridge scheduling and
-result collection, the terminal set and orderly pool shutdown receive fresh
-deadlines, and the parent allows a separate six-second monotonic preparation
-window before its identity-bound TERM/KILL watchdog proves that the dedicated
-session has closed.
+parent. A failed process-substitution channel launch first closes its owned
+result descriptor, restoring the descriptor capacity needed for the
+controller's identity check, then closes the already-verified dedicated
+sampler group. After a successful launch, every child and owned descriptor is
+registered before `/proc` identity capture; an unbound launched child
+therefore closes through that same group rather than escaping the tracked
+pool. Affinity is rechecked after a successful result, before idle reuse,
+before stop is sent, and while a live worker is polled for shutdown. A
+still-live worker whose structural identity changes during shutdown aborts the
+dedicated group instead of being marked reaped. Worker result collection never
+waits a live or mismatched PID. A monotonic-clock, deadline-construction, or
+sleep failure during orderly shutdown also aborts the group rather than
+returning with live children. One four-second Linux-monotonic deadline spans
+drain-time bridge scheduling and result collection, the terminal set and
+orderly pool shutdown receive fresh deadlines, and the parent allows its
+separate six-second monotonic preparation window before its identity-bound
+TERM/KILL watchdog proves that the dedicated session has closed.
 
 ## Preserved execution history and repair disposition
 
@@ -365,21 +381,92 @@ described above. The successful-attempt timestamp, exact `du -sm -- <checkout>`
 invocation, idle I/O class, 32-walk concurrency bound, 50 ms nominal absolute
 schedule, 100 ms retained-start-gap limit, and 8,192 MiB ceiling are unchanged.
 The former monolithic proof library and plant suite are decomposed into a
-sampler library and source-only disk-plant file so every routinely edited code
+sampler library and source-only disk-plant files so every routinely edited code
 file remains below 1,000 lines.
+
+The first local source freeze for that repair,
+`236ee629025d815db4a800c354a81100ea78ec77`, did not enter the formal author
+protocol. Its exact-head local matrix first failed the real pool-affinity plant
+at the parent-to-controller stop handoff. The retained development fixture
+`target/r2-complete-proof-plants.Wx51oo` has 47 complete scheduled rows, all at
+17 MiB, with an 8,424,704 ns minimum and 17,100,288 ns maximum retained-start
+gap. Its matching request and ready markers bind
+`1787902277384374304`; all 32 worker result streams report success, but no stop
+marker, terminal row, or published ledger exists. A later traced execution was
+green, so the evidence identifies a host-sensitive handoff race rather than a
+failed walk; “green on retry” was not accepted, and this local candidate was
+retired without a formal run.
+
+The follow-up source repair changes neither handoff ordering nor its 100 ms
+freshness ceiling. It replaces the controller's former 5,000-poll post-ready
+wait with the fresh six-second monotonic window described above. The real
+process-affinity plant publishes a canonical stop directly because drain
+request/ready/stop ordering is independently exercised; this keeps its verdict
+about the pool and exact walks independent of a second host-scheduled parent
+handoff. Concurrent development rehearsals then exposed two more test-only
+count/timing assumptions: the positive plant's nominal five-second readiness
+poll could end while otherwise valid workers were still starting, and its
+two-second cap-plant walks could finish before dispatch 33. The positive plant
+now uses explicit 12-second readiness and 8-second row-accumulation monotonic
+deadlines. The cap plant holds its exact walks behind an unreleased gate, so
+the 32-worker boundary cannot disappear when the host is slow. Two concurrent
+complete 40-plant suites pass with those repairs. These development rehearsals
+are not acceptance evidence.
+
+A subsequent lifecycle audit made the channel-launch plant prove the real
+post-process-substitution failure rather than only a generic redirection
+failure. The controller exhausts dynamic descriptors only after Bash has
+created the process-substitution channel; the child records its actual
+`/proc` parent, process group, and session, while the controller's second
+self-identity read supplies deterministic synchronization. That plant exposed
+that an identity-bound group abort itself needed one free descriptor. The
+source now closes the already-owned result descriptor before the abort and the
+plant requires exit 137 plus complete session closure. The same audit found
+that shutdown clock/deadline/sleep helper failures could return before live
+workers closed. Those branches now abort the verified group, and a
+caller-sensitive monotonic-clock plant requires that path to exit 137, publish
+no ledger, and close the whole session.
+
+The first attempted consecutive rehearsal after that repair remained red. In
+retained fixture `target/r2-complete-proof-plants.bMisRz`, the history plant
+published a complete 35-row ledger, made 240 process probes, removed its state,
+and otherwise satisfied the bounded-active-set assertion, but missed the
+plant's arbitrary 40-row minimum because it published stop after a fixed 0.8
+second sleep. That is a host-sensitive fixture assumption, not evidence of
+quadratic process history, and it was not accepted on retry. The history plant
+is now separately decomposed and waits against explicit 12-second readiness
+and 8-second row-accumulation monotonic deadlines before publishing stop. Its
+probe ceiling, production sampler, disk method, concurrency bound, schedules,
+and acceptance ceilings are unchanged.
 
 Deterministic plants reject partial or fewer-than-three-group topology and
 bind the exact six-core split. A real process plant verifies one affinity
 operation for each of the 32 persistent direct children and proves that more
 than 32 exact fake-`du` invocations all remain in the walk-only mask while the
-controller remains in its own mask. The cap plant holds and counts exactly 32
-walks, refuses the next dispatch with the existing diagnostic, publishes no
-ledger row, and proves complete session closure. Exact-integer handoff plants
-also distinguish adjacent nanoseconds above 2^53, reject a one-nanosecond
-origin/elapsed mismatch, and reject a 100,000,001 ns retained-start gap.
-Existing retry, chronological-publication, exact-gap, absolute-schedule,
-drain, terminal-order, deadline, identity-mismatch, and parent-watchdog plants
-remain green.
+controller remains in its own mask. The source assertion itself requires more
+than 32 completed exact walks, so fewer samples cannot satisfy that verdict.
+The cap plant holds and counts exactly 32 walks, refuses the next dispatch with
+the existing diagnostic, publishes no ledger row, and proves complete session
+closure. A real descriptor-exhaustion plant makes process substitution start a
+held child while the controller's dynamic request-descriptor duplication
+fails, then proves the failed channel launch closes the sampler session. A
+second held-child mutation refuses startup identity capture and proves that a
+registered process-substitution child cannot survive its controller. A live
+affinity mutation moves an idle worker onto the controller mask and proves
+that shutdown refuses the drifted identity without leaking the session. A
+separate live structural-identity mutation keeps an idle worker alive while
+the controller observes a changed process-group tuple, and proves that the
+dedicated group is aborted rather than the worker being forgotten as reaped.
+Exact-integer handoff plants distinguish adjacent nanoseconds above 2^53,
+reject a one-nanosecond origin/elapsed mismatch, reject a 100,000,001 ns
+retained-start gap, and refuse control-marker values above signed 64-bit range.
+The post-ready wait both accepts a stop first published on synthetic poll 5,001
+and expires with the exact diagnostic at its synthetic six-second monotonic
+boundary. Existing retry, chronological-publication, exact-gap,
+absolute-schedule, drain, terminal-order, deadline, identity-mismatch, and
+parent-watchdog plants remain green. Two consecutive complete 42-plant suites
+passed after all lifecycle and history-plant repairs. These runs are
+development rehearsals, not acceptance evidence.
 
 Commands used during implementation include repository reads, `apply_patch`,
 shell and Node syntax/tests, the four accepted workspace checks, output-local

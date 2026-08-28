@@ -128,7 +128,8 @@ r2_sample_checkout_disk() {
   local sorted_samples=$state/samples.sorted.tsv pool_size=32
   local ordinal=0 deadline now monotonic_now delay delay_seconds status=0 attempt
   local active=0 initial_ready=0 draining=0 drain_remaining request_ns=''
-  local stop_ns='' bridge_ordinal='' bridge_pending=0 worker_timeout_ns=4000000000
+  local bridge_ordinal='' bridge_pending=0 worker_timeout_ns=4000000000
+  local stop_wait_timeout_ns=6000000000
   local drain_deadline_ns='' controller_start controller_group controller_session
   local worker_index worker_pid worker_start result_file result_fd request_fd
   local close_fds tag result_index result_ordinal result_status extra
@@ -187,30 +188,54 @@ r2_sample_checkout_disk() {
       inherited_fds=("${worker_request_fds[@]}" "${worker_result_fds[@]}" "$result_fd")
       printf -v close_fds '%s,' "${inherited_fds[@]}"
       close_fds=${close_fds%,}
-      exec {request_fd}> >(
+      if ! exec {request_fd}> >(
         r2_disk_pool_worker "$index" "$root" "$raw_samples" \
           "$sampler_started" "$close_fds" >>"$result_file"
-      ) || return 1
+      ); then
+        close_pool_fd "$result_fd" || true
+        printf 'R2 disk sampler: worker channel launch failed\n' >&2
+        abort_dedicated_sampler_group || true
+        return 1
+      fi
       worker_pid=$!
-      worker_start=
-      for ((attempt = 0; attempt < 100; attempt += 1)); do
-        if r2_read_process_stat "/proc/$worker_pid/stat"; then
-          worker_start=$R2_PROC_START
-          break
-        fi
-        stat_status=$?
-        [[ $stat_status -ne 1 || -e /proc/$worker_pid ]] || break
-        sleep 0.001 || return 1
-      done
-      [[ $worker_start =~ ^[0-9]+$ ]] || return 1
+      # Register every launched child and owned descriptor before attempting
+      # identity capture. If /proc cannot bind that live child, the only safe
+      # cleanup authority is the controller's already-verified dedicated group.
       worker_pids[index]=$worker_pid
-      worker_starts[index]=$worker_start
+      worker_starts[index]=''
       worker_results[index]=$result_file
       worker_result_fds[index]=$result_fd
       worker_request_fds[index]=$request_fd
       worker_jobs[index]=''
       worker_reaped[index]=0
       pool_started=$((pool_started + 1))
+      worker_start=
+      for ((attempt = 0; attempt < 100; attempt += 1)); do
+        if r2_read_process_stat "/proc/$worker_pid/stat"; then
+          if [[ $R2_PROC_PARENT == "$BASHPID" &&
+            $R2_PROC_GROUP == "$controller_group" &&
+            $R2_PROC_SESSION == "$controller_session" &&
+            $R2_PROC_STATE != Z ]]; then
+            worker_start=$R2_PROC_START
+            break
+          fi
+          stat_status=2
+          break
+        fi
+        stat_status=$?
+        [[ $stat_status -eq 1 && -e /proc/$worker_pid ]] || break
+        if ! sleep 0.001; then
+          printf 'R2 disk sampler: worker identity capture wait failed\n' >&2
+          abort_dedicated_sampler_group || true
+          return 1
+        fi
+      done
+      if [[ ! $worker_start =~ ^[0-9]+$ ]]; then
+        printf 'R2 disk sampler: launched worker identity could not be bound\n' >&2
+        abort_dedicated_sampler_group || true
+        return 1
+      fi
+      worker_starts[index]=$worker_start
     done
 
     r2_monotonic_now_ns || return 1
@@ -254,7 +279,7 @@ r2_sample_checkout_disk() {
         active=$((active - 1))
         unset 'drain_jobs[$job]'
         if [[ $result_status -eq 0 ]]; then
-          pool_worker_process_stable "$index" || { status=1; return 1; }
+          pool_worker_identity_stable "$index" || { status=1; return 1; }
         else
           status=1
         fi
@@ -272,7 +297,7 @@ r2_sample_checkout_disk() {
     for ((offset = 0; offset < pool_size; offset += 1)); do
       index=$(( (next_worker + offset) % pool_size ))
       [[ -z ${worker_jobs[$index]} ]] || continue
-      pool_worker_process_stable "$index" || { status=1; return 1; }
+      pool_worker_identity_stable "$index" || { status=1; return 1; }
       available_worker=$index
       next_worker=$(( (index + 1) % pool_size ))
       return 0
@@ -328,16 +353,21 @@ r2_sample_checkout_disk() {
     local index live=0 pool_deadline pool_now wait_result
     [[ $active -eq 0 ]] || return 2
     for ((index = 0; index < pool_started; index += 1)); do
-      if pool_worker_process_stable "$index"; then
+      if pool_worker_identity_stable "$index"; then
         printf 'stop\n' >&"${worker_request_fds[$index]}" || status=1
       else
         status=1
       fi
       close_pool_fd "${worker_request_fds[$index]}" || status=1
     done
-    r2_monotonic_now_ns || { status=1; return 1; }
+    r2_monotonic_now_ns || {
+      status=1
+      abort_dedicated_sampler_group || true
+      return 1
+    }
     r2_disk_deadline_ns "$R2_MONOTONIC_NS" 1 "$worker_timeout_ns" || {
       status=1
+      abort_dedicated_sampler_group || true
       return 1
     }
     pool_deadline=$R2_DISK_DEADLINE_NS
@@ -347,19 +377,29 @@ r2_sample_checkout_disk() {
         [[ ${worker_reaped[$index]} -eq 0 ]] || continue
         worker_pid=${worker_pids[$index]}
         worker_start=${worker_starts[$index]}
+        if pool_worker_identity_stable "$index"; then
+          live=$((live + 1))
+          continue
+        fi
+        # The worker may have exited between the full identity snapshot and
+        # this reaping snapshot. A still-live recorded process is an affinity
+        # or identity failure; a matching zombie or vanished direct child is
+        # safe to wait without turning normal exit into a race-dependent red.
         if r2_read_process_stat "/proc/$worker_pid/stat"; then
           if [[ $R2_PROC_START == "$worker_start" &&
             $R2_PROC_PARENT == "$BASHPID" &&
             $R2_PROC_GROUP == "$controller_group" &&
             $R2_PROC_SESSION == "$controller_session" ]]; then
             if [[ $R2_PROC_STATE != Z ]]; then
+              status=1
               live=$((live + 1))
               continue
             fi
           else
             status=1
-            worker_reaped[index]=1
-            continue
+            printf 'R2 disk sampler: live worker identity changed during shutdown\n' >&2
+            abort_dedicated_sampler_group || true
+            return 1
           fi
         else
           stat_status=$?
@@ -375,7 +415,11 @@ r2_sample_checkout_disk() {
         worker_reaped[index]=1
       done
       [[ $live -ne 0 ]] || break
-      r2_monotonic_now_ns || { status=1; break; }
+      r2_monotonic_now_ns || {
+        status=1
+        abort_dedicated_sampler_group || true
+        return 1
+      }
       pool_now=$R2_MONOTONIC_NS
       [[ $pool_now -lt $pool_deadline ]] || {
         status=1
@@ -383,7 +427,11 @@ r2_sample_checkout_disk() {
         abort_dedicated_sampler_group || true
         return 1
       }
-      sleep 0.005 || { status=1; break; }
+      sleep 0.005 || {
+        status=1
+        abort_dedicated_sampler_group || true
+        return 1
+      }
     done
     for ((index = 0; index < pool_started; index += 1)); do
       close_pool_fd "${worker_result_fds[$index]}" || status=1
@@ -421,7 +469,6 @@ r2_sample_checkout_disk() {
     fi
     if [[ -e $stop || -L $stop ]]; then
       r2_read_decimal_control_marker "$stop" || { status=1; break; }
-      stop_ns=$R2_CONTROL_MARKER
       [[ $initial_ready -eq 0 ]] || break
       sleep 0.001 || status=1
       [[ $status -eq 0 ]] || break
@@ -506,22 +553,15 @@ r2_sample_checkout_disk() {
       "$request_ns" "$bridge_ordinal" "$((period_ns + period_ns / 2))" || status=1
     [[ $status -ne 0 ]] || r2_publish_decimal_control_marker \
       "$drain_ready" "$request_ns" || status=1
-    for ((attempt = 0; status == 0 && attempt < 5000; attempt += 1)); do
-      r2_read_decimal_control_marker "$drain_request" || { status=1; break; }
-      [[ $R2_CONTROL_MARKER == "$request_ns" ]] || { status=1; break; }
-      if [[ -e $stop || -L $stop ]]; then
-        r2_read_decimal_control_marker "$stop" || { status=1; break; }
-        stop_ns=$R2_CONTROL_MARKER
-        [[ $stop_ns -ge $request_ns && $stop_ns -ge $R2_DISK_HANDOFF_LATEST_NS &&
-          $((stop_ns - R2_DISK_HANDOFF_LATEST_NS)) -le 100000000 ]] || status=1
-        break
-      fi
-      sleep 0.001 || status=1
-    done
-    [[ $status -ne 0 || $stop_ns =~ ^(0|[1-9][0-9]*)$ ]] || status=1
+    if [[ $status -eq 0 ]] && r2_wait_for_disk_stop_marker \
+      "$stop" "$drain_request" "$request_ns" "$R2_DISK_HANDOFF_LATEST_NS" \
+      "$stop_wait_timeout_ns"; then
+      :
+    else
+      status=1
+    fi
   elif [[ $status -eq 0 ]]; then
     r2_read_decimal_control_marker "$stop" || status=1
-    [[ $status -ne 0 ]] || stop_ns=$R2_CONTROL_MARKER
   fi
 
   [[ $status -ne 0 ]] || launch_sample terminal || status=1

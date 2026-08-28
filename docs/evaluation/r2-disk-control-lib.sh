@@ -49,6 +49,7 @@ r2_disk_interleaved_deadline_ns() {
   R2_DISK_DEADLINE_NS=$deadline
 }
 
+# shellcheck disable=SC2120 # This public helper explicitly rejects arguments.
 r2_monotonic_now_ns() {
   [[ $# -eq 0 ]] || return 2
   local uptime idle extra='' seconds fraction
@@ -65,11 +66,20 @@ r2_monotonic_now_ns() {
   R2_MONOTONIC_NS=$((10#$seconds * 1000000000 + 10#$fraction * 10000000))
 }
 
+r2_decimal_fits_signed_i64() {
+  [[ $# -eq 1 && $1 =~ ^(0|[1-9][0-9]*)$ ]] || return 2
+  local value=$1 maximum=9223372036854775807
+  # Compare equal-length canonical decimals lexically.
+  # shellcheck disable=SC2071
+  [[ ${#value} -lt ${#maximum} ||
+    ( ${#value} -eq ${#maximum} && ( $value < "$maximum" || $value == "$maximum" ) ) ]]
+}
+
 r2_read_decimal_control_marker() {
   [[ $# -eq 1 && -f $1 && ! -L $1 ]] || return 2
   local line extra=''
   { IFS= read -r line && ! IFS= read -r extra && [[ -z $extra ]]; } <"$1" || return 2
-  [[ $line =~ ^(0|[1-9][0-9]*)$ ]] || return 2
+  r2_decimal_fits_signed_i64 "$line" || return 2
   # shellcheck disable=SC2034 # Returned global is consumed by protocol peers.
   R2_CONTROL_MARKER=$line
 }
@@ -78,6 +88,7 @@ r2_publish_decimal_control_marker() {
   [[ $# -eq 2 && $1 == */* && $1 != *$'\n'* && $1 != *$'\t'* &&
     $2 =~ ^(0|[1-9][0-9]*)$ ]] || return 2
   local marker=$1 value=$2 parent leaf temporary result=0
+  r2_decimal_fits_signed_i64 "$value" || return 2
   parent=${marker%/*}
   leaf=${marker##*/}
   [[ -d $parent && ! -L $parent && $leaf =~ ^[A-Za-z0-9._-]+$ &&
@@ -96,6 +107,39 @@ r2_publish_decimal_control_marker() {
     trap - EXIT HUP INT TERM
   ) || return 1
   r2_read_decimal_control_marker "$marker" && [[ $R2_CONTROL_MARKER == "$value" ]]
+}
+
+r2_wait_for_disk_stop_marker() {
+  [[ $# -eq 5 && $1 == */* && $1 != *$'\n'* && $1 != *$'\t'* &&
+    -f $2 && ! -L $2 && $3 =~ ^(0|[1-9][0-9]*)$ &&
+    $4 =~ ^(0|[1-9][0-9]*)$ && $5 =~ ^[1-9][0-9]*$ ]] || return 2
+  local stop=$1 request_file=$2 request_ns=$3 latest_ns=$4 timeout_ns=$5
+  local stop_ns deadline now
+  r2_decimal_fits_signed_i64 "$request_ns" || return 2
+  r2_decimal_fits_signed_i64 "$latest_ns" || return 2
+  r2_monotonic_now_ns || return 1
+  r2_disk_deadline_ns "$R2_MONOTONIC_NS" 1 "$timeout_ns" || return 2
+  deadline=$R2_DISK_DEADLINE_NS
+  while :; do
+    r2_read_decimal_control_marker "$request_file" || return 1
+    [[ $R2_CONTROL_MARKER == "$request_ns" ]] || return 1
+    if [[ -e $stop || -L $stop ]]; then
+      r2_read_decimal_control_marker "$stop" || return 1
+      stop_ns=$R2_CONTROL_MARKER
+      [[ $stop_ns -ge $request_ns && $stop_ns -ge $latest_ns &&
+        $((stop_ns - latest_ns)) -le 100000000 ]] || return 1
+      # shellcheck disable=SC2034 # Returned global binds the terminal row.
+      R2_DISK_STOP_NS=$stop_ns
+      return 0
+    fi
+    r2_monotonic_now_ns || return 1
+    now=$R2_MONOTONIC_NS
+    [[ $now -lt $deadline ]] || {
+      printf 'R2 disk sampler: stop marker did not arrive before timeout\n' >&2
+      return 1
+    }
+    sleep 0.001 || return 1
+  done
 }
 
 r2_publish_checkout_disk_samples() {

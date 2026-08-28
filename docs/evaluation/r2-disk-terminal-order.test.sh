@@ -54,13 +54,14 @@ atomic_publisher=
 handshake_pid=
 deadline_sampler_pid=
 hung_sampler_pid=
+shutdown_sampler_pid=
 capture_sampler_pid=
 cleanup() {
   local session_pid
   [[ -z ${atomic_publisher:-} ]] || kill "$atomic_publisher" 2>/dev/null || true
   [[ -z ${atomic_publisher:-} ]] || wait "$atomic_publisher" 2>/dev/null || true
   for session_pid in "${handshake_pid:-}" "${deadline_sampler_pid:-}" \
-    "${hung_sampler_pid:-}" \
+    "${hung_sampler_pid:-}" "${shutdown_sampler_pid:-}" \
     "${capture_sampler_pid:-}"; do
     [[ -n $session_pid ]] || continue
     kill -KILL -- "-$session_pid" 2>/dev/null || true
@@ -237,6 +238,94 @@ printf '%s' 42 >"$atomic_directory/no-final-line-feed"
 if r2_read_decimal_control_marker "$atomic_directory/no-final-line-feed"; then
   fail 'control-marker reader accepted a decimal without its final line feed'
 fi
+printf '%s\n' 9223372036854775808 >"$atomic_directory/out-of-range"
+if r2_read_decimal_control_marker "$atomic_directory/out-of-range" ||
+  r2_publish_decimal_control_marker \
+    "$atomic_directory/out-of-range-published" 9223372036854775808; then
+  fail 'control-marker arithmetic admitted a value above signed 64-bit range'
+fi
+[[ ! -e $atomic_directory/out-of-range-published ]] ||
+  fail 'out-of-range control-marker publication left a destination'
+if r2_wait_for_disk_stop_marker \
+  "$atomic_directory/out-of-range-stop" "$atomic_marker" 123456789 \
+  9223372036854775808 1; then
+  fail 'stop-wait arithmetic admitted an out-of-range latest timestamp'
+else
+  out_of_range_wait_status=$?
+fi
+[[ $out_of_range_wait_status -eq 2 ]] ||
+  fail 'out-of-range stop-wait timestamp did not fail as invalid input'
+
+# The sampler's post-ready wait must outlive the parent's separate six-second
+# preparation window by elapsed monotonic time, not by a smaller polling count.
+# Force the historical 5,000-iteration boundary without spending wall time and
+# publish a valid stop only on iteration 5,001.
+delayed_stop_directory=$temporary/delayed-stop
+delayed_stop_request=$delayed_stop_directory/drain-request
+delayed_stop_marker=$delayed_stop_directory/stop
+delayed_stop_result=$delayed_stop_directory/result
+mkdir "$delayed_stop_directory"
+r2_publish_decimal_control_marker "$delayed_stop_request" 1787900000000000000 ||
+  fail 'could not publish delayed-stop request'
+(
+  delayed_stop_iterations=0
+  r2_monotonic_now_ns() { R2_MONOTONIC_NS=1000000000; }
+  sleep() {
+    [[ $# -eq 1 && $1 == 0.001 ]] || return 2
+    delayed_stop_iterations=$((delayed_stop_iterations + 1))
+    if [[ $delayed_stop_iterations -eq 5001 ]]; then
+      r2_publish_decimal_control_marker \
+        "$delayed_stop_marker" 1787900000050000000
+    fi
+  }
+  r2_wait_for_disk_stop_marker \
+    "$delayed_stop_marker" "$delayed_stop_request" 1787900000000000000 \
+    1787900000000000000 6000000000
+  printf '%s\t%s\n' "$delayed_stop_iterations" "$R2_DISK_STOP_NS" \
+    >"$delayed_stop_result"
+) || fail 'monotonic stop wait expired at the former polling boundary'
+[[ $(<"$delayed_stop_result") == $'5001\t1787900000050000000' ]] ||
+  fail 'monotonic stop-wait result differs'
+
+# The same wait must expire at its six-second monotonic deadline. Advance a
+# synthetic clock by one second per probe; a bounded fake sleep also prevents
+# an accidentally unbounded implementation from hanging this plant.
+expiry_directory=$temporary/stop-expiry
+expiry_request=$expiry_directory/drain-request
+expiry_stop=$expiry_directory/stop
+expiry_trace=$expiry_directory/trace
+expiry_stdout=$expiry_directory/stdout
+expiry_stderr=$expiry_directory/stderr
+mkdir "$expiry_directory"
+r2_publish_decimal_control_marker "$expiry_request" 1787900000000000000 ||
+  fail 'could not publish stop-expiry request'
+set +e
+(
+  expiry_probe=0
+  expiry_sleep=0
+  r2_monotonic_now_ns() {
+    expiry_probe=$((expiry_probe + 1))
+    [[ $expiry_probe -le 7 ]] || return 2
+    R2_MONOTONIC_NS=$((expiry_probe * 1000000000))
+    printf '%s\n' "$R2_MONOTONIC_NS" >>"$expiry_trace"
+  }
+  sleep() {
+    [[ $# -eq 1 && $1 == 0.001 ]] || return 2
+    expiry_sleep=$((expiry_sleep + 1))
+    [[ $expiry_sleep -le 5 ]] || return 97
+    printf '%s\n' "$expiry_sleep" >"$expiry_directory/sleeps"
+  }
+  r2_wait_for_disk_stop_marker \
+    "$expiry_stop" "$expiry_request" 1787900000000000000 \
+    1787900000000000000 6000000000
+) >"$expiry_stdout" 2>"$expiry_stderr"
+expiry_status=$?
+set -e
+[[ $expiry_status -eq 1 && ! -s $expiry_stdout &&
+  $(<"$expiry_directory/sleeps") == 5 && $(wc -l <"$expiry_trace") -eq 7 &&
+  $(<"$expiry_stderr") == \
+    'R2 disk sampler: stop marker did not arrive before timeout' ]] ||
+  fail 'monotonic stop wait did not expire at exactly six seconds'
 
 # The parent-side stop helper must request and observe a completed pre-stop
 # drain before it writes the canonical stop marker.
@@ -627,6 +716,53 @@ fi
 [[ $hung_session_status -eq 1 ]] ||
   fail 'hung sampler session closure could not be proved'
 hung_sampler_pid=
+
+# A shutdown helper failure cannot return while the ready worker pool remains
+# live. Fail the first monotonic probe whose caller is `stop_worker_pool` and
+# require the controller's verified process group to be killed before any
+# ledger publication.
+shutdown_samples=$temporary/shutdown-helper-samples.tsv
+shutdown_stop=$temporary/shutdown-helper.stop
+shutdown_state=$temporary/shutdown-helper-state
+shutdown_origin=$(date +%s%N)
+printf 'ordinal\tsample_start_ns\telapsed_ns\tmebibytes\tkind\n' >"$shutdown_samples"
+mkdir "$shutdown_state"
+r2_publish_decimal_control_marker "$shutdown_stop" "$shutdown_origin" ||
+  fail 'could not publish shutdown-helper stop marker'
+setsid taskset -c "$test_controller_cpu" bash -c '
+  set -euo pipefail
+  source "$1"
+  eval "$(declare -f r2_monotonic_now_ns | sed \
+    "1s/r2_monotonic_now_ns/r2_real_monotonic_now_ns/")"
+  r2_monotonic_now_ns() {
+    [[ ${FUNCNAME[1]:-} != stop_worker_pool ]] || return 1
+    r2_real_monotonic_now_ns
+  }
+  r2_record_checkout_mib() {
+    local started
+    started=$(date +%s%N) || return 2
+    printf "%s\t%s\t%s\t17\t%s\n" "$4" "$started" \
+      "$((started - $3))" "$5" >>"$2"
+  }
+  r2_sample_checkout_disk "$2" "$3" "$4" "$5" "$6" 50000000
+' r2-shutdown-helper "$script_directory/r2-complete-proof-lib.sh" \
+  "$repo_root" "$shutdown_samples" "$shutdown_stop" "$shutdown_state" \
+  "$shutdown_origin" >"$temporary/shutdown-helper.stdout" \
+  2>"$temporary/shutdown-helper.stderr" &
+shutdown_sampler_pid=$!
+set +e
+wait "$shutdown_sampler_pid" 2>>"$temporary/shutdown-helper.stderr"
+shutdown_status=$?
+set -e
+[[ $shutdown_status -eq 137 && $(wc -l <"$shutdown_samples") -eq 1 ]] ||
+  fail 'shutdown helper failure returned with live workers or published evidence'
+shutdown_session_status=0
+for ((attempt = 0; attempt < 5000 && shutdown_session_status == 0; attempt += 1)); do
+  if r2_sampler_session_has_members "$shutdown_sampler_pid"; then sleep 0.001; else shutdown_session_status=$?; fi
+done
+[[ $shutdown_session_status -eq 1 ]] ||
+  fail 'shutdown helper failure did not close the sampler session'
+shutdown_sampler_pid=
 
 # A live child whose captured identity differs is never passed to `wait` and
 # never dropped from cleanup authority: the verified dedicated sampler group
