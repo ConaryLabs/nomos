@@ -91,8 +91,8 @@ const TOOL_LABELS = Object.freeze([
   "git", "realpath", "readlink", "find", "grep", "awk", "sed", "sort", "cmp", "cut",
   "sha256sum", "stat", "date", "du", "jq", "gnu-time", "ar", "basename", "bash", "bwrap",
   "cargo", "cc", "chmod", "cp", "diff", "dirname", "env", "getconf", "head", "id",
-  "install", "ionice", "ip", "ld", "ln", "mkdir", "mktemp", "node", "paste", "ps", "rm", "rustc",
-  "rustup", "seq", "setpriv", "sh", "sleep", "strings", "sudo", "tar", "timeout", "touch",
+  "install", "ionice", "ip", "ld", "ln", "mkdir", "mktemp", "nice", "node", "paste", "ps", "rm", "rustc",
+  "rustup", "seq", "setpriv", "setsid", "sh", "sleep", "strings", "sudo", "tar", "taskset", "timeout", "touch",
   "tr", "uname", "unshare", "wc", "cargo-toolchain", "rustc-toolchain", "rust-lld", "chrome",
 ]);
 
@@ -127,7 +127,6 @@ const safeRelative = (path) =>
   typeof path === "string" && path.length > 0 && path.length < 4096 &&
   !path.startsWith("/") && !path.includes("\\") && !path.includes("\0") &&
   !path.split("/").some((part) => part === "" || part === "." || part === "..");
-
 const inside = (parent, child) => child === parent || child.startsWith(`${parent}${sep}`);
 
 const noSymlinkComponents = (path, stop) => {
@@ -273,7 +272,6 @@ const parseLedger = (output) => {
   required(new Set(rows.flatMap((row) => [row.stdout, row.stderr])).size === rows.length * 2, "command logs reuse a path");
   return rows;
 };
-
 const tapSummary = (text, label) => {
   const value = (name) => {
     const matches = [...text.matchAll(new RegExp(`^# ${name} (\\d+)$`, "gm"))];
@@ -487,7 +485,10 @@ const decimalSecondsToNs = (text) => {
   if (parts.length) seconds += BigInt(parts.pop()) * 3600n;
   return seconds * 1_000_000_000n + BigInt(fraction.padEnd(9, "0"));
 };
-
+const decimalBigInt = (text, label) => {
+  required(typeof text === "string" && /^(?:0|[1-9]\d*)$/.test(text), `${label} is not a canonical decimal string`);
+  return BigInt(text);
+};
 const validateMeasurements = (output) => {
   const time = readText(join(output, "measurements/clean-release-time.txt"), "GNU time record");
   const elapsed = [...time.matchAll(/^\s*Elapsed \(wall clock\) time \(h:mm:ss or m:ss\):\s*(\S+)\s*$/gm)];
@@ -495,34 +496,42 @@ const validateMeasurements = (output) => {
   required(elapsed.length === 1 && exits.length === 1 && exits[0][1] === "0", "GNU time record is incomplete or failed");
   const buildNs = decimalSecondsToNs(elapsed[0][1]);
   required(buildNs <= 60_000_000_000n, `clean release build exceeded 60 s: ${buildNs} ns`);
-
   const diskText = readText(join(output, "measurements/checkout-disk-samples.tsv"), "disk samples");
   required(diskText.endsWith("\n") && !diskText.includes("\r"), "disk samples have noncanonical lines");
   const diskLines = diskText.slice(0, -1).split("\n");
-  required(diskLines.shift() === "ordinal\telapsed_ms\tmebibytes", "disk samples header differs");
+  required(diskLines.shift() === "ordinal\tsample_start_ns\telapsed_ns\tmebibytes\tkind", "disk samples header differs");
   required(diskLines.length >= 2, "disk sampler retained fewer than two rows");
-  let previous = -1;
-  let maximumGap = 0;
+  let previous, maximumGap = 0n;
   const rows = diskLines.map((line, index) => {
     const fields = line.split("\t");
-    required(fields.length === 3 && fields[0] === String(index) && /^\d+$/.test(fields[1]) && /^\d+$/.test(fields[2]), `disk row ${index} is invalid`);
-    const elapsedMs = Number(fields[1]);
-    required(elapsedMs > previous, `disk elapsed time is not increasing at ${index}`);
-    if (index > 0) {
-      maximumGap = Math.max(maximumGap, elapsedMs - previous);
-      required(elapsedMs - previous <= 100, `disk sampler gap exceeds 100 ms at ${index}`);
-    }
-    previous = elapsedMs;
-    return { elapsed_ms: elapsedMs, mebibytes: Number(fields[2]) };
+    required(fields.length === 5 && /^(?:0|[1-9]\d*)$/.test(fields[3]) && ["scheduled", "terminal"].includes(fields[4]), `disk row ${index} is invalid`);
+    const ordinal = decimalBigInt(fields[0], `disk row ${index} ordinal`), sampleStart = decimalBigInt(fields[1], `disk row ${index} sample_start_ns`), elapsed = decimalBigInt(fields[2], `disk row ${index} elapsed_ns`);
+    const mebibytes = Number(fields[3]); required(Number.isSafeInteger(mebibytes), `disk row ${index} mebibytes is not a safe integer`);
+    return { ordinal, sampleStart, elapsed, mebibytes, kind: fields[4] };
   });
+  for (const [index, row] of rows.entries()) {
+    if (previous !== undefined) { required(row.sampleStart > previous, `disk sample start is not strictly increasing at ${index}`); const gap = row.sampleStart - previous; if (gap > maximumGap) maximumGap = gap; required(gap <= 100_000_000n, `disk sampler gap exceeds 100000000 ns at ${index}`); }
+    previous = row.sampleStart;
+  }
+  const ordinalTexts = rows.map((row) => row.ordinal.toString()), sortedOrdinals = [...ordinalTexts].sort((a, b) => BigInt(a) < BigInt(b) ? -1 : BigInt(a) > BigInt(b) ? 1 : 0);
+  required(new Set(ordinalTexts).size === rows.length && JSON.stringify(sortedOrdinals) === JSON.stringify(rows.map((_, index) => String(index))), "disk launch ordinals are not unique and contiguous");
+  const terminalRows = rows.filter((row) => row.kind === "terminal"); required(terminalRows.length === 1 && terminalRows[0] === rows.at(-1), "disk terminal row is not unique or chronologically last");
+  const terminal = terminalRows[0]; required(terminal.ordinal === rows.reduce((maximumOrdinal, row) => row.ordinal > maximumOrdinal ? row.ordinal : maximumOrdinal, 0n), "disk terminal launch ordinal is not final");
   const maximum = Math.max(...rows.map((row) => row.mebibytes));
   required(maximum <= 8_192, `checkout peak disk exceeded 8192 MiB: ${maximum}`);
   const summary = readJson(join(output, "measurements/checkout-disk-summary.json"), "disk summary");
-  exactKeys(summary, ["outcome", "interval_ms", "samples", "initial_mib", "final_mib", "maximum_mib", "max_gap_ms", "cpu_priority", "io_priority_class", "concurrency_limit", "du_arguments"], "disk summary");
-  required(summary.outcome === "pass" && summary.interval_ms === 50 && summary.samples === rows.length && summary.initial_mib === rows[0].mebibytes && summary.final_mib === rows.at(-1).mebibytes && summary.maximum_mib === maximum && summary.max_gap_ms === maximumGap && summary.cpu_priority === "ordinary" && summary.io_priority_class === "idle" && summary.concurrency_limit === 32 && JSON.stringify(summary.du_arguments) === JSON.stringify(["-sm", "--", "<checkout>"]), "disk summary arithmetic or method differs from raw rows");
-  return { clean_release_build_ns: buildNs.toString(), checkout_peak_mib: maximum, disk_samples: rows.length, disk_maximum_gap_ms: maximumGap };
+  exactKeys(summary, ["outcome", "sampler_origin_ns", "stop_requested_ns", "nominal_interval_ns", "samples", "initial_mib", "final_mib", "maximum_mib", "maximum_gap_ns", "du_arguments"], "disk summary");
+  const origin = decimalBigInt(summary.sampler_origin_ns, "disk summary sampler_origin_ns");
+  const stopRequested = decimalBigInt(summary.stop_requested_ns, "disk summary stop_requested_ns");
+  const stopText = readText(join(output, "host/disk-sampler.stop"), "disk sampler stop marker");
+  required(/^(?:0|[1-9]\d*)\n$/.test(stopText), "disk sampler stop marker is not a canonical decimal string");
+  const stopMarker = decimalBigInt(stopText.slice(0, -1), "disk sampler stop marker"); required(stopMarker === stopRequested, "disk sampler stop marker differs from disk summary");
+  required(stopRequested >= origin, "disk sampler stop request precedes sampler origin");
+  rows.forEach((row, index) => required(row.sampleStart >= origin && row.sampleStart - origin === row.elapsed, `disk row ${index} elapsed_ns differs from sample_start_ns and sampler origin`));
+  required(terminal.sampleStart >= stopRequested, "disk terminal sample precedes stop request");
+  required(summary.outcome === "pass" && summary.nominal_interval_ns === "50000000" && summary.samples === rows.length && summary.initial_mib === rows[0].mebibytes && summary.final_mib === rows.at(-1).mebibytes && summary.maximum_mib === maximum && summary.maximum_gap_ns === maximumGap.toString() && JSON.stringify(summary.du_arguments) === JSON.stringify(["-sm", "--", "<checkout>"]), "disk summary arithmetic or method differs from raw rows");
+  return { clean_release_build_ns: buildNs.toString(), checkout_peak_mib: maximum, disk_samples: rows.length, disk_maximum_gap_ns: maximumGap.toString(), disk_stop_requested_ns: stopRequested.toString() };
 };
-
 const treeInventory = (directory) => regularTree(directory).map(({ path, bytes, sha256: digest }) => ({ path, bytes, sha256: digest }));
 
 const validateBuildReceipt = (repo, directory, expectedPlans) => {

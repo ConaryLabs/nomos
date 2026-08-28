@@ -1,50 +1,40 @@
 #!/usr/bin/env bash
-
 # Complete, self-isolating R2 disposition proof. Its only public interface is
 # `r2-complete-proof.sh --output <empty-directory>`.
-
 set -euo pipefail
 export LC_ALL=C
-
 fail() {
   printf 'R2 complete proof: FAIL: %s\n' "$*" >&2
   exit 1
 }
-
 script_directory=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)
 # shellcheck source=docs/evaluation/r2-complete-proof-lib.sh
 source "$script_directory/r2-complete-proof-lib.sh"
-
 if [[ ${BASH_SOURCE[0]} != "$0" ]]; then
   return 0
 fi
-
 [[ $# -eq 2 && $1 == --output ]] ||
   fail 'usage: r2-complete-proof.sh --output <empty-directory>'
 output_argument=$2
 [[ $output_argument != *$'\n'* && $output_argument != *$'\t'* ]] ||
   fail 'output path cannot contain a tab or newline'
-
 host_tools=(
   git realpath readlink find grep awk sed sort cmp cut sha256sum stat date du jq
   /usr/bin/time ar basename bash bwrap cargo cc chmod cp diff dirname env getconf
-  head id install ionice ip ld ln mkdir mktemp node paste ps rm rustc rustup seq setpriv
-  sh sleep strings sudo tar timeout touch tr uname unshare wc
+  head id install ionice ip ld ln mkdir mktemp nice node paste ps rm rustc rustup seq setpriv
+  setsid sh sleep strings sudo tar taskset timeout touch tr uname unshare wc
 )
 for command in "${host_tools[@]}"; do
   command -v "$command" >/dev/null 2>&1 || fail "required executable not found: $command"
 done
-
 repo_root=$(cd -- "$script_directory/../.." && pwd -P)
 [[ $(pwd -P) == "$repo_root" ]] || fail 'run the proof from the repository root'
 [[ $(git rev-parse --show-toplevel) == "$repo_root" ]] ||
   fail 'script is not running from its repository checkout'
-
 head=$(git rev-parse --verify 'HEAD^{commit}')
 tree=$(git rev-parse --verify 'HEAD^{tree}')
 [[ $head =~ ^[0-9a-f]{40}$ && $tree =~ ^[0-9a-f]{40}$ ]] ||
   fail 'HEAD or its tree is not a full Git object id'
-
 validate_checkout() {
   [[ -d $repo_root/.git && ! -L $repo_root/.git ]] ||
     fail 'checkout must have a real local .git directory, not a linked worktree'
@@ -70,13 +60,11 @@ validate_checkout() {
   [[ -z $(git status --porcelain=v1 --untracked-files=all) ]] ||
     fail 'checkout is not clean'
 }
-
 validate_output() {
   [[ $output_argument != / && $output_argument != . && -n $output_argument ]] ||
     fail 'output cannot be a filesystem or checkout root'
   [[ -d $output_argument && ! -L $output_argument ]] ||
     fail 'output must already exist as a real directory'
-
   local lexical physical relative component cursor
   lexical=$(realpath -sm -- "$output_argument")
   physical=$(realpath -e -- "$output_argument")
@@ -92,18 +80,15 @@ validate_output() {
     fail 'checkout target must be absent or one real directory'
   [[ -z $(find "$physical" -mindepth 1 -print -quit) ]] ||
     fail 'output directory must be empty'
-
   relative=${physical#"$repo_root/"}
   git check-ignore -q --no-index -- "$relative" ||
     fail 'output directory must be Git-ignored'
-
   cursor=$repo_root
   IFS=/ read -r -a components <<<"$relative"
   for component in "${components[@]}"; do
     cursor=$cursor/$component
     [[ ! -L $cursor ]] || fail 'output path contains a symlink component'
   done
-
   for path in \
     target/debug \
     target/release \
@@ -113,17 +98,13 @@ validate_output() {
     [[ ! -e $repo_root/$path && ! -L $repo_root/$path ]] ||
       fail "pre-existing proof target is forbidden: $path"
   done
-
   output_real=$physical
   output_relative=$relative
 }
-
 validate_checkout
 validate_output
-
 issue=199
 issue_body_sha256=8ffd30e7a213e991732ea6031743542eb68d9b80fe6d4989ed58052617352dcc
-
 discover_browser() {
   node --input-type=module - "$repo_root" <<'NODE'
 import { pathToFileURL } from "node:url";
@@ -135,7 +116,6 @@ if (!found) process.exit(1);
 process.stdout.write(found.binary);
 NODE
 }
-
 run_outer() {
   local node_major active_toolchain installed_targets browser browser_version
   node_major=$(node -p 'Number(process.versions.node.split(".")[0])')
@@ -145,7 +125,6 @@ run_outer() {
   installed_targets=$(rustup target list --installed)
   grep -Fx 'wasm32-unknown-unknown' <<<"$installed_targets" >/dev/null ||
     fail 'the wasm32-unknown-unknown Rust target is not installed'
-
   browser=$(discover_browser) || fail 'Chrome/Chromium is not installed or cannot start'
   browser=$(realpath -e -- "$browser")
   [[ -f $browser && -x $browser && ! -L $browser ]] ||
@@ -258,14 +237,18 @@ fi
   fail 'output identity changed across namespace entry'
 [[ ${NOMOS_R2_PROOF_TOKEN:-} =~ ^[0-9a-f]{64}$ ]] ||
   fail 'proof process token is missing or malformed'
-
 inner_netns=$(readlink /proc/self/ns/net)
 [[ $inner_netns == net:\[*\] && $inner_netns != "${NOMOS_R2_HOST_NETNS:-}" ]] ||
   fail 'forged isolation marker or unchanged network namespace'
 inner_pidns=$(readlink /proc/self/ns/pid)
 [[ $inner_pidns == pid:\[*\] && $inner_pidns != "${NOMOS_R2_HOST_PIDNS:-}" ]] ||
   fail 'forged isolation marker or unchanged PID namespace'
-
+r2_read_allowed_cpu_list /proc/self/status || fail 'could not read proof CPU affinity'
+initial_cpu_affinity=$R2_ALLOWED_CPU_LIST
+r2_partition_cpu_list "$initial_cpu_affinity" || fail 'the proof requires three allowed CPUs'
+sampler_controller_affinity=$R2_CONTROLLER_CPUS
+disk_walk_cpu_affinity=$R2_DISK_CPUS
+workload_cpu_affinity=$R2_WORKLOAD_CPUS
 evidence_dir=$output_real
 mkdir -p \
   "$evidence_dir/host/home" \
@@ -279,7 +262,6 @@ mkdir -p \
   "$evidence_dir/measurements" \
   "$evidence_dir/r1/wasm" \
   "$evidence_dir/r2"
-
 cp /proc/self/mountinfo "$evidence_dir/metadata/mountinfo.txt"
 readonly_stdout=$evidence_dir/metadata/read-only-negative-control.stdout
 readonly_stderr=$evidence_dir/metadata/read-only-negative-control.stderr
@@ -418,13 +400,16 @@ jq -n \
     plan_sha256:{scene_one:$plan_one,scene_two:$plan_two},
     scene_signature_sha256:{scene_one:$signature_one,scene_two:$signature_two}}' \
   >"$evidence_dir/metadata/source-tree.json"
-
 {
   printf 'commit=%s\n' "$head"
   printf 'tree=%s\n' "$tree"
   printf 'uname='; uname -a
   printf 'architecture=%s\n' "$(uname -m)"
   printf 'cpu_count=%s\n' "$(getconf _NPROCESSORS_ONLN)"
+  printf 'initial_cpu_affinity=%s\nsampler_controller_affinity=%s\n' \
+    "$initial_cpu_affinity" "$sampler_controller_affinity"
+  printf 'disk_walk_cpu_affinity=%s\nworkload_cpu_affinity=%s\ndisk_walk_nice=19\n' \
+    "$disk_walk_cpu_affinity" "$workload_cpu_affinity"
   printf 'locale=%s\n' "$LC_ALL"
   printf 'timezone=%s\n' "${TZ:-system}"
   printf 'network_namespace=%s\n' "$inner_netns"
@@ -500,58 +485,93 @@ run_step() {
     "$next_ordinal" "$command_id" "$started" "$ended" "$status" \
     "$stdout_relative" "$stderr_relative" "$display" >>"$commands_ledger"
   [[ $status -eq 0 ]] || fail "command $number $command_id exited $status"
-  if [[ ${sampler_running:-0} -eq 1 ]] && ! kill -0 "$disk_sampler_pid" 2>/dev/null; then
+  if [[ ${sampler_running:-0} -eq 1 ]] &&
+    ! r2_sampler_identity_stable "$disk_sampler_pid" "$disk_sampler_start_ticks" \
+      "$sampler_controller_affinity"; then
     fail "disk sampler exited during command $number $command_id"
   fi
   next_ordinal=$((next_ordinal + 1))
 }
 
 disk_samples=$evidence_dir/measurements/checkout-disk-samples.tsv
-printf 'ordinal\telapsed_ms\tmebibytes\n' >"$disk_samples"
+printf 'ordinal\tsample_start_ns\telapsed_ns\tmebibytes\tkind\n' >"$disk_samples"
 disk_sampler_stop=$evidence_dir/host/disk-sampler.stop
 disk_sample_state=$evidence_dir/host/tmp/disk-sample-state
 disk_sampler_ready=$disk_sample_state/ready
 mkdir "$disk_sample_state"
 disk_sampler_started=$(date +%s%N)
 disk_sample_period_ns=50000000
-# Monitor mode gives only this background job a dedicated process group; the
-# pre-stop closure audit uses that kernel identity for its one allowed subtree.
-set -m
-r2_sample_checkout_disk \
-  "$repo_root" "$disk_samples" "$disk_sampler_stop" "$disk_sample_state" \
-  "$disk_sampler_started" "$disk_sample_period_ns" &
-disk_sampler_pid=$!
-set +m
-sampler_running=1
+disk_sampler_pid=
+disk_sampler_start_ticks=
+sampler_running=0
 stop_sampler() {
-  if [[ ${sampler_running:-0} -eq 1 ]]; then
-    : >"$disk_sampler_stop"
-    wait "$disk_sampler_pid"
+  local incoming=${1:-0} result
+  if [[ $sampler_running -eq 1 ]]; then
+    if r2_stop_disk_sampler "$disk_sampler_pid" "$disk_sampler_start_ticks" \
+      "$sampler_controller_affinity" "$disk_sampler_stop" "$incoming"; then
+      result=0
+    else
+      result=$?
+    fi
     sampler_running=0
+    return "$result"
   fi
+  return "$incoming"
 }
-trap stop_sampler EXIT
-trap 'stop_sampler; exit 130' INT
-trap 'stop_sampler; exit 143' TERM
-sampler_group_bound=0
+cleanup_sampler() {
+  local incoming=$? result
+  trap - EXIT INT TERM
+  if stop_sampler "$incoming"; then result=0; else result=$?; fi
+  exit "$result"
+}
+trap cleanup_sampler EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+set +m
+sampler_launch_signal=0
+# Defer INT/TERM only across sampler launch and identity capture. This ensures
+# EXIT cleanup always has the child PID/start identity and knows to stop it.
+trap 'sampler_launch_signal=130' INT
+trap 'sampler_launch_signal=143' TERM
+setsid taskset -c "$sampler_controller_affinity" bash -c \
+  'set -euo pipefail; source "$1"; export R2_DISK_WALK_CPUS=$2; shift 2; r2_sample_checkout_disk "$@"' \
+  r2-disk-sampler "$script_directory/r2-complete-proof-lib.sh" \
+  "$disk_walk_cpu_affinity" "$repo_root" "$disk_samples" \
+  "$disk_sampler_stop" "$disk_sample_state" "$disk_sampler_started" \
+  "$disk_sample_period_ns" &
+disk_sampler_pid=$!
+sampler_running=1
+sampler_session_bound=0
 for ((attempt = 0; attempt < 100; attempt += 1)); do
-  if r2_read_process_stat "/proc/$disk_sampler_pid/stat" &&
-    [[ $R2_PROC_GROUP == "$disk_sampler_pid" && $R2_PROC_STATE != Z ]]; then
-    sampler_group_bound=1
+  if r2_read_process_stat "/proc/$disk_sampler_pid/stat"; then
+    disk_sampler_start_ticks=$R2_PROC_START
+  fi
+  if [[ -n $disk_sampler_start_ticks &&
+      $R2_PROC_GROUP == "$disk_sampler_pid" &&
+      $R2_PROC_SESSION == "$disk_sampler_pid" && $R2_PROC_STATE != Z ]] &&
+    r2_read_allowed_cpu_list "/proc/$disk_sampler_pid/status" &&
+    [[ $R2_EXPANDED_CPU_LIST == "$sampler_controller_affinity" ]]; then
+    sampler_session_bound=1
     break
   fi
   kill -0 "$disk_sampler_pid" 2>/dev/null || break
   sleep 0.001
 done
-[[ $sampler_group_bound -eq 1 ]] ||
-  fail 'disk sampler does not own its process group'
+trap 'exit 130' INT
+trap 'exit 143' TERM
+[[ $sampler_launch_signal -eq 0 ]] || exit "$sampler_launch_signal"
+[[ $sampler_session_bound -eq 1 ]] || fail 'disk sampler does not own its session'
+taskset -pc "$workload_cpu_affinity" "$BASHPID" >/dev/null || fail 'CPU isolation failed'
+r2_read_allowed_cpu_list /proc/self/status || fail 'could not verify workload CPU affinity'
+[[ $R2_EXPANDED_CPU_LIST == "$workload_cpu_affinity" ]] || fail 'workload CPU affinity differs'
 for ((attempt = 0; attempt < 100; attempt += 1)); do
   [[ ! -e $disk_sampler_ready ]] || break
-  kill -0 "$disk_sampler_pid" 2>/dev/null || fail 'disk sampler exited before its initial row'
+  r2_sampler_identity_stable "$disk_sampler_pid" "$disk_sampler_start_ticks" \
+    "$sampler_controller_affinity" || fail 'disk sampler changed before its initial row'
   sleep 0.01
 done
 [[ -f $disk_sampler_ready && ! -L $disk_sampler_ready ]] ||
-  fail 'disk sampler did not launch its initial row'
+  fail 'disk sampler did not retain its initial row'
 
 # Step 1: accepted workspace proof.
 run_step workspace-fmt \
@@ -912,7 +932,7 @@ run_step maximum-compile-benchmark \
 namespace_children_before_file=$evidence_dir/metadata/namespace-children-before-sampler-stop.txt
 r2_measure_process_closure \
   "$inner_netns" "$NOMOS_R2_PROOF_TOKEN" "$namespace_children_before_file" \
-  "$disk_sampler_pid" "$disk_sampler_pid" ||
+  "$disk_sampler_pid" "$disk_sampler_pid" "$disk_sampler_start_ticks" ||
   fail 'a proof process remains while the sampler is active'
 namespace_children_before=$(jq -Rsc \
   'split("\n") | map(select(length > 0) | tonumber)' \
@@ -921,28 +941,13 @@ namespace_children_before=$(jq -Rsc \
 stop_sampler
 trap - EXIT INT TERM
 
-disk_count=$(awk 'NR > 1 { count += 1 } END { print count + 0 }' "$disk_samples")
-disk_initial=$(awk 'NR == 2 { print $3 }' "$disk_samples")
-disk_final=$(awk 'END { print $3 }' "$disk_samples")
-disk_maximum=$(awk 'NR > 1 && $3 > maximum { maximum = $3 } END { print maximum + 0 }' "$disk_samples")
-disk_maximum_gap=$(awk 'NR == 2 { previous = $2 } NR > 2 { gap = $2 - previous; if (gap > maximum) maximum = gap; previous = $2 } END { print maximum + 0 }' "$disk_samples")
-for integer in "$disk_count" "$disk_initial" "$disk_final" "$disk_maximum" "$disk_maximum_gap"; do
-  [[ $integer =~ ^[0-9]+$ ]] || fail 'disk sampler produced a non-integer summary'
-done
-[[ $disk_count -ge 2 ]] || fail 'disk sampler retained fewer than initial and final rows'
-[[ $disk_maximum -le 8192 ]] || fail "peak checkout disk exceeded 8192 MiB: $disk_maximum"
-[[ $disk_maximum_gap -le 100 ]] || fail "disk sampler gap exceeded 100 ms: $disk_maximum_gap"
-jq -n \
-  --argjson samples "$disk_count" \
-  --argjson initial "$disk_initial" \
-  --argjson final "$disk_final" \
-  --argjson maximum "$disk_maximum" \
-  --argjson maximum_gap "$disk_maximum_gap" \
-  '{outcome:"pass",interval_ms:50,samples:$samples,initial_mib:$initial,
-    final_mib:$final,maximum_mib:$maximum,max_gap_ms:$maximum_gap,
-    cpu_priority:"ordinary",io_priority_class:"idle",concurrency_limit:32,
-    du_arguments:["-sm","--","<checkout>"]}' \
-  >"$evidence_dir/measurements/checkout-disk-summary.json"
+[[ ${R2_DISK_STOP_REQUESTED_NS:-} =~ ^(0|[1-9][0-9]*)$ ]] ||
+  fail 'disk sampler did not retain its canonical stop-request timestamp'
+r2_write_checkout_disk_summary \
+  "$disk_samples" "$disk_sampler_stop" \
+  "$evidence_dir/measurements/checkout-disk-summary.json" \
+  "$disk_sampler_started" "$disk_sample_period_ns" \
+  "$R2_DISK_STOP_REQUESTED_NS" || fail 'disk sampler summary or ceiling differs'
 
 porcelain_end=$(git status --porcelain=v1 --untracked-files=all)
 end_head=$(git rev-parse --verify 'HEAD^{commit}')

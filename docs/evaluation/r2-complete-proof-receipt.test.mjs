@@ -87,8 +87,8 @@ const toolLabels = [
   "git", "realpath", "readlink", "find", "grep", "awk", "sed", "sort", "cmp", "cut",
   "sha256sum", "stat", "date", "du", "jq", "gnu-time", "ar", "basename", "bash", "bwrap",
   "cargo", "cc", "chmod", "cp", "diff", "dirname", "env", "getconf", "head", "id",
-  "install", "ionice", "ip", "ld", "ln", "mkdir", "mktemp", "node", "paste", "ps", "rm", "rustc",
-  "rustup", "seq", "setpriv", "sh", "sleep", "strings", "sudo", "tar", "timeout", "touch",
+  "install", "ionice", "ip", "ld", "ln", "mkdir", "mktemp", "nice", "node", "paste", "ps", "rm", "rustc",
+  "rustup", "seq", "setpriv", "setsid", "sh", "sleep", "strings", "sudo", "tar", "taskset", "timeout", "touch",
   "tr", "uname", "unshare", "wc", "cargo-toolchain", "rustc-toolchain", "rust-lld", "chrome",
 ];
 
@@ -146,6 +146,7 @@ const makeTemplate = () => {
   mkdir(join(template, "metadata"));
   mkdir(join(template, "logs"));
   mkdir(join(template, "measurements"));
+  mkdir(join(template, "host"));
   const commit = execFileSync("git", ["-C", repo, "rev-parse", "HEAD"], { encoding: "utf8" }).trim();
   const tree = execFileSync("git", ["-C", repo, "rev-parse", "HEAD^{tree}"], { encoding: "utf8" }).trim();
   json(join(template, "metadata/source-tree.json"), {
@@ -233,8 +234,9 @@ const makeTemplate = () => {
   writeFileSync(join(template, "commands.tsv"), `${ledger.join("\n")}\n`);
 
   writeFileSync(join(template, "measurements/clean-release-time.txt"), "\tElapsed (wall clock) time (h:mm:ss or m:ss): 0:12.34\n\tExit status: 0\n");
-  writeFileSync(join(template, "measurements/checkout-disk-samples.tsv"), "ordinal\telapsed_ms\tmebibytes\n0\t0\t100\n1\t50\t120\n");
-  json(join(template, "measurements/checkout-disk-summary.json"), { outcome: "pass", interval_ms: 50, samples: 2, initial_mib: 100, final_mib: 120, maximum_mib: 120, max_gap_ms: 50, cpu_priority: "ordinary", io_priority_class: "idle", concurrency_limit: 32, du_arguments: ["-sm", "--", "<checkout>"] });
+  writeFileSync(join(template, "measurements/checkout-disk-samples.tsv"), "ordinal\tsample_start_ns\telapsed_ns\tmebibytes\tkind\n0\t10000000010000000\t10000000\t100\tscheduled\n1\t10000000060000000\t60000000\t120\tterminal\n");
+  json(join(template, "measurements/checkout-disk-summary.json"), { outcome: "pass", sampler_origin_ns: "10000000000000000", stop_requested_ns: "10000000050000000", nominal_interval_ns: "50000000", samples: 2, initial_mib: 100, final_mib: 120, maximum_mib: 120, maximum_gap_ns: "50000000", du_arguments: ["-sm", "--", "<checkout>"] });
+  writeFileSync(join(template, "host/disk-sampler.stop"), "10000000050000000\n");
 
   mkdir(join(template, "r1/wasm"));
   writeFileSync(join(template, "r1/wasm/nomos_play.wasm"), wasm);
@@ -460,6 +462,36 @@ test("synthetic complete evidence assembles and verifies without trusting summar
   assert.throws(() => verifyReceipt({ repo, output: falsified, liveChecks: false }), /receipt summary differs/);
 });
 
+test("disk cadence accepts the exact 100000000 ns boundary", () => {
+  const output = retarget("disk-gap-boundary-pass");
+  const samples = join(output, "measurements/checkout-disk-samples.tsv");
+  writeFileSync(samples, readFileSync(samples, "utf8").replace("1\t10000000060000000\t60000000\t120\tterminal", "1\t10000000110000000\t110000000\t120\tterminal"));
+  const summaryPath = join(output, "measurements/checkout-disk-summary.json");
+  const summary = JSON.parse(readFileSync(summaryPath));
+  summary.maximum_gap_ns = "100000000";
+  json(summaryPath, summary);
+  assert.equal(assemble(output).summary.budgets.disk_maximum_gap_ns, "100000000");
+});
+
+test("disk rows can be chronological independently of launch ordinal order", () => {
+  const output = retarget("disk-chronological-order-pass");
+  writeFileSync(join(output, "measurements/checkout-disk-samples.tsv"), [
+    "ordinal\tsample_start_ns\telapsed_ns\tmebibytes\tkind",
+    "1\t10000000010000000\t10000000\t100\tscheduled",
+    "0\t10000000020000000\t20000000\t110\tscheduled",
+    "2\t10000000030000000\t30000000\t120\tterminal",
+    "",
+  ].join("\n"));
+  const summaryPath = join(output, "measurements/checkout-disk-summary.json");
+  const summary = JSON.parse(readFileSync(summaryPath));
+  Object.assign(summary, { stop_requested_ns: "10000000025000000", samples: 3, final_mib: 120, maximum_mib: 120, maximum_gap_ns: "10000000" });
+  json(summaryPath, summary);
+  writeFileSync(join(output, "host/disk-sampler.stop"), "10000000025000000\n");
+  const receipt = assemble(output);
+  assert.equal(receipt.summary.budgets.disk_samples, 3);
+  assert.equal(receipt.summary.budgets.disk_stop_requested_ns, "10000000025000000");
+});
+
 test("major plants fail closed before a receipt can be assembled", async (t) => {
   const plants = [
     ["command-result", (out) => {
@@ -528,16 +560,85 @@ test("major plants fail closed before a receipt can be assembled", async (t) => 
     }, /exceeded 60 s/],
     ["disk-overflow", (out) => {
       const path = join(out, "measurements/checkout-disk-samples.tsv");
-      writeFileSync(path, readFileSync(path, "utf8").replace("1\t50\t120", "1\t50\t8193"));
+      writeFileSync(path, readFileSync(path, "utf8").replace("1\t10000000060000000\t60000000\t120\tterminal", "1\t10000000060000000\t60000000\t8193\tterminal"));
     }, /peak disk exceeded/],
     ["disk-gap", (out) => {
       const path = join(out, "measurements/checkout-disk-samples.tsv");
-      writeFileSync(path, readFileSync(path, "utf8").replace("1\t50\t120", "1\t101\t120"));
-    }, /gap exceeds 100 ms/],
+      writeFileSync(path, readFileSync(path, "utf8").replace("1\t10000000060000000\t60000000\t120\tterminal", "1\t10000000110000001\t110000001\t120\tterminal"));
+      const summaryPath = join(out, "measurements/checkout-disk-summary.json");
+      const summary = JSON.parse(readFileSync(summaryPath));
+      summary.maximum_gap_ns = "100000001";
+      json(summaryPath, summary);
+    }, /gap exceeds 100000000 ns/],
+    ["disk-malformed-start", (out) => {
+      const path = join(out, "measurements/checkout-disk-samples.tsv");
+      writeFileSync(path, readFileSync(path, "utf8").replace("10000000060000000\t60000000", "not-a-time\t60000000"));
+    }, /sample_start_ns is not a canonical decimal string/],
+    ["disk-malformed-elapsed", (out) => {
+      const path = join(out, "measurements/checkout-disk-samples.tsv");
+      writeFileSync(path, readFileSync(path, "utf8").replace("10000000060000000\t60000000", "10000000060000000\t60000000.0"));
+    }, /elapsed_ns is not a canonical decimal string/],
+    ["disk-decreasing-start", (out) => {
+      const path = join(out, "measurements/checkout-disk-samples.tsv");
+      writeFileSync(path, readFileSync(path, "utf8").replace("10000000060000000\t60000000", "10000000009999999\t9999999"));
+    }, /sample start is not strictly increasing/],
+    ["disk-duplicate-ordinal", (out) => {
+      const path = join(out, "measurements/checkout-disk-samples.tsv");
+      writeFileSync(path, readFileSync(path, "utf8").replace("1\t10000000060000000", "0\t10000000060000000"));
+    }, /launch ordinals are not unique and contiguous/],
+    ["disk-missing-ordinal", (out) => {
+      const path = join(out, "measurements/checkout-disk-samples.tsv");
+      writeFileSync(path, readFileSync(path, "utf8").replace("1\t10000000060000000", "2\t10000000060000000"));
+    }, /launch ordinals are not unique and contiguous/],
+    ["disk-early-terminal", (out) => {
+      const path = join(out, "measurements/checkout-disk-samples.tsv");
+      writeFileSync(path, readFileSync(path, "utf8").replace("100\tscheduled", "100\tterminal"));
+    }, /terminal row is not unique or chronologically last/],
+    ["disk-missing-terminal", (out) => {
+      const path = join(out, "measurements/checkout-disk-samples.tsv");
+      writeFileSync(path, readFileSync(path, "utf8").replace("120\tterminal", "120\tscheduled"));
+    }, /terminal row is not unique or chronologically last/],
+    ["disk-elapsed-binding", (out) => {
+      const path = join(out, "measurements/checkout-disk-samples.tsv");
+      writeFileSync(path, readFileSync(path, "utf8").replace("10000000060000000\t60000000", "10000000060000000\t60000001"));
+    }, /elapsed_ns differs/],
+    ["disk-malformed-origin", (out) => {
+      const path = join(out, "measurements/checkout-disk-summary.json");
+      const value = JSON.parse(readFileSync(path));
+      value.sampler_origin_ns = "010000000000000000";
+      json(path, value);
+    }, /sampler_origin_ns is not a canonical decimal string/],
+    ["disk-stop-mismatch", (out) => {
+      const path = join(out, "measurements/checkout-disk-summary.json");
+      const value = JSON.parse(readFileSync(path));
+      value.stop_requested_ns = "10000000050000001";
+      json(path, value);
+    }, /stop marker differs from disk summary/],
+    ["disk-stop-malformed", (out) => {
+      writeFileSync(join(out, "host/disk-sampler.stop"), "10000000050000000");
+    }, /stop marker is not a canonical decimal string/],
+    ["disk-stop-after-terminal", (out) => {
+      const value = JSON.parse(readFileSync(join(out, "measurements/checkout-disk-summary.json")));
+      value.stop_requested_ns = "10000000060000001";
+      json(join(out, "measurements/checkout-disk-summary.json"), value);
+      writeFileSync(join(out, "host/disk-sampler.stop"), "10000000060000001\n");
+    }, /terminal sample precedes stop request/],
+    ["disk-summary-count", (out) => {
+      const path = join(out, "measurements/checkout-disk-summary.json");
+      const value = JSON.parse(readFileSync(path));
+      value.samples = 3;
+      json(path, value);
+    }, /disk summary arithmetic or method differs/],
+    ["disk-summary-gap", (out) => {
+      const path = join(out, "measurements/checkout-disk-summary.json");
+      const value = JSON.parse(readFileSync(path));
+      value.maximum_gap_ns = "50000001";
+      json(path, value);
+    }, /disk summary arithmetic or method differs/],
     ["disk-method", (out) => {
       const path = join(out, "measurements/checkout-disk-summary.json");
       const value = JSON.parse(readFileSync(path));
-      value.concurrency_limit = 8;
+      value.nominal_interval_ns = "50000001";
       json(path, value);
     }, /disk summary arithmetic or method differs/],
     ["compile-summary", (out) => {

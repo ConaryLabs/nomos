@@ -21,7 +21,15 @@ not recursively by this source receipt.
   over `gh api repos/ConaryLabs/nomos/issues/199 --jq .body`, including the
   command's final LF
 - Author: Codex primary agent and its bounded GPT-5 family implementation
-  subagents
+subagents
+
+Decision 0024's front matter retains
+`4320dbdee1fcc52204809a9896c6e5a9a460d033a1ceba2c2aab7091bc55f929`,
+the pre-repair issue body against which the owner authorized that immutable
+decision record. The decision's replacement wording then explicitly required
+the issue wording and its digest binding to be updated. The final issue body
+and this proof therefore bind `8ffd30e7...`; the two digests describe the
+ordered before/after authority states rather than disagreeing authorities.
 
 ## Consulted inputs
 
@@ -62,6 +70,39 @@ mount controls, and process/network closure before it emits a PASS receipt.
 Generated evidence is kept external to the candidate and binds the exact
 candidate commit/tree; committing a generated run would move the candidate and
 require a new run.
+
+The checkout-wide disk observer uses the process's allowed CPU list and
+requires at least three allowed CPUs. On the 12-CPU reference host it pins the
+sampler controller to CPU 0, low-priority `du -sm -- <checkout>` walks to CPUs
+1–5 with niceness 19 and idle I/O priority, and proof workloads to CPUs 6–11.
+Workers retain canonical integer-nanosecond start times taken immediately
+before each successful walk, and the controller publishes them in
+chronological order while independently requiring unique contiguous launch
+ordinals. A distinct final row must start after the canonical timestamp stored
+in `host/disk-sampler.stop`. Sampler identity includes PID, process group,
+session, start ticks, and affinity; shutdown is bounded and proves that the
+dedicated session has closed.
+
+## Preserved execution history and repair disposition
+
+Candidate `5581e8977170157b85245bd5eec06bffc60640e4` first completed an author
+run whose generated receipt has SHA-256 `c21f8837b0bfd4e0dd589d09e600f9d6c4ed0b493a7dfd3e26c66bb5be29f046`
+and whose `EVIDENCE.sha256` has SHA-256
+`6cd2f976a084083e87b56406da88087c9a0a0a0fdf4bd0ea2249a0257f6daebb`.
+The external author execution record has SHA-256
+`50406bdec9c8125b72effa6448995462611ce99a36bc3de057f163583a4810e9`.
+
+The formal Luna Max exact-head rerun of that same candidate failed closed. All
+33 workload commands exited zero, but retained disk-sample gaps of 114 ms and
+104 ms exceeded the unchanged 100 ms ceiling. No final receipt was emitted.
+The preserved reviewer report is
+`/data/dev/src/nomos-r2-reviewer-5581e89.XaYGWP/reviewer-report.md`, SHA-256
+`b11b36a24203f0ba4c00766ad7428aa6b9f039ecb2ff8b783b41cd63a7a982cc`.
+
+On 2026-08-28 the owner authorized an implementation repair, not a contract or
+ceiling change. The repair preserves the failed rerun as red evidence, does not
+relabel it, and requires new author and non-author executions at the repaired
+exact head before any R2 disposition.
 
 Commands used during implementation include repository reads, `apply_patch`,
 shell and Node syntax/tests, the four accepted workspace checks, output-local
