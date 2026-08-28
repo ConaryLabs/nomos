@@ -78,7 +78,7 @@ r2_validate_precreated_work_inventory() {
   local -a entries=()
   while IFS= read -r -d '' entry; do
     entries+=("$entry")
-  done < <(/usr/bin/find -- "$root" -mindepth 1 -maxdepth 1 -print0)
+  done < <(/usr/bin/find -H -- "$root" -mindepth 1 -maxdepth 1 -print0)
   [[ ${#entries[@]} -eq ${#PRECREATED_WORK_FILES[@]} ]] ||
     fail 'work precreated inventory has unexpected entry count'
   for entry in "${entries[@]}"; do

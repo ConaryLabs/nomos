@@ -124,6 +124,20 @@ judgment, or acceptance requirement.
   `04b356dafb0c0b3659e2b3ed6d285b593af114a55a3a258c408d3d423f9617ec`.
   Teardown was clean. A later standalone diagnostic under the same transient
   host load passed; it does not relabel this rehearsal.
+- Candidate `965dd6f6e252c927a9b7123a2fa8dd49b597cea5`, tree
+  `763aebfb54b2d2465eea291d19d7783e9f9d9e45`, source
+  `/data/dev/src/nomos-r2-candidate.LgLJYn`, work
+  `/data/dev/src/nomos-r2-xfs-run.syhfxA`: the frozen author attempt failed
+  before image creation because GNU `find` did not descend through the pinned
+  work descriptor when that descriptor symlink was its command-line root. The
+  wrapper receipt SHA-256 is
+  `f69486772da355504527e268a7922d1a525b21e6e12a38a0142e651fb00d4a8f`;
+  supervisor-facts SHA-256 is
+  `ef3b1a2d6b553cd57aa5aaf33cd251a5a8f75c35a284d87c3118fe9bca7fbba3`;
+  and supervisor stderr SHA-256 is
+  `5dcee23c3a3710a5ab9e60c68285612253da6e6ad47878a3aea7cb029975a52c`.
+  No proof loop, mount, or backing image was created; the pre/post host loop
+  inventories were identical. This attempt remains setup-red.
 
 ## Clean-room and adopter boundary
 

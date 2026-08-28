@@ -77,6 +77,21 @@ record_wrapper_tools "$test_root/wrapper-tools.tsv"
 pwd_tool_path=$(/usr/bin/awk -F '\t' '$1 == "pwd" {print $2}' "$test_root/wrapper-tools.tsv")
 [[ $pwd_tool_path == /* && -x $pwd_tool_path ]] || fail 'wrapper tool recorder did not resolve external pwd'
 
+# GNU find does not descend through a command-line descriptor symlink under
+# its default -P policy. The production inventory must explicitly follow that
+# one root link while retaining -P behavior for every entry beneath it.
+precreated_text=$(/usr/bin/awk '/^PRECREATED_WORK_FILES=\(/ {inside=1; next} inside && /^\)/ {exit} inside {print}' "$wrapper" | /usr/bin/tr '\n' ' ')
+read -r -a PRECREATED_WORK_FILES <<<"$precreated_text"
+inventory_root=$test_root/descriptor-inventory
+mkdir -- "$inventory_root"
+for inventory_name in "${PRECREATED_WORK_FILES[@]}"; do
+  : >"$inventory_root/$inventory_name"
+  chmod 0644 -- "$inventory_root/$inventory_name"
+done
+exec {inventory_fd}<"$inventory_root"
+r2_validate_precreated_work_inventory "/proc/self/fd/$inventory_fd" "$(id -u)" "$(id -g)"
+exec {inventory_fd}<&-
+
 # Adversarial rename plant: a canonical work spelling is replaced after the
 # supervisor-side descriptor is opened. A descriptor-derived privileged write
 # must stay on the original inode and must not land in the replacement.
