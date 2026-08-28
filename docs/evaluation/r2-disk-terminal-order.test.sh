@@ -600,9 +600,9 @@ awk -F '\t' -v origin="$origin" -v stop="$stop_requested" '
   }
 ' "$samples" || fail 'drain bridges or terminal ordering differ'
 
-# A scripted monotonic clock makes the four-walk backpressure deadline exact
+# A scripted monotonic clock makes the five-walk backpressure deadline exact
 # and proves that a fixed polling-iteration count cannot define or lengthen it.
-# Four workers retain their starts and remain live; the fifth nominal launch
+# Five workers retain their starts and remain live; the sixth nominal launch
 # must time out and abort the dedicated session without publishing a ledger.
 deadline_samples=$temporary/deadline-samples.tsv
 deadline_stop=$temporary/deadline.stop
@@ -658,18 +658,18 @@ deadline_trace_text=$(paste -sd, "$deadline_trace")
   '1000000000,2000000000,3000000000,4000000000,5000000000' &&
   $((deadline_wall_end - deadline_wall_start)) -lt 2000000000 &&
   $(wc -l <"$deadline_samples") -eq 1 ]] ||
-  fail 'scripted four-walk deadline was extended or published a ledger'
+  fail 'scripted five-walk deadline was extended or published a ledger'
 [[ $(grep -Fxc \
-  'R2 disk sampler: four concurrent du walks did not make room before timeout' \
+  'R2 disk sampler: five concurrent du walks did not make room before timeout' \
   "$temporary/deadline-controller.stderr") -eq 1 ]] ||
-  fail 'scripted four-walk timeout diagnostic differs'
+  fail 'scripted five-walk timeout diagnostic differs'
 if r2_sampler_session_has_members "$deadline_session"; then
   fail 'scripted worker-set deadline left a live session member'
 else
   deadline_session_status=$?
 fi
 [[ $deadline_session_status -eq 1 ]] ||
-  fail 'scripted four-walk session closure could not be proved'
+  fail 'scripted five-walk session closure could not be proved'
 deadline_sampler_pid=
 
 # A sampler with one live worker that never acknowledges the drain must be
@@ -738,7 +738,7 @@ hung_deadline_diagnostics=$(grep -Ec \
   "$temporary/hung-controller.stderr")
 [[ $hung_deadline_diagnostics -eq 1 ]] ||
   fail 'hung sampler did not reach exactly one shared drain-deadline abort'
-if grep -F 'four concurrent du walks' \
+if grep -F 'five concurrent du walks' \
   "$temporary/hung-controller.stderr" >/dev/null; then
   fail 'single hung worker incorrectly reached the concurrency cap'
 fi

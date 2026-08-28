@@ -90,10 +90,10 @@ idle-I/O-priority `du -sm -- <checkout>` without per-sample affinity setup.
 Workers retain canonical integer-nanosecond start times taken immediately
 before each successful walk. The controller publishes them in chronological
 order while independently requiring unique contiguous launch ordinals. All 32
-workers are ready before use, but no more than four exact walks may be active
+workers are ready before use, but no more than five exact walks may be active
 on the reference host's isolated three-group disk mask. A full gate waits
 against its own four-second monotonic deadline, remains subject to an earlier
-active drain deadline, and never dispatches a fifth walk concurrently. One
+active drain deadline, and never dispatches a sixth walk concurrently. One
 controller derives the exact absolute schedule
 `origin + ordinal * 50 ms`; it never turns that schedule into a relative delay.
 The recorded nominal interval remains 50 ms and the unchanged maximum
@@ -139,7 +139,7 @@ still-live worker whose structural identity changes during shutdown aborts the
 dedicated group instead of being marked reaped. Worker result collection never
 waits a live or mismatched PID. A monotonic-clock, deadline-construction, or
 sleep failure during orderly shutdown also aborts the group rather than
-returning with live children. A saturated four-walk gate receives a fresh
+returning with live children. A saturated five-walk gate receives a fresh
 four-second Linux-monotonic deadline but cannot outlive an already-running
 drain deadline. Drain-time bridge scheduling and result collection, the
 terminal set, and orderly pool shutdown receive their applicable bounded
@@ -780,6 +780,41 @@ physical group. Deterministic overload, stop-selection, drain-deadline, and
 terminal-order plants saturate exactly four walks and prove that a fifth is
 withheld. A new development commit must pass full standalone rehearsals before
 another exact candidate may enter the formal author protocol.
+
+Development commit `99a1970183e8853537ac445717b9abb7493b4167` (tree
+`ccc8c27dadde868fd1f988342831a7c48897a567`) then ran the exact complete
+harness once in a fresh, detached, full, clean standalone clone at
+`/data/dev/src/nomos-r2-rehearsal-active4-a.N1KJcI/checkout`. All 33 workload
+commands exited zero. The clean release build took 23.51 seconds; 100 compile
+outputs were byte-identical, with median numerator `77426804/2` ns and p95
+42,931,203 ns; browser smoke reproduced the exact contact sheet; and peak
+checkout disk was 1,356 MiB. All non-cadence workload and resource ceilings
+passed.
+
+The four-walk observer nevertheless remained red. It retained 3,312 complete
+scheduled rows with p50 49,977,545 ns, p90 54,332,801 ns, p95 56,350,073 ns,
+and p99 59,316,866 ns consecutive-start gaps. Five gaps exceeded the unchanged
+100,000,000 ns ceiling: two during provenance plants and three during browser
+smoke. The maximum was 109,640,840 ns. The exact retained-gap diagnostic was
+emitted, and drain validation correctly withheld readiness, stop, the terminal
+row, disk summary, evidence manifest, and final receipt. The preserved
+independently audited report is
+`/data/dev/src/nomos-r2-rehearsal-active4-a.N1KJcI/rehearsal-failure-report.md`,
+SHA-256
+`ffd4a731a8856efeef05a2c1e8533acb221dc420d5ee3ced1910fff0cc657bf1`.
+This development commit remains red and will not be retried.
+
+Three independent Luna Max reviews selected the smallest next controlled
+experiment: retain the controller-one/disk-three/workload-two physical-group
+split and raise only bounded admission from four to five active exact walks.
+The active-three to active-four change reduced violations from 14 to five while
+preserving substantial compile, build, browser, and disk-size margin. Giving a
+fourth group to the disk mask instead would leave the proof workload on one
+physical group, and its union mask would not bind individual walks one per
+group. The five-walk experiment therefore preserves every method, schedule,
+timestamp, topology rule, workload, and ceiling; deterministic plants saturate
+five walks and refuse the sixth. It is development evidence only and must pass
+two consecutive fresh full rehearsals before any final candidate freeze.
 
 Commands used during implementation include repository reads, `apply_patch`,
 shell and Node syntax/tests, the four accepted workspace checks, output-local
