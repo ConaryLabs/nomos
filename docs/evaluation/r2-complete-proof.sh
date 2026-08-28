@@ -581,14 +581,11 @@ trap 'exit 130' INT
 trap 'exit 143' TERM
 [[ $sampler_launch_signal -eq 0 ]] || exit "$sampler_launch_signal"
 [[ $sampler_session_bound -eq 1 ]] || fail 'disk sampler does not own its session'
-for ((attempt = 0; attempt < 100; attempt += 1)); do
-  [[ ! -e $disk_sampler_ready ]] || break
-  r2_sampler_identity_stable "$disk_sampler_pid" "$disk_sampler_start_ticks" \
-    "$sampler_controller_affinity" || fail 'disk sampler changed before its initial row'
-  sleep 0.01
-done
-[[ -f $disk_sampler_ready && ! -L $disk_sampler_ready ]] ||
-  fail 'disk sampler did not retain its initial row'
+if ! r2_wait_for_sampler_ready \
+  "$disk_sampler_pid" "$disk_sampler_start_ticks" \
+  "$sampler_controller_affinity" "$disk_sampler_ready"; then
+  fail "disk sampler readiness ${R2_SAMPLER_READY_REASON:-unknown} before its initial row"
+fi
 
 # Step 1: accepted workspace proof.
 run_step workspace-fmt \

@@ -122,11 +122,21 @@ freshness bound, but compares and adds absolute nanoseconds as canonical
 decimal strings rather than lossy IEEE-754 numbers. Final publication then
 independently repeats the full ledger validation in Bash.
 Sampler identity includes PID, process group, session, start ticks, and
-affinity. Empty live-task procfs `stat` or `status` snapshots receive at most
-three immediate reads; a nonempty malformed snapshot fails immediately, and a
-third incomplete read remains closed. A successful affinity read is bounded
-by a second matching stat identity. Each pool-worker identity additionally
-includes its direct sampler parent. A failed process-substitution channel
+affinity. Procfs readers classify a snapshot as valid, absent, incomplete, or
+malformed. Empty live-task `stat` or `status` snapshots receive at most three
+immediate reads. A nonempty live numeric status snapshot that lacks the whole
+canonical `Cpus_allowed_list` row is likewise treated as a potentially torn
+snapshot inside that same bound; the identical missing-row content in a static
+fixture, duplicate canonical rows, and malformed CPU values fail immediately.
+A staged sampler identity transaction reports whether initial stat, affinity,
+or confirmation stat failed. Only a still-live incomplete snapshot is
+retryable, and only inside the parent's existing 100-poll, 10 ms initial
+readiness window. A ready marker is accepted only after another complete
+stable identity transaction made after observing the marker. Absent,
+malformed, zombie, PID/start/group/session, or affinity evidence fails
+immediately. A successful affinity read is bounded by a second matching stat
+identity. Each pool-worker identity additionally includes its direct sampler
+parent. A failed process-substitution channel
 launch first closes its owned
 result descriptor, restoring the descriptor capacity needed for the
 controller's identity check, then closes the already-verified dedicated
@@ -815,6 +825,53 @@ group. The five-walk experiment therefore preserves every method, schedule,
 timestamp, topology rule, workload, and ceiling; deterministic plants saturate
 five walks and refuse the sixth. It is development evidence only and must pass
 two consecutive fresh full rehearsals before any final candidate freeze.
+
+Development commit `a94785074284fe8f108c6f9bf86e20c3b2a28a66` (tree
+`b62adcd691dcfc084e4df5ccd84dd48b380419da`) then ran the exact complete
+harness once in a new fresh, detached, full, clean standalone clone at
+`/data/dev/src/nomos-r2-rehearsal-active5-a.tmt7Fw/checkout`. It failed before
+command 1 while waiting for the sampler's initial readiness marker. The parent
+had already bound the sampler PID, start ticks, process group, session, and
+controller affinity, but the compound identity predicate returned nonzero and
+emitted `R2 complete proof: FAIL: disk sampler changed before its initial row`.
+Cleanup then stopped and reaped that same dedicated session and published two
+complete scheduled rows plus one terminal row. The checkout remained clean;
+no process survived; and no final receipt or evidence manifest was emitted.
+The exact run did not retain which subcheck of the compound predicate failed,
+so it is red harness evidence, not a result about five-walk cadence capacity.
+
+A later focused launch-shaped reproduction, explicitly separate from that
+exact process, caught a 63-line nonempty `/proc/<pid>/status` snapshot whose
+canonical prefixes were torn: `SigPnd`, `Cpus_allowed`, and
+`Cpus_allowed_list` appeared as `igPnd`, `pus_allowed`, and
+`pus_allowed_list`. Runs 1--3 passed and run 4 failed the same status parser
+after its sampler was identity-bound and had published two rows; the next
+snapshot was valid. The preserved independently reviewable trace has SHA-256
+`3ca19565a357d463ebd59893418766e5d75a263b7d05cf7ec6b6289a1a475ce0`.
+It proves the launch shape can produce a compatible transient status failure,
+not that the retired exact PID produced that particular snapshot. The complete
+failure report is
+`/data/dev/src/nomos-r2-rehearsal-active5-a.tmt7Fw/rehearsal-failure-report.md`,
+SHA-256
+`50a186b623452e75ff2715444f51add7aacc26b8c749ac7a2711c97bb10ab02b`.
+This development commit remains red and will not be retried.
+
+The follow-up preserves active-five capacity and every disk, schedule,
+timestamp, workload, topology, and ceiling rule. It makes the reader and
+identity outcomes explicit rather than collapsing them into one Boolean. Each
+reader retains its three-attempt bound. A missing canonical CPU row is
+retryable only when read from a still-live numeric procfs task; the same static
+missing-row fixture, duplicate rows, malformed values, absence, identity
+change, zombie state, and affinity drift remain immediate terminal failures.
+The complete stat--affinity--stat identity transaction returns retryable status
+only for a still-live incomplete snapshot. Initial readiness alone may repeat
+that status inside its pre-existing 100-poll, 10 ms bound, and it performs a
+fresh stable transaction after observing the ready marker before accepting it.
+Stage-specific reasons make any future refusal attributable. Deterministic
+plants bind transient and persistent empty/torn reads, exact retry counts,
+static malformation, absence, structural and affinity changes, confirmation
+splices, bounded readiness expiry, and marker-after-poll ordering. A new
+development commit, not `a947850`, must run the full harness next.
 
 Commands used during implementation include repository reads, `apply_patch`,
 shell and Node syntax/tests, the four accepted workspace checks, output-local

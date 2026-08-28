@@ -13,27 +13,39 @@ source "$r2_complete_proof_lib_directory/r2-disk-sampler-lib.sh"
 unset r2_complete_proof_lib_directory
 
 r2_read_process_stat_once() {
+  # shellcheck disable=SC2034 # Public classification is consumed by identity probes.
+  R2_PROC_READ_CLASS=invalid
   [[ $# -eq 1 && -n $1 ]] || return 2
   local process_stat process_fields
   local -a fields=()
   if ! { IFS= read -r process_stat <"$1"; } 2>/dev/null; then
+    if [[ -e $1 ]]; then R2_PROC_READ_CLASS=incomplete
+    else R2_PROC_READ_CLASS=absent; fi
     return 1
   fi
   process_fields=${process_stat##*) }
-  [[ $process_fields != "$process_stat" ]] || return 2
+  [[ $process_fields != "$process_stat" ]] || {
+    R2_PROC_READ_CLASS=malformed
+    return 2
+  }
   read -r -a fields <<<"$process_fields"
   [[ ${#fields[@]} -ge 20 && ${fields[0]} =~ ^[A-Za-z]$ &&
     ${fields[1]} =~ ^[0-9]+$ && ${fields[2]} =~ ^[0-9]+$ &&
     ${fields[3]} =~ ^[0-9]+$ &&
-    ${fields[19]} =~ ^[0-9]+$ ]] || return 2
+    ${fields[19]} =~ ^[0-9]+$ ]] || {
+    R2_PROC_READ_CLASS=malformed
+    return 2
+  }
   R2_PROC_STATE=${fields[0]}
   R2_PROC_PARENT=${fields[1]}
   R2_PROC_GROUP=${fields[2]}
   R2_PROC_SESSION=${fields[3]}
   R2_PROC_START=${fields[19]}
+  R2_PROC_READ_CLASS=ok
 }
 
 r2_read_process_stat() {
+  R2_PROC_READ_CLASS=invalid
   [[ $# -eq 1 && -n $1 ]] || return 2
   local attempt read_status
   # The same live-task procfs race as status snapshots can expose an empty
@@ -42,7 +54,8 @@ r2_read_process_stat() {
   for ((attempt = 0; attempt < 3; attempt += 1)); do
     if r2_read_process_stat_once "$1"; then return 0
     else read_status=$?; fi
-    [[ $read_status -eq 1 ]] || return "$read_status"
+    [[ $read_status -eq 1 && $R2_PROC_READ_CLASS == incomplete ]] ||
+      return "$read_status"
   done
   return 1
 }
@@ -234,52 +247,185 @@ r2_partition_cpu_topology() {
 }
 
 r2_read_allowed_cpu_list_once() {
+  R2_PROC_READ_CLASS=invalid
   [[ $# -eq 1 ]] || return 2
   local line found=0 line_count=0 value
   while IFS= read -r line; do
     line_count=$((line_count + 1))
     [[ $line != Cpus_allowed_list:* ]] || {
-      [[ $found -eq 0 ]] || return 2
+      [[ $found -eq 0 ]] || {
+        R2_PROC_READ_CLASS=malformed
+        return 2
+      }
       value=${line#*:}
       value=${value//$'\t'/}
       value=${value// /}
       found=1
     }
-  done <"$1" 2>/dev/null || return 1
+  done <"$1" 2>/dev/null || {
+    if [[ -e $1 ]]; then R2_PROC_READ_CLASS=incomplete
+    else R2_PROC_READ_CLASS=absent; fi
+    return 1
+  }
   [[ $found -eq 1 ]] || {
-    [[ $line_count -eq 0 ]] && return 1
+    if [[ $line_count -eq 0 ]]; then
+      R2_PROC_READ_CLASS=incomplete
+      return 1
+    fi
+    R2_PROC_READ_CLASS='missing-row'
     return 2
   }
-  r2_expand_cpu_list "$value" || return
+  if ! r2_expand_cpu_list "$value"; then
+    R2_PROC_READ_CLASS=malformed
+    return 2
+  fi
   # shellcheck disable=SC2034 # Returned global is consumed after sourcing.
   R2_ALLOWED_CPU_LIST=$value
+  R2_PROC_READ_CLASS=ok
 }
 
 r2_read_allowed_cpu_list() {
-  [[ $# -eq 1 && -f $1 ]] || return 2
-  local attempt read_status
+  R2_PROC_READ_CLASS=invalid
+  [[ $# -eq 1 ]] || return 2
+  [[ -f $1 ]] || {
+    R2_PROC_READ_CLASS=absent
+    return 2
+  }
+  local attempt read_status live_pid=''
+  if [[ $1 =~ ^/proc/([1-9][0-9]*)/status$ ]]; then
+    live_pid=${BASH_REMATCH[1]}
+  elif [[ $1 == /proc/self/status ]]; then
+    live_pid=$BASHPID
+  fi
   # procfs may transiently return an empty status snapshot for a live task.
   # Retry only that incomplete-read class; malformed content still fails now,
   # and three incomplete reads remain fail-closed.
   for ((attempt = 0; attempt < 3; attempt += 1)); do
     if r2_read_allowed_cpu_list_once "$1"; then return 0
     else read_status=$?; fi
-    [[ $read_status -eq 1 ]] || return "$read_status"
+    if [[ $read_status -eq 1 && $R2_PROC_READ_CLASS == incomplete ]]; then
+      continue
+    fi
+    if [[ $read_status -eq 2 && $R2_PROC_READ_CLASS == missing-row ]]; then
+      if [[ -n $live_pid && -d /proc/$live_pid ]] &&
+        kill -0 "$live_pid" 2>/dev/null; then
+        R2_PROC_READ_CLASS=incomplete
+        continue
+      fi
+      if [[ -n $live_pid ]]; then R2_PROC_READ_CLASS=absent
+      else R2_PROC_READ_CLASS=malformed; fi
+    fi
+    return 2
   done
+  R2_PROC_READ_CLASS=incomplete
   return 2
 }
 
 r2_sampler_identity_stable() {
+  # Status 1 is reserved for a live task whose procfs snapshot stayed
+  # incomplete through the reader's three attempts. Status 2 is definitive:
+  # malformed or absent procfs, a changed identity, affinity drift, or invalid
+  # arguments. Existing Boolean callers therefore remain fail-closed, while a
+  # bounded polling caller can retry only the explicitly indeterminate class.
+  # shellcheck disable=SC2034 # Public reason is consumed by proof diagnostics.
+  R2_SAMPLER_IDENTITY_REASON='invalid-arguments'
   [[ $# -eq 3 && $1 =~ ^[1-9][0-9]*$ && $2 =~ ^[0-9]+$ && -n $3 ]] || return 2
-  local pid=$1 start=$2 expected_cpu_list=$3
-  r2_read_process_stat "/proc/$pid/stat" &&
-    [[ $R2_PROC_GROUP == "$pid" && $R2_PROC_SESSION == "$pid" &&
-      $R2_PROC_START == "$start" && $R2_PROC_STATE != Z ]] &&
-    r2_read_allowed_cpu_list "/proc/$pid/status" &&
-    [[ $R2_EXPANDED_CPU_LIST == "$expected_cpu_list" ]] &&
-    r2_read_process_stat "/proc/$pid/stat" &&
-    [[ $R2_PROC_GROUP == "$pid" && $R2_PROC_SESSION == "$pid" &&
-      $R2_PROC_START == "$start" && $R2_PROC_STATE != Z ]]
+  local pid=$1 start=$2 expected_cpu_list=$3 read_status
+
+  if r2_read_process_stat "/proc/$pid/stat"; then :
+  else
+    read_status=$?
+    if [[ $read_status -eq 1 && $R2_PROC_READ_CLASS == incomplete &&
+        -d /proc/$pid ]] && kill -0 "$pid" 2>/dev/null; then
+      R2_SAMPLER_IDENTITY_REASON='initial-stat-incomplete'
+      return 1
+    fi
+    R2_SAMPLER_IDENTITY_REASON="initial-stat-$R2_PROC_READ_CLASS"
+    return 2
+  fi
+  if [[ $R2_PROC_GROUP != "$pid" || $R2_PROC_SESSION != "$pid" ||
+      $R2_PROC_START != "$start" || $R2_PROC_STATE == Z ]]; then
+    R2_SAMPLER_IDENTITY_REASON='initial-identity-changed'
+    return 2
+  fi
+
+  if r2_read_allowed_cpu_list "/proc/$pid/status"; then :
+  else
+    read_status=$?
+    if [[ $read_status -eq 2 && $R2_PROC_READ_CLASS == incomplete &&
+        -d /proc/$pid ]] && kill -0 "$pid" 2>/dev/null; then
+      R2_SAMPLER_IDENTITY_REASON='affinity-incomplete'
+      return 1
+    fi
+    R2_SAMPLER_IDENTITY_REASON="affinity-$R2_PROC_READ_CLASS"
+    return 2
+  fi
+  if [[ $R2_EXPANDED_CPU_LIST != "$expected_cpu_list" ]]; then
+    R2_SAMPLER_IDENTITY_REASON='affinity-changed'
+    return 2
+  fi
+
+  if r2_read_process_stat "/proc/$pid/stat"; then :
+  else
+    read_status=$?
+    if [[ $read_status -eq 1 && $R2_PROC_READ_CLASS == incomplete &&
+        -d /proc/$pid ]] && kill -0 "$pid" 2>/dev/null; then
+      R2_SAMPLER_IDENTITY_REASON='confirmation-stat-incomplete'
+      return 1
+    fi
+    R2_SAMPLER_IDENTITY_REASON="confirmation-stat-$R2_PROC_READ_CLASS"
+    return 2
+  fi
+  if [[ $R2_PROC_GROUP != "$pid" || $R2_PROC_SESSION != "$pid" ||
+      $R2_PROC_START != "$start" || $R2_PROC_STATE == Z ]]; then
+    R2_SAMPLER_IDENTITY_REASON='confirmation-identity-changed'
+    return 2
+  fi
+  R2_SAMPLER_IDENTITY_REASON=stable
+}
+
+r2_wait_for_sampler_ready() {
+  # The initial parent readiness window remains exactly 100 polls separated by
+  # 10 ms. A complete ready marker is accepted only after a full stable
+  # identity probe made after observing that marker. Only status 1 from the
+  # staged identity helper is retryable inside this existing bound.
+  # shellcheck disable=SC2034 # Public reason is consumed by proof diagnostics.
+  R2_SAMPLER_READY_REASON='invalid-arguments'
+  [[ $# -eq 4 && $1 =~ ^[1-9][0-9]*$ && $2 =~ ^[0-9]+$ &&
+    -n $3 && $4 == */* ]] || return 2
+  local pid=$1 start=$2 expected_cpu_list=$3 ready=$4
+  local attempt identity_status marker_present=0 last_reason='ready-marker-absent'
+  for ((attempt = 0; attempt < 100; attempt += 1)); do
+    marker_present=0
+    if [[ -e $ready || -L $ready ]]; then
+      [[ -f $ready && ! -L $ready ]] || {
+        R2_SAMPLER_READY_REASON='ready-marker-malformed'
+        return 2
+      }
+      marker_present=1
+    fi
+    if r2_sampler_identity_stable "$pid" "$start" "$expected_cpu_list"; then
+      last_reason='ready-marker-absent'
+      if [[ $marker_present -eq 1 ]]; then
+        R2_SAMPLER_READY_REASON=ready
+        return 0
+      fi
+    else
+      identity_status=$?
+      last_reason=$R2_SAMPLER_IDENTITY_REASON
+      if [[ $identity_status -ne 1 ]]; then
+        R2_SAMPLER_READY_REASON=$last_reason
+        return 2
+      fi
+    fi
+    sleep 0.01 || {
+      R2_SAMPLER_READY_REASON='sleep-failed'
+      return 2
+    }
+  done
+  # shellcheck disable=SC2034 # Public reason is consumed by proof diagnostics.
+  R2_SAMPLER_READY_REASON="${last_reason}-timeout"
+  return 1
 }
 
 r2_sampler_session_has_members() {
