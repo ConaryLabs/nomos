@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 
 # Source-only outer network/PID/mount confinement for r2-complete-proof.sh.
-# The XFS wrapper owns filesystem provisioning; this layer drops privilege,
-# removes external routes, and exposes only the two authorized writable binds.
+# The XFS wrapper owns filesystem and network-namespace provisioning and enters
+# this layer only after dropping privilege. This layer verifies that isolation,
+# adds PID/mount confinement, and exposes only the two writable checkout binds.
 # shellcheck disable=SC2154 # Globals are established by the sourcing harness.
 
 r2_discover_browser() {
@@ -37,31 +38,32 @@ r2_run_outer_proof() {
     fail 'the discovered browser cannot report its version'
   [[ -n $browser_version ]] || fail 'the discovered browser reported no version'
 
-  sudo -n true >/dev/null 2>&1 ||
-    fail 'passwordless sudo is required for network isolation'
-  sudo -n unshare --net -- true >/dev/null 2>&1 ||
-    fail 'sudo unshare --net is unavailable'
   bwrap --die-with-parent --new-session --unshare-pid \
     --ro-bind / / --dev /dev --proc /proc \
     "$(command -v bash)" -c : >/dev/null 2>&1 ||
     fail 'bubblewrap read-only root and PID confinement is unavailable'
 
   local caller_uid caller_gid caller_user caller_path rustup_home
-  local host_netns host_pidns proof_token outer_control_exit
+  local isolated_netns host_netns host_pidns proof_token
   caller_uid=$(id -u)
   caller_gid=$(id -g)
   caller_user=$(id -un)
   caller_path=$PATH
   rustup_home=${RUSTUP_HOME:-$(rustup show home)}
   rustup_home=$(realpath -e -- "$rustup_home")
-  host_netns=$(readlink /proc/self/ns/net)
-  [[ $host_netns == net:\[*\] ]] ||
-    fail 'could not identify the caller network namespace'
+  isolated_netns=$(readlink /proc/self/ns/net)
+  host_netns=${NOMOS_R2_HOST_NETNS:-}
+  [[ $isolated_netns == net:\[*\] && $host_netns == net:\[*\] &&
+     $isolated_netns != "$host_netns" ]] ||
+    fail 'wrapper did not enter a fresh network namespace'
   host_pidns=$(readlink /proc/self/ns/pid)
-  [[ $host_pidns == pid:\[*\] ]] ||
-    fail 'could not identify the caller PID namespace'
-  proof_token=$(printf '%s\n' \
-    "$head:$caller_uid:$$:$(date +%s%N)" | sha256sum | cut -d' ' -f1)
+  [[ $host_pidns == pid:\[*\] && $host_pidns == "${NOMOS_R2_HOST_PIDNS:-}" ]] ||
+    fail 'wrapper changed or misreported the caller PID namespace'
+  proof_token=${NOMOS_R2_PROOF_TOKEN:-}
+  [[ $proof_token =~ ^[0-9a-f]{64}$ ]] ||
+    fail 'wrapper proof process token is missing or malformed'
+  [[ ${NOMOS_R2_EXTERNAL_POSITIVE:-} == connected ]] ||
+    fail 'wrapper external-connect positive control marker is missing'
   mkdir -p "$repo_root/target"
   [[ $(stat -c %d "$repo_root/target") == "$(stat -c %d "$repo_root")" ]] ||
     fail 'target and checkout must share one filesystem'
@@ -76,68 +78,54 @@ r2_run_outer_proof() {
   trap cleanup_outer_control EXIT
   trap 'cleanup_outer_control; exit 130' INT
   trap 'cleanup_outer_control; exit 143' TERM
-  set +e
-  r2_network_probe 1.1.1.1 53 \
-    >"$outer_control_stdout" 2>"$outer_control_stderr"
-  outer_control_exit=$?
-  set -e
-  [[ $outer_control_exit -eq 0 &&
+  [[ -f $outer_control_stdout && ! -L $outer_control_stdout &&
+     -f $outer_control_stderr && ! -L $outer_control_stderr &&
      $(stat -c %s "$outer_control_stdout") -eq 10 &&
      $(<"$outer_control_stdout") == connected &&
      ! -s $outer_control_stderr ]] ||
-    fail 'external-connect positive control did not connect'
+    fail 'wrapper external-connect positive control evidence is invalid'
 
-  sudo -n unshare --net -- bash -ceu '
-    ip link set lo up
-    exec setpriv \
-      --reuid "$1" --regid "$2" --init-groups \
-      --inh-caps=-all --ambient-caps=-all --bounding-set=-all --no-new-privs -- \
-      env -i \
-        PATH="$3" \
-        HOME="$5/host/home" \
-        TMPDIR="$5/host/tmp" \
-        XDG_CACHE_HOME="$5/host/xdg-cache" \
-        XDG_CONFIG_HOME="$5/host/xdg-config" \
-        XDG_DATA_HOME="$5/host/xdg-data" \
-        CARGO_HOME="$5/host/cargo-home" \
-        CARGO_TARGET_TMPDIR="$4/target/tmp" \
-        RUSTUP_HOME="$6" \
-        RUSTUP_NO_UPDATE_CHECK=1 \
-        CARGO_NET_OFFLINE=true \
-        CARGO_INCREMENTAL=0 \
-        CARGO_TERM_COLOR=never \
-        CHROME_BIN="$7" \
-        LC_ALL=C LANG=C \
-        USER="$8" LOGNAME="$8" \
-        NOMOS_R2_PROOF_INNER=1 \
-        NOMOS_R2_HOST_NETNS="$9" \
-        NOMOS_R2_HOST_PIDNS="${14}" \
-        NOMOS_R2_CALLER_UID="$1" \
-        NOMOS_R2_CALLER_GID="$2" \
-        NOMOS_R2_EXPECTED_HEAD="${10}" \
-        NOMOS_R2_EXPECTED_TREE="${11}" \
-        NOMOS_R2_OUTPUT_REAL="$5" \
-        NOMOS_R2_OUTPUT_RELATIVE="${12}" \
-        NOMOS_R2_PROOF_TOKEN="${13}" \
-        NOMOS_R2_XFS_WRAPPER=1 \
-        NOMOS_R2_XFS_UUID="${15}" \
-        NOMOS_R2_XFS_FRAGMENT_SIZE="${16}" \
-        NOMOS_R2_XFS_DEVICE="${17}" \
-        NOMOS_R2_XFS_MAJOR_MINOR="${18}" \
-        NOMOS_R2_EXTERNAL_POSITIVE=connected \
-        GIT_OPTIONAL_LOCKS=0 \
-        bwrap --die-with-parent --new-session --unshare-pid \
-          --ro-bind / / \
-          --ro-bind "$4" "$4" \
-          --bind "$4/target" "$4/target" \
-          --bind "$5" "$5" \
-          --dev /dev --proc /proc \
-          "$4/docs/evaluation/r2-complete-proof.sh" --output "$5"
-  ' r2-proof "$caller_uid" "$caller_gid" "$caller_path" "$repo_root" \
-    "$output_real" "$rustup_home" "$browser" "$caller_user" "$host_netns" \
-    "$head" "$tree" "$output_relative" "$proof_token" "$host_pidns" \
-    "$NOMOS_R2_XFS_UUID" "$NOMOS_R2_XFS_FRAGMENT_SIZE" \
-    "$NOMOS_R2_XFS_DEVICE" "$NOMOS_R2_XFS_MAJOR_MINOR"
+  env -i \
+    PATH="$caller_path" \
+    HOME="$output_real/host/home" \
+    TMPDIR="$output_real/host/tmp" \
+    XDG_CACHE_HOME="$output_real/host/xdg-cache" \
+    XDG_CONFIG_HOME="$output_real/host/xdg-config" \
+    XDG_DATA_HOME="$output_real/host/xdg-data" \
+    CARGO_HOME="$output_real/host/cargo-home" \
+    CARGO_TARGET_TMPDIR="$repo_root/target/tmp" \
+    RUSTUP_HOME="$rustup_home" \
+    RUSTUP_NO_UPDATE_CHECK=1 \
+    CARGO_NET_OFFLINE=true \
+    CARGO_INCREMENTAL=0 \
+    CARGO_TERM_COLOR=never \
+    CHROME_BIN="$browser" \
+    LC_ALL=C LANG=C \
+    USER="$caller_user" LOGNAME="$caller_user" \
+    NOMOS_R2_PROOF_INNER=1 \
+    NOMOS_R2_HOST_NETNS="$host_netns" \
+    NOMOS_R2_HOST_PIDNS="$host_pidns" \
+    NOMOS_R2_CALLER_UID="$caller_uid" \
+    NOMOS_R2_CALLER_GID="$caller_gid" \
+    NOMOS_R2_EXPECTED_HEAD="$head" \
+    NOMOS_R2_EXPECTED_TREE="$tree" \
+    NOMOS_R2_OUTPUT_REAL="$output_real" \
+    NOMOS_R2_OUTPUT_RELATIVE="$output_relative" \
+    NOMOS_R2_PROOF_TOKEN="$proof_token" \
+    NOMOS_R2_XFS_WRAPPER=1 \
+    NOMOS_R2_XFS_UUID="$NOMOS_R2_XFS_UUID" \
+    NOMOS_R2_XFS_FRAGMENT_SIZE="$NOMOS_R2_XFS_FRAGMENT_SIZE" \
+    NOMOS_R2_XFS_DEVICE="$NOMOS_R2_XFS_DEVICE" \
+    NOMOS_R2_XFS_MAJOR_MINOR="$NOMOS_R2_XFS_MAJOR_MINOR" \
+    NOMOS_R2_EXTERNAL_POSITIVE=connected \
+    GIT_OPTIONAL_LOCKS=0 \
+    bwrap --die-with-parent --new-session --unshare-pid \
+      --ro-bind / / \
+      --ro-bind "$repo_root" "$repo_root" \
+      --bind "$repo_root/target" "$repo_root/target" \
+      --bind "$output_real" "$output_real" \
+      --dev /dev --proc /proc \
+      "$repo_root/docs/evaluation/r2-complete-proof.sh" --output "$output_real"
   cleanup_outer_control
   trap - EXIT INT TERM
 }

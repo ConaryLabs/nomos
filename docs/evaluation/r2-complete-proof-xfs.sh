@@ -72,7 +72,7 @@ record_wrapper_tools() {
   local register=$1
   local temporary=$register.tmp
   local -a tools=(
-    bash git realpath find stat date mkdir readlink id node jq sudo unshare findmnt losetup
+    bash git realpath find stat date mkdir readlink id node jq sudo unshare ip findmnt losetup
     mount umount blockdev mkfs.xfs xfs_info xfs_quota filefrag fuser fallocate sync setpriv
     bwrap tar ionice du blkid chown cp rm env sha256sum
   )
@@ -145,7 +145,7 @@ record_wrapper_tool_json() {
   chmod 0644 "$strict_json.tmp"
   mv -f -- "$strict_json.tmp" "$strict_json"
   jq -e '
-    (keys | sort) == ["bash", "blkid", "blockdev", "bwrap", "cargo", "chown", "cp", "date", "du", "env", "fallocate", "filefrag", "find", "findmnt", "fuser", "git", "id", "ionice", "jq", "losetup", "mkdir", "mkfs.xfs", "mount", "node", "readlink", "realpath", "rm", "rustc", "rustup", "setpriv", "sha256sum", "stat", "sudo", "sync", "tar", "umount", "unshare", "xfs_info", "xfs_quota"]
+    (keys | sort) == ["bash", "blkid", "blockdev", "bwrap", "cargo", "chown", "cp", "date", "du", "env", "fallocate", "filefrag", "find", "findmnt", "fuser", "git", "id", "ionice", "ip", "jq", "losetup", "mkdir", "mkfs.xfs", "mount", "node", "readlink", "realpath", "rm", "rustc", "rustup", "setpriv", "sha256sum", "stat", "sudo", "sync", "tar", "umount", "unshare", "xfs_info", "xfs_quota"]
     and all(.[]; (.path | startswith("/")) and (.version_argv | type == "string" and length > 0)
       and (.version_status | type == "number" and floor == .)
       and (.sha256 | test("^[0-9a-f]{64}$")) and (.version | type == "string" and length > 0))
@@ -198,7 +198,7 @@ validate_source() {
 
 require_public_tools() {
   local tool
-  for tool in git realpath find stat date mkdir readlink id node jq sudo unshare findmnt losetup rustup cargo rustc sha256sum; do
+  for tool in git realpath find stat date mkdir readlink id node jq sudo unshare ip findmnt losetup rustup cargo rustc sha256sum; do
     command -v "$tool" >/dev/null 2>&1 || fail "required host executable is missing: $tool"
   done
   for tool in mount umount blockdev mkfs.xfs xfs_info xfs_quota filefrag fuser fallocate sync setpriv bwrap tar ionice du blkid; do
@@ -341,26 +341,47 @@ supervisor() {
   tool_register=$work/wrapper-tools.tsv tool_register_json=$work/wrapper-tools.json
   wrapper_command_ledger=$work/wrapper-commands.ndjson
   tool_register_json_value='{}'
+  proof_token='' network_positive_status=125
+  outer_control_stdout='' outer_control_stderr=''
+
+  caller_environment=(
+    PATH="$caller_path"
+    HOME="$user_env/home" TMPDIR="$user_env/tmp"
+    XDG_CACHE_HOME="$user_env/xdg-cache" XDG_CONFIG_HOME="$user_env/xdg-config"
+    XDG_DATA_HOME="$user_env/xdg-data" CARGO_HOME="$user_env/cargo-home"
+    CARGO_TARGET_TMPDIR="$user_env/tmp/cargo-target" RUSTUP_HOME="$rustup_home"
+    RUSTUP_NO_UPDATE_CHECK=1 CARGO_NET_OFFLINE=true CARGO_INCREMENTAL=0
+    CARGO_TERM_COLOR=never LC_ALL=C LANG=C USER="$caller_user" LOGNAME="$caller_user"
+    GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_SYSTEM=/dev/null GIT_CONFIG_GLOBAL=/dev/null
+    GIT_TERMINAL_PROMPT=0 GIT_OPTIONAL_LOCKS=0
+  )
+  [[ -n $caller_browser ]] && caller_environment+=(CHROME_BIN="$caller_browser")
 
   # Every repository read, including the source revalidation, runs as the
   # original caller.  This avoids changing Git's global safe.directory policy
   # merely because the supervisor is privileged.
   run_as_user() {
-    local -a environment=(
-      PATH="$caller_path"
-      HOME="$user_env/home" TMPDIR="$user_env/tmp"
-      XDG_CACHE_HOME="$user_env/xdg-cache" XDG_CONFIG_HOME="$user_env/xdg-config"
-      XDG_DATA_HOME="$user_env/xdg-data" CARGO_HOME="$user_env/cargo-home"
-      CARGO_TARGET_TMPDIR="$user_env/tmp/cargo-target" RUSTUP_HOME="$rustup_home"
-      RUSTUP_NO_UPDATE_CHECK=1 CARGO_NET_OFFLINE=true CARGO_INCREMENTAL=0
-      CARGO_TERM_COLOR=never LC_ALL=C LANG=C USER="$caller_user" LOGNAME="$caller_user"
-      GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_SYSTEM=/dev/null GIT_CONFIG_GLOBAL=/dev/null
-      GIT_TERMINAL_PROMPT=0 GIT_OPTIONAL_LOCKS=0
-    )
-    [[ -n $caller_browser ]] && environment+=(CHROME_BIN="$caller_browser")
     setpriv --reuid="$caller_uid" --regid="$caller_gid" --init-groups \
       --inh-caps=-all --ambient-caps=-all --bounding-set=-all --no-new-privs -- \
-      env -i "${environment[@]}" "$@"
+      env -i "${caller_environment[@]}" "$@"
+  }
+
+  # Network namespace creation and loopback setup require privilege, so the
+  # trusted host wrapper owns those two operations.  The root helper executes
+  # no checkout program: its final exec first drops identity, capabilities,
+  # and privilege escalation, then the user process opens the proof script.
+  run_as_user_network_isolated() {
+    # shellcheck disable=SC2016 # The trusted child shell expands its positional parameters.
+    /usr/bin/unshare --net -- /usr/bin/bash -ceu '
+      /usr/sbin/ip link set lo up
+      uid=$1
+      gid=$2
+      shift 2
+      exec /usr/bin/setpriv \
+        --reuid="$uid" --regid="$gid" --init-groups \
+        --inh-caps=-all --ambient-caps=-all --bounding-set=-all --no-new-privs -- \
+        /usr/bin/env -i "$@"
+    ' r2-network-entry "$caller_uid" "$caller_gid" "${caller_environment[@]}" "$@"
   }
 
   write_facts() {
@@ -647,16 +668,40 @@ supervisor() {
   candidate_clean=true
   setup_failed=false
 
+  # Prove that the original user has an external route before entering the
+  # fresh network namespace.  Retain the host copies and place exact temporary
+  # copies in target/ for the read-only inner proof to consume.
+  proof_token=$(printf '%s\n' \
+    "$expected_head:$caller_uid:$$:$(date +%s%N)" | sha256sum | awk '{print $1}')
+  [[ $proof_token =~ ^[0-9a-f]{64}$ ]] || fail 'proof process token is malformed'
+  outer_positive_stdout=$work/network-outer-positive.stdout
+  outer_positive_stderr=$work/network-outer-positive.stderr
+  outer_control_stdout=$checkout/target/.nomos-r2-network-$proof_token.stdout
+  outer_control_stderr=$checkout/target/.nomos-r2-network-$proof_token.stderr
+  [[ ! -e $outer_control_stdout && ! -L $outer_control_stdout &&
+     ! -e $outer_control_stderr && ! -L $outer_control_stderr ]] ||
+    fail 'network positive-control target is not fresh'
+  run_capture "$outer_positive_stdout" "$outer_positive_stderr" run_as_user /usr/bin/node -e \
+    'const net=require("node:net");const [host,port]=process.argv.slice(1);let done=false;const socket=net.connect({host,port:Number(port)});const timer=setTimeout(()=>finish(24,"blocked: timeout\n"),3000);function finish(code,text){if(done)return;done=true;clearTimeout(timer);socket.destroy();(code===0?process.stdout:process.stderr).write(text,()=>process.exit(code));}socket.once("connect",()=>finish(0,"connected\n"));socket.once("error",error=>finish(23,"blocked: "+(error.code||error.message)+"\n"));' \
+    1.1.1.1 53
+  network_positive_status=$RUN_STATUS
+  [[ $network_positive_status -eq 0 && $(stat -c %s "$outer_positive_stdout") -eq 10 &&
+     $(<"$outer_positive_stdout") == connected && ! -s $outer_positive_stderr ]] ||
+    fail 'external-connect positive control did not connect'
+  run_as_user /usr/bin/cp -- "$outer_positive_stdout" "$outer_control_stdout"
+  run_as_user /usr/bin/cp -- "$outer_positive_stderr" "$outer_control_stderr"
+
   # The inner proof owns its exact reservation, setup/shutdown du crosschecks,
   # persistent kernel-accounting sampler, and final no-write proof.  The
   # wrapper records only the fixed-capacity checkpoints around that child.
   inner_start_ns=$(date +%s%N)
   set +e
-  (cd -- "$checkout" && run_as_user /usr/bin/env \
+  (cd -- "$checkout" && run_as_user_network_isolated /usr/bin/env \
     NOMOS_R2_XFS_WRAPPER=1 NOMOS_R2_XFS_UUID="$uuid" \
     NOMOS_R2_XFS_FRAGMENT_SIZE="$fragment_size" NOMOS_R2_XFS_DEVICE="$loop_device" \
     NOMOS_R2_XFS_MAJOR_MINOR="$major_minor" NOMOS_R2_HOST_NETNS="$host_netns" \
-    NOMOS_R2_HOST_PIDNS="$host_pidns" \
+    NOMOS_R2_HOST_PIDNS="$host_pidns" NOMOS_R2_PROOF_TOKEN="$proof_token" \
+    NOMOS_R2_EXTERNAL_POSITIVE=connected \
     /usr/bin/bash "$checkout/docs/evaluation/r2-complete-proof.sh" --output "$output") \
     >"$work/proof.stdout" 2>"$work/proof.stderr"
   inner_status=$?
@@ -667,7 +712,8 @@ supervisor() {
     env NOMOS_R2_XFS_WRAPPER=1 NOMOS_R2_XFS_UUID="$uuid" \
     NOMOS_R2_XFS_FRAGMENT_SIZE="$fragment_size" NOMOS_R2_XFS_DEVICE="$loop_device" \
     NOMOS_R2_XFS_MAJOR_MINOR="$major_minor" NOMOS_R2_HOST_NETNS="$host_netns" \
-    NOMOS_R2_HOST_PIDNS="$host_pidns" /usr/bin/bash "$proof_script" --output "$output"
+    NOMOS_R2_HOST_PIDNS="$host_pidns" NOMOS_R2_PROOF_TOKEN="$proof_token" \
+    NOMOS_R2_EXTERNAL_POSITIVE=connected /usr/bin/bash "$proof_script" --output "$output"
   record_fs_statfs "$fs" "$fragment_size" "$close_statfs" || fail 'close statfs checkpoint failed'
   [[ $(find "$fs" -mindepth 1 -maxdepth 1 -printf '%f\n') == checkout ]] ||
     fail 'checkout is not the XFS sole top-level entry after proof closure'

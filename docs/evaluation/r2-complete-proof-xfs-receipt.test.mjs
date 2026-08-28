@@ -203,7 +203,7 @@ test("receipt has exact top-level schema and success requires inner plus teardow
     const inventoryDigestPath = join(work, "export.sha256");
     writeFileSync(inventoryPath, `${JSON.stringify({ source: output, destination: exportDestination, source_inventory_sha256: sourceInventory.sha256, export_inventory_sha256: exportInventory.sha256, rows: sourceInventory.rows.length, equal: true })}\n`);
     writeFileSync(inventoryDigestPath, `source\t${sourceInventory.sha256}\nexport\t${exportInventory.sha256}\n`);
-    const toolNames = "bash git realpath find stat date mkdir readlink id node jq sudo unshare findmnt losetup mount umount blockdev mkfs.xfs xfs_info xfs_quota filefrag fuser fallocate sync setpriv bwrap tar ionice du blkid chown cp rm env sha256sum rustup cargo rustc".split(" ");
+    const toolNames = "bash git realpath find stat date mkdir readlink id node jq sudo unshare ip findmnt losetup mount umount blockdev mkfs.xfs xfs_info xfs_quota filefrag fuser fallocate sync setpriv bwrap tar ionice du blkid chown cp rm env sha256sum rustup cargo rustc".split(" ");
     const toolPaths = Object.fromEntries(toolNames.map((name) => [name, "/usr/bin/node"]));
     Object.assign(toolPaths, {
       bash: "/usr/bin/bash", fallocate: "/usr/bin/fallocate", sync: "/usr/lib/cargo/bin/coreutils/sync", losetup: "/usr/sbin/losetup",

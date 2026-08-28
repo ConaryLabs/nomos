@@ -25,7 +25,7 @@ import {
 } from "./r2-complete-proof-xfs-receipt.mjs";
 
 export const TOOL_NAMES = Object.freeze(
-  "bash git realpath find stat date mkdir readlink id node jq sudo unshare findmnt losetup mount umount blockdev mkfs.xfs xfs_info xfs_quota filefrag fuser fallocate sync setpriv bwrap tar ionice du blkid chown cp rm env sha256sum rustup cargo rustc".split(" "),
+  "bash git realpath find stat date mkdir readlink id node jq sudo unshare ip findmnt losetup mount umount blockdev mkfs.xfs xfs_info xfs_quota filefrag fuser fallocate sync setpriv bwrap tar ionice du blkid chown cp rm env sha256sum rustup cargo rustc".split(" "),
 );
 
 const fail = (message) => { throw new XfsWrapperError(message); };
