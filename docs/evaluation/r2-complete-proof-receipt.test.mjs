@@ -18,6 +18,21 @@ import test, { before } from "node:test";
 import { fileURLToPath } from "node:url";
 
 import { assembleReceipt, verifyReceipt } from "./r2-complete-proof-receipt.mjs";
+import {
+  RAW_HEADER,
+  XFS_MAGIC,
+  accountingFromStatfs,
+  filesystemIdentityDocument,
+  publicTsvFromRaw,
+  rawRow,
+} from "./r2-filesystem-accounting.mjs";
+import {
+  DU_ARGV,
+  EVIDENCE_SCHEMA,
+  RESERVATION_LENGTH_BYTES,
+  filesystemSnapshotDocument,
+  summarizeFilesystemEvidence,
+} from "./r2-filesystem-evidence.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const sourceRepo = resolve(here, "../..");
@@ -33,13 +48,18 @@ const fixtureSourcePaths = [
   "apps/nomos-viewer",
   "apps/nomos-observed-viewer",
   "fixtures/r2",
-  "docs/decisions/0024-r2-final-proof-finalization-order.md",
+  "docs/decisions/0025-r2-filesystem-accounting.md",
   "docs/evaluation/r2-second-scene-packet/MANIFEST.sha256",
   "docs/evaluation/runs/r2/2026-08-27-issue-197-second-author/SCENE_SIGNATURES.json",
   "docs/evaluation/runs/r2/2026-08-27-issue-197-second-author/evidence/contact-sheet.png",
 ];
 const sha256 = (bytes) => createHash("sha256").update(bytes).digest("hex");
-const issueBody = "8ffd30e7a213e991732ea6031743542eb68d9b80fe6d4989ed58052617352dcc";
+const issueBody = "0a701b4238fd6b7f23ba0ae40022bc7c23ca450ad1a8f0febc05ab440f6b3c88";
+const filesystemUuid = "11111111-2222-3333-4444-555555555555";
+const filesystemDevice = "/dev/loop7";
+const filesystemMajorMinor = "7:7";
+const filesystemOrigin = 10_000_000_000_000_000n;
+const filesystemPeriod = 50_000_000n;
 const plans = {
   scene_one: "717b91f3f35d815bfa9f9cc777b38f8a091f7a6339d786c57360e94ffe4c7699",
   scene_two: "1fd08cfb33d07f93a568e4bb337ebfbe8909a22a973d0f137139c92f0481e905",
@@ -87,7 +107,7 @@ const commandDisplays = [
   "compile scene_one ten times to unique outputs and compare committed plan",
   "compile scene_two ten times to unique outputs and compare committed plan",
   "node docs/evaluation/r2-scene-signature.mjs scene_one scene_two",
-  "node --test apps/nomos-observed-viewer/test/*.test.mjs docs/evaluation/r2-scene-signature.test.mjs docs/evaluation/r2-complete-proof-process.test.mjs docs/evaluation/r2-complete-proof-receipt.test.mjs; docs/evaluation/r2-complete-proof.test.sh",
+  "node --test apps/nomos-observed-viewer/test/*.test.mjs docs/evaluation/r2-scene-signature.test.mjs docs/evaluation/r2-complete-proof-process.test.mjs docs/evaluation/r2-complete-proof-receipt.test.mjs docs/evaluation/r2-complete-proof-xfs-evidence.test.mjs docs/evaluation/r2-complete-proof-xfs-receipt.test.mjs docs/evaluation/r2-filesystem-accounting.test.mjs docs/evaluation/r2-filesystem-evidence.test.mjs; docs/evaluation/r2-complete-proof.test.sh; docs/evaluation/r2-complete-proof-xfs.test.sh",
   "node apps/nomos-observed-viewer/build.mjs --plan scene_one --plan scene_two --out <output>/r2/viewer-proof/dist --receipt <output>/r2/viewer-proof/receipt.json",
   "node apps/nomos-observed-viewer/smoke/smoke.mjs --dist <output>/r2/viewer-proof/dist --out <output>/r2/browser-smoke --samples 10",
   "LC_ALL=C /usr/bin/time -v cargo build --workspace --release --locked --offline (fresh target)",
@@ -99,7 +119,7 @@ const commandDisplays = [
 ];
 const toolLabels = [
   "git", "realpath", "readlink", "find", "grep", "awk", "sed", "sort", "cmp", "cut",
-  "sha256sum", "stat", "date", "du", "jq", "gnu-time", "ar", "basename", "bash", "bwrap",
+  "sha256sum", "stat", "date", "du", "jq", "gnu-time", "fallocate", "sync", "unlink", "ar", "basename", "bash", "bwrap",
   "cargo", "cc", "chmod", "cp", "diff", "dirname", "env", "getconf", "head", "id",
   "install", "ionice", "ip", "ld", "ln", "mkdir", "mktemp", "mv", "node", "paste", "ps", "rm", "rustc",
   "rustup", "seq", "setpriv", "setsid", "sh", "sleep", "strings", "sudo", "tar", "taskset", "timeout", "touch",
@@ -136,6 +156,98 @@ const png = (width, height) => {
 
 const tap = (tests) => `TAP version 13\n1..${tests}\n# tests ${tests}\n# suites 0\n# pass ${tests}\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 1\n`;
 
+const makeFilesystemIdentity = (checkout, output, statfs = {}) => {
+  const accounting = accountingFromStatfs({
+    type: XFS_MAGIC,
+    bsize: 4096n,
+    blocks: 1_000_000n,
+    bfree: 875_000n,
+    bavail: 874_000n,
+    ...statfs,
+  }, { fragmentSize: 4096n });
+  return {
+    schema: 1,
+    mountId: 32n,
+    mountpoint: checkout,
+    mountRoot: "/checkout",
+    mountOptions: "ro,nodev,nosuid,relatime",
+    source: filesystemDevice,
+    majorMinor: filesystemMajorMinor,
+    mountFilesystemType: "xfs",
+    uuid: filesystemUuid,
+    sourceDevice: filesystemDevice,
+    sourceMajorMinor: filesystemMajorMinor,
+    filesystemType: XFS_MAGIC,
+    filesystemMagic: "0x58465342",
+    rootDevice: 7007n,
+    rootInode: 123n,
+    fragmentSize: 4096n,
+    blockSize: 4096n,
+    capacityBlocks: accounting.blocks,
+    capacityBytes: accounting.capacityBytes,
+    dedicatedFixedCapacity: true,
+    targetPath: join(checkout, "target"),
+    outputPath: output,
+    nestedMounts: [
+      { mountId: 33n, mountpoint: join(checkout, "target"), root: "/checkout/target", mountOptions: "rw,nodev,nosuid,relatime", source: filesystemDevice, majorMinor: filesystemMajorMinor, filesystemType: "xfs", uuid: filesystemUuid },
+      { mountId: 34n, mountpoint: output, root: `/checkout/${relative(checkout, output).split("\\").join("/")}`, mountOptions: "rw,nodev,nosuid,relatime", source: filesystemDevice, majorMinor: filesystemMajorMinor, filesystemType: "xfs", uuid: filesystemUuid },
+    ],
+    accounting,
+  };
+};
+
+const makeFilesystemEvidence = () => {
+  const checkout = repo;
+  const output = template;
+  const target = join(checkout, "target");
+  const identity = makeFilesystemIdentity(checkout, output);
+  const after = makeFilesystemIdentity(checkout, output, { bfree: 879_096n, bavail: 878_096n });
+  const rows = [
+    rawRow({ ordinal: 0n, sampleStartNs: filesystemOrigin, elapsedNs: 0n, deadlineNs: filesystemOrigin, identity, kind: "scheduled" }),
+    rawRow({ ordinal: 1n, sampleStartNs: filesystemOrigin + filesystemPeriod, elapsedNs: filesystemPeriod, deadlineNs: filesystemOrigin + filesystemPeriod, identity, kind: "terminal" }),
+  ];
+  const du = (phase) => ({
+    schema: EVIDENCE_SCHEMA,
+    mode: "du-check",
+    phase,
+    invocation: {
+      argv: [...DU_ARGV, checkout], cwd: checkout, status: 0,
+      stdout: `489\t${checkout}\n`, stderr: "", started_ns: "10", ended_ns: "20",
+    },
+    du_mib: "489",
+    snapshot: filesystemSnapshotDocument(identity),
+  });
+  const evidence = {
+    identity: JSON.parse(filesystemIdentityDocument(identity, {
+      samplerOriginNs: filesystemOrigin,
+      nominalIntervalNs: filesystemPeriod,
+    })),
+    raw: `${RAW_HEADER}\n${rows.join("\n")}\n`,
+    public: publicTsvFromRaw(rows),
+    setupDu: du("setup"),
+    shutdownDu: du("shutdown"),
+    finalization: {
+      schema: EVIDENCE_SCHEMA,
+      mode: "release-check",
+      reservation: {
+        path: `${output}/host/finalization.reserve`,
+        length_bytes: RESERVATION_LENGTH_BYTES.toString(),
+        allocated_bytes: RESERVATION_LENGTH_BYTES.toString(),
+      },
+      a_before_bytes: identity.accounting.usedBytes.toString(),
+      a_after_bytes: after.accounting.usedBytes.toString(),
+      snapshot: filesystemSnapshotDocument(after),
+    },
+    stop: `${filesystemOrigin + 25_000_000n}\n`,
+  };
+  const summary = summarizeFilesystemEvidence(evidence, {
+    checkout, target, output, device: filesystemDevice,
+    majorMinor: filesystemMajorMinor, uuid: filesystemUuid,
+    fragmentSize: 4096n, nominalIntervalNs: filesystemPeriod,
+  });
+  return { ...evidence, summary };
+};
+
 const buildR2 = (name) => {
   const directory = join(template, `r2/${name}`);
   execFileSync(process.execPath, [
@@ -165,8 +277,8 @@ const makeTemplate = () => {
   const tree = execFileSync("git", ["-C", repo, "rev-parse", "HEAD^{tree}"], { encoding: "utf8" }).trim();
   json(join(template, "metadata/source-tree.json"), {
     outcome: "pass", commit, tree, issue: 199, issue_body_sha256: issueBody,
-    r2_contract_sha256: "770740bad1c85cf7ea9dcd16f8c25e01766064d3b59d7f0bb9d438c289a6e638",
-    r2_revision_2_authority_sha256: "0356b3918a5c2643c36e16555e8ef78155bf893a8c3c21e4f75263f8289feea0",
+    r2_contract_sha256: "625f4bb1ea7c7400a6717c14b51cc6da51b32421e49bba98cf3d7ed9ff4a1254",
+    r2_revision_3_authority_sha256: "a6a50bca56c4a990b44968ffefc31103a88e48b52904728693a166ba0d66d3ae",
     runtime_contract_sha256: "dd6f4b2ce48557f48df61d50cdc25b4ebaf0904331f4fd78d804e3af536db593",
     catalog_sha256: "6259520fbf318ae0393ea4ae69649864acb154db4034d081435416be2ffa9323",
     packet_manifest_sha256: "d5708087cf7967a420667c56a7b02ed052b7058ed8545af06e6771170003c948",
@@ -229,7 +341,7 @@ const makeTemplate = () => {
     if (id === "r1-viewer-tests") content = tap(104);
     if (id === "r1-browser-smoke") content = "NOMOS_VIEWER_SMOKE PASS areas=6 moves=65 cost=95 requests=1 external=0\n";
     if (id === "r1-native-replay") content = `NOMOS_PLAY_REPLAY PASS areas=6 commands=77 receipts=77 chain=${chain}\n`;
-    if (id === "r2-viewer-tests") content = `${tap(3)}# includes docs/evaluation/r2-complete-proof-process.test.mjs\nR2_COMPLETE_PROOF_PLANTS PASS\n`;
+    if (id === "r2-viewer-tests") content = `${tap(3)}# includes docs/evaluation/r2-complete-proof-process.test.mjs\nR2_COMPLETE_PROOF_PLANTS PASS\nr2-complete-proof-xfs shell validation tests: PASS\n`;
     if (id === "r2-schema-ownership") content = "R2_SCHEMA_OWNERSHIP PASS\n";
     if (id === "r2-schema-plants") content = "expected refusal: missing\nexpected refusal: duplicate\nexpected refusal: third\n";
     if (id === "r2-source-provenance") content = "R2_SOURCE_PROVENANCE PASS\n";
@@ -248,9 +360,17 @@ const makeTemplate = () => {
   writeFileSync(join(template, "commands.tsv"), `${ledger.join("\n")}\n`);
 
   writeFileSync(join(template, "measurements/clean-release-time.txt"), "\tElapsed (wall clock) time (h:mm:ss or m:ss): 0:12.34\n\tExit status: 0\n");
-  writeFileSync(join(template, "measurements/checkout-disk-samples.tsv"), "ordinal\tsample_start_ns\telapsed_ns\tmebibytes\tkind\n0\t10000000010000000\t10000000\t100\tscheduled\n1\t10000000060000000\t60000000\t120\tterminal\n");
-  json(join(template, "measurements/checkout-disk-summary.json"), { outcome: "pass", sampler_origin_ns: "10000000000000000", stop_requested_ns: "10000000050000000", nominal_interval_ns: "50000000", samples: 2, initial_mib: 100, final_mib: 120, maximum_mib: 120, maximum_gap_ns: "50000000", du_arguments: ["-sm", "--", "<checkout>"] });
-  writeFileSync(join(template, "host/disk-sampler.stop"), "10000000050000000\n");
+  const filesystemEvidence = makeFilesystemEvidence();
+  const filesystemDirectory = join(template, "measurements/filesystem");
+  mkdir(filesystemDirectory);
+  writeFileSync(join(filesystemDirectory, "identity.json"), `${JSON.stringify(filesystemEvidence.identity, null, 2)}\n`);
+  writeFileSync(join(filesystemDirectory, "raw.tsv"), filesystemEvidence.raw);
+  writeFileSync(join(filesystemDirectory, "public.tsv"), filesystemEvidence.public);
+  json(join(filesystemDirectory, "du-setup.json"), filesystemEvidence.setupDu);
+  json(join(filesystemDirectory, "du-shutdown.json"), filesystemEvidence.shutdownDu);
+  json(join(filesystemDirectory, "release.json"), filesystemEvidence.finalization);
+  writeFileSync(join(filesystemDirectory, "stop"), filesystemEvidence.stop);
+  json(join(filesystemDirectory, "summary.json"), filesystemEvidence.summary);
 
   mkdir(join(template, "r1/wasm"));
   writeFileSync(join(template, "r1/wasm/nomos_play.wasm"), wasm);
@@ -442,6 +562,13 @@ const fixtureForCase = () => {
   json(join(output, "metadata/filesystem-isolation.json"), filesystem);
   const mountinfo = join(output, "metadata/mountinfo.txt");
   writeFileSync(mountinfo, readFileSync(mountinfo, "utf8").replaceAll(template, output));
+  const filesystemDirectory = join(output, "measurements/filesystem");
+  const templateMountRoot = `/checkout/${relative(repo, template).split("\\").join("/")}`;
+  const outputMountRoot = `/checkout/${relative(repo, output).split("\\").join("/")}`;
+  for (const name of ["identity.json", "du-setup.json", "du-shutdown.json", "release.json", "summary.json"]) {
+    const path = join(filesystemDirectory, name);
+    writeFileSync(path, readFileSync(path, "utf8").replaceAll(template, output).replaceAll(templateMountRoot, outputMountRoot));
+  }
   const samples = join(output, "r2/compile-benchmark/samples.tsv");
   writeFileSync(samples, readFileSync(samples, "utf8").replaceAll(template, output));
   const browser = join(output, "r2/browser-smoke/receipt.json");
@@ -494,6 +621,16 @@ test("synthetic complete evidence assembles and verifies without trusting summar
   assert.equal(receipt.outcome, "pass");
   assert.equal(receipt.summary.r2.compile.samples, 100);
   assert.equal(receipt.summary.r2.browser.closures, 22);
+  assert.equal(receipt.summary.budgets.checkout_peak_mib, 489);
+  assert.equal(receipt.summary.budgets.disk_samples, 2);
+  assert.equal(receipt.summary.budgets.disk_maximum_gap_ns, "50000000");
+  assert.equal(receipt.summary.budgets.disk_stop_requested_ns, (filesystemOrigin + 25_000_000n).toString());
+  assert.equal(receipt.summary.budgets.filesystem_capacity_bytes, "4096000000");
+  assert.equal(receipt.summary.budgets.filesystem_counter, "f_blocks-f_bfree");
+  assert.equal(receipt.summary.budgets.setup_du_mib, "489");
+  assert.equal(receipt.summary.budgets.shutdown_du_mib, "489");
+  assert.equal(receipt.summary.budgets.reservation_allocated_bytes, "16777216");
+  assert.equal(receipt.summary.budgets.post_release_allocated_bytes, "495222784");
   assert.equal(verifyReceipt({ repo, output, liveChecks: false }).outcome, "pass");
 
   writeFileSync(join(output, "unexpected.txt"), "drift\n");
@@ -517,34 +654,39 @@ test("synthetic complete evidence assembles and verifies without trusting summar
   assert.throws(() => verifyReceipt({ repo, output: falsified, liveChecks: false }), /receipt summary differs/);
 });
 
-test("disk cadence accepts the exact 100000000 ns boundary", () => {
+test("filesystem cadence accepts the exact 100000000 ns boundary", () => {
   const output = fixtureForCase();
-  const samples = join(output, "measurements/checkout-disk-samples.tsv");
-  writeFileSync(samples, readFileSync(samples, "utf8").replace("1\t10000000060000000\t60000000\t120\tterminal", "1\t10000000110000000\t110000000\t120\tterminal"));
-  const summaryPath = join(output, "measurements/checkout-disk-summary.json");
+  const rawPath = join(output, "measurements/filesystem/raw.tsv");
+  const lines = readFileSync(rawPath, "utf8").trimEnd().split("\n");
+  const terminal = lines[2].split("\t");
+  terminal[1] = (filesystemOrigin + 100_000_000n).toString();
+  terminal[2] = "100000000";
+  terminal[3] = terminal[1];
+  lines[2] = terminal.join("\t");
+  writeFileSync(rawPath, `${lines.join("\n")}\n`);
+  const publicPath = join(output, "measurements/filesystem/public.tsv");
+  const publicLines = readFileSync(publicPath, "utf8").trimEnd().split("\n");
+  const publicTerminal = publicLines[2].split("\t");
+  publicTerminal[1] = terminal[1];
+  publicTerminal[2] = terminal[2];
+  publicLines[2] = publicTerminal.join("\t");
+  writeFileSync(publicPath, `${publicLines.join("\n")}\n`);
+  const summaryPath = join(output, "measurements/filesystem/summary.json");
   const summary = JSON.parse(readFileSync(summaryPath));
   summary.maximum_gap_ns = "100000000";
   json(summaryPath, summary);
   assert.equal(assemble(output).summary.budgets.disk_maximum_gap_ns, "100000000");
 });
 
-test("disk rows can be chronological independently of launch ordinal order", () => {
+test("filesystem raw counters cannot be forged", () => {
   const output = fixtureForCase();
-  writeFileSync(join(output, "measurements/checkout-disk-samples.tsv"), [
-    "ordinal\tsample_start_ns\telapsed_ns\tmebibytes\tkind",
-    "1\t10000000010000000\t10000000\t100\tscheduled",
-    "0\t10000000020000000\t20000000\t110\tscheduled",
-    "2\t10000000030000000\t30000000\t120\tterminal",
-    "",
-  ].join("\n"));
-  const summaryPath = join(output, "measurements/checkout-disk-summary.json");
-  const summary = JSON.parse(readFileSync(summaryPath));
-  Object.assign(summary, { stop_requested_ns: "10000000025000000", samples: 3, final_mib: 120, maximum_mib: 120, maximum_gap_ns: "10000000" });
-  json(summaryPath, summary);
-  writeFileSync(join(output, "host/disk-sampler.stop"), "10000000025000000\n");
-  const receipt = assemble(output);
-  assert.equal(receipt.summary.budgets.disk_samples, 3);
-  assert.equal(receipt.summary.budgets.disk_stop_requested_ns, "10000000025000000");
+  const rawPath = join(output, "measurements/filesystem/raw.tsv");
+  const lines = readFileSync(rawPath, "utf8").trimEnd().split("\n");
+  const row = lines[1].split("\t");
+  row[21] = "512000001";
+  lines[1] = row.join("\t");
+  writeFileSync(rawPath, `${lines.join("\n")}\n`);
+  assert.throws(() => assemble(output), /raw counter mismatch/);
 });
 
 test("major plants fail closed before a receipt can be assembled", async (t) => {
@@ -613,89 +755,51 @@ test("major plants fail closed before a receipt can be assembled", async (t) => 
       const path = join(out, "measurements/clean-release-time.txt");
       writeFileSync(path, readFileSync(path, "utf8").replace("0:12.34", "1:00.01"));
     }, /exceeded 60 s/],
-    ["disk-overflow", (out) => {
-      const path = join(out, "measurements/checkout-disk-samples.tsv");
-      writeFileSync(path, readFileSync(path, "utf8").replace("1\t10000000060000000\t60000000\t120\tterminal", "1\t10000000060000000\t60000000\t8193\tterminal"));
-    }, /peak disk exceeded/],
-    ["disk-gap", (out) => {
-      const path = join(out, "measurements/checkout-disk-samples.tsv");
-      writeFileSync(path, readFileSync(path, "utf8").replace("1\t10000000060000000\t60000000\t120\tterminal", "1\t10000000110000001\t110000001\t120\tterminal"));
-      const summaryPath = join(out, "measurements/checkout-disk-summary.json");
-      const summary = JSON.parse(readFileSync(summaryPath));
-      summary.maximum_gap_ns = "100000001";
-      json(summaryPath, summary);
+    ["filesystem-raw-counter", (out) => {
+      const path = join(out, "measurements/filesystem/raw.tsv");
+      const lines = readFileSync(path, "utf8").trimEnd().split("\n");
+      const fields = lines[1].split("\t");
+      fields[21] = "512000001";
+      lines[1] = fields.join("\t");
+      writeFileSync(path, `${lines.join("\n")}\n`);
+    }, /raw counter mismatch/],
+    ["filesystem-identity", (out) => {
+      const path = join(out, "measurements/filesystem/identity.json");
+      const value = JSON.parse(readFileSync(path));
+      value.uuid = "not-a-uuid";
+      json(path, value);
+    }, /identity UUID is malformed/],
+    ["filesystem-gap", (out) => {
+      const path = join(out, "measurements/filesystem/raw.tsv");
+      const lines = readFileSync(path, "utf8").trimEnd().split("\n");
+      const fields = lines[2].split("\t");
+      fields[1] = (filesystemOrigin + 100_000_001n).toString();
+      fields[2] = "100000001";
+      fields[3] = fields[1];
+      lines[2] = fields.join("\t");
+      writeFileSync(path, `${lines.join("\n")}\n`);
     }, /gap exceeds 100000000 ns/],
-    ["disk-malformed-start", (out) => {
-      const path = join(out, "measurements/checkout-disk-samples.tsv");
-      writeFileSync(path, readFileSync(path, "utf8").replace("10000000060000000\t60000000", "not-a-time\t60000000"));
-    }, /sample_start_ns is not a canonical decimal string/],
-    ["disk-malformed-elapsed", (out) => {
-      const path = join(out, "measurements/checkout-disk-samples.tsv");
-      writeFileSync(path, readFileSync(path, "utf8").replace("10000000060000000\t60000000", "10000000060000000\t60000000.0"));
-    }, /elapsed_ns is not a canonical decimal string/],
-    ["disk-decreasing-start", (out) => {
-      const path = join(out, "measurements/checkout-disk-samples.tsv");
-      writeFileSync(path, readFileSync(path, "utf8").replace("10000000060000000\t60000000", "10000000009999999\t9999999"));
-    }, /sample start is not strictly increasing/],
-    ["disk-duplicate-ordinal", (out) => {
-      const path = join(out, "measurements/checkout-disk-samples.tsv");
-      writeFileSync(path, readFileSync(path, "utf8").replace("1\t10000000060000000", "0\t10000000060000000"));
-    }, /launch ordinals are not unique and contiguous/],
-    ["disk-missing-ordinal", (out) => {
-      const path = join(out, "measurements/checkout-disk-samples.tsv");
-      writeFileSync(path, readFileSync(path, "utf8").replace("1\t10000000060000000", "2\t10000000060000000"));
-    }, /launch ordinals are not unique and contiguous/],
-    ["disk-early-terminal", (out) => {
-      const path = join(out, "measurements/checkout-disk-samples.tsv");
-      writeFileSync(path, readFileSync(path, "utf8").replace("100\tscheduled", "100\tterminal"));
-    }, /terminal row is not unique or chronologically last/],
-    ["disk-missing-terminal", (out) => {
-      const path = join(out, "measurements/checkout-disk-samples.tsv");
-      writeFileSync(path, readFileSync(path, "utf8").replace("120\tterminal", "120\tscheduled"));
-    }, /terminal row is not unique or chronologically last/],
-    ["disk-elapsed-binding", (out) => {
-      const path = join(out, "measurements/checkout-disk-samples.tsv");
-      writeFileSync(path, readFileSync(path, "utf8").replace("10000000060000000\t60000000", "10000000060000000\t60000001"));
-    }, /elapsed_ns differs/],
-    ["disk-malformed-origin", (out) => {
-      const path = join(out, "measurements/checkout-disk-summary.json");
+    ["filesystem-du", (out) => {
+      const path = join(out, "measurements/filesystem/du-setup.json");
       const value = JSON.parse(readFileSync(path));
-      value.sampler_origin_ns = "010000000000000000";
+      value.invocation.stdout = `490\t${repo}\n`;
       json(path, value);
-    }, /sampler_origin_ns is not a canonical decimal string/],
-    ["disk-stop-mismatch", (out) => {
-      const path = join(out, "measurements/checkout-disk-summary.json");
+    }, /du MiB exceeds statfs allocated MiB/],
+    ["filesystem-release", (out) => {
+      const path = join(out, "measurements/filesystem/release.json");
       const value = JSON.parse(readFileSync(path));
-      value.stop_requested_ns = "10000000050000001";
+      value.a_before_bytes = "1";
       json(path, value);
-    }, /stop marker differs from disk summary/],
-    ["disk-stop-malformed", (out) => {
-      writeFileSync(join(out, "host/disk-sampler.stop"), "10000000050000000");
-    }, /stop marker is not a canonical decimal string/],
-    ["disk-stop-after-terminal", (out) => {
-      const value = JSON.parse(readFileSync(join(out, "measurements/checkout-disk-summary.json")));
-      value.stop_requested_ns = "10000000060000001";
-      json(join(out, "measurements/checkout-disk-summary.json"), value);
-      writeFileSync(join(out, "host/disk-sampler.stop"), "10000000060000001\n");
-    }, /terminal sample precedes stop request/],
-    ["disk-summary-count", (out) => {
-      const path = join(out, "measurements/checkout-disk-summary.json");
+    }, /A_before is below reservation allocation/],
+    ["filesystem-summary", (out) => {
+      const path = join(out, "measurements/filesystem/summary.json");
       const value = JSON.parse(readFileSync(path));
-      value.samples = 3;
+      value.maximum_mib = "1";
       json(path, value);
-    }, /disk summary arithmetic or method differs/],
-    ["disk-summary-gap", (out) => {
-      const path = join(out, "measurements/checkout-disk-summary.json");
-      const value = JSON.parse(readFileSync(path));
-      value.maximum_gap_ns = "50000001";
-      json(path, value);
-    }, /disk summary arithmetic or method differs/],
-    ["disk-method", (out) => {
-      const path = join(out, "measurements/checkout-disk-summary.json");
-      const value = JSON.parse(readFileSync(path));
-      value.nominal_interval_ns = "50000001";
-      json(path, value);
-    }, /disk summary arithmetic or method differs/],
+    }, /checkout-disk-summary differs/],
+    ["filesystem-stop", (out) => {
+      writeFileSync(join(out, "measurements/filesystem/stop"), `${filesystemOrigin + 100_000_001n}\n`);
+    }, /terminal sample precedes monotonic stop request/],
     ["compile-summary", (out) => {
       const path = join(out, "r2/compile-benchmark/summary.json");
       const value = JSON.parse(readFileSync(path));

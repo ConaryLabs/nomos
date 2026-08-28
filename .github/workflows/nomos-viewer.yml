@@ -192,14 +192,29 @@ jobs:
 
       - name: Provision the final-proof filesystem isolator
         run: |
-          if ! command -v bwrap >/dev/null 2>&1; then
+          if ! command -v bwrap >/dev/null 2>&1 || \
+             ! command -v mkfs.xfs >/dev/null 2>&1 || \
+             ! command -v filefrag >/dev/null 2>&1 || \
+             ! command -v fuser >/dev/null 2>&1; then
             sudo apt-get update
-            sudo apt-get install --yes --no-install-recommends bubblewrap
+            sudo apt-get install --yes --no-install-recommends \
+              bubblewrap e2fsprogs psmisc xfsprogs
           fi
           bwrap --version
+          mkfs.xfs -V
 
       - name: Record the host proof tools
         run: |
+          for tool in \
+            git realpath find stat date mkdir readlink id node jq sudo unshare \
+            findmnt losetup rustup cargo rustc sha256sum mount umount blockdev \
+            mkfs.xfs xfs_info xfs_quota filefrag fuser fallocate sync setpriv \
+            bwrap tar ionice du blkid bash awk sed sort cmp cut ar basename cc \
+            chmod cp diff dirname env getconf head install ip ld ln mktemp mv \
+            paste ps rm seq setsid sh sleep strings taskset timeout touch tr \
+            uname wc /usr/bin/time /usr/bin/unlink; do
+            command -v "$tool" >/dev/null
+          done
           rustc --version
           cargo --version
           node --version
@@ -272,6 +287,7 @@ jobs:
           docs/evaluation/r2-adopter-neutrality.sh
           docs/evaluation/r2-adopter-neutrality.test.sh
           docs/evaluation/r2-complete-proof.test.sh
+          docs/evaluation/r2-complete-proof-xfs.test.sh
           node docs/evaluation/r2-maximum.test.mjs
           node docs/evaluation/r2-scene-signature.mjs \
             fixtures/r2/scenes/scene_one.json \
@@ -280,7 +296,11 @@ jobs:
             apps/nomos-observed-viewer/test/*.test.mjs \
             docs/evaluation/r2-scene-signature.test.mjs \
             docs/evaluation/r2-complete-proof-process.test.mjs \
-            docs/evaluation/r2-complete-proof-receipt.test.mjs
+            docs/evaluation/r2-complete-proof-receipt.test.mjs \
+            docs/evaluation/r2-complete-proof-xfs-evidence.test.mjs \
+            docs/evaluation/r2-complete-proof-xfs-receipt.test.mjs \
+            docs/evaluation/r2-filesystem-accounting.test.mjs \
+            docs/evaluation/r2-filesystem-evidence.test.mjs
 
       - name: Build and scan the two-scene artifact
         run: |
@@ -328,12 +348,30 @@ jobs:
         run: |
           rustup show
           rustup target add wasm32-unknown-unknown
-          if ! command -v bwrap >/dev/null 2>&1; then
+          if ! command -v bwrap >/dev/null 2>&1 || \
+             ! command -v mkfs.xfs >/dev/null 2>&1 || \
+             ! command -v filefrag >/dev/null 2>&1 || \
+             ! command -v fuser >/dev/null 2>&1; then
             sudo apt-get update
-            sudo apt-get install --yes --no-install-recommends bubblewrap
+            sudo apt-get install --yes --no-install-recommends \
+              bubblewrap e2fsprogs psmisc xfsprogs
           fi
           bwrap --version
+          mkfs.xfs -V
+          xfs_info -V
+          filefrag -V
+          fuser --version
           google-chrome --version
+          for tool in \
+            git realpath find stat date mkdir readlink id node jq sudo unshare \
+            findmnt losetup rustup cargo rustc sha256sum mount umount blockdev \
+            mkfs.xfs xfs_info xfs_quota filefrag fuser fallocate sync setpriv \
+            bwrap tar ionice du blkid bash awk sed sort cmp cut ar basename cc \
+            chmod cp diff dirname env getconf head install ip ld ln mktemp mv \
+            paste ps rm seq setsid sh sleep strings taskset timeout touch tr \
+            uname wc /usr/bin/time /usr/bin/unlink; do
+            command -v "$tool" >/dev/null
+          done
 
       - name: Run the detached complete proof
         run: |
@@ -341,16 +379,24 @@ jobs:
           candidate=$(git rev-parse 'HEAD^{commit}')
           git checkout --detach "$candidate"
           test "$(git rev-parse --is-shallow-repository)" = false
-          mkdir -p target/r2-complete-proof
+          work=${RUNNER_TEMP}/nomos-r2-xfs
+          test ! -e "$work"
+          mkdir "$work"
           CHROME_BIN=$(command -v google-chrome) \
-            docs/evaluation/r2-complete-proof.sh \
-              --output target/r2-complete-proof
+            docs/evaluation/r2-complete-proof-xfs.sh \
+              --source "$GITHUB_WORKSPACE" \
+              --work "$work"
 
       - name: Upload the bound complete-proof evidence
         if: always()
         uses: actions/upload-artifact@v7
         with:
           name: r2-complete-proof
-          path: target/r2-complete-proof
+          path: |
+            ${{ runner.temp }}/nomos-r2-xfs
+            !${{ runner.temp }}/nomos-r2-xfs/filesystem.xfs
+            !${{ runner.temp }}/nomos-r2-xfs/checkout.tar
+            !${{ runner.temp }}/nomos-r2-xfs/fs
+            !${{ runner.temp }}/nomos-r2-xfs/user-env
           if-no-files-found: error
           retention-days: 90

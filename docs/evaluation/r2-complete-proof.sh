@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Complete, self-isolating R2 disposition proof. Its only public interface is
-# `r2-complete-proof.sh --output <empty-directory>`.
+# Inner, self-isolating R2 disposition proof. The public entry point is the
+# fixed-capacity XFS wrapper; this file accepts only its private invocation.
 set -euo pipefail
 export LC_ALL=C
 fail() {
@@ -20,7 +20,8 @@ output_argument=$2
   fail 'output path cannot contain a tab or newline'
 host_tools=(
   git realpath readlink find grep awk sed sort cmp cut sha256sum stat date du jq
-  /usr/bin/time ar basename bash bwrap cargo cc chmod cp diff dirname env getconf
+  /usr/bin/time /usr/bin/fallocate /usr/bin/sync /usr/bin/unlink
+  ar basename bash bwrap cargo cc chmod cp diff dirname env getconf
   head id install ionice ip ld ln mkdir mktemp mv node paste ps rm rustc rustup seq setpriv
   setsid sh sleep strings sudo tar taskset timeout touch tr uname unshare wc
 )
@@ -104,125 +105,22 @@ validate_output() {
 validate_checkout
 validate_output
 issue=199
-issue_body_sha256=8ffd30e7a213e991732ea6031743542eb68d9b80fe6d4989ed58052617352dcc
-discover_browser() {
-  node --input-type=module - "$repo_root" <<'NODE'
-import { pathToFileURL } from "node:url";
-const { findChrome } = await import(
-  pathToFileURL(`${process.argv[2]}/apps/nomos-viewer/smoke/chrome.mjs`).href,
-);
-const found = findChrome();
-if (!found) process.exit(1);
-process.stdout.write(found.binary);
-NODE
-}
-run_outer() {
-  local node_major active_toolchain installed_targets browser browser_version
-  node_major=$(node -p 'Number(process.versions.node.split(".")[0])')
-  [[ $node_major =~ ^[0-9]+$ && $node_major -ge 22 ]] || fail 'Node 22 or newer is required'
-  active_toolchain=$(rustup show active-toolchain)
-  [[ $active_toolchain == 1.98.0-* ]] || fail 'the active Rust toolchain is not 1.98.0'
-  installed_targets=$(rustup target list --installed)
-  grep -Fx 'wasm32-unknown-unknown' <<<"$installed_targets" >/dev/null ||
-    fail 'the wasm32-unknown-unknown Rust target is not installed'
-  browser=$(discover_browser) || fail 'Chrome/Chromium is not installed or cannot start'
-  browser=$(realpath -e -- "$browser")
-  [[ -f $browser && -x $browser && ! -L $browser ]] ||
-    fail 'the discovered browser is not one executable regular file'
-  browser_version=$("$browser" --version) || fail 'the discovered browser cannot report its version'
-  [[ -n $browser_version ]] || fail 'the discovered browser reported no version'
-
-  sudo -n true >/dev/null 2>&1 || fail 'passwordless sudo is required for network isolation'
-  sudo -n unshare --net -- true >/dev/null 2>&1 ||
-    fail 'sudo unshare --net is unavailable'
-  bwrap --die-with-parent --new-session --unshare-pid \
-    --ro-bind / / --dev /dev --proc /proc \
-    "$(command -v bash)" -c : >/dev/null 2>&1 ||
-    fail 'bubblewrap read-only root and PID confinement is unavailable'
-
-  local caller_uid caller_gid caller_user caller_path rustup_home host_netns host_pidns proof_token
-  caller_uid=$(id -u)
-  caller_gid=$(id -g)
-  caller_user=$(id -un)
-  caller_path=$PATH
-  rustup_home=${RUSTUP_HOME:-$(rustup show home)}
-  rustup_home=$(realpath -e -- "$rustup_home")
-  host_netns=$(readlink /proc/self/ns/net)
-  [[ $host_netns == net:\[*\] ]] || fail 'could not identify the caller network namespace'
-  host_pidns=$(readlink /proc/self/ns/pid)
-  [[ $host_pidns == pid:\[*\] ]] || fail 'could not identify the caller PID namespace'
-  proof_token=$(printf '%s\n' "$head:$caller_uid:$$:$(date +%s%N)" | sha256sum | cut -d' ' -f1)
-  mkdir -p "$repo_root/target"
-  [[ $(stat -c %d "$repo_root/target") == "$(stat -c %d "$repo_root")" ]] ||
-    fail 'target and checkout must share one filesystem'
-  local outer_control_exit
-  outer_control_stdout=$repo_root/target/.nomos-r2-network-$proof_token.stdout
-  outer_control_stderr=$repo_root/target/.nomos-r2-network-$proof_token.stderr
-  cleanup_outer_control() {
-    local file
-    for file in "${outer_control_stdout:-}" "${outer_control_stderr:-}"; do
-      [[ -z $file || ! -e $file ]] || find "$file" -delete
-    done
-  }
-  trap cleanup_outer_control EXIT
-  trap 'cleanup_outer_control; exit 130' INT
-  trap 'cleanup_outer_control; exit 143' TERM
-  set +e
-  r2_network_probe 1.1.1.1 53 >"$outer_control_stdout" 2>"$outer_control_stderr"
-  outer_control_exit=$?
-  set -e
-  [[ $outer_control_exit -eq 0 && $(stat -c %s "$outer_control_stdout") -eq 10 &&
-     $(<"$outer_control_stdout") == connected &&
-     ! -s $outer_control_stderr ]] || fail 'external-connect positive control did not connect'
-
-  sudo -n unshare --net -- bash -ceu '
-    ip link set lo up
-    exec setpriv \
-      --reuid "$1" --regid "$2" --init-groups \
-      --inh-caps=-all --ambient-caps=-all --bounding-set=-all --no-new-privs -- \
-      env -i \
-        PATH="$3" \
-        HOME="$5/host/home" \
-        TMPDIR="$5/host/tmp" \
-        XDG_CACHE_HOME="$5/host/xdg-cache" \
-        XDG_CONFIG_HOME="$5/host/xdg-config" \
-        XDG_DATA_HOME="$5/host/xdg-data" \
-        CARGO_HOME="$5/host/cargo-home" \
-        CARGO_TARGET_TMPDIR="$4/target/tmp" \
-        RUSTUP_HOME="$6" \
-        RUSTUP_NO_UPDATE_CHECK=1 \
-        CARGO_NET_OFFLINE=true \
-        CARGO_INCREMENTAL=0 \
-        CARGO_TERM_COLOR=never \
-        CHROME_BIN="$7" \
-        LC_ALL=C LANG=C \
-        USER="$8" LOGNAME="$8" \
-        NOMOS_R2_PROOF_INNER=1 \
-        NOMOS_R2_HOST_NETNS="$9" \
-        NOMOS_R2_HOST_PIDNS="${14}" \
-        NOMOS_R2_CALLER_UID="$1" \
-        NOMOS_R2_CALLER_GID="$2" \
-        NOMOS_R2_EXPECTED_HEAD="${10}" \
-        NOMOS_R2_EXPECTED_TREE="${11}" \
-        NOMOS_R2_OUTPUT_REAL="$5" \
-        NOMOS_R2_OUTPUT_RELATIVE="${12}" \
-        NOMOS_R2_PROOF_TOKEN="${13}" \
-        NOMOS_R2_EXTERNAL_POSITIVE=connected \
-        GIT_OPTIONAL_LOCKS=0 \
-        bwrap --die-with-parent --new-session --unshare-pid \
-          --ro-bind / / --dev /dev --proc /proc \
-          --bind "$4/target" "$4/target" \
-          --bind "$5" "$5" \
-          "$4/docs/evaluation/r2-complete-proof.sh" --output "$5"
-  ' r2-proof "$caller_uid" "$caller_gid" "$caller_path" "$repo_root" \
-    "$output_real" "$rustup_home" "$browser" "$caller_user" "$host_netns" \
-    "$head" "$tree" "$output_relative" "$proof_token" "$host_pidns"
-  cleanup_outer_control
-  trap - EXIT INT TERM
-}
+issue_body_sha256=0a701b4238fd6b7f23ba0ae40022bc7c23ca450ad1a8f0febc05ab440f6b3c88
+[[ ${NOMOS_R2_XFS_WRAPPER:-} == 1 ]] ||
+  fail 'invoke the complete proof through r2-complete-proof-xfs.sh'
+[[ ${NOMOS_R2_XFS_UUID:-} =~ ^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$ ]] ||
+  fail 'the XFS wrapper UUID is missing or malformed'
+[[ ${NOMOS_R2_XFS_FRAGMENT_SIZE:-} =~ ^[1-9][0-9]*$ ]] ||
+  fail 'the XFS wrapper fragment size is missing or malformed'
+[[ ${NOMOS_R2_XFS_DEVICE:-} =~ ^/dev/loop[0-9]+$ ]] ||
+  fail 'the XFS wrapper loop device is missing or malformed'
+[[ ${NOMOS_R2_XFS_MAJOR_MINOR:-} =~ ^[0-9]+:[0-9]+$ ]] ||
+  fail 'the XFS wrapper major:minor device is missing or malformed'
+# shellcheck source=docs/evaluation/r2-complete-proof-outer.sh
+source "$script_directory/r2-complete-proof-outer.sh"
 
 if [[ ${NOMOS_R2_PROOF_INNER:-} != 1 ]]; then
-  run_outer
+  r2_run_outer_proof
   printf 'R2 complete proof: PASS\n'
   exit 0
 fi
@@ -246,18 +144,12 @@ inner_pidns=$(readlink /proc/self/ns/pid)
 r2_read_allowed_cpu_list /proc/self/status || fail 'could not read proof CPU affinity'
 initial_cpu_affinity=$R2_ALLOWED_CPU_LIST
 r2_partition_cpu_topology "$initial_cpu_affinity" /sys/devices/system/cpu ||
-  fail 'the proof requires three readable, physically disjoint CPU-core groups'
-sampler_controller_affinity=$R2_CONTROLLER_CPUS
-disk_walk_cpu_affinity=$R2_DISK_CPUS
+  fail 'the proof requires two readable, physically disjoint CPU-core groups'
+sampler_controller_affinity=$R2_SAMPLER_CPUS
 workload_cpu_affinity=$R2_WORKLOAD_CPUS
 cpu_topology_groups=$R2_CPU_TOPOLOGY_GROUPS
-controller_physical_groups=$R2_CONTROLLER_PHYSICAL_GROUPS
-disk_physical_groups=$R2_DISK_PHYSICAL_GROUPS
+sampler_physical_groups=$R2_SAMPLER_PHYSICAL_GROUPS
 workload_physical_groups=$R2_WORKLOAD_PHYSICAL_GROUPS
-disk_worker_lane_affinities=$disk_physical_groups
-disk_walk_nice=$(ps -o ni= -p "$BASHPID") || fail 'could not read proof CPU priority'
-disk_walk_nice=${disk_walk_nice//[$'\t ']/}
-[[ $disk_walk_nice =~ ^-?[0-9]+$ ]] || fail 'proof CPU priority is malformed'
 evidence_dir=$output_real
 mkdir -p \
   "$evidence_dir/host/home" \
@@ -269,6 +161,7 @@ mkdir -p \
   "$evidence_dir/logs" \
   "$evidence_dir/metadata" \
   "$evidence_dir/measurements" \
+  "$evidence_dir/measurements/filesystem" \
   "$evidence_dir/r1/wasm" \
   "$evidence_dir/r2"
 cp /proc/self/mountinfo "$evidence_dir/metadata/mountinfo.txt"
@@ -356,7 +249,7 @@ sha() {
 }
 
 r2_contract_sha=$(sha R2.md)
-r2_revision_2_authority_sha=$(sha docs/decisions/0024-r2-final-proof-finalization-order.md)
+r2_revision_3_authority_sha=$(sha docs/decisions/0025-r2-filesystem-accounting.md)
 runtime_contract_sha=$(sha RUNTIME.md)
 catalog_sha=$(sha apps/nomos-observed-viewer/src/catalog.mjs)
 packet_sha=$(sha docs/evaluation/r2-second-scene-packet/MANIFEST.sha256)
@@ -367,10 +260,10 @@ plan_two_sha=$(sha fixtures/r2/plans/scene_two.json)
 signature_one_sha=ef11771f3f8c210fdd8c9366e780ab720349a49dad88ae8dca969fcbe16c30d2
 signature_two_sha=9afb46dc4d7ddb5b79cdcabd63b67d162b3c230aecfde9383e038128572f0f3d
 
-[[ $r2_contract_sha == 770740bad1c85cf7ea9dcd16f8c25e01766064d3b59d7f0bb9d438c289a6e638 ]] ||
+[[ $r2_contract_sha == 625f4bb1ea7c7400a6717c14b51cc6da51b32421e49bba98cf3d7ed9ff4a1254 ]] ||
   fail 'R2.md digest moved'
-[[ $r2_revision_2_authority_sha == 0356b3918a5c2643c36e16555e8ef78155bf893a8c3c21e4f75263f8289feea0 ]] ||
-  fail 'R2 revision-2 authority digest moved'
+[[ $r2_revision_3_authority_sha == a6a50bca56c4a990b44968ffefc31103a88e48b52904728693a166ba0d66d3ae ]] ||
+  fail 'R2 revision-3 authority digest moved'
 [[ $runtime_contract_sha == dd6f4b2ce48557f48df61d50cdc25b4ebaf0904331f4fd78d804e3af536db593 ]] ||
   fail 'RUNTIME.md digest moved'
 [[ $catalog_sha == 6259520fbf318ae0393ea4ae69649864acb154db4034d081435416be2ffa9323 ]] ||
@@ -391,7 +284,7 @@ jq -n \
   --argjson issue "$issue" \
   --arg issue_body_sha256 "$issue_body_sha256" \
   --arg r2_contract_sha256 "$r2_contract_sha" \
-  --arg r2_revision_2_authority_sha256 "$r2_revision_2_authority_sha" \
+  --arg r2_revision_3_authority_sha256 "$r2_revision_3_authority_sha" \
   --arg runtime_contract_sha256 "$runtime_contract_sha" \
   --arg catalog_sha256 "$catalog_sha" \
   --arg packet_manifest_sha256 "$packet_sha" \
@@ -402,7 +295,7 @@ jq -n \
   --arg signature_two "$signature_two_sha" \
   '{outcome:$outcome,commit:$commit,tree:$tree,issue:$issue,
     issue_body_sha256:$issue_body_sha256,r2_contract_sha256:$r2_contract_sha256,
-    r2_revision_2_authority_sha256:$r2_revision_2_authority_sha256,
+    r2_revision_3_authority_sha256:$r2_revision_3_authority_sha256,
     runtime_contract_sha256:$runtime_contract_sha256,catalog_sha256:$catalog_sha256,
     packet_manifest_sha256:$packet_manifest_sha256,
     committed_contact_sheet_sha256:$committed_contact_sheet_sha256,
@@ -417,13 +310,10 @@ jq -n \
   printf 'cpu_count=%s\n' "$(getconf _NPROCESSORS_ONLN)"
   printf 'initial_cpu_affinity=%s\nsampler_controller_affinity=%s\n' \
     "$initial_cpu_affinity" "$sampler_controller_affinity"
-  printf 'disk_walk_cpu_affinity=%s\nworkload_cpu_affinity=%s\ndisk_walk_nice=%s\n' \
-    "$disk_walk_cpu_affinity" "$workload_cpu_affinity" "$disk_walk_nice"
-  printf 'physical_core_groups=%s\ncontroller_physical_core_groups=%s\n' \
-    "$cpu_topology_groups" "$controller_physical_groups"
-  printf 'disk_physical_core_groups=%s\nworkload_physical_core_groups=%s\n' \
-    "$disk_physical_groups" "$workload_physical_groups"
-  printf 'disk_worker_lane_affinities=%s\n' "$disk_worker_lane_affinities"
+  printf 'workload_cpu_affinity=%s\n' "$workload_cpu_affinity"
+  printf 'physical_core_groups=%s\nsampler_physical_core_groups=%s\n' \
+    "$cpu_topology_groups" "$sampler_physical_groups"
+  printf 'workload_physical_core_groups=%s\n' "$workload_physical_groups"
   printf 'locale=%s\n' "$LC_ALL"
   printf 'timezone=%s\n' "${TZ:-system}"
   printf 'network_namespace=%s\n' "$inner_netns"
@@ -458,6 +348,7 @@ record_tool() {
 tools_record=$evidence_dir/metadata/tools.txt
 {
   r2_emit_recorded_tool_version "$tools_record" git git --version
+  # shellcheck disable=SC2016 # The recorded child shell expands BASH_VERSION.
   r2_emit_recorded_tool_version "$tools_record" bash bash \
     -c 'printf '\''%s\n'\'' "$BASH_VERSION"'
   r2_emit_recorded_tool_version "$tools_record" rustc rustc-toolchain --version
@@ -470,6 +361,70 @@ tools_record=$evidence_dir/metadata/tools.txt
   r2_emit_recorded_tool_version "$tools_record" ld ld --version
   r2_emit_recorded_tool_version "$tools_record" chrome chrome --version
 } >"$evidence_dir/metadata/tool-versions.txt"
+
+# Establish and retain finalization headroom before either du crosscheck or
+# the live sampler. The backing XFS already enforces the full 8 GiB ceiling.
+filesystem_evidence_dir=$evidence_dir/measurements/filesystem
+filesystem_evidence_helper=$script_directory/r2-filesystem-evidence.mjs
+[[ -f $filesystem_evidence_helper && ! -L $filesystem_evidence_helper ]] ||
+  fail 'R2 filesystem evidence helper is missing or symlinked'
+reservation=$evidence_dir/host/finalization.reserve
+reservation_stdout=$filesystem_evidence_dir/reservation-fallocate.stdout
+reservation_stderr=$filesystem_evidence_dir/reservation-fallocate.stderr
+[[ ! -e $reservation && ! -L $reservation ]] ||
+  fail 'finalization reservation path is not fresh'
+reservation_started_ns=$(date +%s%N)
+set +e
+/usr/bin/fallocate --posix --length 16777216 "$reservation" \
+  >"$reservation_stdout" 2>"$reservation_stderr"
+reservation_status=$?
+set -e
+reservation_ended_ns=$(date +%s%N)
+reservation_length_bytes=0
+reservation_allocated_bytes=0
+if [[ -f $reservation && ! -L $reservation ]]; then
+  reservation_length_bytes=$(stat -c %s "$reservation")
+  reservation_blocks=$(stat -c %b "$reservation")
+  [[ $reservation_length_bytes =~ ^(0|[1-9][0-9]*)$ &&
+    $reservation_blocks =~ ^(0|[1-9][0-9]*)$ ]] ||
+    fail 'finalization reservation stat is malformed'
+  reservation_allocated_bytes=$((10#$reservation_blocks * 512))
+fi
+jq -n \
+  --arg path "$reservation" \
+  --arg cwd "$repo_root" \
+  --arg started_ns "$reservation_started_ns" \
+  --arg ended_ns "$reservation_ended_ns" \
+  --arg length_bytes "$reservation_length_bytes" \
+  --arg allocated_bytes "$reservation_allocated_bytes" \
+  --arg stdout "${reservation_stdout#"$evidence_dir/"}" \
+  --arg stderr "${reservation_stderr#"$evidence_dir/"}" \
+  --argjson status "$reservation_status" \
+  '{schema:"nomos-r2-finalization-reservation/1",outcome:(if $status == 0 then "pass" else "red" end),
+    invocation:{argv:["/usr/bin/fallocate","--posix","--length","16777216",$path],
+      cwd:$cwd,
+      status:$status,started_ns:$started_ns,ended_ns:$ended_ns,
+      stdout_path:$stdout,stderr_path:$stderr},
+    file:{path:$path,length_bytes:$length_bytes,allocated_bytes:$allocated_bytes}}' \
+  >"$filesystem_evidence_dir/reservation.json"
+[[ $reservation_status -eq 0 && -f $reservation && ! -L $reservation &&
+  $reservation_length_bytes -eq 16777216 &&
+  $reservation_allocated_bytes -ge 16777216 ]] ||
+  fail 'finalization reservation is absent, sparse, underallocated, or the wrong size'
+
+filesystem_cli_args=(
+  --checkout "$repo_root"
+  --target "$repo_root/target"
+  --output "$evidence_dir"
+  --device "$NOMOS_R2_XFS_DEVICE"
+  --major-minor "$NOMOS_R2_XFS_MAJOR_MINOR"
+  --fragment-size "$NOMOS_R2_XFS_FRAGMENT_SIZE"
+  --uuid "$NOMOS_R2_XFS_UUID"
+)
+setup_du_json=$(node "$filesystem_evidence_helper" du-check \
+  "${filesystem_cli_args[@]}" --phase setup) ||
+  fail 'setup du crosscheck or immediate statfs snapshot failed'
+printf '%s\n' "$setup_du_json" >"$filesystem_evidence_dir/du-setup.json"
 
 commands_ledger=$evidence_dir/commands.tsv
 printf 'ordinal\tcommand_id\tstarted_ns\tended_ns\texit_code\tstdout_path\tstderr_path\tcommand\n' \
@@ -507,13 +462,14 @@ run_step() {
   next_ordinal=$((next_ordinal + 1))
 }
 
-disk_samples=$evidence_dir/measurements/checkout-disk-samples.tsv
-printf 'ordinal\tsample_start_ns\telapsed_ns\tmebibytes\tkind\n' >"$disk_samples"
-disk_sampler_stop=$evidence_dir/host/disk-sampler.stop
+disk_samples=$filesystem_evidence_dir/public.tsv
+disk_raw_samples=$filesystem_evidence_dir/raw.tsv
+disk_identity=$filesystem_evidence_dir/identity.json
+disk_sampler_stop=$filesystem_evidence_dir/stop
 disk_sample_state=$evidence_dir/host/tmp/disk-sample-state
 disk_sampler_ready=$disk_sample_state/ready
 mkdir "$disk_sample_state"
-disk_sampler_started=$(date +%s%N)
+disk_sampler_started=
 disk_sample_period_ns=50000000
 disk_sampler_pid=
 disk_sampler_start_ticks=
@@ -521,7 +477,7 @@ sampler_running=0
 stop_sampler() {
   local incoming=${1:-0} result
   if [[ $sampler_running -eq 1 ]]; then
-    if r2_prepare_and_stop_disk_sampler \
+    if r2_prepare_and_stop_sampler \
       "$disk_sampler_pid" "$disk_sampler_start_ticks" \
       "$sampler_controller_affinity" "$disk_sampler_stop" \
       "$disk_sample_state" "$incoming"; then
@@ -549,19 +505,28 @@ sampler_launch_signal=0
 # EXIT cleanup always has the child PID/start identity and knows to stop it.
 trap 'sampler_launch_signal=130' INT
 trap 'sampler_launch_signal=143' TERM
-# Vacate both observer roles before their controller or pool exists. The child
-# launch below explicitly enters the controller mask; every remaining proof
-# command inherits only the workload mask.
+# Vacate the sampler's physical core before launch. The child explicitly enters
+# that mask; every remaining proof command inherits only the workload mask.
 taskset -pc "$workload_cpu_affinity" "$BASHPID" >/dev/null || fail 'CPU isolation failed'
 r2_read_allowed_cpu_list /proc/self/status || fail 'could not verify workload CPU affinity'
 [[ $R2_EXPANDED_CPU_LIST == "$workload_cpu_affinity" ]] || fail 'workload CPU affinity differs'
-setsid taskset -c "$sampler_controller_affinity" bash -c \
-  'set -euo pipefail; source "$1"; export R2_DISK_WALK_CPUS=$2 R2_DISK_WALK_GROUPS=$3; shift 3; r2_sample_checkout_disk "$@"' \
-  r2-disk-sampler "$script_directory/r2-complete-proof-lib.sh" \
-  "$disk_walk_cpu_affinity" "$disk_worker_lane_affinities" \
-  "$repo_root" "$disk_samples" \
-  "$disk_sampler_stop" "$disk_sample_state" "$disk_sampler_started" \
-  "$disk_sample_period_ns" &
+setsid taskset -c "$sampler_controller_affinity" \
+  node "$script_directory/r2-filesystem-sampler.mjs" sample \
+  --root "$repo_root" \
+  --target "$repo_root/target" \
+  --output "$evidence_dir" \
+  --raw "$disk_raw_samples" \
+  --public "$disk_samples" \
+  --identity "$disk_identity" \
+  --state-dir "$disk_sample_state" \
+  --stop "$disk_sampler_stop" \
+  --device "$NOMOS_R2_XFS_DEVICE" \
+  --major-minor "$NOMOS_R2_XFS_MAJOR_MINOR" \
+  --fragment-size "$NOMOS_R2_XFS_FRAGMENT_SIZE" \
+  --uuid "$NOMOS_R2_XFS_UUID" \
+  --period-ns "$disk_sample_period_ns" \
+  --max-gap-ns 100000000 \
+  --max-rows 100000 &
 disk_sampler_pid=$!
 sampler_running=1
 sampler_session_bound=0
@@ -589,6 +554,9 @@ if ! r2_wait_for_sampler_ready \
   "$sampler_controller_affinity" "$disk_sampler_ready"; then
   fail "disk sampler readiness ${R2_SAMPLER_READY_REASON:-unknown} before its initial row"
 fi
+r2_read_decimal_control_marker "$disk_sampler_ready" ||
+  fail 'disk sampler ready marker is malformed'
+disk_sampler_started=$R2_CONTROL_MARKER
 
 # Step 1: accepted workspace proof.
 run_step workspace-fmt \
@@ -823,11 +791,16 @@ r2_viewer_tests() {
     apps/nomos-observed-viewer/test/*.test.mjs \
     docs/evaluation/r2-scene-signature.test.mjs \
     docs/evaluation/r2-complete-proof-process.test.mjs \
-    docs/evaluation/r2-complete-proof-receipt.test.mjs
+    docs/evaluation/r2-complete-proof-receipt.test.mjs \
+    docs/evaluation/r2-complete-proof-xfs-evidence.test.mjs \
+    docs/evaluation/r2-complete-proof-xfs-receipt.test.mjs \
+    docs/evaluation/r2-filesystem-accounting.test.mjs \
+    docs/evaluation/r2-filesystem-evidence.test.mjs
   docs/evaluation/r2-complete-proof.test.sh
+  docs/evaluation/r2-complete-proof-xfs.test.sh
 }
 run_step r2-viewer-tests \
-  'node --test apps/nomos-observed-viewer/test/*.test.mjs docs/evaluation/r2-scene-signature.test.mjs docs/evaluation/r2-complete-proof-process.test.mjs docs/evaluation/r2-complete-proof-receipt.test.mjs; docs/evaluation/r2-complete-proof.test.sh' \
+  'node --test apps/nomos-observed-viewer/test/*.test.mjs docs/evaluation/r2-scene-signature.test.mjs docs/evaluation/r2-complete-proof-process.test.mjs docs/evaluation/r2-complete-proof-receipt.test.mjs docs/evaluation/r2-complete-proof-xfs-evidence.test.mjs docs/evaluation/r2-complete-proof-xfs-receipt.test.mjs docs/evaluation/r2-filesystem-accounting.test.mjs docs/evaluation/r2-filesystem-evidence.test.mjs; docs/evaluation/r2-complete-proof.test.sh; docs/evaluation/r2-complete-proof-xfs.test.sh' \
   r2_viewer_tests
 
 run_step r2-viewer-build \
@@ -931,13 +904,46 @@ namespace_children_before=$(jq -Rsc \
 stop_sampler
 trap - EXIT INT TERM
 
-[[ ${R2_DISK_STOP_REQUESTED_NS:-} =~ ^(0|[1-9][0-9]*)$ ]] ||
-  fail 'disk sampler did not retain its canonical stop-request timestamp'
-r2_write_checkout_disk_summary \
-  "$disk_samples" "$disk_sampler_stop" \
-  "$evidence_dir/measurements/checkout-disk-summary.json" \
-  "$disk_sampler_started" "$disk_sample_period_ns" \
-  "$R2_DISK_STOP_REQUESTED_NS" || fail 'disk sampler summary or ceiling differs'
+[[ ${R2_SAMPLER_STOP_REQUESTED_NS:-} =~ ^(0|[1-9][0-9]*)$ ]] ||
+  fail 'filesystem sampler did not retain its canonical stop timestamp'
+shutdown_du_json=$(node "$filesystem_evidence_helper" du-check \
+  "${filesystem_cli_args[@]}" --phase shutdown) ||
+  fail 'shutdown du crosscheck or immediate statfs snapshot failed'
+a_before_bytes=$(printf '%s\n' "$shutdown_du_json" | jq -er \
+  '.snapshot.used_bytes | select(test("^(0|[1-9][0-9]*)$"))') ||
+  fail 'shutdown statfs A_before is missing or malformed'
+/usr/bin/unlink "$reservation"
+/usr/bin/sync -f "$evidence_dir"
+release_json=$(node "$filesystem_evidence_helper" release-check \
+  "${filesystem_cli_args[@]}" \
+  --reservation-path "$reservation" \
+  --reservation-length-bytes "$reservation_length_bytes" \
+  --reservation-allocated-bytes "$reservation_allocated_bytes" \
+  --a-before-bytes "$a_before_bytes") ||
+  fail 'finalization reservation release did not free its allocated bytes'
+
+# Only after A_after is captured may finalization evidence be written.
+printf '%s\n' "$shutdown_du_json" >"$filesystem_evidence_dir/du-shutdown.json"
+printf '%s\n' "$release_json" >"$filesystem_evidence_dir/release.json"
+summary_json=$(node "$filesystem_evidence_helper" summarize \
+  "${filesystem_cli_args[@]}" \
+  --identity-json "$disk_identity" --raw "$disk_raw_samples" \
+  --public "$disk_samples" \
+  --setup-du-json "$filesystem_evidence_dir/du-setup.json" \
+  --shutdown-du-json "$filesystem_evidence_dir/du-shutdown.json" \
+  --finalization-json "$filesystem_evidence_dir/release.json" \
+  --stop "$disk_sampler_stop" \
+  --nominal-interval-ns "$disk_sample_period_ns") ||
+  fail 'filesystem summary, schedule, crosschecks, or ceiling differs'
+closed_maximum_bytes=$(printf '%s\n' "$summary_json" | jq -er \
+  '.maximum_allocated_bytes | select(test("^(0|[1-9][0-9]*)$"))') ||
+  fail 'filesystem summary maximum is missing or malformed'
+summary_origin_ns=$(printf '%s\n' "$summary_json" | jq -r '.sampler_origin_ns')
+summary_stop_ns=$(printf '%s\n' "$summary_json" | jq -r '.stop_requested_ns')
+[[ $summary_origin_ns == "$disk_sampler_started" &&
+  $summary_stop_ns == "$R2_SAMPLER_STOP_REQUESTED_NS" ]] ||
+  fail 'filesystem summary differs from the parent sampler handoff'
+printf '%s\n' "$summary_json" >"$filesystem_evidence_dir/summary.json"
 
 porcelain_end=$(git status --porcelain=v1 --untracked-files=all)
 end_head=$(git rev-parse --verify 'HEAD^{commit}')
@@ -982,5 +988,9 @@ node "$receipt_helper" assemble \
 node "$receipt_helper" verify \
   --repo "$repo_root" \
   --output "$evidence_dir"
+node "$filesystem_evidence_helper" final-check \
+  "${filesystem_cli_args[@]}" \
+  --closed-maximum-bytes "$closed_maximum_bytes" >/dev/null ||
+  fail 'post-receipt statfs allocation exceeds the closed maximum'
 
 printf 'R2 complete proof inner: PASS commit=%s tree=%s\n' "$head" "$tree"

@@ -80,20 +80,25 @@ plant_project_license_drift() {
 }
 
 plant_unknown_origin() {
+  # Backticks are literal Markdown delimiters in these planted sed patterns.
+  # shellcheck disable=SC2016
   sed -i '0,/`r2_authored`/s//`unknown_origin`/' "$1/docs/evaluation/R2_SOURCE_PROVENANCE.md"
 }
 
 plant_unlicensed() {
+  # shellcheck disable=SC2016
   sed -i '0,/| `project_mit` |/s//| `unlicensed` |/' "$1/docs/evaluation/R2_SOURCE_PROVENANCE.md"
 }
 
 plant_dangling_receipt() {
+  # shellcheck disable=SC2016
   sed -i '0,/`docs\/evaluation\/runs\/r2\/2026-08-27-issue-195-author\/AUTHOR_RECEIPT.md`/s//`docs\/evaluation\/runs\/r2\/missing.md`/' \
     "$1/docs/evaluation/R2_SOURCE_PROVENANCE.md"
 }
 
 plant_wrong_final_receipt() {
-  sed -i '\|`docs/evaluation/r2-complete-proof.sh`|s|`docs/evaluation/runs/r2/2026-08-27-issue-199-author/AUTHOR_RECEIPT.md`|`docs/evaluation/runs/r2/2026-08-27-issue-197-author/AUTHOR_RECEIPT.md`|' \
+  # shellcheck disable=SC2016
+  sed -i '\|`docs/evaluation/r2-complete-proof.sh`|s|`docs/evaluation/runs/r2/2026-08-28-issue-199-revision-3-author/AUTHOR_RECEIPT.md`|`docs/evaluation/runs/r2/2026-08-27-issue-197-author/AUTHOR_RECEIPT.md`|' \
     "$1/docs/evaluation/R2_SOURCE_PROVENANCE.md"
 }
 

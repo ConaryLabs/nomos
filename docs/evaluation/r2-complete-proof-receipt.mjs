@@ -14,11 +14,12 @@ import {
 import { dirname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { auditLiveProcessNamespace } from "./r2-complete-proof-process.mjs";
+import { validateFilesystemEvidence } from "./r2-filesystem-evidence.mjs";
 const CONSTANTS = Object.freeze({
   issue: 199,
-  issue_body_sha256: "8ffd30e7a213e991732ea6031743542eb68d9b80fe6d4989ed58052617352dcc",
-  r2_contract_sha256: "770740bad1c85cf7ea9dcd16f8c25e01766064d3b59d7f0bb9d438c289a6e638",
-  r2_revision_2_authority_sha256: "0356b3918a5c2643c36e16555e8ef78155bf893a8c3c21e4f75263f8289feea0",
+  issue_body_sha256: "0a701b4238fd6b7f23ba0ae40022bc7c23ca450ad1a8f0febc05ab440f6b3c88",
+  r2_contract_sha256: "625f4bb1ea7c7400a6717c14b51cc6da51b32421e49bba98cf3d7ed9ff4a1254",
+  r2_revision_3_authority_sha256: "a6a50bca56c4a990b44968ffefc31103a88e48b52904728693a166ba0d66d3ae",
   runtime_contract_sha256: "dd6f4b2ce48557f48df61d50cdc25b4ebaf0904331f4fd78d804e3af536db593",
   catalog_sha256: "6259520fbf318ae0393ea4ae69649864acb154db4034d081435416be2ffa9323",
   packet_manifest_sha256: "d5708087cf7967a420667c56a7b02ed052b7058ed8545af06e6771170003c948",
@@ -77,7 +78,7 @@ const COMMAND_DISPLAYS = Object.freeze([
   "compile scene_one ten times to unique outputs and compare committed plan",
   "compile scene_two ten times to unique outputs and compare committed plan",
   "node docs/evaluation/r2-scene-signature.mjs scene_one scene_two",
-  "node --test apps/nomos-observed-viewer/test/*.test.mjs docs/evaluation/r2-scene-signature.test.mjs docs/evaluation/r2-complete-proof-process.test.mjs docs/evaluation/r2-complete-proof-receipt.test.mjs; docs/evaluation/r2-complete-proof.test.sh",
+  "node --test apps/nomos-observed-viewer/test/*.test.mjs docs/evaluation/r2-scene-signature.test.mjs docs/evaluation/r2-complete-proof-process.test.mjs docs/evaluation/r2-complete-proof-receipt.test.mjs docs/evaluation/r2-complete-proof-xfs-evidence.test.mjs docs/evaluation/r2-complete-proof-xfs-receipt.test.mjs docs/evaluation/r2-filesystem-accounting.test.mjs docs/evaluation/r2-filesystem-evidence.test.mjs; docs/evaluation/r2-complete-proof.test.sh; docs/evaluation/r2-complete-proof-xfs.test.sh",
   "node apps/nomos-observed-viewer/build.mjs --plan scene_one --plan scene_two --out <output>/r2/viewer-proof/dist --receipt <output>/r2/viewer-proof/receipt.json",
   "node apps/nomos-observed-viewer/smoke/smoke.mjs --dist <output>/r2/viewer-proof/dist --out <output>/r2/browser-smoke --samples 10",
   "LC_ALL=C /usr/bin/time -v cargo build --workspace --release --locked --offline (fresh target)",
@@ -89,8 +90,8 @@ const COMMAND_DISPLAYS = Object.freeze([
 ]);
 const TOOL_LABELS = Object.freeze([
   "git", "realpath", "readlink", "find", "grep", "awk", "sed", "sort", "cmp", "cut",
-  "sha256sum", "stat", "date", "du", "jq", "gnu-time", "ar", "basename", "bash", "bwrap",
-  "cargo", "cc", "chmod", "cp", "diff", "dirname", "env", "getconf", "head", "id",
+  "sha256sum", "stat", "date", "du", "jq", "gnu-time", "fallocate", "sync", "unlink",
+  "ar", "basename", "bash", "bwrap", "cargo", "cc", "chmod", "cp", "diff", "dirname", "env", "getconf", "head", "id",
   "install", "ionice", "ip", "ld", "ln", "mkdir", "mktemp", "mv", "node", "paste", "ps", "rm", "rustc",
   "rustup", "seq", "setpriv", "setsid", "sh", "sleep", "strings", "sudo", "tar", "taskset", "timeout", "touch",
   "tr", "uname", "unshare", "wc", "cargo-toolchain", "rustc-toolchain", "rust-lld", "chrome",
@@ -193,7 +194,7 @@ const validateSourceBindings = (repo, output, candidate) => {
   const source = readJson(join(output, "metadata/source-tree.json"), "source-tree.json");
   exactKeys(source, [
     "outcome", "commit", "tree", "issue", "issue_body_sha256", "r2_contract_sha256",
-    "r2_revision_2_authority_sha256",
+    "r2_revision_3_authority_sha256",
     "runtime_contract_sha256", "catalog_sha256", "packet_manifest_sha256",
     "committed_contact_sheet_sha256", "plan_sha256", "scene_signature_sha256",
   ], "source-tree.json");
@@ -204,7 +205,7 @@ const validateSourceBindings = (repo, output, candidate) => {
   required(source.issue === CONSTANTS.issue && source.issue_body_sha256 === CONSTANTS.issue_body_sha256, "issue authority differs");
   const expected = {
     r2_contract_sha256: CONSTANTS.r2_contract_sha256,
-    r2_revision_2_authority_sha256: CONSTANTS.r2_revision_2_authority_sha256,
+    r2_revision_3_authority_sha256: CONSTANTS.r2_revision_3_authority_sha256,
     runtime_contract_sha256: CONSTANTS.runtime_contract_sha256,
     catalog_sha256: CONSTANTS.catalog_sha256,
     packet_manifest_sha256: CONSTANTS.packet_manifest_sha256,
@@ -214,7 +215,7 @@ const validateSourceBindings = (repo, output, candidate) => {
   required(JSON.stringify(source.plan_sha256) === JSON.stringify(CONSTANTS.plans), "frozen plan digests differ");
   required(JSON.stringify(source.scene_signature_sha256) === JSON.stringify(CONSTANTS.signatures), "frozen signatures differ");
   digestFile(repo, "R2.md", CONSTANTS.r2_contract_sha256, "R2.md");
-  digestFile(repo, "docs/decisions/0024-r2-final-proof-finalization-order.md", CONSTANTS.r2_revision_2_authority_sha256, "R2 revision-2 authority");
+  digestFile(repo, "docs/decisions/0025-r2-filesystem-accounting.md", CONSTANTS.r2_revision_3_authority_sha256, "R2 revision-3 authority");
   digestFile(repo, "RUNTIME.md", CONSTANTS.runtime_contract_sha256, "RUNTIME.md");
   digestFile(repo, "apps/nomos-observed-viewer/src/catalog.mjs", CONSTANTS.catalog_sha256, "catalog");
   digestFile(repo, "docs/evaluation/r2-second-scene-packet/MANIFEST.sha256", CONSTANTS.packet_manifest_sha256, "second-scene packet");
@@ -309,6 +310,10 @@ const validateComponentLogs = (output, ledger) => {
     "maximum-compile-benchmark": "r2 compile latency:",
   };
   for (const [id, marker] of Object.entries(proofMarkers)) required(stdout(id).includes(marker), `${id} proof marker is absent`);
+  required(
+    stdout("r2-viewer-tests").includes("r2-complete-proof-xfs shell validation tests: PASS"),
+    "r2-viewer-tests XFS wrapper plant marker is absent",
+  );
   required(stdout("maximum-compile-benchmark").includes("; PASS"), "maximum-compile-benchmark PASS marker is absent");
   const schemaPlants = stdout("r2-schema-plants");
   required(schemaPlants === "expected refusal: missing\nexpected refusal: duplicate\nexpected refusal: third\n", "r2-schema-plants output differs");
@@ -485,52 +490,37 @@ const decimalSecondsToNs = (text) => {
   if (parts.length) seconds += BigInt(parts.pop()) * 3600n;
   return seconds * 1_000_000_000n + BigInt(fraction.padEnd(9, "0"));
 };
-const decimalBigInt = (text, label) => {
-  required(typeof text === "string" && /^(?:0|[1-9]\d*)$/.test(text), `${label} is not a canonical decimal string`);
-  return BigInt(text);
-};
-const validateMeasurements = (output) => {
+const validateMeasurements = (repo, output) => {
   const time = readText(join(output, "measurements/clean-release-time.txt"), "GNU time record");
   const elapsed = [...time.matchAll(/^\s*Elapsed \(wall clock\) time \(h:mm:ss or m:ss\):\s*(\S+)\s*$/gm)];
   const exits = [...time.matchAll(/^\s*Exit status:\s*(\d+)\s*$/gm)];
   required(elapsed.length === 1 && exits.length === 1 && exits[0][1] === "0", "GNU time record is incomplete or failed");
   const buildNs = decimalSecondsToNs(elapsed[0][1]);
   required(buildNs <= 60_000_000_000n, `clean release build exceeded 60 s: ${buildNs} ns`);
-  const diskText = readText(join(output, "measurements/checkout-disk-samples.tsv"), "disk samples");
-  required(diskText.endsWith("\n") && !diskText.includes("\r"), "disk samples have noncanonical lines");
-  const diskLines = diskText.slice(0, -1).split("\n");
-  required(diskLines.shift() === "ordinal\tsample_start_ns\telapsed_ns\tmebibytes\tkind", "disk samples header differs");
-  required(diskLines.length >= 2, "disk sampler retained fewer than two rows");
-  let previous, maximumGap = 0n;
-  const rows = diskLines.map((line, index) => {
-    const fields = line.split("\t");
-    required(fields.length === 5 && /^(?:0|[1-9]\d*)$/.test(fields[3]) && ["scheduled", "terminal"].includes(fields[4]), `disk row ${index} is invalid`);
-    const ordinal = decimalBigInt(fields[0], `disk row ${index} ordinal`), sampleStart = decimalBigInt(fields[1], `disk row ${index} sample_start_ns`), elapsed = decimalBigInt(fields[2], `disk row ${index} elapsed_ns`);
-    const mebibytes = Number(fields[3]); required(Number.isSafeInteger(mebibytes), `disk row ${index} mebibytes is not a safe integer`);
-    return { ordinal, sampleStart, elapsed, mebibytes, kind: fields[4] };
+  const filesystem = validateFilesystemEvidence(join(output, "measurements/filesystem"), {
+    checkout: repo,
+    target: join(repo, "target"),
+    output,
+    nominalIntervalNs: "50000000",
   });
-  for (const [index, row] of rows.entries()) {
-    if (previous !== undefined) { required(row.sampleStart > previous, `disk sample start is not strictly increasing at ${index}`); const gap = row.sampleStart - previous; if (gap > maximumGap) maximumGap = gap; required(gap <= 100_000_000n, `disk sampler gap exceeds 100000000 ns at ${index}`); }
-    previous = row.sampleStart;
-  }
-  const ordinalTexts = rows.map((row) => row.ordinal.toString()), sortedOrdinals = [...ordinalTexts].sort((a, b) => BigInt(a) < BigInt(b) ? -1 : BigInt(a) > BigInt(b) ? 1 : 0);
-  required(new Set(ordinalTexts).size === rows.length && JSON.stringify(sortedOrdinals) === JSON.stringify(rows.map((_, index) => String(index))), "disk launch ordinals are not unique and contiguous");
-  const terminalRows = rows.filter((row) => row.kind === "terminal"); required(terminalRows.length === 1 && terminalRows[0] === rows.at(-1), "disk terminal row is not unique or chronologically last");
-  const terminal = terminalRows[0]; required(terminal.ordinal === rows.reduce((maximumOrdinal, row) => row.ordinal > maximumOrdinal ? row.ordinal : maximumOrdinal, 0n), "disk terminal launch ordinal is not final");
-  const maximum = Math.max(...rows.map((row) => row.mebibytes));
-  required(maximum <= 8_192, `checkout peak disk exceeded 8192 MiB: ${maximum}`);
-  const summary = readJson(join(output, "measurements/checkout-disk-summary.json"), "disk summary");
-  exactKeys(summary, ["outcome", "sampler_origin_ns", "stop_requested_ns", "nominal_interval_ns", "samples", "initial_mib", "final_mib", "maximum_mib", "maximum_gap_ns", "du_arguments"], "disk summary");
-  const origin = decimalBigInt(summary.sampler_origin_ns, "disk summary sampler_origin_ns");
-  const stopRequested = decimalBigInt(summary.stop_requested_ns, "disk summary stop_requested_ns");
-  const stopText = readText(join(output, "host/disk-sampler.stop"), "disk sampler stop marker");
-  required(/^(?:0|[1-9]\d*)\n$/.test(stopText), "disk sampler stop marker is not a canonical decimal string");
-  const stopMarker = decimalBigInt(stopText.slice(0, -1), "disk sampler stop marker"); required(stopMarker === stopRequested, "disk sampler stop marker differs from disk summary");
-  required(stopRequested >= origin, "disk sampler stop request precedes sampler origin");
-  rows.forEach((row, index) => required(row.sampleStart >= origin && row.sampleStart - origin === row.elapsed, `disk row ${index} elapsed_ns differs from sample_start_ns and sampler origin`));
-  required(terminal.sampleStart >= stopRequested, "disk terminal sample precedes stop request");
-  required(summary.outcome === "pass" && summary.nominal_interval_ns === "50000000" && summary.samples === rows.length && summary.initial_mib === rows[0].mebibytes && summary.final_mib === rows.at(-1).mebibytes && summary.maximum_mib === maximum && summary.maximum_gap_ns === maximumGap.toString() && JSON.stringify(summary.du_arguments) === JSON.stringify(["-sm", "--", "<checkout>"]), "disk summary arithmetic or method differs from raw rows");
-  return { clean_release_build_ns: buildNs.toString(), checkout_peak_mib: maximum, disk_samples: rows.length, disk_maximum_gap_ns: maximumGap.toString(), disk_stop_requested_ns: stopRequested.toString() };
+  const summary = filesystem.summary;
+  const maximum = Number(summary.maximum_mib);
+  const samples = Number(summary.samples);
+  required(Number.isSafeInteger(maximum) && maximum <= 8_192, `checkout peak disk exceeded 8192 MiB: ${summary.maximum_mib}`);
+  required(Number.isSafeInteger(samples) && samples === filesystem.rawRows.length, "filesystem summary sample count is not exact");
+  return {
+    clean_release_build_ns: buildNs.toString(),
+    checkout_peak_mib: maximum,
+    disk_samples: samples,
+    disk_maximum_gap_ns: summary.maximum_gap_ns,
+    disk_stop_requested_ns: summary.stop_requested_ns,
+    filesystem_capacity_bytes: summary.capacity_bytes,
+    filesystem_counter: summary.counter,
+    setup_du_mib: summary.setup_du_mib,
+    shutdown_du_mib: summary.shutdown_du_mib,
+    reservation_allocated_bytes: summary.reservation_allocated_bytes,
+    post_release_allocated_bytes: summary.a_after_bytes,
+  };
 };
 const treeInventory = (directory) => regularTree(directory).map(({ path, bytes, sha256: digest }) => ({ path, bytes, sha256: digest }));
 
@@ -892,7 +882,7 @@ export const validateEvidence = ({ repo: repoArgument, output: outputArgument, c
   const filesystemIsolation = validateFilesystemIsolation(repo, output, liveChecks);
   const tools = validateTools(output, liveChecks);
   const closure = validateClosure(repo, output, liveChecks);
-  const budgets = validateMeasurements(output);
+  const budgets = validateMeasurements(repo, output);
   const r1 = validateR1(repo, output, ledger, tests.r1_viewer_tests, liveChecks);
   const signatures = validateScenes(repo, output);
   const proofBuild = validateBuildReceipt(repo, join(output, "r2/viewer-proof"), CONSTANTS.plans);

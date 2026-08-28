@@ -6,10 +6,8 @@ case ${BASH_SOURCE[0]} in
   */*) r2_complete_proof_lib_directory=${BASH_SOURCE[0]%/*} ;;
   *) r2_complete_proof_lib_directory=. ;;
 esac
-# shellcheck source=docs/evaluation/r2-disk-control-lib.sh
-source "$r2_complete_proof_lib_directory/r2-disk-control-lib.sh"
-# shellcheck source=docs/evaluation/r2-disk-sampler-lib.sh
-source "$r2_complete_proof_lib_directory/r2-disk-sampler-lib.sh"
+# shellcheck source=docs/evaluation/r2-complete-proof-control.sh
+source "$r2_complete_proof_lib_directory/r2-complete-proof-control.sh"
 unset r2_complete_proof_lib_directory
 
 r2_read_process_stat_once() {
@@ -107,21 +105,21 @@ r2_read_cpu_sibling_group() {
 
 r2_validate_physical_cpu_isolation() {
   [[ $# -eq 3 ]] || return 2
-  local disk_text workload_text topology_root=$3 cpu sibling group
-  local -a disk_cpus=() workload_cpus=() siblings=()
-  local -A disk_set=() workload_set=()
+  local sampler_text workload_text topology_root=$3 cpu sibling group
+  local -a sampler_cpus=() workload_cpus=() siblings=()
+  local -A sampler_set=() workload_set=()
   r2_expand_cpu_list "$1" || return
-  disk_text=$R2_EXPANDED_CPU_LIST
-  IFS=, read -r -a disk_cpus <<<"$disk_text"
+  sampler_text=$R2_EXPANDED_CPU_LIST
+  IFS=, read -r -a sampler_cpus <<<"$sampler_text"
   r2_expand_cpu_list "$2" || return
   workload_text=$R2_EXPANDED_CPU_LIST
   IFS=, read -r -a workload_cpus <<<"$workload_text"
-  for cpu in "${disk_cpus[@]}"; do disk_set["$cpu"]=1; done
+  for cpu in "${sampler_cpus[@]}"; do sampler_set["$cpu"]=1; done
   for cpu in "${workload_cpus[@]}"; do
-    [[ -z ${disk_set[$cpu]+present} ]] || return 1
+    [[ -z ${sampler_set[$cpu]+present} ]] || return 1
     workload_set["$cpu"]=1
   done
-  for cpu in "${disk_cpus[@]}"; do
+  for cpu in "${sampler_cpus[@]}"; do
     r2_read_cpu_sibling_group "$cpu" "$topology_root" || return
     group=$R2_CPU_SIBLING_GROUP
     IFS=, read -r -a siblings <<<"$group"
@@ -134,7 +132,7 @@ r2_validate_physical_cpu_isolation() {
     group=$R2_CPU_SIBLING_GROUP
     IFS=, read -r -a siblings <<<"$group"
     for sibling in "${siblings[@]}"; do
-      [[ -z ${disk_set[$sibling]+present} ]] || return 1
+      [[ -z ${sampler_set[$sibling]+present} ]] || return 1
     done
   done
   R2_EXPANDED_CPU_LIST=$workload_text
@@ -143,9 +141,9 @@ r2_validate_physical_cpu_isolation() {
 r2_partition_cpu_topology() {
   [[ $# -eq 2 ]] || return 2
   local allowed_text topology_root=$2 cpu sibling group group_list=''
-  local observer_group_count index controller_text='' disk_text='' workload_text=''
-  local controller_groups_text='' disk_groups_text='' workload_groups_text=''
-  local -a cpus=() siblings=() groups=() controller_cpus=() disk_cpus=() workload_cpus=()
+  local index sampler_text='' workload_text=''
+  local sampler_groups_text='' workload_groups_text=''
+  local -a cpus=() siblings=() groups=() sampler_cpus=() workload_cpus=()
   local -A allowed_set=() cpu_group=() group_index=() sibling_group=()
   r2_expand_cpu_list "$1" || return
   allowed_text=$R2_EXPANDED_CPU_LIST
@@ -160,10 +158,10 @@ r2_partition_cpu_topology() {
       groups+=("$group")
     fi
   done
-  # The controller, disk walks, and measured workload each require a complete
-  # physical core group. A shared observer core recreated the very scheduler
-  # contention this partition is intended to exclude.
-  [[ ${#groups[@]} -ge 3 ]] || return 1
+  # The persistent constant-work sampler and measured workload each receive at
+  # least one complete physical core group. No sampler sibling is available to
+  # the workload.
+  [[ ${#groups[@]} -ge 2 ]] || return 1
 
   # Every sibling group must be complete inside the allowed affinity and
   # disjoint from every other reported group. Every sibling must also report
@@ -194,53 +192,35 @@ r2_partition_cpu_topology() {
     done
   done
 
-  # Reserve the first complete physical-core group for the controller, then
-  # split the remaining groups between disk walks and measured work. When that
-  # remainder is odd, disk walks receive the extra group: checkout-wide walks
-  # are the observer's sustained bottleneck, while the workload still retains
-  # at least one complete group on every admitted topology.
-  observer_group_count=$(( (${#groups[@]} + 2) / 2 ))
+  # One group is sufficient for the direct statfs sampler. Give every remaining
+  # complete group to the measured workload.
   for cpu in "${cpus[@]}"; do
     group=${cpu_group[$cpu]}
     index=${group_index[$group]}
     if [[ $index -eq 0 ]]; then
-      controller_cpus+=("$cpu")
-    elif [[ $index -lt $observer_group_count ]]; then
-      disk_cpus+=("$cpu")
+      sampler_cpus+=("$cpu")
     else
       workload_cpus+=("$cpu")
     fi
   done
-  [[ ${#controller_cpus[@]} -gt 0 && ${#disk_cpus[@]} -gt 0 &&
-    ${#workload_cpus[@]} -gt 0 ]] || return 1
-  printf -v controller_text '%s,' "${controller_cpus[@]}"
-  printf -v disk_text '%s,' "${disk_cpus[@]}"
+  [[ ${#sampler_cpus[@]} -gt 0 && ${#workload_cpus[@]} -gt 0 ]] || return 1
+  printf -v sampler_text '%s,' "${sampler_cpus[@]}"
   printf -v workload_text '%s,' "${workload_cpus[@]}"
   printf -v group_list '%s;' "${groups[@]}"
-  printf -v controller_groups_text '%s;' "${groups[@]:0:1}"
-  printf -v disk_groups_text '%s;' "${groups[@]:1:observer_group_count - 1}"
-  printf -v workload_groups_text '%s;' "${groups[@]:observer_group_count}"
-  controller_text=${controller_text%,}
-  disk_text=${disk_text%,}
+  printf -v sampler_groups_text '%s;' "${groups[@]:0:1}"
+  printf -v workload_groups_text '%s;' "${groups[@]:1}"
+  sampler_text=${sampler_text%,}
   workload_text=${workload_text%,}
   r2_validate_physical_cpu_isolation \
-    "$controller_text" "$disk_text" "$topology_root" || return
-  r2_validate_physical_cpu_isolation \
-    "$controller_text" "$workload_text" "$topology_root" || return
-  r2_validate_physical_cpu_isolation \
-    "$disk_text" "$workload_text" "$topology_root" || return
+    "$sampler_text" "$workload_text" "$topology_root" || return
   # shellcheck disable=SC2034 # Returned globals are consumed after sourcing.
-  R2_CONTROLLER_CPUS=$controller_text
-  # shellcheck disable=SC2034 # Returned globals are consumed after sourcing.
-  R2_DISK_CPUS=$disk_text
+  R2_SAMPLER_CPUS=$sampler_text
   # shellcheck disable=SC2034 # Returned globals are consumed after sourcing.
   R2_WORKLOAD_CPUS=$workload_text
   # shellcheck disable=SC2034 # Returned globals are consumed after sourcing.
   R2_CPU_TOPOLOGY_GROUPS=${group_list%;}
   # shellcheck disable=SC2034 # Returned globals are consumed after sourcing.
-  R2_CONTROLLER_PHYSICAL_GROUPS=${controller_groups_text%;}
-  # shellcheck disable=SC2034 # Returned globals are consumed after sourcing.
-  R2_DISK_PHYSICAL_GROUPS=${disk_groups_text%;}
+  R2_SAMPLER_PHYSICAL_GROUPS=${sampler_groups_text%;}
   # shellcheck disable=SC2034 # Returned globals are consumed after sourcing.
   R2_WORKLOAD_PHYSICAL_GROUPS=${workload_groups_text%;}
   R2_EXPANDED_CPU_LIST=$allowed_text
@@ -443,7 +423,7 @@ r2_sampler_session_has_members() {
   return 1
 }
 
-r2_stop_disk_sampler() {
+r2_stop_sampler() {
   [[ $# -eq 5 && $1 =~ ^[1-9][0-9]*$ &&
     ( -z $2 || $2 =~ ^[0-9]+$ ) && -n $3 && -n $4 &&
     $5 =~ ^[0-9]+$ && $5 -le 255 ]] || return 2
@@ -454,13 +434,16 @@ r2_stop_disk_sampler() {
   if [[ -z $start ]] ||
     ! r2_sampler_identity_stable "$pid" "$start" "$expected_cpu_list"; then
     marker_status=1
-  elif ! marker_ns=$(date +%s%N) ||
-    [[ ! $marker_ns =~ ^(0|[1-9][0-9]*)$ ]] ||
-    ! r2_publish_decimal_control_marker "$stop" "$marker_ns"; then
+  elif ! r2_monotonic_now_ns; then
     marker_status=1
   else
-    # shellcheck disable=SC2034 # Returned global binds summary and marker.
-    R2_DISK_STOP_REQUESTED_NS=$marker_ns
+    marker_ns=$R2_MONOTONIC_NS
+    if ! r2_publish_decimal_control_marker "$stop" "$marker_ns"; then
+      marker_status=1
+    else
+      # shellcheck disable=SC2034 # Returned global binds summary and marker.
+      R2_SAMPLER_STOP_REQUESTED_NS=$marker_ns
+    fi
   fi
 
   # A normal stop gets a bounded grace period. A failed marker or a controller
@@ -518,7 +501,9 @@ r2_stop_disk_sampler() {
   fi
   for ((attempt = 0; attempt < 100; attempt += 1)); do
     if r2_sampler_session_has_members "$pid"; then
-      [[ $attempt -lt 99 ]] && sleep 0.01 || break
+      if [[ $attempt -lt 99 ]]; then sleep 0.01 || break
+      else break
+      fi
       continue
     else
       session_status=$?
@@ -527,7 +512,9 @@ r2_stop_disk_sampler() {
         break
       fi
       [[ $session_status -eq 2 ]] || break
-      [[ $attempt -lt 99 ]] && sleep 0.01 || break
+      if [[ $attempt -lt 99 ]]; then sleep 0.01 || break
+      else break
+      fi
     fi
   done
   [[ $session_closed -eq 1 ]] || wait_status=1
@@ -537,7 +524,7 @@ r2_stop_disk_sampler() {
   return "$wait_status"
 }
 
-r2_prepare_and_stop_disk_sampler() {
+r2_prepare_and_stop_sampler() {
   [[ $# -eq 6 && $1 =~ ^[1-9][0-9]*$ &&
     ( -z $2 || $2 =~ ^[0-9]+$ ) && -n $3 && -n $4 &&
     -d $5 && ! -L $5 && $6 =~ ^[0-9]+$ && $6 -le 255 ]] || return 2
@@ -547,24 +534,27 @@ r2_prepare_and_stop_disk_sampler() {
   local prepare_timeout_ns=6000000000 prepare_deadline_ns monotonic_now
 
   if [[ $incoming -ne 0 ]]; then
-    r2_stop_disk_sampler "$pid" "$start" "$expected_cpu_list" "$stop" "$incoming"
+    r2_stop_sampler "$pid" "$start" "$expected_cpu_list" "$stop" "$incoming"
     return
   fi
 
   if [[ -z $start || -e $request || -L $request || -e $ready || -L $ready ]] ||
-    ! r2_sampler_identity_stable "$pid" "$start" "$expected_cpu_list" ||
-    ! request_ns=$(date +%s%N) ||
-    [[ ! $request_ns =~ ^(0|[1-9][0-9]*)$ ]] ||
-    ! r2_publish_decimal_control_marker "$request" "$request_ns"; then
+    ! r2_sampler_identity_stable "$pid" "$start" "$expected_cpu_list"; then
     prepare_status=1
+  elif ! r2_monotonic_now_ns; then
+    prepare_status=1
+  else
+    request_ns=$R2_MONOTONIC_NS
+    r2_publish_decimal_control_marker "$request" "$request_ns" ||
+      prepare_status=1
   fi
 
   if [[ $prepare_status -eq 0 ]]; then
-    if ! r2_monotonic_now_ns || ! r2_disk_deadline_ns \
+    if ! r2_monotonic_now_ns || ! r2_control_deadline_ns \
       "$R2_MONOTONIC_NS" 1 "$prepare_timeout_ns"; then
       prepare_status=1
     else
-      prepare_deadline_ns=$R2_DISK_DEADLINE_NS
+      prepare_deadline_ns=$R2_CONTROL_DEADLINE_NS
     fi
   fi
 
@@ -587,11 +577,11 @@ r2_prepare_and_stop_disk_sampler() {
   if [[ $prepare_status -ne 0 ]]; then
     cleanup_status=$incoming
     [[ $cleanup_status -ne 0 ]] || cleanup_status=1
-    r2_stop_disk_sampler \
+    r2_stop_sampler \
       "$pid" "$start" "$expected_cpu_list" "$stop" "$cleanup_status" || return
     return "$cleanup_status"
   fi
-  r2_stop_disk_sampler "$pid" "$start" "$expected_cpu_list" "$stop" "$incoming"
+  r2_stop_sampler "$pid" "$start" "$expected_cpu_list" "$stop" "$incoming"
 }
 
 r2_measure_process_closure() {

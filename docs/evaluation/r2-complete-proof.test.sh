@@ -24,19 +24,37 @@ unset \
   NOMOS_R2_OUTPUT_REAL \
   NOMOS_R2_OUTPUT_RELATIVE \
   NOMOS_R2_PROOF_TOKEN \
-  NOMOS_R2_EXTERNAL_POSITIVE
+  NOMOS_R2_EXTERNAL_POSITIVE \
+  NOMOS_R2_XFS_WRAPPER \
+  NOMOS_R2_XFS_UUID \
+  NOMOS_R2_XFS_FRAGMENT_SIZE \
+  NOMOS_R2_XFS_DEVICE \
+  NOMOS_R2_XFS_MAJOR_MINOR
+
+# The inner preflight now requires the wrapper's filesystem identity. These
+# deliberately synthetic values let refusal plants reach the behavior they
+# intend to exercise without pretending to be a real wrapper run.
+export NOMOS_R2_XFS_WRAPPER=1
+export NOMOS_R2_XFS_UUID=11111111-1111-1111-1111-111111111111
+export NOMOS_R2_XFS_FRAGMENT_SIZE=4096
+export NOMOS_R2_XFS_DEVICE=/dev/loop0
+export NOMOS_R2_XFS_MAJOR_MINOR=7:0
 
 script_directory=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)
 repo_root=$(cd -- "$script_directory/../.." && pwd -P)
 harness_source=$script_directory/r2-complete-proof.sh
 harness_lib_source=$script_directory/r2-complete-proof-lib.sh
-harness_disk_control_source=$script_directory/r2-disk-control-lib.sh
-harness_disk_sampler_source=$script_directory/r2-disk-sampler-lib.sh
+harness_control_source=$script_directory/r2-complete-proof-control.sh
+harness_outer_source=$script_directory/r2-complete-proof-outer.sh
+control_test_source=$script_directory/r2-complete-proof-control.test.sh
 [[ -f $harness_source && ! -L $harness_source ]] || fail 'complete-proof harness is absent'
 [[ -f $harness_lib_source && ! -L $harness_lib_source ]] || fail 'complete-proof library is absent'
-[[ -f $harness_disk_control_source && ! -L $harness_disk_control_source ]] || fail 'disk-control library is absent'
-[[ -f $harness_disk_sampler_source && ! -L $harness_disk_sampler_source ]] ||
-  fail 'disk-sampler library is absent'
+[[ -f $harness_control_source && ! -L $harness_control_source ]] ||
+  fail 'complete-proof control library is absent'
+[[ -f $harness_outer_source && ! -L $harness_outer_source ]] ||
+  fail 'complete-proof outer library is absent'
+[[ -f $control_test_source && ! -L $control_test_source ]] ||
+  fail 'complete-proof control plants are absent'
 
 for command in git cp ln chmod mkdir mktemp mv grep jq ps realpath readlink wc sed find id sleep setsid taskset; do
   command -v "$command" >/dev/null 2>&1 || fail "required executable not found: $command"
@@ -51,12 +69,7 @@ allowed_session_pid=
 same_group_root=
 same_group_job_pid=
 group_leak_pid=
-stop_test_pid=
-async_sampler_pid=
-history_sampler_pid=
-overload_sampler_pid=
 cleanup() {
-  local sampler_pid
   case $temporary in
     "$repo_root"/target/r2-complete-proof-plants.*)
       if [[ -n ${leaked_child_pid:-} ]] && kill -0 "$leaked_child_pid" 2>/dev/null; then
@@ -76,19 +89,8 @@ cleanup() {
         kill "$group_leak_pid" 2>/dev/null || true
         wait "$group_leak_pid" 2>/dev/null || true
       fi
-      for sampler_pid in "${stop_test_pid:-}" "${async_sampler_pid:-}" \
-        "${overload_sampler_pid:-}"; do
-        [[ -z $sampler_pid ]] || kill -KILL -- "-$sampler_pid" 2>/dev/null || true
-        [[ -z $sampler_pid ]] || wait "$sampler_pid" 2>/dev/null || true
-      done
-      [[ -z ${history_sampler_pid:-} ]] ||
-        kill -KILL -- "-$history_sampler_pid" 2>/dev/null ||
-        kill -KILL "$history_sampler_pid" 2>/dev/null || true
-      [[ -z ${history_sampler_pid:-} ]] || wait "$history_sampler_pid" 2>/dev/null || true
-      # Retain the closed plant fixture beneath checkout-local target. Its
-      # bytes stay inside the measured write boundary, and deleting the Git
-      # trees here would make the exact checkout-wide `du` observer race a
-      # test-only recursive teardown after every assertion has already passed.
+      # Retain the closed plant fixture beneath checkout-local target so a
+      # failed refusal can be inspected without touching the candidate tree.
       ;;
     *)
       printf 'R2 complete proof plants: refusing unsafe cleanup path: %s\n' "$temporary" >&2
@@ -102,14 +104,15 @@ trap 'exit 143' TERM
 # Give every plant a minimal ordinary repository rather than teaching the
 # proof a test root. Only the exact harness, its libraries, browser discovery,
 # toolchain pin, and ignore rule are needed before these preflight refusals;
-# copying the full candidate would make the disk-budget sampler measure the
+# copying the full candidate would make the filesystem sampler measure the
 # plant fixture rather than the candidate workload.
 mkdir -p "$seed/docs/evaluation" "$seed/apps/nomos-viewer/smoke"
 cp "$repo_root/.gitignore" "$repo_root/rust-toolchain.toml" "$seed/"
 cp "$harness_source" "$seed/docs/evaluation/r2-complete-proof.sh"
 cp "$harness_lib_source" "$seed/docs/evaluation/r2-complete-proof-lib.sh"
-cp "$harness_disk_control_source" "$seed/docs/evaluation/r2-disk-control-lib.sh"
-cp "$harness_disk_sampler_source" "$seed/docs/evaluation/r2-disk-sampler-lib.sh"
+cp "$harness_control_source" "$seed/docs/evaluation/r2-complete-proof-control.sh"
+cp "$harness_outer_source" "$seed/docs/evaluation/r2-complete-proof-outer.sh"
+cp "$control_test_source" "$seed/docs/evaluation/r2-complete-proof-control.test.sh"
 cp "$repo_root/apps/nomos-viewer/smoke/chrome.mjs" \
   "$seed/apps/nomos-viewer/smoke/chrome.mjs"
 chmod 755 "$seed/docs/evaluation/r2-complete-proof.sh"
@@ -135,6 +138,8 @@ in_repo() {
 guard_directory=$temporary/guard-bin
 sudo_log=$temporary/sudo.log
 mkdir "$guard_directory"
+# The single-quoted rows are the literal body of the planted executable.
+# shellcheck disable=SC2016
 printf '%s\n' \
   '#!/usr/bin/env bash' \
   'printf '\''%s\n'\'' "$*" >>"${R2_TEST_SUDO_LOG:?}"' \
@@ -360,6 +365,58 @@ fail() {
   printf 'R2 complete proof plants: FAIL: %s\n' "$*" >&2
   exit 1
 }
+
+# Procfs can expose a live task's stat file while it is between updates. Keep
+# the bounded generic reader plants here after retiring the observer-specific
+# source file: transient emptiness retries exactly twice, while persistent
+# emptiness and parsed malformation remain terminal at their fixed bounds.
+process_stat_once_source=$(declare -f r2_read_process_stat_once)
+process_stat_attempt=0
+r2_read_process_stat_once() {
+  process_stat_attempt=$((process_stat_attempt + 1))
+  if [[ $process_stat_attempt -lt 3 ]]; then
+    R2_PROC_READ_CLASS=incomplete
+    return 1
+  fi
+  R2_PROC_STATE=S
+  R2_PROC_PARENT=1
+  R2_PROC_GROUP=2
+  R2_PROC_SESSION=2
+  R2_PROC_START=3
+  R2_PROC_READ_CLASS=ok
+}
+r2_read_process_stat /proc/self/stat ||
+  fail 'transient empty procfs stat snapshots were not retried'
+[[ $process_stat_attempt -eq 3 && $R2_PROC_READ_CLASS == ok &&
+  $R2_PROC_STATE == S && $R2_PROC_PARENT -eq 1 &&
+  $R2_PROC_GROUP -eq 2 && $R2_PROC_SESSION -eq 2 &&
+  $R2_PROC_START -eq 3 ]] ||
+  fail 'procfs stat retry count or result differs'
+process_stat_attempt=0
+r2_read_process_stat_once() {
+  process_stat_attempt=$((process_stat_attempt + 1))
+  R2_PROC_READ_CLASS=incomplete
+  return 1
+}
+if r2_read_process_stat /proc/self/stat; then process_stat_status=0
+else process_stat_status=$?; fi
+[[ $process_stat_status -eq 1 && $process_stat_attempt -eq 3 &&
+  $R2_PROC_READ_CLASS == incomplete ]] ||
+  fail 'persistent empty procfs stat snapshots did not preserve absence'
+process_stat_attempt=0
+r2_read_process_stat_once() {
+  process_stat_attempt=$((process_stat_attempt + 1))
+  R2_PROC_READ_CLASS=malformed
+  return 2
+}
+if r2_read_process_stat /proc/self/stat; then process_stat_status=0
+else process_stat_status=$?; fi
+[[ $process_stat_status -eq 2 && $process_stat_attempt -eq 1 &&
+  $R2_PROC_READ_CLASS == malformed ]] ||
+  fail 'malformed procfs stat snapshot was retried'
+eval "$process_stat_once_source"
+unset process_stat_once_source process_stat_attempt
+
 printf -v closure_token '%064x' "$$"
 closure_namespace=$(readlink /proc/self/ns/net)
 closure_report=$temporary/closure-report.txt
@@ -391,6 +448,8 @@ r2_measure_process_closure "$closure_namespace" "$closure_token" "$closure_repor
 # outside it cannot join later. Keep a real descendant alive so the positive
 # check exercises both root and child membership.
 session_child_file=$temporary/allowed-session-child.pid
+# The single-quoted program is expanded by the planted child shell.
+# shellcheck disable=SC2016
 setsid env -i PATH="$PATH" bash -c '
   sleep 30 &
   child=$!
@@ -492,6 +551,8 @@ same_group_job_pid=
 fake_version_real=$temporary/version-real
 fake_version_link=$temporary/cc
 fake_version_tools=$temporary/version-tools.tsv
+# The parameter expansion belongs to the planted executable, not this shell.
+# shellcheck disable=SC2016
 printf '%s\n' \
   '#!/usr/bin/env bash' \
   'printf '\''%s\n'\'' "${0##*/}"' \
@@ -506,11 +567,6 @@ fake_version=$(PATH="$temporary:$PATH" \
   fail 'recorded tool version helper rejected a canonical executable'
 [[ $fake_version == 'cc=version-real' ]] ||
   fail 'tool version evidence invoked a command symlink instead of its recorded path'
-
-# The disk observer has enough stateful plants to warrant its own source-only
-# file; it shares this suite's closed fixture and lifecycle authority.
-# shellcheck source=docs/evaluation/r2-complete-proof-disk-plants.sh
-source "$script_directory/r2-complete-proof-disk-plants.sh"
 
 # `run_step` must not let a later successful command mask an earlier failure
 # inside a compound proof function. Exercise its exact sourceable executor
@@ -533,7 +589,7 @@ plant_count=$((plant_count + 1))
 [[ -z $(find "$temporary" -name commands.tsv -print -quit) ]] ||
   fail 'a plant reached the heavy command ledger'
 
-bash "$script_directory/r2-disk-terminal-order.test.sh"
+bash "$script_directory/r2-complete-proof-control.test.sh"
 printf 'R2_COMPLETE_PROOF_PLANTS PASS\n'
 printf 'planted_failures %s\n' "$plant_count"
 printf 'plant_scratch retained_in_checkout_target\n'
