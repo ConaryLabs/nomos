@@ -4,7 +4,7 @@
 # Saturate the real worker gate, publish stop from the gate's first monotonic
 # probe, release the held walks, and wait until a completion is collectible.
 # This deterministically places stop between the caller's absence check and a
-# newly available slot. Only the four already-dispatched scheduled walks and
+# newly available slot. Only the two already-dispatched scheduled walks and
 # the required terminal walk may reach the retained ledger.
 slot_stop_samples=$temporary/slot-stop-samples.tsv
 slot_stop_state=$temporary/slot-stop-state
@@ -37,7 +37,7 @@ setsid taskset -c "$disk_test_controller_cpus" env \
   r2_monotonic_now_ns() {
     if [[ ${FUNCNAME[1]:-} == wait_for_launch_slot && $injected -eq 0 ]]; then
       injected=1
-      r2_publish_decimal_control_marker "$stop" "$((origin + 150000000))"
+      r2_publish_decimal_control_marker "$stop" "$((origin + 50000000))"
       : >"$release"
       for ((attempt = 0; attempt < 1000; attempt += 1)); do
         [[ $(wc -l <"$raw") -gt 1 ]] && break
@@ -50,7 +50,7 @@ setsid taskset -c "$disk_test_controller_cpus" env \
   r2_read_allowed_cpu_list() {
     if [[ ${FUNCNAME[1]:-} == pool_worker_identity_stable &&
       ${FUNCNAME[2]:-} == find_available_worker &&
-      ${launch_kind:-} == scheduled && $ordinal -eq 4 ]]; then
+      ${launch_kind:-} == scheduled && $ordinal -eq 2 ]]; then
       : >"$selection"
       return 2
     fi
@@ -59,7 +59,7 @@ setsid taskset -c "$disk_test_controller_cpus" env \
   r2_record_checkout_mib() {
     [[ $# -eq 5 ]] || return 2
     local raw_output=$2 sample_origin=$3 ordinal=$4 kind=$5 started
-    if [[ $kind == scheduled && $ordinal -lt 4 ]]; then
+    if [[ $kind == scheduled && $ordinal -lt 2 ]]; then
       while [[ ! -e $release ]]; do command sleep 0.001; done
     fi
     started=$((sample_origin + ordinal * 50000000))
@@ -84,8 +84,8 @@ slot_stop_scheduled=$(awk -F '\t' '$5 == "scheduled" { count += 1 } END { print 
 [[ $slot_stop_status -eq 0 && ! -s $temporary/slot-stop.stdout &&
   ! -s $temporary/slot-stop.stderr && ! -e $slot_stop_state &&
   ! -e $slot_stop_selection &&
-  $slot_stop_scheduled -eq 4 &&
-  $(tail -n 1 "$slot_stop_samples") == $'4\t1200000000\t200000000\t17\tterminal' ]] ||
+  $slot_stop_scheduled -eq 2 &&
+  $(tail -n 1 "$slot_stop_samples") == $'2\t1100000000\t100000000\t17\tterminal' ]] ||
   fail 'a scheduled walk crossed the stop boundary while a slot became free'
 if r2_sampler_session_has_members "$slot_stop_session"; then
   fail 'stop-boundary slot plant left a live session member'
@@ -171,10 +171,10 @@ fi
 stop_test_pid=
 plant_count=$((plant_count + 1))
 
-# Begin a drain with live work, fill the four-walk gate, and advance only gate
+# Begin a drain with live work, fill the two-walk gate, and advance only gate
 # monotonic time. The original drain deadline is one second earlier than the
 # gate's independently derived deadline, so the shared deadline must abort the
-# session first and no fifth walk or ledger row may be published.
+# session first and no third walk or ledger row may be published.
 drain_slot_samples=$temporary/drain-slot-samples.tsv
 drain_slot_state=$temporary/drain-slot-state
 drain_slot_stop=$temporary/drain-slot.stop

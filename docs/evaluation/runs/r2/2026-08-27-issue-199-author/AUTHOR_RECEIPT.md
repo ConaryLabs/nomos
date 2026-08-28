@@ -89,10 +89,10 @@ idle-I/O-priority `du -sm -- <checkout>` without per-sample affinity setup.
 Workers retain canonical integer-nanosecond start times taken immediately
 before each successful walk. The controller publishes them in chronological
 order while independently requiring unique contiguous launch ordinals. All 32
-workers are ready before use, but no more than four exact walks may be active:
-one per isolated disk logical CPU on the reference host. A full gate waits
+workers are ready before use, but no more than two exact walks may be active:
+one per isolated physical-core group on the reference host. A full gate waits
 against its own four-second monotonic deadline, remains subject to an earlier
-active drain deadline, and never dispatches a fifth walk concurrently. One
+active drain deadline, and never dispatches a third walk concurrently. One
 controller derives the exact absolute schedule
 `origin + ordinal * 50 ms`; it never turns that schedule into a relative delay.
 The recorded nominal interval remains 50 ms and the unchanged maximum
@@ -134,7 +134,7 @@ still-live worker whose structural identity changes during shutdown aborts the
 dedicated group instead of being marked reaped. Worker result collection never
 waits a live or mismatched PID. A monotonic-clock, deadline-construction, or
 sleep failure during orderly shutdown also aborts the group rather than
-returning with live children. A saturated four-walk gate receives a fresh
+returning with live children. A saturated two-walk gate receives a fresh
 four-second Linux-monotonic deadline but cannot outlive an already-running
 drain deadline. Drain-time bridge scheduling and result collection, the
 terminal set, and orderly pool shutdown receive their applicable bounded
@@ -600,6 +600,61 @@ This operator-preparation failure is formal red evidence and will not be
 retried at that commit. The next candidate changes only this source receipt;
 its preparation must create and validate the exact empty output directory
 before the one formal invocation.
+
+Candidate `15d7504053a2d40dc55c24ce13c121683c3f2698` (tree
+`50db0dc24483b0f9aeaf451e3fbcc33b8fabfcfc`) passed its clean exact-head
+matrix and three read-only Luna Max audit lanes, then ran exactly once in a
+fresh, detached, full, clean `git clone --no-local --no-hardlinks` author
+checkout whose exact output directory existed and was empty. Commands 1--32
+exited zero. Command 33 produced all 100 byte-identical maximum-scene compile
+outputs, then failed its unchanged p95 ceiling: the median numerator was
+`79436952/2` ns, p95 was 165,693,556 ns, and eight samples at ordinals 84--91
+exceeded 100,000,000 ns. The observer retained 3,196 scheduled rows and one
+terminal row at a 1,356 MiB peak, but rejected 12 retained-start gaps over
+100,000,000 ns; the maximum was 138,697,920 ns. Browser smoke still reproduced
+the committed contact-sheet digest, and the clean release build exited zero in
+19.58 seconds. The preserved independently audited report is
+`/data/dev/src/nomos-r2-author-15d7504.xZojZY/author-failure-report.md`,
+SHA-256
+`eb8af44b4bfcce7030d00f9355f33ce1c0dd9e37eee9686e54d36bc288a1e75e`.
+It binds both external streams, the complete command ledger, rejected private
+disk rows, environment and measurements, compile outputs, browser receipt, and
+contact sheet. No accepted disk summary, evidence manifest, or final receipt
+was emitted. This exact candidate remains formal red and will not be retried.
+
+The next implementation repair changes no contract, command, schedule,
+timestamp, or ceiling. It keeps the complete 32-worker identity-bound pool but
+tightens admission from four active exact walks to two: one per isolated
+physical-core group in the reference host's walk mask. Deterministic overload,
+terminal-deadline, stop-boundary, and drain-deadline plants now saturate that
+two-walk gate and prove that no third scheduled walk crosses its launch
+boundary. The unchanged authentic retained-start timestamps and 100 ms
+validator remain the cadence authority; only a new exact candidate may enter
+the author protocol.
+
+The first live browser probe in the long-lived implementation checkout was
+discarded as unrepresentative: retained plant fixtures had grown that checkout
+to 3,033 MiB, and the observer correctly rejected eight gaps with a
+1,399,887,872 ns maximum. A fresh standalone development clone carrying the
+same source diff then reproduced the browser contact-sheet digest with 148
+rows, a 230 MiB peak, zero gap violations, and a 72,450,560 ns maximum. Its
+first observed compile run hit a host-wide slow interval: the observer itself
+remained green at 78,611,200 ns maximum gap, but the compile median was
+`117887660/2` ns. An immediately adjacent no-observer control also failed the
+median at `110895997/2` ns, while its next no-observer run passed at
+`77141488/2` ns median and 41,261,155 ns p95. The next observed run passed at
+`77553966/2` ns median and 41,409,743 ns p95 while retaining 96 disk rows with
+zero violations and a 69,942,016 ns maximum gap.
+
+The same fresh clone was then expanded to 1,840 MiB, above the prior formal
+peak, with debug and two release build trees. Browser smoke again reproduced
+the exact contact sheet while retaining 148 rows with zero violations and a
+79,287,808 ns maximum gap. The maximum-scene benchmark then passed at
+`79624417/2` ns median and 44,438,981 ns p95 while the observer retained 104
+rows at a 1,852 MiB peak with zero violations and a 90,762,496 ns maximum gap.
+These load probes and the green 45-plant suite are development evidence, not
+acceptance; they justify freezing a new candidate without relabeling any prior
+run.
 
 Commands used during implementation include repository reads, `apply_patch`,
 shell and Node syntax/tests, the four accepted workspace checks, output-local
