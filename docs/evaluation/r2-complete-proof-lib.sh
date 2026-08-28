@@ -51,23 +51,139 @@ r2_expand_cpu_list() {
   R2_EXPANDED_CPU_LIST=${expanded%,}
 }
 
-r2_partition_cpu_list() {
-  [[ $# -eq 1 ]] || return 2
+r2_read_cpu_sibling_group() {
+  [[ $# -eq 2 && $1 =~ ^(0|[1-9][0-9]*)$ && -d $2 && ! -L $2 ]] || return 2
+  local cpu=$1 topology_root=$2 group line group_text sibling_file
+  local -a lines=()
+  sibling_file=$topology_root/cpu$cpu/topology/thread_siblings_list
+  [[ -f $sibling_file && ! -L $sibling_file ]] || return 1
+  mapfile -t lines <"$sibling_file" || return 1
+  [[ ${#lines[@]} -eq 1 && -n ${lines[0]} ]] || return 2
+  line=${lines[0]}
+  r2_expand_cpu_list "$line" || return
+  group=$R2_EXPANDED_CPU_LIST
+  group_text=,$group,
+  [[ $group_text == *,$cpu,* ]] || return 2
+  # shellcheck disable=SC2034 # Returned global is consumed after sourcing.
+  R2_CPU_SIBLING_GROUP=$group
+}
+
+r2_validate_physical_cpu_isolation() {
+  [[ $# -eq 3 ]] || return 2
+  local disk_text workload_text topology_root=$3 cpu sibling group
+  local -a disk_cpus=() workload_cpus=() siblings=()
+  local -A disk_set=() workload_set=()
   r2_expand_cpu_list "$1" || return
-  local disk_count controller='' disk='' workload=''
-  local -a cpus=()
-  IFS=, read -r -a cpus <<<"$R2_EXPANDED_CPU_LIST"
-  [[ ${#cpus[@]} -ge 3 ]] || return 1
-  disk_count=$(( (${#cpus[@]} - 1) / 2 ))
-  controller=${cpus[0]}
-  printf -v disk '%s,' "${cpus[@]:1:disk_count}"
-  printf -v workload '%s,' "${cpus[@]:disk_count+1}"
+  disk_text=$R2_EXPANDED_CPU_LIST
+  IFS=, read -r -a disk_cpus <<<"$disk_text"
+  r2_expand_cpu_list "$2" || return
+  workload_text=$R2_EXPANDED_CPU_LIST
+  IFS=, read -r -a workload_cpus <<<"$workload_text"
+  for cpu in "${disk_cpus[@]}"; do disk_set["$cpu"]=1; done
+  for cpu in "${workload_cpus[@]}"; do
+    [[ -z ${disk_set[$cpu]+present} ]] || return 1
+    workload_set["$cpu"]=1
+  done
+  for cpu in "${disk_cpus[@]}"; do
+    r2_read_cpu_sibling_group "$cpu" "$topology_root" || return
+    group=$R2_CPU_SIBLING_GROUP
+    IFS=, read -r -a siblings <<<"$group"
+    for sibling in "${siblings[@]}"; do
+      [[ -z ${workload_set[$sibling]+present} ]] || return 1
+    done
+  done
+  for cpu in "${workload_cpus[@]}"; do
+    r2_read_cpu_sibling_group "$cpu" "$topology_root" || return
+    group=$R2_CPU_SIBLING_GROUP
+    IFS=, read -r -a siblings <<<"$group"
+    for sibling in "${siblings[@]}"; do
+      [[ -z ${disk_set[$sibling]+present} ]] || return 1
+    done
+  done
+  R2_EXPANDED_CPU_LIST=$workload_text
+}
+
+r2_partition_cpu_topology() {
+  [[ $# -eq 2 ]] || return 2
+  local allowed_text topology_root=$2 cpu sibling group group_list=''
+  local disk_group_count index disk_text='' workload_text=''
+  local disk_groups_text='' workload_groups_text=''
+  local -a cpus=() siblings=() groups=() disk_cpus=() workload_cpus=()
+  local -A allowed_set=() cpu_group=() group_index=() sibling_group=()
+  r2_expand_cpu_list "$1" || return
+  allowed_text=$R2_EXPANDED_CPU_LIST
+  IFS=, read -r -a cpus <<<"$allowed_text"
+  for cpu in "${cpus[@]}"; do allowed_set["$cpu"]=1; done
+  for cpu in "${cpus[@]}"; do
+    r2_read_cpu_sibling_group "$cpu" "$topology_root" || return
+    group=$R2_CPU_SIBLING_GROUP
+    cpu_group["$cpu"]=$group
+    if [[ -z ${group_index[$group]+present} ]]; then
+      group_index["$group"]=${#groups[@]}
+      groups+=("$group")
+    fi
+  done
+  [[ ${#groups[@]} -ge 2 ]] || return 1
+
+  # Sibling groups must be disjoint even where they name a logical CPU outside
+  # the allowed affinity. Every allowed sibling must also report the same group.
+  # Together these checks reject partial or contradictory topology.
+  for group in "${groups[@]}"; do
+    IFS=, read -r -a siblings <<<"$group"
+    for sibling in "${siblings[@]}"; do
+      if [[ -n ${sibling_group[$sibling]+present} &&
+          ${sibling_group[$sibling]} != "$group" ]]; then
+        return 2
+      fi
+      sibling_group["$sibling"]=$group
+    done
+  done
+  for cpu in "${cpus[@]}"; do
+    group=${cpu_group[$cpu]}
+    IFS=, read -r -a siblings <<<"$group"
+    for sibling in "${siblings[@]}"; do
+      if [[ -n ${allowed_set[$sibling]+present} &&
+          ${cpu_group[$sibling]} != "$group" ]]; then
+        return 2
+      fi
+    done
+  done
+
+  # Give the observer the first half of complete physical-core groups and the
+  # workload the rest. On an odd count, the workload receives the extra core.
+  disk_group_count=$(( ${#groups[@]} / 2 ))
+  for cpu in "${cpus[@]}"; do
+    group=${cpu_group[$cpu]}
+    index=${group_index[$group]}
+    if [[ $index -lt $disk_group_count ]]; then
+      disk_cpus+=("$cpu")
+    else
+      workload_cpus+=("$cpu")
+    fi
+  done
+  [[ ${#disk_cpus[@]} -gt 0 && ${#workload_cpus[@]} -gt 0 ]] || return 1
+  printf -v disk_text '%s,' "${disk_cpus[@]}"
+  printf -v workload_text '%s,' "${workload_cpus[@]}"
+  printf -v group_list '%s;' "${groups[@]}"
+  printf -v disk_groups_text '%s;' "${groups[@]:0:disk_group_count}"
+  printf -v workload_groups_text '%s;' "${groups[@]:disk_group_count}"
+  disk_text=${disk_text%,}
+  workload_text=${workload_text%,}
+  r2_validate_physical_cpu_isolation "$disk_text" "$workload_text" "$topology_root" ||
+    return
   # shellcheck disable=SC2034 # Returned globals are consumed after sourcing.
-  R2_CONTROLLER_CPUS=$controller
+  R2_CONTROLLER_CPUS=${disk_cpus[0]}
   # shellcheck disable=SC2034 # Returned globals are consumed after sourcing.
-  R2_DISK_CPUS=${disk%,}
+  R2_DISK_CPUS=$disk_text
   # shellcheck disable=SC2034 # Returned globals are consumed after sourcing.
-  R2_WORKLOAD_CPUS=${workload%,}
+  R2_WORKLOAD_CPUS=$workload_text
+  # shellcheck disable=SC2034 # Returned globals are consumed after sourcing.
+  R2_CPU_TOPOLOGY_GROUPS=${group_list%;}
+  # shellcheck disable=SC2034 # Returned globals are consumed after sourcing.
+  R2_DISK_PHYSICAL_GROUPS=${disk_groups_text%;}
+  # shellcheck disable=SC2034 # Returned globals are consumed after sourcing.
+  R2_WORKLOAD_PHYSICAL_GROUPS=${workload_groups_text%;}
+  R2_EXPANDED_CPU_LIST=$allowed_text
 }
 
 r2_read_allowed_cpu_list() {
@@ -540,11 +656,19 @@ r2_write_checkout_disk_summary() {
 r2_disk_deadline_ns() {
   [[ $# -eq 3 && $1 =~ ^(0|[1-9][0-9]*)$ &&
     $2 =~ ^(0|[1-9][0-9]*)$ && $3 =~ ^[1-9][0-9]*$ ]] || return 2
-  local origin=$1 ordinal=$2 period=$3 phase deadline
-  [[ $((period % 2)) -eq 0 ]] || return 2
-  phase=$((period / 2))
-  deadline=$((origin + ordinal * phase))
-  [[ $phase -gt 0 && $deadline -ge $origin ]] || return 2
+  local origin=$1 ordinal=$2 period=$3 deadline value
+  local maximum=9223372036854775807
+  for value in "$origin" "$ordinal" "$period"; do
+    # shellcheck disable=SC2071 # Equal-length canonical decimals need lexical comparison before arithmetic.
+    if [[ ${#value} -gt ${#maximum} ||
+        ( ${#value} -eq ${#maximum} && $value > "$maximum" ) ]]; then
+      return 2
+    fi
+  done
+  if [[ $ordinal -gt 0 && $period -gt $(( (maximum - origin) / ordinal )) ]]; then
+    return 2
+  fi
+  deadline=$((origin + ordinal * period))
   # shellcheck disable=SC2034 # Returned global avoids a command-substitution fork per sample.
   R2_DISK_DEADLINE_NS=$deadline
 }
@@ -570,10 +694,8 @@ r2_sample_checkout_disk() {
   local -a sample_pids=()
   local -A sample_starts=()
 
-  # One controller interleaves two phases of the contract's absolute 50 ms
-  # nominal schedule. Each parity's deadlines remain 50 ms apart; the 25 ms
-  # phase offset exercises the permission to sample more frequently and gives
-  # raced `du` retries non-real-time headroom.
+  # One controller follows the contract's absolute nominal schedule. Deadlines
+  # are derived from the fixed origin, never from completion of the prior walk.
   r2_disk_deadline_ns "$sampler_started" 0 "$period_ns" || return
 
   : >"$raw_samples"

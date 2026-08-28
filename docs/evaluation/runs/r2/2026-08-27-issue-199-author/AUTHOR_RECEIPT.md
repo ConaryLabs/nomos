@@ -71,17 +71,22 @@ Generated evidence is kept external to the candidate and binds the exact
 candidate commit/tree; committing a generated run would move the candidate and
 require a new run.
 
-The checkout-wide disk observer uses the process's allowed CPU list and
-requires at least three allowed CPUs. On the 12-CPU reference host it pins the
-sampler controller to CPU 0, ordinary-priority `du -sm -- <checkout>` walks to
-CPUs 1–5 with idle I/O priority, and proof workloads to CPUs 6–11.
+The checkout-wide disk observer reads each allowed logical CPU's Linux
+`thread_siblings_list` and fails closed on an absent, malformed, contradictory,
+or fewer-than-two-physical-core topology. It assigns complete physical-core
+sibling groups to the observer and the remaining complete groups to the proof
+workload, giving an odd extra group to the workload. On the 12-logical-CPU,
+six-core reference host, the sampler controller is pinned to CPU 0,
+ordinary-priority `du -sm -- <checkout>` walks use CPUs `0,1,2,6,7,8` with idle
+I/O priority, and proof workloads use CPUs `3,4,5,9,10,11`. Thus neither role
+shares a physical core with the other.
 Workers retain canonical integer-nanosecond start times taken immediately
 before each successful walk, and the controller publishes them in
 chronological order while independently requiring unique contiguous launch
-ordinals. One controller interleaves two phases of the absolute 50 ms schedule:
-each parity's deadlines remain 50 ms apart and their phase offset is 25 ms.
-This uses the contract's explicit permission to sample more frequently while
-retaining the 50 ms nominal interval and unchanged 100 ms maximum retained gap.
+ordinals. One controller derives every deadline from the fixed origin as
+`origin + ordinal * 50 ms`; it never turns the schedule into a relative delay or
+a hidden 25 ms phase. The unchanged maximum consecutive retained-start gap is
+100 ms.
 After the stop marker, the controller waits for all scheduled walks and only
 then launches the distinct final row, so its retained start is chronologically
 last as well as after the canonical timestamp in `host/disk-sampler.stop`.
@@ -160,9 +165,45 @@ evidence manifest binds them instead of racing the live observer with an
 unrequired recursive teardown. The shell plant suite likewise retains its
 closed fixture beneath checkout-local `target/`, which is within the measured
 and permitted boundary; the final clean-worktree and write-boundary checks
-still fail closed on any input or outside-target write. The interleaved 25 ms
-phase offset provides the more-frequent coverage the contract permits without
-changing its 50 ms nominal interval or 100 ms ceiling.
+still fail closed on any input or outside-target write.
+
+Candidate `1639e9dd5b1dee84d101967869889236c94038ce` (tree
+`032905e8d419fd36df030493597a691d21de4077`) then failed closed in another
+fresh, detached, standalone author clone. Commands 1–32 exited zero, including
+111 Node tests, all 37 shell plants, and the separate terminal-order plant in
+command 25. Command 33 rejected a compile-latency median numerator of
+`167806723/2` ns against the unchanged 50 ms ceiling; its 93,089,412 ns p95
+remained below the unchanged 100 ms ceiling. Independently, the checkout-wide
+observer rejected retained-start gaps of 196,455,424 ns and 129,176,064 ns
+during command 15's three full-tree schema-plant archives and recursive
+teardown. Peak checkout disk was 1,803 MiB, below its unchanged 8,192 MiB
+ceiling. No final receipt or evidence manifest was emitted. The preserved
+failure report is
+`/data/dev/src/nomos-r2-author-1639e9d.5BfHUQ/author-failure-report.md`, SHA-256
+`aff26e03866fb88724f134abe97fce75aeae110aea2bd2e077151ad6f26bf21d`.
+It binds the external streams, complete command ledger, command-25 and
+command-33 logs, and unfinished raw sampler rows. This run remains red. A
+post-failure diagnostic without the observer measured the same binary at a
+`78503626/2` ns median, supporting observer/workload interference rather than
+a compiler regression.
+
+The next authorized implementation repair preserves every red run and every
+ceiling. The previous numeric CPU masks were logically disjoint but, on the
+reference host, paired every observer CPU with a workload CPU on the same
+physical SMT core. The repaired harness partitions complete sibling groups and
+records the read topology and resulting masks. It also restores a single exact
+absolute 50 ms schedule; a controller-level fake-clock plant adds 7 ms of work
+after every launch and proves that later launches remain on the fixed-origin
+deadlines rather than drifting as relative sleeps. Command 15 now archives only
+the complete crate scope,
+the schema checker, and its three registers through
+`docs/evaluation/r2-schema-ownership-plants.sh` into three roughly 2 MiB plants;
+each plant proves its exact regular-file inventory, installs its named
+mutation, requires the mutation-specific diagnostic, and is retained beneath
+the proof output's `host/tmp`, where the closed evidence manifest binds it,
+rather than recursively deleted while the observer is live. No accepted
+source, checker assertion, `du -sm` method, successful-attempt
+timestamp, process-closure assertion, or budget ceiling changes.
 
 On 2026-08-28 the owner authorized an implementation repair, not a contract or
 ceiling change. The repair preserves the failed rerun as red evidence, does not

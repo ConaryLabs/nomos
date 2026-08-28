@@ -540,18 +540,11 @@ disk_affinity_line=$(taskset -pc $$)
 disk_test_affinity=${disk_affinity_line##*: }
 [[ $disk_test_affinity =~ ^[0-9,-]+$ ]] ||
   fail 'could not derive the test process CPU affinity'
-r2_partition_cpu_list 0-11 || fail 'canonical CPU partition fixture was refused'
-[[ $R2_CONTROLLER_CPUS == 0 && $R2_DISK_CPUS == 1,2,3,4,5 &&
-  $R2_WORKLOAD_CPUS == 6,7,8,9,10,11 ]] || fail 'twelve-CPU partition differs'
-if r2_partition_cpu_list 0-1 || r2_partition_cpu_list 02,3,4 ||
-  r2_partition_cpu_list 3,2,4; then
-  fail 'malformed or undersized CPU partition was accepted'
-fi
+r2_expand_cpu_list "$disk_test_affinity" || fail 'disk sampler test affinity is malformed'
+disk_test_affinity=$R2_EXPANDED_CPU_LIST
 plant_count=$((plant_count + 1))
-r2_partition_cpu_list "$disk_test_affinity" ||
-  fail 'disk sampler plants require at least three available CPUs'
-disk_test_controller_cpus=$R2_CONTROLLER_CPUS
-export R2_DISK_WALK_CPUS=$R2_DISK_CPUS
+disk_test_controller_cpus=${disk_test_affinity%%,*}
+export R2_DISK_WALK_CPUS=$disk_test_affinity
 
 # Stop requests carry their own timestamp and wait only for an identity-bound
 # session. Exercise both normal closure and a stopped root whose unwritable
@@ -728,6 +721,9 @@ async_previous_started=0
 async_terminal_count=0
 async_terminal_started=0
 async_terminal_seen=0
+async_scheduled_count=0
+async_scheduled_previous=0
+async_scheduled_minimum_gap=0
 {
   IFS= read -r async_header
   [[ $async_header == $'ordinal\tsample_start_ns\telapsed_ns\tmebibytes\tkind' ]] ||
@@ -747,7 +743,17 @@ async_terminal_seen=0
       ((async_gap <= async_gap_ns)) || async_gap_ns=$async_gap
     fi
     case $async_kind in
-      scheduled) ;;
+      scheduled)
+        if [[ $async_scheduled_count -gt 0 ]]; then
+          async_scheduled_gap=$((async_sample_started - async_scheduled_previous))
+          if [[ $async_scheduled_minimum_gap -eq 0 ||
+              $async_scheduled_gap -lt $async_scheduled_minimum_gap ]]; then
+            async_scheduled_minimum_gap=$async_scheduled_gap
+          fi
+        fi
+        async_scheduled_previous=$async_sample_started
+        async_scheduled_count=$((async_scheduled_count + 1))
+        ;;
       terminal)
         async_terminal_seen=1
         async_terminal_count=$((async_terminal_count + 1))
@@ -759,7 +765,8 @@ async_terminal_seen=0
     async_count=$((async_count + 1))
   done
 } <"$async_samples"
-[[ $async_count -ge 5 && $async_gap_ns -le 100000000 &&
+[[ $async_count -ge 5 && $async_scheduled_count -ge 4 &&
+  $async_scheduled_minimum_gap -ge 40000000 && $async_gap_ns -le 100000000 &&
   $async_terminal_count -eq 1 && $async_terminal_started -ge $async_stop_started &&
   ! -e $async_parts ]] ||
   fail 'asynchronous sampler did not preserve exact cadence/session/terminal evidence'

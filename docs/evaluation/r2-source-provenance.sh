@@ -159,6 +159,7 @@ while IFS=$'\t' read -r path digest origin receipt license; do
         docs/evaluation/r2-complete-proof-receipt.test.mjs | \
         docs/evaluation/r2-complete-proof.test.sh | \
         docs/evaluation/r2-disk-terminal-order.test.sh | \
+        docs/evaluation/r2-schema-ownership-plants.sh | \
         docs/evaluation/r2-source-provenance.test.sh)
           [[ $receipt == docs/evaluation/runs/r2/2026-08-27-issue-199-author/AUTHOR_RECEIPT.md ]] ||
             fail "unexpected R2 final-proof author receipt for $path"

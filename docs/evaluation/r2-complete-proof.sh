@@ -245,10 +245,14 @@ inner_pidns=$(readlink /proc/self/ns/pid)
   fail 'forged isolation marker or unchanged PID namespace'
 r2_read_allowed_cpu_list /proc/self/status || fail 'could not read proof CPU affinity'
 initial_cpu_affinity=$R2_ALLOWED_CPU_LIST
-r2_partition_cpu_list "$initial_cpu_affinity" || fail 'the proof requires three allowed CPUs'
+r2_partition_cpu_topology "$initial_cpu_affinity" /sys/devices/system/cpu ||
+  fail 'the proof requires two readable, physically disjoint CPU-core groups'
 sampler_controller_affinity=$R2_CONTROLLER_CPUS
 disk_walk_cpu_affinity=$R2_DISK_CPUS
 workload_cpu_affinity=$R2_WORKLOAD_CPUS
+cpu_topology_groups=$R2_CPU_TOPOLOGY_GROUPS
+disk_physical_groups=$R2_DISK_PHYSICAL_GROUPS
+workload_physical_groups=$R2_WORKLOAD_PHYSICAL_GROUPS
 disk_walk_nice=$(ps -o ni= -p "$BASHPID") || fail 'could not read proof CPU priority'
 disk_walk_nice=${disk_walk_nice//[$'\t ']/}
 [[ $disk_walk_nice =~ ^-?[0-9]+$ ]] || fail 'proof CPU priority is malformed'
@@ -413,6 +417,8 @@ jq -n \
     "$initial_cpu_affinity" "$sampler_controller_affinity"
   printf 'disk_walk_cpu_affinity=%s\nworkload_cpu_affinity=%s\ndisk_walk_nice=%s\n' \
     "$disk_walk_cpu_affinity" "$workload_cpu_affinity" "$disk_walk_nice"
+  printf 'physical_core_groups=%s\ndisk_physical_core_groups=%s\nworkload_physical_core_groups=%s\n' \
+    "$cpu_topology_groups" "$disk_physical_groups" "$workload_physical_groups"
   printf 'locale=%s\n' "$LC_ALL"
   printf 'timezone=%s\n' "${TZ:-system}"
   printf 'network_namespace=%s\n' "$inner_netns"
@@ -733,37 +739,10 @@ run_step r2-schema-ownership \
   'docs/evaluation/r2-schema-ownership.sh' \
   docs/evaluation/r2-schema-ownership.sh
 
-r2_schema_plants() {
-  local plants_root=$evidence_dir/host/tmp/r2-schema-plants
-  local root label
-  for label in missing duplicate third; do
-    root=$plants_root/$label
-    mkdir -p "$root"
-    git archive --format=tar HEAD | tar -xf - -C "$root"
-    case $label in
-      missing)
-        sed -i 's/nomos\.observed_scene@1/nomos.observed_scene@9/' \
-          "$root/crates/nomos-observed-scene/src/input.rs"
-        ;;
-      duplicate)
-        printf '\npub const DUPLICATE_SCHEMA: &str = "nomos.observed_scene@1";\n' \
-          >>"$root/crates/nomos-observed-scene/src/value.rs"
-        ;;
-      third)
-        printf '\npub const THIRD_SCHEMA: &str = "nomos.observed_third@1";\n' \
-          >>"$root/crates/nomos-observed-scene/src/value.rs"
-        ;;
-    esac
-    if "$root/docs/evaluation/r2-schema-ownership.sh" >/dev/null 2>&1; then
-      fail "R2 schema-ownership $label plant passed"
-    fi
-    printf 'expected refusal: %s\n' "$label"
-  done
-  find "$plants_root" -depth -delete
-}
 run_step r2-schema-plants \
   'three isolated git-archive schema-ownership plants must fail' \
-  r2_schema_plants
+  env R2_SCHEMA_PLANTS_PARENT="$evidence_dir/host/tmp" \
+  docs/evaluation/r2-schema-ownership-plants.sh
 run_step r2-source-provenance \
   'docs/evaluation/r2-source-provenance.sh' \
   docs/evaluation/r2-source-provenance.sh
