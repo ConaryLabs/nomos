@@ -10,6 +10,24 @@ esac
 source "$r2_complete_proof_lib_directory/r2-complete-proof-control.sh"
 unset r2_complete_proof_lib_directory
 
+r2_output_spelling_matches_physical() {
+  [[ $# -eq 3 && $2 == /* && $3 == /* ]] || return 2
+  local argument=$1 lexical=$2 physical=$3 descriptor_root suffix cursor component
+  local -a components=()
+  [[ $lexical == "$physical" ]] && return 0
+  [[ $argument == "$lexical" && $argument =~ ^(/proc/self/fd/[1-9][0-9]*)(/.+)$ ]] || return 1
+  descriptor_root=${BASH_REMATCH[1]}
+  suffix=${BASH_REMATCH[2]#/}
+  [[ -d $descriptor_root && -n $suffix && $(realpath -e -- "$argument") == "$physical" ]] || return 1
+  cursor=$descriptor_root
+  IFS=/ read -r -a components <<<"$suffix"
+  for component in "${components[@]}"; do
+    [[ -n $component && $component != . && $component != .. ]] || return 1
+    cursor=$cursor/$component
+    [[ -e $cursor && ! -L $cursor ]] || return 1
+  done
+}
+
 r2_read_process_stat_once() {
   # shellcheck disable=SC2034 # Public classification is consumed by identity probes.
   R2_PROC_READ_CLASS=invalid

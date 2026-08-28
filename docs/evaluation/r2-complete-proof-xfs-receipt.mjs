@@ -12,7 +12,7 @@ import { createHash } from "node:crypto";
 import { closeSync, existsSync, fchmodSync, fstatSync, lstatSync, mkdirSync, statSync,
   openSync, readdirSync, readSync, realpathSync, writeFileSync,
   writeSync } from "node:fs";
-import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
+import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
@@ -71,6 +71,7 @@ const SECTION_FIELDS = Object.freeze({
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const DECIMAL = /^(0|[1-9][0-9]*)$/;
 const SAFE_TEXT = /^[^\0\r\n\t]+$/;
+const PROCESS_FD_PATH = /^\/proc\/self\/fd\/([1-9][0-9]*)(?:\/.*)?$/;
 
 export class XfsWrapperError extends Error {
   constructor(message) {
@@ -158,6 +159,38 @@ export const assertNoSymlinkComponents = (path, stop = "/") => {
   return true;
 };
 
+/* Inventory/export may run beneath the wrapper's retained work descriptor.
+ * The procfs descriptor link itself is trusted as the opened root; every
+ * component below it remains no-dereference, and published paths use the
+ * resolved canonical spelling. */
+const inventoryRootBinding = (value, label) => {
+  if (typeof value !== "string" || value.length === 0 || !isAbsolute(value) ||
+      !SAFE_TEXT.test(value) || resolve(value) !== value) fail(`${label} must be one absolute safe path`);
+  const match = PROCESS_FD_PATH.exec(value);
+  if (!match) {
+    const canonical = canonicalPath(value, label);
+    return Object.freeze({ access: canonical, display: canonical });
+  }
+  const descriptorRoot = `/proc/self/fd/${match[1]}`;
+  let descriptorInfo;
+  try { descriptorInfo = statSync(descriptorRoot); }
+  catch (error) { fail(`${label} descriptor root is unavailable: ${error.message}`); }
+  if (!descriptorInfo.isDirectory()) fail(`${label} descriptor root is not a directory`);
+  let cursor = value;
+  while (cursor !== descriptorRoot) {
+    let info;
+    try { info = lstatSync(cursor); }
+    catch (error) { fail(`${label} component is unavailable: ${error.message}`); }
+    if (info.isSymbolicLink()) fail(`${label} contains a symlink below its descriptor root`);
+    const parent = dirname(cursor);
+    if (parent !== descriptorRoot && !parent.startsWith(`${descriptorRoot}/`)) {
+      fail(`${label} escapes its descriptor root`);
+    }
+    cursor = parent;
+  }
+  return Object.freeze({ access: value, display: readableRealpath(value, label) });
+};
+
 export const assertNonOverlappingPaths = (source, work) => {
   const left = canonicalPath(source, "source");
   const right = canonicalPath(work, "work");
@@ -242,14 +275,14 @@ export const canonicalInventoryText = (rows) => {
 export const inventoryDigest = (rows) => createHash("sha256").update(canonicalInventoryText(rows), "utf8").digest("hex");
 
 export const canonicalInventory = (root, label = "inventory root") => {
-  const canonicalRoot = canonicalPath(root, label);
-  const info = lstatSync(canonicalRoot);
+  const binding = inventoryRootBinding(root, label);
+  const info = lstatSync(binding.access);
   if (!info.isDirectory() || info.isSymbolicLink()) fail(`${label} is not a real directory`);
   const rows = [];
-  walkInventory(canonicalRoot, canonicalRoot, rows);
+  walkInventory(binding.access, binding.access, rows);
   rows.sort((left, right) => Buffer.from(left.path).compare(Buffer.from(right.path)));
   return Object.freeze({
-    root: canonicalRoot,
+    root: binding.display,
     rows: Object.freeze(rows),
     text: canonicalInventoryText(rows),
     sha256: inventoryDigest(rows),
@@ -312,15 +345,19 @@ const copyTreeRecursive = (source, destination) => {
 };
 
 export const copyTreeNoDeref = (source, destination) => {
-  const sourceRoot = canonicalPath(source, "export source");
+  const sourceRoot = inventoryRootBinding(source, "export source");
   const destinationParent = dirname(destination);
-  const destinationCanonicalParent = canonicalPath(destinationParent, "export destination parent");
-  if (destinationCanonicalParent !== destinationParent) fail("export destination parent is not canonical");
+  const destinationName = basename(destination);
+  if (join(destinationParent, destinationName) !== destination) fail("export destination is not canonical");
+  const destinationRoot = inventoryRootBinding(destinationParent, "export destination parent");
+  const destinationDisplay = join(destinationRoot.display, destinationName);
   if (existsSync(destination) || isSymlink(destination)) fail("export destination already exists");
-  const sourceInfo = lstatSync(sourceRoot);
+  const sourceInfo = lstatSync(sourceRoot.access);
   if (!sourceInfo.isDirectory() || sourceInfo.isSymbolicLink()) fail("export source is not a real directory");
-  copyTreeRecursive(sourceRoot, destination);
-  return canonicalInventory(destination, "export destination");
+  copyTreeRecursive(sourceRoot.access, destination);
+  const inventory = canonicalInventory(destination, "export destination");
+  if (inventory.root !== destinationDisplay) fail("export destination identity changed during copy");
+  return inventory;
 };
 
 export const parseDuOutput = (stdout, expectedPath, stderr = "", status = 0) => {
@@ -968,6 +1005,9 @@ export const runCli = (argv = process.argv.slice(2)) => {
   }
 };
 
-if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+let invokedAsMain = false;
+try { invokedAsMain = Boolean(process.argv[1]) && realpathSync.native(process.argv[1]) === fileURLToPath(import.meta.url); }
+catch { invokedAsMain = false; }
+if (invokedAsMain) {
   process.exitCode = runCli();
 }

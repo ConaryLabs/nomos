@@ -69,7 +69,8 @@ validate_output() {
   local lexical physical relative component cursor
   lexical=$(realpath -sm -- "$output_argument")
   physical=$(realpath -e -- "$output_argument")
-  [[ $lexical == "$physical" ]] || fail 'output path traverses a symlink'
+  r2_output_spelling_matches_physical "$output_argument" "$lexical" "$physical" ||
+    fail 'output path traverses a symlink'
   [[ $physical == "$repo_root/"* ]] || fail 'output must be physically inside the checkout'
   [[ $physical != "$repo_root" && $physical != "$repo_root/target" ]] ||
     fail 'output cannot be the checkout root or target/ root'

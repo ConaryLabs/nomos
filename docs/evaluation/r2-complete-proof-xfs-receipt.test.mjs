@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
+import { closeSync, existsSync, mkdtempSync, mkdirSync, openSync, readFileSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -70,6 +70,31 @@ test("inventory, no-dereference copy, and digest are byte stable", () => {
     symlinkSync("a.txt", linked);
     expectFailure(() => canonicalInventory(source), /symlink/);
   } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("inventory and export retain descriptor roots while publishing canonical paths", () => {
+  const root = temporary();
+  let descriptor;
+  try {
+    const source = join(root, "source");
+    const parent = join(root, "export");
+    const destination = join(parent, "copy");
+    mkdirSync(source);
+    mkdirSync(parent);
+    writeFileSync(join(source, "value"), "descriptor-bound\n");
+    descriptor = openSync(root, "r");
+    const descriptorRoot = `/proc/self/fd/${descriptor}`;
+    const before = canonicalInventory(join(descriptorRoot, "source"));
+    const after = copyTreeNoDeref(join(descriptorRoot, "source"), join(descriptorRoot, "export", "copy"));
+    assert.equal(before.root, source);
+    assert.equal(after.root, destination);
+    assert.equal(compareInventories(before, after).equal, true);
+    symlinkSync("value", join(source, "linked"));
+    expectFailure(() => canonicalInventory(join(descriptorRoot, "source")), /symlink/);
+  } finally {
+    if (descriptor !== undefined) closeSync(descriptor);
     rmSync(root, { recursive: true, force: true });
   }
 });

@@ -620,6 +620,55 @@ r2_display_public_work_path() {
   fi
 }
 
+write_fallback_facts() {
+  local source=$1 runtime_work=$2 supervisor_status=$3
+  local facts=$runtime_work/supervisor-facts.json temporary=$runtime_work/.supervisor-facts.fallback.$BASHPID
+  local display_work display_image display_fs display_proof_stdout display_proof_stderr
+  local display_mount_before display_mount_after display_loops_before display_loops_after
+  display_work=$(r2_display_public_work_path "$runtime_work") || return 1
+  display_image=$display_work/filesystem.xfs
+  display_fs=$display_work/fs
+  display_proof_stdout=$display_work/proof.stdout
+  display_proof_stderr=$display_work/proof.stderr
+  display_mount_before=$display_work/host-before-mount.txt
+  display_mount_after=$display_work/host-after-mount.txt
+  display_loops_before=$display_work/host-before-loops.json
+  display_loops_after=$display_work/host-after-loops.json
+  if [[ -e $facts || -L $facts ]]; then
+    [[ -f $facts && ! -L $facts ]] || return 1
+    /usr/bin/jq -e '
+      type == "object" and
+      (.setup_failed | type == "boolean") and
+      (.inner_pass | type == "boolean")
+    ' "$facts" >/dev/null 2>&1 && return 0
+  fi
+  if ! (set -o noclobber; /usr/bin/jq -n \
+    --arg source "$source" --arg work "$display_work" --arg head "${SOURCE_HEAD:-}" \
+    --arg tree "${SOURCE_TREE:-}" --argjson supervisor_status "$supervisor_status" \
+    --arg image "$display_image" --arg fs "$display_fs" \
+    --arg proof_stdout "$display_proof_stdout" --arg proof_stderr "$display_proof_stderr" \
+    --arg mount_before "$display_mount_before" --arg mount_after "$display_mount_after" \
+    --arg loops_before "$display_loops_before" --arg loops_after "$display_loops_after" \
+    '{setup_failed:true,inner_pass:false,
+      candidate:{source:$source,commit:$head,tree:$tree,clean:false,source_status:$supervisor_status},
+      image:{path:$image},loop_device:{},filesystem:{},mount:{path:$fs},
+      invocation:{argv:[],cwd:null,uid:null,gid:null,status:$supervisor_status,inner_pass:false,
+        stdout_path:$proof_stdout,stderr_path:$proof_stderr},export:{},
+      teardown:{unmounted:false,loop_detached:false,no_holder:false,mount_absent:false,
+        image_unattached:false,host_monitor:{clean:false,before_mount:$mount_before,
+        after_mount:$mount_after,before_loops:$loops_before,after_loops:$loops_after}}}' >"$temporary"); then
+    /usr/bin/rm -f -- "$temporary"
+    return 1
+  fi
+  if ! /usr/bin/chmod 0644 -- "$temporary" ||
+     ! /usr/bin/jq -e 'type == "object" and .setup_failed == true and .inner_pass == false' "$temporary" >/dev/null ||
+     ! /usr/bin/mv -f -- "$temporary" "$facts" ||
+     [[ ! -f $facts || -L $facts ]]; then
+    /usr/bin/rm -f -- "$temporary"
+    return 1
+  fi
+}
+
 r2_public_close_work_directory() {
   if [[ -n ${public_work_fd:-} ]]; then exec {public_work_fd}<&-; fi
   if [[ -n ${public_source_fd:-} ]]; then exec {public_source_fd}<&-; fi

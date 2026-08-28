@@ -1,8 +1,8 @@
 # Nomos handoff
 
-Status snapshot: 2026-08-27, at the R2-2 implementation stop line. This file is
-an operational map; owner decisions and revisioned contracts remain the
-authority when prose conflicts.
+Status snapshot: 2026-08-29, at the issue #199 revision-3 implementation
+handoff boundary. This file is an operational map; owner decisions and
+revisioned contracts remain the authority when prose conflicts.
 
 **Play the accepted six-area viewer:** <https://conarylabs.github.io/nomos/>
 
@@ -14,15 +14,45 @@ baseline. Decision 0019 expressly does **not** adopt Nomos into a game. Decision
 point, recorded one representative adopter frame, and reduced the observed gap
 to an adopter-neutral fixture classified `reusable missing Nomos capability`.
 
-Decision 0023 opens one narrow R2 observed-scene presentation epoch. The
-separately reviewed root `R2.md` revision 1 is owner-authorized. R2-1's strict
-carrier and compiler landed through PR #196 at
+Decision 0023 opens one narrow R2 observed-scene presentation epoch. R2-1's
+strict carrier and compiler landed through PR #196 at
 `cc47a7235f92d0ed460c7db5d178448b12fdba02`, tree
 `2bce614d2df94464c20042cdf059a7b22ec39c09`. R2-2's isolated offline consumer
-and independent second scene land through PR #198. Those implementation
-targets do not themselves admit R2. The next target is a new, separately
-falsifiable final-evidence-and-disposition issue; no platform choice or
-game-adoption claim is authorized.
+and independent second scene landed through PR #198 at main commit
+`6cbce64cb867aef24faf227e62bdfc585bbcbd5d`, tree
+`6dada35f44e178f0d6cafc5ac2b5c94ab3fd0522`. Those implementation targets do
+not themselves admit R2.
+
+Issue #199 is now the active final-evidence-and-disposition slice. Decision
+0024 established R2 revision 2 by repairing the impossible terminal-evidence
+order. Decision 0025 established current `R2.md` revision 3 by replacing the
+falsified recursive disk observer with bounded accounting on a dedicated,
+fully allocated 8 GiB XFS image. Neither repair changed an R2 criterion or
+ceiling. Branch `feat/issue-199-r2-final` contains the revision-3 proof
+implementation and its retained red rehearsal record. It has no passing formal
+author proof, no exact-head non-author proof, no owner visual verdict, no owner
+R2 verdict, and no merge authorization.
+
+The most recent formal attempt was candidate
+`dfba1ad17e6a604cd343aac81bf48ded669d273d`, tree
+`62302d0c06e2171881d54a661a066e96cc947d0c`. It allocated, formatted, and
+mounted the XFS image, then correctly remained setup-red when the wrapper
+compared `findmnt`'s canonical mount target with a descriptor spelling. Its
+cleanup unmounted and detached `/dev/loop1`; pre/post loop inventories were
+byte-identical, and the unrelated Conary `/dev/loop0` was untouched. That run
+also exposed invalid facts assembly. The branch-tip repair covers those two
+observed failures plus the next descriptor-boundary blockers found by three
+independent audits: command-line `find` roots, the inner output argument, the
+Node helper entrypoint, and export inventory/copy paths. Every repair has a
+focused regression, including atomic replacement of invalid fallback facts.
+No privileged XFS run has occurred after these repairs.
+
+The good fresh-session stop line is therefore deliberate: preserve the red
+work directories and logs; begin by resolving and checking the clean branch
+tip; then make one new standalone source clone and one new empty work directory
+for the candidate-native author run. Do not reuse a prior source or work path,
+do not invoke the wrapper from a different checkout, and do not infer a pass
+from the preflight suite.
 
 A fresh agent must not infer active work from an old remote branch. The
 repository intentionally retains evidence branches and annotated tags. Check
@@ -67,8 +97,35 @@ source, compiled plan, signatures, browser receipt, and pixels entered unchanged
 | R1 contract | revision 4 in force | `RUNTIME.md`, decision 0021 |
 | Game adoption | not authorized; thesis applies to no game | decision 0019 |
 | Mortal Estate presentation evidence | bounded prerequisite evidence complete; no adoption | decisions 0022 and 0023 evidence |
-| R2 observed-scene presentation epoch | R2-1 and R2-2 implementation complete; epoch not yet admitted | `R2.md`, PRs #196 and #198 |
-| Current queue | after PR #198, a new R2 final-evidence-and-disposition issue is next | GitHub issues and PRs, `R2.md` section 11 |
+| R2 observed-scene presentation epoch | revision 3 in force; R2-1 and R2-2 landed; epoch not admitted | `R2.md`, decisions 0023–0025 |
+| R2 final evidence | issue #199 implementation locally preflight-green; formal author proof still absent | issue #199, branch `feat/issue-199-r2-final` |
+| Current queue | freeze and preflight the branch tip, then run one fresh candidate-native XFS author proof | this handoff and `R2.md` sections 9 and 11 |
+
+## Current local verification
+
+Immediately before this handoff commit, the revision-3 working bytes passed:
+
+- `cargo fmt --all -- --check`, workspace Clippy with warnings denied, all
+  locked workspace tests, and `cargo xtask boundary`;
+- schema ownership, the 100-row source-provenance register and 10 plants,
+  adopter neutrality and 5 plants;
+- 36 complete-proof refusal plants and the XFS shell validation suite;
+- 126 Node tests across the R2 viewer, receipts, process closure, XFS evidence,
+  accounting, and scene signatures; and
+- ShellCheck on every changed shell file with only the repository's existing
+  dynamic-source-path exemption.
+
+The source-provenance register SHA-256 for these implementation bytes is
+`1404733a897fba8fe56007952b37309d78e60590719b4696bc08d045d3ca1c6d`.
+These were local pre-freeze checks and are not a formal author result. Rerun
+them from the clean committed tip before provisioning XFS.
+
+The last retained setup-red work is
+`/data/dev/src/nomos-r2-xfs-run.ds1Dk6`, with its standalone source at
+`/data/dev/src/nomos-r2-candidate.XywDQm`. The backing image remains useful red
+evidence but is no longer attached or mounted. Earlier red paths and their
+digests are recorded in the revision-3 author receipt; do not relabel or reuse
+them.
 
 The accepted R1 surface consists of:
 
@@ -106,17 +163,22 @@ disposition, not an extension of the accepted R1 play runtime.
    bounded evidence authority, upstream-admission rule, and stop line.
 5. `docs/decisions/0023-observed-scene-presentation-epoch.md` — the narrow R2
    authority, first-target order, adopter boundary, and stop line.
-6. `THESIS.md` — exploratory design thesis; not authority for another project.
-7. `KERNEL.md` — frozen Gate K revision 7 contract and historical failed bar.
-8. `RUNTIME.md` — accepted R1 revision 4 contract.
-9. `docs/decisions/0021-runtime-revision-4.md` — revision 4's exact
+6. `docs/decisions/0025-r2-filesystem-accounting.md` — current R2 revision 3,
+   the falsified recursive-observer record, and the XFS replacement method.
+7. `docs/decisions/0024-r2-final-proof-finalization-order.md` — R2 revision 2's
+   dependency-correct terminal evidence order.
+8. `R2.md` — owner-authorized revision 3 acceptance contract.
+9. `THESIS.md` — exploratory design thesis; not authority for another project.
+10. `KERNEL.md` — frozen Gate K revision 7 contract and historical failed bar.
+11. `RUNTIME.md` — accepted R1 revision 4 contract.
+12. `docs/decisions/0021-runtime-revision-4.md` — revision 4's exact
    lifecycle-history repair.
-10. `docs/decisions/0020-runtime-revision-3.md` — revision 3's exact
+13. `docs/decisions/0020-runtime-revision-3.md` — revision 3's exact
    comparison-count repair.
-11. `docs/decisions/0013-gate-k-disposition.md` and
+14. `docs/decisions/0013-gate-k-disposition.md` and
    `docs/decisions/0016-terminate-gate-k-round-two.md` — historical Gate K
    verdicts.
-12. `docs/workspace.md` — crate graph and boundary proof.
+15. `docs/workspace.md` — crate graph and boundary proof.
 
 Read design records under `docs/review/` only for the subsystem being changed.
 The large `docs/evaluation/runs/` tree is immutable historical evidence, not a
@@ -137,6 +199,14 @@ Install these host tools before expecting the complete proof to run:
 - Google Chrome, Chromium, or a compatible headless-shell binary; and
 - common GNU userland used by the proof scripts, including `jq`, `sha256sum`,
   `find`, `sort`, `diff`, `cmp`, `sed`, `grep`, `stat`, and `timeout`.
+
+The revision-3 complete proof additionally requires Linux with loop and XFS
+support, at least 8 GiB available for one fully allocated backing image,
+passwordless non-interactive `sudo` for the invoking user, and the exact host
+tools checked by the wrapper. On Ubuntu 24.04 the non-base packages are
+`bubblewrap`, `e2fsprogs`, `psmisc`, and `xfsprogs`; the proof uses `bwrap`,
+`filefrag`, `fuser`, `losetup`, `mkfs.xfs`, `xfs_info`, and `xfs_quota`. Install
+all tools before entering the wrapper because the proof itself is offline.
 
 CI uses Ubuntu 24.04, Node 22, the pinned Rust toolchain, and Google Chrome.
 GitHub CLI is useful for repository state but is not needed to build.
@@ -206,7 +276,7 @@ CDP, Chrome-process-group, and HTTP-server shutdown. PR #181 independently ran
 the full browser proof ten consecutive times; every process closed within 9 ms
 of the reviewer observing PASS, against a 2-second acceptance limit.
 
-The R2-2 local proof is:
+The portable R2 preflight is:
 
 ```bash
 cargo build --release --locked -p nomos-observed-scene
@@ -216,11 +286,19 @@ docs/evaluation/r2-source-provenance.sh
 docs/evaluation/r2-source-provenance.test.sh
 docs/evaluation/r2-adopter-neutrality.sh
 docs/evaluation/r2-adopter-neutrality.test.sh
+docs/evaluation/r2-complete-proof.test.sh
+docs/evaluation/r2-complete-proof-xfs.test.sh
 node docs/evaluation/r2-maximum.test.mjs
 node docs/evaluation/r2-scene-signature.mjs \
   fixtures/r2/scenes/scene_one.json fixtures/r2/scenes/scene_two.json
 node --test apps/nomos-observed-viewer/test/*.test.mjs \
-  docs/evaluation/r2-scene-signature.test.mjs
+  docs/evaluation/r2-scene-signature.test.mjs \
+  docs/evaluation/r2-complete-proof-process.test.mjs \
+  docs/evaluation/r2-complete-proof-receipt.test.mjs \
+  docs/evaluation/r2-complete-proof-xfs-evidence.test.mjs \
+  docs/evaluation/r2-complete-proof-xfs-receipt.test.mjs \
+  docs/evaluation/r2-filesystem-accounting.test.mjs \
+  docs/evaluation/r2-filesystem-evidence.test.mjs
 node apps/nomos-observed-viewer/build.mjs \
   --plan fixtures/r2/plans/scene_one.json \
   --plan fixtures/r2/plans/scene_two.json \
@@ -237,8 +315,50 @@ The two committed plans must also reproduce byte-for-byte from their canonical
 scene inputs. R2-2 acceptance requires 10 fresh browser profiles per scene,
 zero external requests, per-scene and combined p95 at most 5 seconds, process
 closure within 2 seconds, distribution size at most 2,000,000 bytes, and an
-exact-head Luna Max rerun. This is not the later complete network-isolated R2
-disposition proof.
+exact-head Luna Max rerun.
+
+Those portable commands are not the final disposition proof. For issue #199,
+first commit the candidate and rerun the preflight from a clean branch tip.
+Then make new standalone paths under a host filesystem with more than 8 GiB
+free. The source wrapper and source argument must come from the same detached
+candidate clone:
+
+```bash
+candidate=$(git rev-parse 'HEAD^{commit}')
+candidate_tree=$(git rev-parse 'HEAD^{tree}')
+test -z "$(git status --porcelain=v1 --untracked-files=all)"
+
+proof_parent=/absolute/host/path/with-more-than-8GiB-free
+candidate_source=$(mktemp -d "$proof_parent/nomos-r2-candidate.XXXXXX")
+candidate_work=$(mktemp -d "$proof_parent/nomos-r2-xfs-run.XXXXXX")
+git clone --no-local --no-hardlinks . "$candidate_source"
+git -C "$candidate_source" checkout --detach "$candidate"
+test "$(git -C "$candidate_source" rev-parse 'HEAD^{tree}')" = "$candidate_tree"
+test "$(git -C "$candidate_source" rev-parse --is-shallow-repository)" = false
+test -z "$(git -C "$candidate_source" status --porcelain=v1 --untracked-files=all)"
+
+browser=/absolute/path/to/chrome-or-chrome-headless-shell
+(
+  cd "$candidate_source"
+  CHROME_BIN="$browser" \
+    docs/evaluation/r2-complete-proof-xfs.sh \
+      --source "$candidate_source" \
+      --work "$candidate_work"
+)
+```
+
+Never substitute the development checkout's wrapper into that last command.
+Each attempt gets fresh source and work paths whether the preceding attempt was
+red or green. A red run must be recorded as red and retained until its evidence
+has been routed. Before and after every run, confirm that only the intended
+proof loop appeared and that teardown removed it; this machine currently has
+an unrelated Conary `/dev/loop0` that is outside Nomos and must not be touched.
+
+A passing author run still needs a fresh exact-head Luna Max rerun, the owner
+visual judgment, the required hosted workflows, and the owner's explicit R2
+and merge dispositions. GitHub Actions quota was exhausted at this snapshot,
+so hosted CI remains pending; local proof is useful evidence but does not
+replace that lane.
 
 The formal archived Gate K harnesses are historical and materially heavier.
 Do not launch a new cold-agent attempt, checker, retry, or evidence assembly:
@@ -279,11 +399,12 @@ gh pr list --state open
 gh run list --branch main --limit 8
 ```
 
-Expected steady state after this handoff merges: clean `main` matching
-`origin/main`, zero open issues, zero open PRs, and successful applicable main
-workflows. Pages retains its last applicable successful run when its path
-filter does not select the decision change. Old remote heads may still exist;
-they do not override that state.
+At this snapshot, local `main` and `origin/main` are still PR #198's merge
+`6cbce64cb867aef24faf227e62bdfc585bbcbd5d`; issue #199 work is on
+`feat/issue-199-r2-final`. Do not expect the feature branch to have an upstream
+or infer a pull request from its existence. Query GitHub when quota and network
+access permit. Old remote heads may still exist; they do not override the owner
+decisions, open issue, or this candidate state.
 
 ## What can happen next
 
@@ -291,11 +412,14 @@ Ordinary bug maintenance against the accepted R1 baseline may start from a new
 issue with falsifiable acceptance.
 
 Decision 0023 authorizes the R2 epoch boundary and nothing past its stated
-order. `R2.md` revision 1 defines exact acceptance, finite input and output
+order. `R2.md` revision 3 defines exact acceptance, finite input and output
 grammars, ownership, workspace boundaries, budgets, and proof. R2-1 and R2-2
-are complete after PR #198. The next slice is R2 final evidence and disposition,
-starting from a new falsifiable issue and stopping for the owner's explicit
-`accept`, `repair and rerun`, or `stop` verdict.
+are complete after PR #198. Issue #199 is already the authorized final-evidence
+slice; do not open a replacement issue. Continue with exact-head preflight and
+one fresh candidate-native XFS author run. If it passes, obtain the required
+exact-head non-author proof and owner visual judgment, then stop for the
+owner's explicit `accept`, `repair and rerun`, or `stop` R2 verdict and a
+distinct merge disposition.
 
 A deeper adopter boundary, platform choice, Gate K attempt, R2 scope expansion,
 or adoption into a game requires its own owner decision. Work toward an actual

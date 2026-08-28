@@ -134,47 +134,6 @@ else
   source "$public_workdir_helper_fd_path"
 fi
 
-write_fallback_facts() {
-  local source=$1
-  local runtime_work=$2
-  local supervisor_status=$3
-  local facts=$runtime_work/supervisor-facts.json
-  local display_work display_image display_fs display_proof_stdout display_proof_stderr
-  local display_mount_before display_mount_after display_loops_before display_loops_after
-  display_work=$(r2_display_public_work_path "$runtime_work") || return 1
-  display_image=$display_work/filesystem.xfs
-  display_fs=$display_work/fs
-  display_proof_stdout=$display_work/proof.stdout
-  display_proof_stderr=$display_work/proof.stderr
-  display_mount_before=$display_work/host-before-mount.txt
-  display_mount_after=$display_work/host-after-mount.txt
-  display_loops_before=$display_work/host-before-loops.json
-  display_loops_after=$display_work/host-after-loops.json
-  [[ -e $facts || -L $facts ]] && return 0
-  jq -n \
-    --arg source "$source" --arg work "$display_work" --arg head "${SOURCE_HEAD:-}" \
-    --arg tree "${SOURCE_TREE:-}" --argjson supervisor_status "$supervisor_status" \
-    --arg image "$display_image" --arg fs "$display_fs" \
-    --arg proof_stdout "$display_proof_stdout" --arg proof_stderr "$display_proof_stderr" \
-    --arg mount_before "$display_mount_before" \
-    --arg mount_after "$display_mount_after" \
-    --arg loops_before "$display_loops_before" \
-    --arg loops_after "$display_loops_after" \
-    '{
-      setup_failed:true, inner_pass:false,
-      candidate:{source:$source,commit:$head,tree:$tree,clean:false,source_status:$supervisor_status},
-      image:{path:$image}, loop_device:{}, filesystem:{}, mount:{path:$fs},
-      invocation:{argv:[],cwd:null,uid:null,gid:null,status:$supervisor_status,inner_pass:false,
-        stdout_path:$proof_stdout,stderr_path:$proof_stderr},
-      export:{},
-      teardown:{unmounted:false,loop_detached:false,no_holder:false,
-        mount_absent:false,image_unattached:false,
-        host_monitor:{clean:false,before_mount:$mount_before,after_mount:$mount_after,
-          before_loops:$loops_before,after_loops:$loops_after}}
-    }' >"$facts"
-  chmod 0644 "$facts"
-}
-
 record_fs_statfs() {
   local fs=$1
   local fragment=$2
@@ -345,7 +304,7 @@ supervisor() {
     local inner_pass=false export_equal=false
     [[ $inner_status -eq 0 ]] && inner_pass=true
     [[ -n $source_inventory_sha256 && $source_inventory_sha256 == "$export_inventory_sha256" && $export_status -eq 0 ]] && export_equal=true
-    jq -n \
+    if ! jq -n \
       --arg source "$source" --arg head "$expected_head" --arg tree "$expected_tree" \
       --argjson source_status "${source_status:-125}" --argjson candidate_clean "$candidate_clean" \
       --arg image "$display_image" --arg image_stat "$display_image_stat" --arg image_filefrag "$display_image_filefrag" \
@@ -405,17 +364,21 @@ supervisor() {
           image_sync:{argv:["/usr/bin/sync","-f",$image],cwd:$display_work,status:$image_sync_status,stdout_path:$image_sync_stdout,stderr_path:$image_sync_stderr},
           loop_attach:{argv:["/usr/sbin/losetup","--find","--show",$image],cwd:$display_work,status:$loop_attach_status,stdout_path:($display_work+"/loop-attach.stdout"),stderr_path:($display_work+"/loop-attach.stderr")},
           mkfs_xfs:{argv:["/usr/sbin/mkfs.xfs","-f","-l","internal",($loop_path|nz)],cwd:$display_work,status:$mkfs_status,stdout_path:($display_work+"/mkfs-xfs.stdout"),stderr_path:($display_work+"/mkfs-xfs.stderr")},
-          mount:{argv:["/usr/bin/mount","-t","xfs","-o","rw,nodev,nosuid",($loop_path|nz),$display_fs],cwd:$display_work,status:$mount_status,stdout_path:($display_work+"/mount.stdout"),stderr_path:($display_work+"/mount.stderr")},
-          proof:{argv:["/usr/bin/bash",$proof_script,"--output",$display_output],cwd:$display_checkout,status:$inner_status,stdout_path:$proof_stdout,stderr_path:$proof_stderr},
-          export:{argv:["/usr/bin/node",$receipt_helper,"copy","--source",$display_output,"--destination",$display_export_destination,"--output",$display_inventory_path],cwd:$display_work,status:$export_status,stdout_path:($display_work+"/export.stdout"),stderr_path:($display_work+"/export.stderr")},
-          sync_before_umount:{argv:["/usr/bin/sync","-f",$display_fs],cwd:$display_work,status:$sync_before_umount_status,stdout_path:($display_work+"/sync-before-umount.stdout"),stderr_path:($display_work+"/sync-before-umount.stderr")},
-          umount:{argv:["/usr/bin/umount",$display_fs],cwd:$display_work,status:$umount_status,stdout_path:($display_work+"/umount.stdout"),stderr_path:($display_work+"/umount.stderr")},
+          mount:{argv:["/usr/bin/mount","-t","xfs","-o","rw,nodev,nosuid",($loop_path|nz),$fs],cwd:$display_work,status:$mount_status,stdout_path:($display_work+"/mount.stdout"),stderr_path:($display_work+"/mount.stderr")},
+          proof:{argv:["/usr/bin/bash",$proof_script,"--output",$output],cwd:$checkout,status:$inner_status,stdout_path:$proof_stdout,stderr_path:$proof_stderr},
+          export:{argv:["/usr/bin/node",$receipt_helper,"copy","--source",$output,"--destination",$export_destination,"--output",$inventory_path],cwd:$display_work,status:$export_status,stdout_path:($display_work+"/export.stdout"),stderr_path:($display_work+"/export.stderr")},
+          sync_before_umount:{argv:["/usr/bin/sync","-f",$fs],cwd:$display_work,status:$sync_before_umount_status,stdout_path:($display_work+"/sync-before-umount.stdout"),stderr_path:($display_work+"/sync-before-umount.stderr")},
+          umount:{argv:["/usr/bin/umount",$fs],cwd:$display_work,status:$umount_status,stdout_path:($display_work+"/umount.stdout"),stderr_path:($display_work+"/umount.stderr")},
           loop_detach:{argv:["/usr/sbin/losetup","--detach",($loop_path|nz)],cwd:$display_work,status:$detach_status,stdout_path:($display_work+"/loop-detach.stdout"),stderr_path:($display_work+"/loop-detach.stderr")}
         },
-        tool_register:$wrapper_tools}' >"$tmp"
-    chmod 0644 "$tmp"
-    mv -f -- "$tmp" "$facts"
-    chmod 0644 "$facts"
+        tool_register:$wrapper_tools}' >"$tmp"; then
+      rm -f -- "$tmp"
+      return 1
+    fi
+    if ! chmod 0644 "$tmp" || ! mv -f -- "$tmp" "$facts" || ! chmod 0644 "$facts"; then
+      rm -f -- "$tmp"
+      return 1
+    fi
   }
 
   # EXIT trap invokes this function indirectly.
@@ -590,7 +553,8 @@ supervisor() {
     fail 'mounted XFS options record is malformed'
   mount_propagation=$(/usr/bin/jq -er 'if (.filesystems | length) == 1 then .filesystems[0].propagation else empty end' <<<"$mount_record") ||
     fail 'mounted XFS propagation record is malformed'
-  [[ $mount_target == "$fs" && $mount_source == "$loop_device" && $mount_type == xfs ]] || fail 'mounted XFS identity differs'
+  display_mount_path=$(r2_display_work_path "$fs") || fail 'work directory changed after XFS mount'
+  [[ $mount_target == "$display_mount_path" && $mount_source == "$loop_device" && $mount_type == xfs ]] || fail 'mounted XFS identity differs'
   [[ ,$mount_options, == *,rw,* && ,$mount_options, == *,nodev,* && ,$mount_options, == *,nosuid,* ]] || fail 'XFS mount options lack rw,nodev,nosuid'
   [[ $mount_propagation == private ]] || fail 'XFS mount is not private'
   fragment_size=$(/usr/bin/stat -f -c '%S' "$fs")
@@ -666,7 +630,7 @@ supervisor() {
   [[ -d $output && ! -L $output ]] || fail 'proof output is not a real directory'
   run_as_user /usr/bin/git -C "$checkout" check-ignore -q --no-index -- target/r2-complete-proof ||
     fail 'proof output is not ignored by the checkout'
-  [[ $(find "$fs" -mindepth 1 -maxdepth 1 -printf '%f\n') == checkout ]] ||
+  [[ $(find -H -- "$fs" -mindepth 1 -maxdepth 1 -printf '%f\n') == checkout ]] ||
     fail 'checkout is not the XFS sole top-level entry'
   record_fs_statfs "$fs" "$fragment_size" "$checkout_statfs" || fail 'XFS capacity changed above ceiling after checkout'
   candidate_clean=true
@@ -717,7 +681,7 @@ supervisor() {
     NOMOS_R2_OUTER_POSITIVE_STDERR="$outer_positive_stderr" \
     /usr/bin/bash "$proof_script" --output "$output"
   record_fs_statfs "$fs" "$fragment_size" "$close_statfs" || fail 'close statfs checkpoint failed'
-  [[ $(find "$fs" -mindepth 1 -maxdepth 1 -printf '%f\n') == checkout ]] ||
+  [[ $(find -H -- "$fs" -mindepth 1 -maxdepth 1 -printf '%f\n') == checkout ]] ||
     fail 'checkout is not the XFS sole top-level entry after proof closure'
 
   export_root=$work/export

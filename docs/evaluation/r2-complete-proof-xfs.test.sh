@@ -39,6 +39,11 @@ grep -Fq "'%h'" "$workdir_helper"
 grep -Fq 'outer_preflight_log=$work/outer-preflight.json' "$wrapper"
 grep -Fq 'NOMOS_R2_OUTER_PREFLIGHT_LOG="$outer_preflight_log"' "$wrapper"
 grep -Fq '/usr/bin/env NOMOS_R2_XFS_WRAPPER=1' "$wrapper"
+grep -Fq 'display_mount_path=$(r2_display_work_path "$fs")' "$wrapper"
+grep -Fq 'mount_target == "$display_mount_path"' "$wrapper"
+if grep -Fq 'mount_target == "$fs"' "$wrapper"; then
+  fail 'mounted XFS identity still compares canonical evidence with a descriptor spelling'
+fi
 if grep -Fq 'chmod 0733' "$wrapper"; then
   printf 'wrapper temporarily reopens caller top-level write authority\n' >&2
   exit 1
@@ -86,9 +91,65 @@ wrapper_tool_json=$test_root/wrapper-tools.json
 pwd_tool_path=$(/usr/bin/awk -F '\t' '$1 == "pwd" {print $2}' "$wrapper_tool_tsv")
 [[ $pwd_tool_path == /* && -x $pwd_tool_path ]] || fail 'wrapper tool recorder did not resolve external pwd'
 
+# findmnt reports the canonical mount-table target even when its lookup path
+# is a retained descriptor. The production comparison must account for that
+# normalization without changing the descriptor-derived mount operation.
+exec {findmnt_fd}</proc
+findmnt_descriptor=/proc/self/fd/$findmnt_fd
+findmnt_record=$(/usr/bin/findmnt --json -T "$findmnt_descriptor" -o TARGET)
+findmnt_target=$(/usr/bin/jq -er 'if (.filesystems | length) == 1 then .filesystems[0].target else empty end' <<<"$findmnt_record")
+findmnt_canonical=$(/usr/bin/realpath -e -- "$findmnt_descriptor")
+[[ $findmnt_target == "$findmnt_canonical" && $findmnt_target != "$findmnt_descriptor" ]] ||
+  fail 'findmnt descriptor-target normalization differs'
+exec {findmnt_fd}<&-
+
+# Every jq variable in the facts program must be introduced by its jq argv.
+# This catches a typo before cleanup can turn it into an empty evidence file.
+write_facts_text=$(/usr/bin/awk '/^  write_facts\(\) \{/{inside=1} inside{print} inside && /^  \}$/{exit}' "$wrapper")
+write_facts_arguments=$(printf '%s\n' "$write_facts_text" |
+  /usr/bin/grep -oE -- '--arg(json)?[[:space:]]+[A-Za-z_][A-Za-z0-9_]*' |
+  /usr/bin/awk '{print $2}' | /usr/bin/sort -u)
+write_facts_program=$(printf '%s\n' "$write_facts_text" |
+  /usr/bin/awk '/def nz: if/{inside=1} inside{print} inside && /tool_register:\$wrapper_tools}/{exit}')
+write_facts_references=$(printf '%s\n' "$write_facts_program" |
+  /usr/bin/grep -oE '\$[A-Za-z_][A-Za-z0-9_]*' | /usr/bin/tr -d '$' |
+  /usr/bin/grep -vx tmp | /usr/bin/sort -u)
+write_facts_missing=$(comm -23 <(printf '%s\n' "$write_facts_references") <(printf '%s\n' "$write_facts_arguments"))
+[[ -z $write_facts_missing ]] || fail "facts jq has unbound variables: $write_facts_missing"
+
+# Node canonicalizes an ES-module entrypoint reached through /proc/self/fd.
+# The cloned export helper must still recognize that descriptor-spelled entry
+# as its own CLI rather than silently importing and exiting zero.
+exec {receipt_entry_fd}<"$script_directory"
+set +e
+receipt_entry_output=$(/usr/bin/node "/proc/self/fd/$receipt_entry_fd/r2-complete-proof-xfs-receipt.mjs" unknown-command 2>&1)
+receipt_entry_status=$?
+set -e
+[[ $receipt_entry_status -eq 2 && $receipt_entry_output == usage:* ]] ||
+  fail 'descriptor-spelled receipt helper did not enter its CLI'
+receipt_cli_root=$test_root/receipt-cli
+mkdir -p -- "$receipt_cli_root/source" "$receipt_cli_root/export/target"
+printf 'descriptor CLI\n' >"$receipt_cli_root/source/value"
+exec {receipt_cli_fd}<"$receipt_cli_root"
+receipt_cli_descriptor=/proc/self/fd/$receipt_cli_fd
+/usr/bin/node "/proc/self/fd/$receipt_entry_fd/r2-complete-proof-xfs-receipt.mjs" copy \
+  --source "$receipt_cli_descriptor/source" \
+  --destination "$receipt_cli_descriptor/export/target/r2-complete-proof" \
+  --output "$receipt_cli_descriptor/inventory.json" >"$receipt_cli_root/copy.stdout"
+/usr/bin/jq -e --arg source "$receipt_cli_root/source" \
+  --arg destination "$receipt_cli_root/export/target/r2-complete-proof" \
+  '.source == $source and .destination == $destination and .equal == true' \
+  "$receipt_cli_root/inventory.json" >/dev/null
+/usr/bin/cmp "$receipt_cli_root/source/value" \
+  "$receipt_cli_root/export/target/r2-complete-proof/value"
+exec {receipt_cli_fd}<&-
+exec {receipt_entry_fd}<&-
+
 # GNU find does not descend through a command-line descriptor symlink under
 # its default -P policy. The production inventory must explicitly follow that
 # one root link while retaining -P behavior for every entry beneath it.
+[[ $(/usr/bin/grep -Fc 'find -H -- "$fs" -mindepth 1 -maxdepth 1 -printf' "$wrapper") -eq 2 ]] ||
+  fail 'both XFS sole-entry checks must follow only their descriptor root'
 precreated_text=$(/usr/bin/awk '/^PRECREATED_WORK_FILES=\(/ {inside=1; next} inside && /^\)/ {exit} inside {print}' "$wrapper" | /usr/bin/tr '\n' ' ')
 read -r -a PRECREATED_WORK_FILES <<<"$precreated_text"
 inventory_root=$test_root/descriptor-inventory
@@ -100,6 +161,39 @@ done
 exec {inventory_fd}<"$inventory_root"
 r2_validate_precreated_work_inventory "/proc/self/fd/$inventory_fd" "$(id -u)" "$(id -g)"
 exec {inventory_fd}<&-
+
+# Cleanup runs after the root supervisor has restored the work directory to
+# the caller. If a failed facts writer left an invalid, unwritable file, the
+# caller-side fallback must replace it atomically with parseable red evidence.
+(
+  fallback_work=$test_root/fallback-work
+  mkdir -- "$fallback_work"
+  work_real=$fallback_work
+  work_identity=$(/usr/bin/stat -c '%d:%i' -- "$work_real")
+  caller_uid=$(/usr/bin/id -u)
+  caller_gid=$(/usr/bin/id -g)
+  r2_public_open_work_directory
+  fallback_facts=$public_work_fd_path/supervisor-facts.json
+  : >"$fallback_facts"
+  /usr/bin/chmod 0444 -- "$fallback_facts"
+  SOURCE_HEAD=1111111111111111111111111111111111111111
+  SOURCE_TREE=2222222222222222222222222222222222222222
+  write_fallback_facts /candidate/source "$public_work_fd_path" 37
+  /usr/bin/jq -e '
+    .setup_failed == true and .inner_pass == false and
+    .candidate.source == "/candidate/source" and
+    .candidate.commit == "1111111111111111111111111111111111111111" and
+    .candidate.tree == "2222222222222222222222222222222222222222" and
+    .candidate.source_status == 37
+  ' "$fallback_facts" >/dev/null
+  fallback_digest=$(/usr/bin/sha256sum "$fallback_facts" | /usr/bin/awk '{print $1}')
+  write_fallback_facts /different/source "$public_work_fd_path" 99
+  [[ $(/usr/bin/sha256sum "$fallback_facts" | /usr/bin/awk '{print $1}') == "$fallback_digest" ]] ||
+    fail 'fallback facts replaced an already valid supervisor record'
+  [[ -z $(/usr/bin/find -H -- "$public_work_fd_path" -maxdepth 1 -name '.supervisor-facts.fallback.*' -print -quit) ]] ||
+    fail 'fallback facts left a temporary file'
+  r2_public_close_work_directory
+)
 
 # Adversarial rename plant: a canonical work spelling is replaced after the
 # supervisor-side descriptor is opened. A descriptor-derived privileged write

@@ -27,7 +27,7 @@ line, and operational gotchas.
 | R1 contract | `RUNTIME.md` revision 4, in force under decision 0021 |
 | Game adoption | not authorized |
 | Mortal Estate evidence | bounded evidence produced one admitted dependency point, representative frame, and classified capability gap |
-| R2 observed-scene epoch | revision 1 authorized; R2-1 and R2-2 implementation targets complete; final evidence and disposition remain |
+| R2 observed-scene epoch | revision 3 authorized; R2-1 and R2-2 landed; issue #199 final proof is implemented locally but has no passing author proof or disposition |
 
 R1 is the accepted runtime baseline for this repository. That result does not
 rewrite Gate K, pass a later gate, approve production art, or authorize Nomos
@@ -40,12 +40,16 @@ recorded a representative adopter frame, and reduced its presentation gap to an
 adopter-neutral fixture classified `reusable missing Nomos capability`.
 
 Decision 0023 opens one narrow R2 observed-scene presentation epoch from that
-evidence. The separately reviewed root contract `R2.md` revision 1 is
-owner-authorized. R2-1's strict carrier and compiler landed at
-`cc47a7235f92d0ed460c7db5d178448b12fdba02`; R2-2 adds the isolated offline
-consumer and hash-frozen independent second-scene evidence through PR #198.
-R2 is not admitted until its separately authorized final evidence and owner
-disposition target passes. No platform choice or game adoption is authorized.
+evidence. The separately reviewed root contract `R2.md` revision 3 is
+owner-authorized after decisions 0024 and 0025 repaired the finalization order
+and falsified recursive-disk-observer method without changing an R2 criterion
+or ceiling. R2-1's strict carrier and compiler landed at
+`cc47a7235f92d0ed460c7db5d178448b12fdba02`; R2-2's isolated offline consumer
+and hash-frozen independent second-scene evidence landed through PR #198.
+Issue #199 carries the revision-3 final-proof implementation. R2 is not admitted
+until one combined candidate passes the complete author proof, exact-head
+non-author rerun, owner visual judgment, required CI, and owner disposition.
+No platform choice or game adoption is authorized.
 
 The implementation includes:
 
@@ -109,9 +113,10 @@ The browser lane requires Node 22 or newer and Chrome/Chromium; set
 `CHROME_BIN` when discovery cannot find the binary. See
 [docs/HANDOFF.md](docs/HANDOFF.md) for complete setup and worktree rules.
 
-Run the R2-2 checks and two-scene browser proof with the commands recorded in
-the handoff. They require no npm installation and reuse only the accepted,
-digest-checked Three.js bytes.
+Run the R2 portable checks and two-scene browser proof with the commands
+recorded in the handoff. The revision-3 final proof additionally requires the
+dedicated XFS wrapper and host tools named there. It requires no npm
+installation and reuses only the accepted, digest-checked Three.js bytes.
 
 ## Read in this order
 
@@ -123,17 +128,21 @@ digest-checked Three.js bytes.
    — bounded Mortal Estate evidence authority and upstream-admission stop line.
 4. [decision 0023](docs/decisions/0023-observed-scene-presentation-epoch.md)
    — narrow R2 authority, semantic boundary, target order, and stop line.
-5. [THESIS.md](THESIS.md) — the exploratory architecture and adoption bars.
-6. [KERNEL.md](KERNEL.md) — frozen Gate K revision 7 contract.
-7. [RUNTIME.md](RUNTIME.md) — accepted R1 revision 4 contract.
-8. [decision 0021](docs/decisions/0021-runtime-revision-4.md) — revision 4's
+5. [decision 0025](docs/decisions/0025-r2-filesystem-accounting.md) — R2
+   revision 3's bounded XFS accounting repair and exact retained red evidence.
+6. [decision 0024](docs/decisions/0024-r2-final-proof-finalization-order.md) —
+   R2 revision 2's terminal-evidence ordering repair.
+7. [THESIS.md](THESIS.md) — the exploratory architecture and adoption bars.
+8. [KERNEL.md](KERNEL.md) — frozen Gate K revision 7 contract.
+9. [RUNTIME.md](RUNTIME.md) — accepted R1 revision 4 contract.
+10. [decision 0021](docs/decisions/0021-runtime-revision-4.md) — revision 4's
    lifecycle-history repair after R1 closed.
-9. [decision 0020](docs/decisions/0020-runtime-revision-3.md) — revision 3's
+11. [decision 0020](docs/decisions/0020-runtime-revision-3.md) — revision 3's
    exact comparison-count repair.
-10. [decision 0013](docs/decisions/0013-gate-k-disposition.md) and
+12. [decision 0013](docs/decisions/0013-gate-k-disposition.md) and
    [decision 0016](docs/decisions/0016-terminate-gate-k-round-two.md) — the
    historical Gate K dispositions.
-11. [docs/workspace.md](docs/workspace.md) — crate map and dependency boundary.
+13. [docs/workspace.md](docs/workspace.md) — crate map and dependency boundary.
 
 Subsystem designs and receipts live under `docs/review/` and
 `docs/evaluation/`. The large `docs/evaluation/runs/` archive and `gate-k-*`
@@ -166,12 +175,12 @@ remote branches do not. Ordinary maintenance begins with a falsifiable issue
 and follows [AGENTS.md](AGENTS.md). A new capability family, dependency policy,
 runtime epoch, Gate K attempt, or game adoption requires a new owner decision.
 
-Decision 0023 is the narrow exception for the observed-scene R2 epoch. With
-R2-1 and R2-2 complete, the next authorized action is the separately
-falsifiable R2 final-evidence-and-disposition issue required by `R2.md`
-section 11. It must bind one combined candidate, run the complete
-network-isolated proof, obtain an exact-head non-author rerun, and stop for the
-owner's R2 verdict.
+Decision 0023 is the narrow exception for the observed-scene R2 epoch. R2-1 and
+R2-2 are complete, and issue #199 is the active final-evidence-and-disposition
+slice required by `R2.md` section 11. At this snapshot its next action is an
+exact-head preflight followed by a fresh candidate-native revision-3 XFS author
+run. A pass must still receive an exact-head non-author rerun and stop for the
+owner's visual and R2 verdicts. Do not start a later epoch from this branch.
 
 Nomos is authority only for this repository. Nothing here becomes authority for
 another project without that project's own explicit decision.

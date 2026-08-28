@@ -270,6 +270,12 @@ expect_failure symlink-ancestor 'output path traverses a symlink' 0 \
   in_repo "$detached" env R2_TEST_SUDO_LOG="$sudo_log" PATH="$guard_path" \
   /usr/bin/bash "$harness" --output target/link-parent/child
 
+exec {descriptor_output_fd}<"$detached"
+descriptor_symlink_output=/proc/self/fd/$descriptor_output_fd/target/link-parent/child
+expect_failure descriptor-symlink-ancestor 'output path traverses a symlink' 0 \
+  in_repo "$detached" env R2_TEST_SUDO_LOG="$sudo_log" PATH="$guard_path" \
+  /usr/bin/bash "$harness" --output "$descriptor_symlink_output"
+
 mkdir -p "$detached/target/nonempty"
 printf 'plant\n' >"$detached/target/nonempty/file"
 expect_failure nonempty-output 'output directory must be empty' 0 \
@@ -315,6 +321,14 @@ expect_failure missing-browser 'Chrome/Chromium is not installed or cannot start
   in_repo "$detached" env R2_TEST_SUDO_LOG="$sudo_log" R2_TEST_SUDO_STATUS=0 \
   CHROME_BIN="$temporary/no-browser" PATH="$guard_path" \
   /usr/bin/bash "$harness" --output "$missing_browser_output"
+
+descriptor_browser_output=$detached/target/descriptor-browser-output
+mkdir "$descriptor_browser_output"
+expect_failure descriptor-output 'Chrome/Chromium is not installed or cannot start' 0 \
+  in_repo "$detached" env R2_TEST_SUDO_LOG="$sudo_log" R2_TEST_SUDO_STATUS=0 \
+  CHROME_BIN="$temporary/no-browser" PATH="$guard_path" \
+  /usr/bin/bash "$harness" --output "/proc/self/fd/$descriptor_output_fd/target/descriptor-browser-output"
+exec {descriptor_output_fd}<&-
 
 fake_browser=$temporary/not-a-browser
 printf '#!/usr/bin/env bash\nexit 0\n' >"$fake_browser"

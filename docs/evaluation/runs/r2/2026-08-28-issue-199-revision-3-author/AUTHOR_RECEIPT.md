@@ -161,6 +161,28 @@ judgment, or acceptance requirement.
   pre/post host loop inventories are byte-identical at SHA-256
   `e951f122f209cb4a215522a5b5e708d1a855da1e65e9aedfa014b849f4be6a74`.
   This attempt remains setup-red.
+- Candidate `dfba1ad17e6a604cd343aac81bf48ded669d273d`, tree
+  `62302d0c06e2171881d54a661a066e96cc947d0c`, source
+  `/data/dev/src/nomos-r2-candidate.XywDQm`, work
+  `/data/dev/src/nomos-r2-xfs-run.ds1Dk6`: the candidate-native attempt fully
+  allocated the 8,192 MiB image, attached `/dev/loop1`, formatted and mounted
+  XFS, then failed before the clone because `findmnt` canonicalized the
+  descriptor-spelled mount target while the identity check compared it with
+  `/proc/self/fd/11/fs`. The mount command recorded status zero and empty
+  stdout/stderr; the XFS-info SHA-256 is
+  `cff8c93a40832108d074128c8ff37828e33eb54357f670edd2ed5d627088779e`;
+  the UUID evidence SHA-256 is
+  `82372fb5fd19c1d47cb807238bee3d9d31c31ce56049a5e5a6ffb6897d90f11b`;
+  and supervisor stderr SHA-256 is
+  `5d2472a0415cfb1dd93c573d884b4ec43202f4e3780d1001d0dc4f7f94f628a7`.
+  Failure-facts assembly then exposed eight undefined jq bindings and emitted
+  no final receipt; receipt stderr SHA-256 is
+  `327bd97ddf07ae97fb17ee077652f4410426d417d6ea7150c464990e6bc602b9`.
+  Cleanup unmounted and detached the proof filesystem. Pre/post loop
+  inventories are byte-identical at SHA-256
+  `e951f122f209cb4a215522a5b5e708d1a855da1e65e9aedfa014b849f4be6a74`,
+  and `/dev/loop0` remained the unrelated pre-existing Conary loop. This
+  attempt remains setup-red.
 
 ## Clean-room and adopter boundary
 
@@ -174,14 +196,15 @@ that project's own explicit decision and evidence.
 
 ## Proof status
 
-No fresh revision-3 author candidate commit/tree, generated final evidence
-manifest, or final proof receipt is bound by this record. Local focused tests
-and syntax checks may establish implementation facts, but they do not satisfy
-the privileged XFS rehearsal, the complete measured proof, the exact-head
-non-author rerun, or the owner's merge disposition. Until those records exist,
-R2 revision 3 remains pending and must not be called green or accepted.
+No passing revision-3 author candidate, generated final evidence manifest, or
+final proof receipt is bound by this record. Local focused tests and syntax
+checks may establish implementation facts, but they do not satisfy the
+privileged XFS run, the complete measured proof, the exact-head non-author
+rerun, or the owner's merge disposition. Until those records exist, R2
+revision 3 remains pending and must not be called green or accepted.
 
-The inventory table and per-file SHA-256 values are intentionally updated in a
-separate provenance step after the revision-3 working tree is final. This
-receipt therefore records routing intent and authority context without claiming
-hash closure for the moving candidate.
+The source-provenance inventory and per-file SHA-256 values have been refreshed
+for the current implementation bytes. That closure does not convert this
+routing receipt or any retained rehearsal into a proof result; the eventual
+author result must bind its own exact candidate commit/tree and generated
+evidence.
