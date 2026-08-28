@@ -21,7 +21,7 @@ output_argument=$2
 host_tools=(
   git realpath readlink find grep awk sed sort cmp cut sha256sum stat date du jq
   /usr/bin/time ar basename bash bwrap cargo cc chmod cp diff dirname env getconf
-  head id install ionice ip ld ln mkdir mktemp nice node paste ps rm rustc rustup seq setpriv
+  head id install ionice ip ld ln mkdir mktemp node paste ps rm rustc rustup seq setpriv
   setsid sh sleep strings sudo tar taskset timeout touch tr uname unshare wc
 )
 for command in "${host_tools[@]}"; do
@@ -249,6 +249,9 @@ r2_partition_cpu_list "$initial_cpu_affinity" || fail 'the proof requires three 
 sampler_controller_affinity=$R2_CONTROLLER_CPUS
 disk_walk_cpu_affinity=$R2_DISK_CPUS
 workload_cpu_affinity=$R2_WORKLOAD_CPUS
+disk_walk_nice=$(ps -o ni= -p "$BASHPID") || fail 'could not read proof CPU priority'
+disk_walk_nice=${disk_walk_nice//[$'\t ']/}
+[[ $disk_walk_nice =~ ^-?[0-9]+$ ]] || fail 'proof CPU priority is malformed'
 evidence_dir=$output_real
 mkdir -p \
   "$evidence_dir/host/home" \
@@ -408,8 +411,8 @@ jq -n \
   printf 'cpu_count=%s\n' "$(getconf _NPROCESSORS_ONLN)"
   printf 'initial_cpu_affinity=%s\nsampler_controller_affinity=%s\n' \
     "$initial_cpu_affinity" "$sampler_controller_affinity"
-  printf 'disk_walk_cpu_affinity=%s\nworkload_cpu_affinity=%s\ndisk_walk_nice=19\n' \
-    "$disk_walk_cpu_affinity" "$workload_cpu_affinity"
+  printf 'disk_walk_cpu_affinity=%s\nworkload_cpu_affinity=%s\ndisk_walk_nice=%s\n' \
+    "$disk_walk_cpu_affinity" "$workload_cpu_affinity" "$disk_walk_nice"
   printf 'locale=%s\n' "$LC_ALL"
   printf 'timezone=%s\n' "${TZ:-system}"
   printf 'network_namespace=%s\n' "$inner_netns"

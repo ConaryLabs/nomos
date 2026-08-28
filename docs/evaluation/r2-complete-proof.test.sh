@@ -33,7 +33,7 @@ harness_lib_source=$script_directory/r2-complete-proof-lib.sh
 [[ -f $harness_source && ! -L $harness_source ]] || fail 'complete-proof harness is absent'
 [[ -f $harness_lib_source && ! -L $harness_lib_source ]] || fail 'complete-proof library is absent'
 
-for command in git cp ln chmod mkdir mktemp grep jq ps realpath readlink wc sed find id nice sleep setsid taskset; do
+for command in git cp ln chmod mkdir mktemp grep jq ps realpath readlink wc sed find id sleep setsid taskset; do
   command -v "$command" >/dev/null 2>&1 || fail "required executable not found: $command"
 done
 
@@ -508,7 +508,7 @@ printf '%s\n' \
   '[[ $# -eq 3 && $1 == -sm && $2 == -- && -d $3 ]] || exit 93' \
   'process_nice=$(ps -o ni= -p $$) || exit 92' \
   'process_nice=${process_nice// /}' \
-  '[[ $process_nice == 19 ]] || exit 92' \
+  '[[ $process_nice == 0 ]] || exit 92' \
   'if [[ -n ${R2_TEST_DU_AFFINITY_FILE:-} ]]; then' \
   '  while IFS= read -r line; do' \
   '    [[ $line != Cpus_allowed_list:* ]] || printf '\''%s\n'\'' "${line#*:}" >"$R2_TEST_DU_AFFINITY_FILE"' \
@@ -649,9 +649,9 @@ R2_TEST_DU_STATE="$fake_disk_state" \
   "$retry_started_signal" ||
   fail 'disk record worker rejected a successful retry'
 [[ $(<"$retry_raw") == $'7\t1200000000\t300000000\t17\tscheduled' &&
-  $(<"$retry_started_signal") == 1200000000 &&
+  $(<"$retry_started_signal") == $'7\t1000000000' &&
   $(<"$fake_disk_state") == 2 && $(<"$fake_retry_clock_state") == 2 ]] ||
-  fail 'disk record worker did not retain the refreshed retry timestamp'
+  fail 'disk record worker did not separate launch acknowledgement from retained retry time'
 retry_affinity_value=$(<"$retry_affinity")
 retry_affinity_value=${retry_affinity_value//[$'\t ']/}
 r2_expand_cpu_list "$retry_affinity_value" || fail 'disk worker affinity is malformed'
@@ -806,12 +806,10 @@ run_exact_gap_sampler() {
       [[ $# -eq 6 ]] || return 2
       local raw=$2 origin=$3 ordinal=$4 kind=$5 signal=$6
       local started=$((origin + ordinal * planted_gap))
-      if [[ $kind == scheduled ]]; then
-        sleep 0.01
-      else
-        [[ -f ${signal%/*}/started.0 ]] || return 2
+      if [[ $kind == terminal ]]; then
+        [[ -f $signal && $(<"$signal") == $'0\t1000000000' ]] || return 2
       fi
-      printf '%s\n' "$started" >"$signal"
+      printf '%s\t%s\n' "$ordinal" "$started" >"$signal"
       printf '%s\t%s\t%s\t17\t%s\n' \
         "$ordinal" "$started" "$((started - origin))" "$kind" >>"$raw"
     }
@@ -872,8 +870,14 @@ run_history_sampler() {
     printf 'probe\n' >>"$history_probes"
     r2_read_process_stat_unprobed "$@"
   }
-  export R2_TEST_DU_STABLE=1 R2_TEST_DU_DELAY=0.02
-  export PATH="$fake_disk_bin:$PATH"
+  r2_record_checkout_mib() {
+    [[ $# -eq 6 ]] || return 2
+    local raw=$2 origin=$3 ordinal=$4 kind=$5 signal=$6
+    local started=$((origin + ordinal * 10000000))
+    printf '%s\t%s\n' "$ordinal" "$started" >"$signal"
+    printf '%s\t%s\t%s\t17\t%s\n' \
+      "$ordinal" "$started" "$((started - origin))" "$kind" >>"$raw"
+  }
   r2_sample_checkout_disk \
     "$repo_root" "$history_samples" "$history_stop" "$history_parts" \
     "$history_started" 10000000
@@ -891,8 +895,8 @@ sleep 0.8
 wait "$history_sampler_pid" || fail 'history sampler rejected quick complete walks'
 history_count=$(awk 'NR > 1 { count += 1 } END { print count + 0 }' "$history_samples")
 history_probe_count=$(wc -l <"$history_probes")
-# These quick two-period walks should need only a small active set; sixteen
-# probes per launch is deliberately generous but still rejects O(n²) history.
+# Deterministic quick workers need only a small active set; sixteen probes per
+# launch is deliberately generous but still rejects O(n²) history.
 [[ $history_count -ge 40 && $history_probe_count -gt 0 &&
   $history_probe_count -le $(((history_count + 1) * 16)) &&
   ! -e $history_parts ]] ||

@@ -73,8 +73,8 @@ require a new run.
 
 The checkout-wide disk observer uses the process's allowed CPU list and
 requires at least three allowed CPUs. On the 12-CPU reference host it pins the
-sampler controller to CPU 0, low-priority `du -sm -- <checkout>` walks to CPUs
-1–5 with niceness 19 and idle I/O priority, and proof workloads to CPUs 6–11.
+sampler controller to CPU 0, ordinary-priority `du -sm -- <checkout>` walks to
+CPUs 1–5 with idle I/O priority, and proof workloads to CPUs 6–11.
 Workers retain canonical integer-nanosecond start times taken immediately
 before each successful walk, and the controller publishes them in
 chronological order while independently requiring unique contiguous launch
@@ -98,6 +98,27 @@ The formal Luna Max exact-head rerun of that same candidate failed closed. All
 The preserved reviewer report is
 `/data/dev/src/nomos-r2-reviewer-5581e89.XaYGWP/reviewer-report.md`, SHA-256
 `b11b36a24203f0ba4c00766ad7428aa6b9f039ecb2ff8b783b41cd63a7a982cc`.
+
+The first authorized repair candidate,
+`0e04aeefbb28dd30162edad07d7713585c6b0c0d` (tree
+`702f4b68b308ca44669438eb36b45d1971ab18fb`), also failed closed in a
+fresh, detached, standalone author clone. Commands 1–24 exited zero; command
+25 exited 1 because its long-history plant rejected the live schedule, while
+the outer observer accumulated 32 active `du` walks and failed its concurrency
+bound. No final receipt or evidence manifest was emitted. The preserved
+failure report is
+`/data/dev/src/nomos-r2-author-0e04aee.t5UFQP/author-failure-report.md`,
+SHA-256
+`37d3a402bed56d70ce195e94f2b2cef59b3429024bc61b22cbd14ac358d36212`.
+It binds the external streams, command ledger, command-25 logs, and unfinished
+raw sampler rows. This run remains red.
+
+The subsequent implementation repair leaves the ceiling and exact `du -sm`
+walk unchanged. It replaces thousands of persistent per-launch
+acknowledgement files inside the measured checkout with one ordinal-bound,
+ephemeral acknowledgement, restores ordinary CPU priority while retaining
+idle I/O priority and the isolated CPU set, and makes the bookkeeping-history
+plant deterministic rather than host-schedule-sensitive.
 
 On 2026-08-28 the owner authorized an implementation repair, not a contract or
 ceiling change. The repair preserves the failed rerun as red evidence, does not

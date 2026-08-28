@@ -87,7 +87,7 @@ const toolLabels = [
   "git", "realpath", "readlink", "find", "grep", "awk", "sed", "sort", "cmp", "cut",
   "sha256sum", "stat", "date", "du", "jq", "gnu-time", "ar", "basename", "bash", "bwrap",
   "cargo", "cc", "chmod", "cp", "diff", "dirname", "env", "getconf", "head", "id",
-  "install", "ionice", "ip", "ld", "ln", "mkdir", "mktemp", "nice", "node", "paste", "ps", "rm", "rustc",
+  "install", "ionice", "ip", "ld", "ln", "mkdir", "mktemp", "node", "paste", "ps", "rm", "rustc",
   "rustup", "seq", "setpriv", "setsid", "sh", "sleep", "strings", "sudo", "tar", "taskset", "timeout", "touch",
   "tr", "uname", "unshare", "wc", "cargo-toolchain", "rustc-toolchain", "rust-lld", "chrome",
 ];

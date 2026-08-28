@@ -386,14 +386,16 @@ r2_emit_recorded_tool_version() {
 }
 
 r2_measure_checkout_mib() {
-  [[ ( $# -eq 1 || $# -eq 2 ) && -d $1 &&
-    ( $# -eq 1 || ( -n ${2:-} && ! -L ${2:-} ) ) &&
+  [[ ( $# -eq 1 || $# -eq 3 ) && -d $1 &&
+    ( $# -eq 1 || ( -n ${2:-} && ! -L ${2:-} &&
+      ${3:-} =~ ^(0|[1-9][0-9]*)$ ) ) &&
     -n ${R2_DISK_WALK_CPUS:-} ]] || {
     printf 'R2 disk sampler: invalid checkout root\n' >&2
     return 2
   }
   local root=$1
   local started_signal=${2:-}
+  local signal_ordinal=${3:-}
   local attempt started raw size
   for ((attempt = 0; attempt < 20; attempt += 1)); do
     # Cargo atomically publishes and removes intermediate files while `du`
@@ -401,11 +403,13 @@ r2_measure_checkout_mib() {
     # a raced walk is not a sample and is retried immediately. The caller's
     # retained start timestamps still enforce the contract's maximum gap.
     # Measurement must not become the dominant workload whose budget it is
-    # observing. Keep the contract's exact `du -sm` walk at low CPU priority
-    # and let measured writes take precedence at the I/O scheduler.
+    # observing. Keep the contract's exact `du -sm` walk at ordinary CPU
+    # priority and let measured writes take precedence at the I/O scheduler.
     started=$(date +%s%N) || return 2
-    [[ -z $started_signal ]] || printf '%s\n' "$started" >"$started_signal" || return 2
-    if raw=$(nice -n 19 ionice -c 3 du -sm -- "$root" 2>/dev/null); then
+    if [[ $attempt -eq 0 && -n $started_signal ]]; then
+      printf '%s\t%s\n' "$signal_ordinal" "$started" >"$started_signal" || return 2
+    fi
+    if raw=$(ionice -c 3 du -sm -- "$root" 2>/dev/null); then
       size=${raw%%$'\t'*}
       [[ $size =~ ^[0-9]+$ && $raw == "$size"$'\t'"$root" ]] || {
         printf 'R2 disk sampler: malformed du result\n' >&2
@@ -434,7 +438,7 @@ r2_record_checkout_mib() {
   local started_signal=$6
   local row measured_started size elapsed
   taskset -pc "$R2_DISK_WALK_CPUS" "$BASHPID" >/dev/null || return 2
-  row=$(r2_measure_checkout_mib "$root" "$started_signal") || return
+  row=$(r2_measure_checkout_mib "$root" "$started_signal" "$ordinal") || return
   IFS=$'\t' read -r measured_started size <<<"$row"
   [[ $measured_started =~ ^[0-9]+$ && $measured_started -ge $sampler_started &&
     $size =~ ^[0-9]+$ ]] || return 2
@@ -549,7 +553,8 @@ r2_sample_checkout_disk() {
   local raw_samples=$state/samples.unsorted.tsv
   local sorted_samples=$state/samples.sorted.tsv
   local ordinal=0 deadline now delay delay_seconds pid status=0 attempt
-  local child_start started_signal signal_value signal_ready active initial_ready=0
+  local child_start started_signal signal_ordinal signal_value signal_extra
+  local signal_ready active initial_ready=0
   local -a sample_pids=()
   local -A sample_starts=()
 
@@ -581,14 +586,15 @@ r2_sample_checkout_disk() {
 
   launch_sample() {
     [[ $# -eq 1 && ( $1 == scheduled || $1 == terminal ) ]] || return 2
+    local launched_ordinal=$ordinal
     reap_finished_samples || return
     active=${#sample_pids[@]}
     [[ $active -lt 32 ]] || {
       printf 'R2 disk sampler: thirty-two concurrent du walks are still active\n' >&2
       return 3
     }
-    started_signal=$state/started.$ordinal
-    [[ ! -e $started_signal && ! -L $started_signal ]] || return 2
+    started_signal=$state/start-ack
+    [[ ! -L $started_signal ]] || return 2
     r2_record_checkout_mib \
       "$root" "$raw_samples" "$sampler_started" "$ordinal" "$1" \
       "$started_signal" &
@@ -605,10 +611,12 @@ r2_sample_checkout_disk() {
     signal_ready=0
     for ((attempt = 0; attempt < 100; attempt += 1)); do
       if [[ -f $started_signal && ! -L $started_signal ]]; then
-        IFS= read -r signal_value <"$started_signal" || return 2
-        [[ $signal_value =~ ^(0|[1-9][0-9]*)$ ]] || return 2
-        signal_ready=1
-        break
+        if IFS=$'\t' read -r signal_ordinal signal_value signal_extra \
+          <"$started_signal" && [[ $signal_ordinal == "$launched_ordinal" &&
+          $signal_value =~ ^(0|[1-9][0-9]*)$ && -z $signal_extra ]]; then
+          signal_ready=1
+          break
+        fi
       fi
       sleep 0.001 || return 2
     done
@@ -674,13 +682,9 @@ r2_sample_checkout_disk() {
   }
 
   find "$ready" -delete
-  for ((active = 0; active < ordinal; active += 1)); do
-    started_signal=$state/started.$active
-    [[ -f $started_signal && ! -L $started_signal ]] || return 2
-    IFS= read -r signal_value <"$started_signal" || return 2
-    [[ $signal_value =~ ^(0|[1-9][0-9]*)$ ]] || return 2
-    find "$started_signal" -delete
-  done
+  started_signal=$state/start-ack
+  [[ -f $started_signal && ! -L $started_signal ]] || return 2
+  find "$started_signal" -delete
   r2_publish_checkout_disk_samples \
     "$samples" "$state" "$raw_samples" "$sorted_samples" \
     "$sampler_started" "$ordinal"
