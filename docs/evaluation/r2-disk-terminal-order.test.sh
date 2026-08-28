@@ -31,23 +31,6 @@ if r2_disk_deadline_ns 1000000000 1 0 ||
   fail 'a zero, out-of-range, or overflowing nominal period was accepted'
 fi
 
-interleaved_deadlines=()
-for ordinal in 0 1 2 3 4 5; do
-  r2_disk_interleaved_deadline_ns 1000000000 "$ordinal" 50000000
-  interleaved_deadlines+=("$R2_DISK_DEADLINE_NS")
-done
-[[ ${interleaved_deadlines[*]} == \
-  '1000000000 1025000000 1050000000 1075000000 1100000000 1125000000' &&
-  $((interleaved_deadlines[2] - interleaved_deadlines[0])) -eq 50000000 &&
-  $((interleaved_deadlines[3] - interleaved_deadlines[1])) -eq 50000000 ]] ||
-  fail 'interleaved absolute 50 ms phase deadlines differ'
-if r2_disk_interleaved_deadline_ns 1000000000 1 50000001 ||
-  r2_disk_interleaved_deadline_ns 1000000000 1 0 ||
-  r2_disk_interleaved_deadline_ns 9223372036854775800 1 100 ||
-  r2_disk_interleaved_deadline_ns 0 9223372036854775807 50000000; then
-  fail 'an odd, zero, out-of-range, or overflowing interleaved period was accepted'
-fi
-
 mkdir -p "$repo_root/target"
 temporary=$(mktemp -d "$repo_root/target/r2-disk-terminal-order.XXXXXX")
 atomic_publisher=
@@ -426,18 +409,29 @@ zero_root_scheduled_after=$(awk -F '\t' -v request="$zero_root_request" \
 
 # Exercise the real controller against a deterministic clock. The worker
 # override accepts exactly the production five-argument call, so restoring a
-# synchronous acknowledgement fails this plant. The two absolute 50 ms phases
-# remain +0/+25/+50/+75 ms.
+# synchronous acknowledgement fails this plant. Trace the production helper's
+# exact fixed origin, ordinal, and 50 ms period independently from the worker's
+# authentic attempt timestamp; ordinal 1 begins 7 ms after its nominal slot.
 absolute_samples=$temporary/absolute-samples.tsv
 absolute_stop=$temporary/absolute-stop
 absolute_state=$temporary/absolute-state
 absolute_clock=$temporary/absolute-clock
 absolute_trace=$temporary/absolute-trace
+absolute_deadlines=$temporary/absolute-deadlines
 absolute_origin=1000000000
 printf '%s\n' "$absolute_origin" >"$absolute_clock"
 printf 'ordinal\tsample_start_ns\telapsed_ns\tmebibytes\tkind\n' >"$absolute_samples"
+: >"$absolute_deadlines"
 mkdir "$absolute_state"
 (
+  eval "$(declare -f r2_disk_deadline_ns | sed \
+    '1s/r2_disk_deadline_ns/r2_real_disk_deadline_ns/')"
+  r2_disk_deadline_ns() {
+    if [[ $# -eq 3 && $1 == "$absolute_origin" && $3 == 50000000 ]]; then
+      printf '%s\t%s\t%s\n' "$1" "$2" "$3" >>"$absolute_deadlines"
+    fi
+    r2_real_disk_deadline_ns "$@"
+  }
   date() {
     [[ $# -eq 1 && $1 == +%s%N ]] || return 2
     local current
@@ -457,7 +451,8 @@ mkdir "$absolute_state"
   r2_record_checkout_mib() {
     [[ $# -eq 5 ]] || return 2
     local raw=$2 sampler_origin=$3 ordinal=$4 kind=$5 started
-    started=$((sampler_origin + ordinal * 25000000))
+    started=$((sampler_origin + ordinal * 50000000))
+    [[ $ordinal -ne 1 ]] || started=$((started + 7000000))
     printf '%s\t%s\t%s\n' "$ordinal" "$kind" "$started" >>"$absolute_trace"
     printf '%s\t%s\t%s\t17\t%s\n' \
       "$ordinal" "$started" "$((started - sampler_origin))" "$kind" >>"$raw"
@@ -467,10 +462,12 @@ mkdir "$absolute_state"
     "$absolute_state" "$absolute_origin" 50000000
 ) || fail 'deterministic absolute-schedule controller trace was refused'
 [[ $(sort -n -t $'\t' -k1,1 "$absolute_trace" | sed -n '1,4p') == \
-  $'0\tscheduled\t1000000000\n1\tscheduled\t1025000000\n2\tscheduled\t1050000000\n3\tscheduled\t1075000000' &&
+  $'0\tscheduled\t1000000000\n1\tscheduled\t1057000000\n2\tscheduled\t1100000000\n3\tscheduled\t1150000000' &&
+  $(sed -n '1,4p' "$absolute_deadlines") == \
+  $'1000000000\t0\t50000000\n1000000000\t1\t50000000\n1000000000\t2\t50000000\n1000000000\t3\t50000000' &&
   $(awk -F '\t' 'END { print $2 }' "$absolute_trace") == terminal &&
-  $(<"$absolute_stop") == 1075000000 && ! -e $absolute_state ]] ||
-  fail 'controller launches are not on the interleaved absolute 50 ms phases'
+  $(<"$absolute_stop") == 1150000000 && ! -e $absolute_state ]] ||
+  fail 'controller launches are not on the absolute 50 ms production phase'
 
 samples=$temporary/samples.tsv
 stop=$temporary/stop
@@ -497,8 +494,8 @@ mkdir "$state"
       command sleep 0.001
     done
     [[ -f $state/drain-ready ]] || exit 2
-    [[ $(<"$state/drain-ready") == $((origin + 80000000)) ]] || exit 2
-    r2_publish_decimal_control_marker "$stop" "$((origin + 150000000))"
+    [[ $(<"$state/drain-ready") == $((origin + 180000000)) ]] || exit 2
+    r2_publish_decimal_control_marker "$stop" "$((origin + 300000000))"
   ) &
   stop_coordinator=$!
   eval "$(declare -f r2_validate_disk_drain_handoff | sed \
@@ -518,19 +515,17 @@ mkdir "$state"
   r2_record_checkout_mib() {
     [[ $# -eq 5 ]] || return 2
     local raw=$2 sampler_origin=$3 ordinal=$4 kind=$5 started
-    started=$((sampler_origin + ordinal * 25000000))
+    started=$((sampler_origin + ordinal * 50000000))
     if [[ $ordinal -eq 1 ]]; then
       while [[ ! -e $state/release-original ]]; do command sleep 0.001; done
       find "$state/release-original" -delete
-      started=$((sampler_origin + 137500000))
-    elif [[ $ordinal -eq 2 ]]; then
-      started=$((sampler_origin + 112500000))
+      started=$((sampler_origin + 275000000))
     fi
     printf '%s\t%s\t%s\t17\t%s\n' \
       "$ordinal" "$started" "$((started - sampler_origin))" "$kind" >>"$raw"
     if [[ $ordinal -eq 3 ]]; then
       r2_publish_decimal_control_marker \
-        "$state/drain-request" "$((sampler_origin + 80000000))"
+        "$state/drain-request" "$((sampler_origin + 180000000))"
     elif [[ $ordinal -eq 5 ]]; then
       : >"$state/release-original"
     fi
@@ -550,8 +545,8 @@ mkdir "$state"
 stop_requested=$(<"$stop")
 [[ $stop_requested =~ ^(0|[1-9][0-9]*)$ ]] || fail 'stop marker is not canonical'
 ordinal_three_started=$(awk -F '\t' '$1 == 3 { print $2 }' "$samples")
-[[ $ordinal_three_started -eq $((origin + 75000000)) &&
-  $stop_requested -eq $((origin + 150000000)) ]] ||
+[[ $ordinal_three_started -eq $((origin + 150000000)) &&
+  $stop_requested -eq $((origin + 300000000)) ]] ||
   fail 'pre-stop drain or canonical stop timestamp differs'
 awk -F '\t' -v origin="$origin" -v stop="$stop_requested" '
   NR > 1 {
@@ -565,17 +560,17 @@ awk -F '\t' -v origin="$origin" -v stop="$stop_requested" '
   NR > 1 && $5 == "scheduled" && $2 > scheduled_max { scheduled_max = $2 }
   NR > 1 && $5 == "terminal" { terminal_count += 1; terminal = $2 }
   END {
-    exit !(bad == 0 && delayed == 137500000 && delayed_two == 112500000 &&
-      stopped == 75000000 &&
-      bridge == 125000000 && terminal_count == 1 && delayed > bridge &&
+    exit !(bad == 0 && delayed == 275000000 && delayed_two == 100000000 &&
+      stopped == 150000000 &&
+      bridge == 250000000 && terminal_count == 1 && delayed > bridge &&
       terminal > scheduled_max && terminal >= stop)
   }
 ' "$samples" || fail 'drain bridges or terminal ordering differ'
 
-# A scripted monotonic clock makes the worker-set deadline exact and proves
-# that a fixed polling-iteration count cannot define or lengthen it. The
-# initial worker retains its row and then stays live; a pre-existing stop drives
-# the controller directly into the bounded reap without involving parent timing.
+# A scripted monotonic clock makes the four-walk backpressure deadline exact
+# and proves that a fixed polling-iteration count cannot define or lengthen it.
+# Four workers retain their starts and remain live; the fifth nominal launch
+# must time out and abort the dedicated session without publishing a ledger.
 deadline_samples=$temporary/deadline-samples.tsv
 deadline_stop=$temporary/deadline.stop
 deadline_state=$temporary/deadline-state
@@ -586,8 +581,6 @@ printf 'ordinal\tsample_start_ns\telapsed_ns\tmebibytes\tkind\n' >"$deadline_sam
 mkdir "$deadline_state"
 printf '1000000000\n' >"$deadline_clock"
 : >"$deadline_trace"
-r2_publish_decimal_control_marker "$deadline_stop" "$deadline_origin" ||
-  fail 'could not publish scripted-deadline stop marker'
 deadline_wall_start=$(date +%s%N)
 setsid taskset -c "$test_controller_cpu" bash -c '
   set -euo pipefail
@@ -595,7 +588,11 @@ setsid taskset -c "$test_controller_cpu" bash -c '
   deadline_clock=$7
   deadline_trace=$8
   r2_monotonic_now_ns() {
-    local current
+    local current caller=${FUNCNAME[1]:-}
+    if [[ $caller != wait_for_launch_slot ]]; then
+      R2_MONOTONIC_NS=1000000000
+      return 0
+    fi
     current=$(<"$deadline_clock")
     [[ $current =~ ^(0|[1-9][0-9]*)$ ]] || return 2
     printf "%s\n" "$current" >>"$deadline_trace"
@@ -605,7 +602,7 @@ setsid taskset -c "$test_controller_cpu" bash -c '
   r2_record_checkout_mib() {
     [[ $# -eq 5 ]] || return 2
     local raw=$2 origin=$3 ordinal=$4 kind=$5 started
-    started=$(date +%s%N)
+    started=$((origin + ordinal * 50000000))
     printf "%s\t%s\t%s\t17\t%s\n" \
       "$ordinal" "$started" "$((started - origin))" "$kind" >>"$raw"
     while :; do sleep 30; done
@@ -624,31 +621,30 @@ deadline_status=$?
 set -e
 deadline_wall_end=$(date +%s%N)
 deadline_trace_text=$(paste -sd, "$deadline_trace")
-[[ $deadline_status -ne 0 && $deadline_trace_text == \
-  '1000000000,2000000000,3000000000,4000000000,5000000000,6000000000' &&
+[[ $deadline_status -eq 137 && $deadline_trace_text == \
+  '1000000000,2000000000,3000000000,4000000000,5000000000' &&
   $((deadline_wall_end - deadline_wall_start)) -lt 2000000000 &&
   $(wc -l <"$deadline_samples") -eq 1 ]] ||
-  fail 'scripted worker-set deadline was extended or published a ledger'
-[[ $(grep -Fxc 'R2 disk sampler: sample workers did not close before timeout' \
+  fail 'scripted four-walk deadline was extended or published a ledger'
+[[ $(grep -Fxc \
+  'R2 disk sampler: four concurrent du walks did not make room before timeout' \
   "$temporary/deadline-controller.stderr") -eq 1 ]] ||
-  fail 'scripted worker-set timeout diagnostic differs'
-if grep -F 'thirty-two concurrent du walks' \
-  "$temporary/deadline-controller.stderr" >/dev/null; then
-  fail 'scripted worker-set deadline reached the concurrency cap'
-fi
+  fail 'scripted four-walk timeout diagnostic differs'
 if r2_sampler_session_has_members "$deadline_session"; then
   fail 'scripted worker-set deadline left a live session member'
 else
   deadline_session_status=$?
 fi
 [[ $deadline_session_status -eq 1 ]] ||
-  fail 'scripted worker-set session closure could not be proved'
+  fail 'scripted four-walk session closure could not be proved'
 deadline_sampler_pid=
 
 # A sampler with one live worker that never acknowledges the drain must be
 # killed as its exact dedicated session before either a ledger or terminal row
-# can be published. Later bridge workers complete, so this reaches the absolute
-# drain deadline without relying on the separately planted concurrency cap.
+# can be published. Depending on live host scheduling, the shared absolute
+# drain deadline is observed either at a scheduled-launch boundary or while
+# waiting for the request-time sample set; the synthetic slot plant pins the
+# former path independently.
 hung_samples=$temporary/hung-samples.tsv
 hung_stop=$temporary/hung.stop
 hung_state=$temporary/hung-state
@@ -704,10 +700,12 @@ hung_elapsed_ns=$((R2_MONOTONIC_NS - hung_started_ns))
   ! -e /proc/$hung_sampler_pid && $(wc -l <"$hung_samples") -eq 1 &&
   -f $hung_state/drain-request ]] ||
   fail 'hung sampler was accepted, leaked, published, or exceeded its bound'
-grep -Fx 'R2 disk sampler: sample workers did not close before timeout' \
-  "$temporary/hung-controller.stderr" >/dev/null ||
-  fail 'hung sampler did not reach its bounded worker abort'
-if grep -F 'thirty-two concurrent du walks' \
+hung_deadline_diagnostics=$(grep -Ec \
+  '^R2 disk sampler: (drain deadline expired before scheduled launch|sample workers did not close before timeout)$' \
+  "$temporary/hung-controller.stderr")
+[[ $hung_deadline_diagnostics -eq 1 ]] ||
+  fail 'hung sampler did not reach exactly one shared drain-deadline abort'
+if grep -F 'four concurrent du walks' \
   "$temporary/hung-controller.stderr" >/dev/null; then
   fail 'single hung worker incorrectly reached the concurrency cap'
 fi

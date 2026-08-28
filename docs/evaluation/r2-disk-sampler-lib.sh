@@ -125,8 +125,13 @@ r2_sample_checkout_disk() {
   local root=$1 samples=$2 stop=$3 state=$4 sampler_started=$5 period_ns=$6
   local ready=$state/ready drain_request=$state/drain-request
   local drain_ready=$state/drain-ready raw_samples=$state/samples.unsorted.tsv
-  local sorted_samples=$state/samples.sorted.tsv pool_size=32
+  # Keep the full prestarted identity pool, but admit only four exact walks at
+  # once. On the reference host that is one active walk per isolated disk
+  # logical CPU; higher concurrency reduced throughput into bursty metadata
+  # waves. The retained-start validator remains the final cadence authority.
+  local sorted_samples=$state/samples.sorted.tsv pool_size=32 active_limit=4
   local ordinal=0 deadline now monotonic_now delay delay_seconds status=0 attempt
+  local launch_status
   local active=0 initial_ready=0 draining=0 drain_remaining request_ns=''
   local bridge_ordinal='' bridge_pending=0 worker_timeout_ns=4000000000
   local stop_wait_timeout_ns=6000000000
@@ -140,7 +145,7 @@ r2_sample_checkout_disk() {
   local -a worker_ready=() worker_reaped=() inherited_fds=()
   local -A drain_jobs=()
 
-  r2_disk_interleaved_deadline_ns "$sampler_started" 0 "$period_ns" || return
+  r2_disk_deadline_ns "$sampler_started" 0 "$period_ns" || return
   r2_read_process_stat "/proc/$BASHPID/stat" || return 2
   controller_start=$R2_PROC_START
   controller_group=$R2_PROC_GROUP
@@ -303,16 +308,82 @@ r2_sample_checkout_disk() {
     return 1
   }
 
+  scheduled_launch_boundary() {
+    [[ $# -eq 1 && ( $1 == scheduled || $1 == terminal ) ]] || return 2
+    [[ $1 == scheduled ]] || return 0
+    if [[ $ordinal -ne 0 && ( -e $stop || -L $stop ) ]]; then
+      return 3
+    fi
+    [[ $draining -eq 1 ]] || return 0
+    [[ $drain_deadline_ns =~ ^(0|[1-9][0-9]*)$ ]] || return 2
+    r2_monotonic_now_ns || {
+      status=1
+      abort_dedicated_sampler_group || true
+      return 1
+    }
+    if [[ $R2_MONOTONIC_NS -ge $drain_deadline_ns ]]; then
+      status=1
+      printf 'R2 disk sampler: drain deadline expired before scheduled launch\n' >&2
+      abort_dedicated_sampler_group || true
+      return 1
+    fi
+  }
+
+  wait_for_launch_slot() {
+    [[ $# -eq 1 && ( $1 == scheduled || $1 == terminal ) ]] || return 2
+    local kind=$1 boundary_status slot_deadline slot_now
+    [[ $active -lt $active_limit ]] && return 0
+    r2_monotonic_now_ns || {
+      status=1
+      abort_dedicated_sampler_group || true
+      return 1
+    }
+    r2_disk_deadline_ns "$R2_MONOTONIC_NS" 1 "$worker_timeout_ns" || {
+      status=1
+      abort_dedicated_sampler_group || true
+      return 1
+    }
+    slot_deadline=$R2_DISK_DEADLINE_NS
+    while [[ $active -ge $active_limit ]]; do
+      collect_finished_samples || return 1
+      if scheduled_launch_boundary "$kind"; then boundary_status=0
+      else boundary_status=$?; fi
+      [[ $boundary_status -eq 0 ]] || return "$boundary_status"
+      [[ $active -ge $active_limit ]] || return 0
+      r2_monotonic_now_ns || {
+        status=1
+        abort_dedicated_sampler_group || true
+        return 1
+      }
+      slot_now=$R2_MONOTONIC_NS
+      [[ $slot_now -lt $slot_deadline ]] || {
+        status=1
+        printf 'R2 disk sampler: four concurrent du walks did not make room before timeout\n' >&2
+        abort_dedicated_sampler_group || true
+        return 1
+      }
+      sleep 0.005 || {
+        status=1
+        abort_dedicated_sampler_group || true
+        return 1
+      }
+    done
+  }
+
   launch_sample() {
     [[ $# -eq 1 && ( $1 == scheduled || $1 == terminal ) ]] || return 2
+    local launch_kind=$1 boundary_status slot_status
     collect_finished_samples || return
-    [[ $active -lt $pool_size ]] || {
-      printf 'R2 disk sampler: thirty-two concurrent du walks are still active\n' >&2
-      return 3
-    }
+    if wait_for_launch_slot "$launch_kind"; then slot_status=0
+    else slot_status=$?; fi
+    [[ $slot_status -eq 0 ]] || return "$slot_status"
+    [[ $active -lt $active_limit && $active -lt $pool_size ]] || return 2
     find_available_worker || return
     [[ $available_worker -ge 0 ]] || return 2
-    printf 'sample\t%s\t%s\n' "$ordinal" "$1" \
+    if scheduled_launch_boundary "$launch_kind"; then boundary_status=0
+    else boundary_status=$?; fi
+    [[ $boundary_status -eq 0 ]] || return "$boundary_status"
+    printf 'sample\t%s\t%s\n' "$ordinal" "$launch_kind" \
       >&"${worker_request_fds[$available_worker]}" || { status=1; return 1; }
     worker_jobs[available_worker]=$ordinal
     active=$((active + 1))
@@ -512,7 +583,7 @@ r2_sample_checkout_disk() {
       drain_remaining=${#drain_jobs[@]}
       [[ $drain_remaining -ne 0 || $bridge_pending -eq 1 ]] || break
     fi
-    if ! r2_disk_interleaved_deadline_ns "$sampler_started" "$ordinal" "$period_ns"; then
+    if ! r2_disk_deadline_ns "$sampler_started" "$ordinal" "$period_ns"; then
       status=1
       break
     fi
@@ -543,10 +614,10 @@ r2_sample_checkout_disk() {
       if [[ $draining -eq 1 && $bridge_pending -eq 1 ]]; then
         bridge_ordinal=$ordinal
       fi
-      if ! launch_sample scheduled; then
-        status=1
-        break
-      fi
+      if launch_sample scheduled; then launch_status=0
+      else launch_status=$?; fi
+      if [[ $launch_status -eq 3 ]]; then continue; fi
+      [[ $launch_status -eq 0 ]] || { status=1; break; }
       [[ $draining -ne 1 || $bridge_pending -ne 1 ]] || bridge_pending=0
     fi
   done

@@ -23,32 +23,6 @@ r2_disk_deadline_ns() {
   R2_DISK_DEADLINE_NS=$deadline
 }
 
-r2_disk_interleaved_deadline_ns() {
-  [[ $# -eq 3 && $1 =~ ^(0|[1-9][0-9]*)$ &&
-    $2 =~ ^(0|[1-9][0-9]*)$ && $3 =~ ^[1-9][0-9]*$ ]] || return 2
-  local origin=$1 ordinal=$2 period=$3 cycle phase half_period deadline value
-  local maximum=9223372036854775807
-  for value in "$ordinal" "$period"; do
-    # shellcheck disable=SC2071 # Compare equal-length canonical decimals lexically.
-    if [[ ${#value} -gt ${#maximum} ||
-        ( ${#value} -eq ${#maximum} && $value > "$maximum" ) ]]; then
-      return 2
-    fi
-  done
-  [[ $((period % 2)) -eq 0 ]] || return 2
-  cycle=$((ordinal / 2))
-  phase=$((ordinal % 2))
-  half_period=$((period / 2))
-  r2_disk_deadline_ns "$origin" "$cycle" "$period" || return
-  deadline=$R2_DISK_DEADLINE_NS
-  if [[ $phase -eq 1 ]]; then
-    [[ $deadline -le $((maximum - half_period)) ]] || return 2
-    deadline=$((deadline + half_period))
-  fi
-  # shellcheck disable=SC2034 # Returned global avoids a fork per sample.
-  R2_DISK_DEADLINE_NS=$deadline
-}
-
 # shellcheck disable=SC2120 # This public helper explicitly rejects arguments.
 r2_monotonic_now_ns() {
   [[ $# -eq 0 ]] || return 2

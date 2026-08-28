@@ -88,13 +88,14 @@ over its private controller-owned channel. It invokes ordinary-CPU-priority,
 idle-I/O-priority `du -sm -- <checkout>` without per-sample affinity setup.
 Workers retain canonical integer-nanosecond start times taken immediately
 before each successful walk. The controller publishes them in chronological
-order while independently requiring unique contiguous launch ordinals, and it
-fails rather than dispatch a thirty-third concurrent walk. One controller
-derives two explicit absolute 50 ms phases from the fixed origin: even ordinals
-are `origin + n * 50 ms`, and odd ordinals are
-`origin + 25 ms + n * 50 ms`. It never turns either phase into a relative
-delay. Their union samples every 25 ms, as the contract expressly permits,
-while the recorded nominal interval remains 50 ms and the unchanged maximum
+order while independently requiring unique contiguous launch ordinals. All 32
+workers are ready before use, but no more than four exact walks may be active:
+one per isolated disk logical CPU on the reference host. A full gate waits
+against its own four-second monotonic deadline, remains subject to an earlier
+active drain deadline, and never dispatches a fifth walk concurrently. One
+controller derives the exact absolute schedule
+`origin + ordinal * 50 ms`; it never turns that schedule into a relative delay.
+The recorded nominal interval remains 50 ms and the unchanged maximum
 consecutive retained-start gap remains 100 ms.
 After process closure, the parent requests a drain while the canonical stop
 marker is still absent. Request, ready, and stop records are complete decimal
@@ -110,8 +111,9 @@ request marker on every poll, and requires the stop timestamp to remain within
 the 100 ms handoff window. The parent's separate six-second preparation window
 begins before readiness, so a count-dependent controller wait cannot expire
 first merely because host scheduling makes one-millisecond sleeps expensive.
-The controller launches no scheduled row after stop and launches the distinct
-final row.
+After the initial required sample, the controller checks stop again whenever
+a full gate frees and immediately after selecting an identity-stable worker.
+It launches no scheduled row after stop and launches the distinct final row.
 The handoff validator preserves the existing numeric sort, row grammar,
 contiguous-ordinal, arithmetic, ordering, gap, bridge, and freshness checks. It
 scans the sorted ledger in one `awk` process so validation work itself fits the
@@ -132,11 +134,13 @@ still-live worker whose structural identity changes during shutdown aborts the
 dedicated group instead of being marked reaped. Worker result collection never
 waits a live or mismatched PID. A monotonic-clock, deadline-construction, or
 sleep failure during orderly shutdown also aborts the group rather than
-returning with live children. One four-second Linux-monotonic deadline spans
-drain-time bridge scheduling and result collection, the terminal set and
-orderly pool shutdown receive fresh deadlines, and the parent allows its
-separate six-second monotonic preparation window before its identity-bound
-TERM/KILL watchdog proves that the dedicated session has closed.
+returning with live children. A saturated four-walk gate receives a fresh
+four-second Linux-monotonic deadline but cannot outlive an already-running
+drain deadline. Drain-time bridge scheduling and result collection, the
+terminal set, and orderly pool shutdown receive their applicable bounded
+deadlines. The parent allows its separate six-second monotonic preparation
+window before its identity-bound TERM/KILL watchdog proves that the dedicated
+session has closed.
 
 ## Preserved execution history and repair disposition
 
@@ -474,11 +478,17 @@ Deterministic plants reject partial or fewer-than-three-group topology and
 bind the exact six-core split. A real process plant verifies one affinity
 operation for each of the 32 persistent direct children and proves that more
 than 32 exact fake-`du` invocations all remain in the walk-only mask while the
-controller remains in its own mask. The source assertion itself requires more
-than 32 completed exact walks, so fewer samples cannot satisfy that verdict.
-The cap plant holds and counts exactly 32 walks, refuses the next dispatch with
-the existing diagnostic, publishes no ledger row, and proves complete session
-closure. A real descriptor-exhaustion plant makes process substitution start a
+controller remains in its own mask. That plant derives its retained ledger
+timestamps from contiguous ordinals so unrelated host scheduling cannot
+duplicate the separately planted exact gap boundary; it still invokes every
+exact walk, while the retry plant independently proves authentic attempt-time
+retention. The source assertion itself requires more than 32 completed exact
+walks, so fewer samples cannot satisfy that verdict.
+The cap plant starts the complete 32-worker pool, holds and counts exactly four
+walks, advances only the launch-slot clock through its four-second deadline,
+proves that a fifth exact walk never starts, publishes no ledger row, and
+proves complete session closure. A real descriptor-exhaustion plant makes
+process substitution start a
 held child while the controller's dynamic request-descriptor duplication
 fails, then proves the failed channel launch closes the sampler session. A
 second held-child mutation refuses startup identity capture and proves that a
@@ -500,6 +510,74 @@ passed after the subsequent readiness, active-wait, and exact-session-closure
 repairs. A further complete 42-plant suite passed after the history plant's
 dedicated-session correction. These runs are development rehearsals, not
 acceptance evidence.
+
+Candidate `c15b6cdc371bac427a40ddb6c7bfee226e6b2771` (tree
+`69aed5b098e365f6389b2bf46709f6aba1f07523`) passed a clean exact-head local
+matrix and three read-only Luna Max audit lanes, then ran once in a fresh,
+detached `git clone --no-local` author checkout. All 33 workload commands
+exited zero. The clean release build took 18.40 seconds, maximum-scene compile
+latency recorded a `79050673/2` ns median and 44,802,909 ns p95, browser smoke
+reproduced the committed contact sheet, and peak checkout disk was 1,356 MiB.
+The observer nevertheless rejected 40 retained-start gaps over 100,000,000 ns
+among 5,907 scheduled rows; the maximum was 286,006,134 ns during R2 browser
+smoke. No drain readiness, stop marker, terminal row, disk summary, evidence
+manifest, or final receipt was emitted. The preserved report is
+`/data/dev/src/nomos-r2-author-c15b6cd.ToCgmn/author-failure-report.md`,
+SHA-256
+`b65c89132ec28cdf7f12ed66ce0dee1cdfe570ed5236e8956a29b39402541066`.
+It binds both external streams, the complete command ledger, rejected raw and
+sorted rows, drain request, environment, build and compile measurements,
+browser receipt, and contact sheet. This formal run remains red and will not
+be retried at that commit.
+
+Post-failure diagnostics found no concurrency-cap diagnostic or exhausted
+retry in the formal artifacts. The two-phase controller fell about 47.99
+seconds behind its 25 ms union timeline: actual starts averaged 33.09 ms, and
+32 concurrent final-tree walks took roughly 0.36--0.53 seconds each. A single
+absolute 50 ms phase without an active gate remained red in development under
+the exact browser workload: retained fixture
+`/data/dev/src/nomos-r2-single-phase-probe.76MnlN` had 322 private rows, eight
+gaps above 100 ms, and a 227,920,101 ns maximum. An immediate four-walk refusal
+then correctly exposed that backpressure must wait rather than fail as soon as
+the gate is full.
+
+The selected repair removes the optional second phase, retains all 32
+prestarted and identity-bound workers, and admits at most four live exact
+walks. When all four are busy, the controller continues from the fixed-origin
+schedule after a bounded slot wait; authentic worker-side starts and the
+unchanged 100 ms validator, not nominal deadlines, decide the result. The
+deterministic schedule plant records exact `(origin, ordinal, 50 ms)` helper
+arguments while ordinal 1 retains a deliberately 7 ms-late worker timestamp.
+The real overload plant starts all 32 workers, holds exactly four exact walks,
+and requires the fifth to remain unlaunched through a scripted timeout and
+complete session abort.
+
+Three consecutive exact-browser development probes with this repair retained
+144, 144, and 142 rows with maximum gaps of 59,079,158 ns, 64,089,631 ns, and
+59,145,073 ns. A clean release-build probe retained 328 rows with a 58,846,725
+ns maximum. All four had zero gaps over 100 ms; the browser probes reproduced
+the exact contact-sheet digest. The terminal-order plant and complete
+42-plant suite then passed. These are load-bearing development diagnostics,
+not acceptance evidence; only a new exact candidate may enter the formal
+author protocol.
+
+A final pre-freeze Luna Max source audit found two launch-boundary races before
+that new formal run. A stop marker published while a saturated gate collected
+a completed walk could be skipped by the gate's early success return, and the
+gate's fresh four-second timeout could outlive the already-established drain
+deadline. The controller now checks the post-initial stop boundary both after
+gate collection and immediately before the request write, and every scheduled
+launch boundary enforces the shared drain deadline. Three production-path
+plants publish stop while a held gate frees, publish stop during the final
+identity-stable worker selection, and advance a saturated gate beyond its
+earlier drain deadline. They require no extra scheduled dispatch, the distinct
+terminal row where success remains possible, exact status-137 session abort
+where the drain deadline expires, no premature ledger publication, and proved
+session closure. Depending on live host scheduling, the previously existing
+hung-drain plant reaches that same shared deadline either at the next
+scheduled-launch boundary or in request-time result collection; the synthetic
+slot plant independently pins the former. The complete 45-plant suite passed
+after these repairs; this remains development evidence, not acceptance.
 
 Commands used during implementation include repository reads, `apply_patch`,
 shell and Node syntax/tests, the four accepted workspace checks, output-local

@@ -259,7 +259,7 @@ printf '%s\n' \
 chmod 755 "$async_taskset_bin/taskset"
 setsid taskset -c "$disk_test_controller_cpus" env \
   R2_TEST_DU_STABLE=1 \
-  R2_TEST_DU_DELAY=0.005 \
+  R2_TEST_DU_DELAY=0 \
   R2_TEST_DU_AFFINITY_DIRECTORY="$async_affinity_directory" \
   R2_TEST_TASKSET_LOG="$async_taskset_log" \
   R2_TEST_REAL_TASKSET="$real_taskset" \
@@ -269,6 +269,22 @@ setsid taskset -c "$disk_test_controller_cpus" env \
   bash -c '
   set -euo pipefail
   source "$1"
+  # This plant owns pool reuse, affinity, and exact walk invocation. Give its
+  # retained rows ordinal-derived timestamps so unrelated host scheduling
+  # cannot duplicate the separately planted 100 ms cadence boundary.
+  r2_record_checkout_mib() {
+    [[ $# -eq 5 ]] || return 2
+    local root=$1 raw=$2 origin=$3 ordinal=$4 kind=$5
+    local measured measured_started size started
+    r2_read_allowed_cpu_list "/proc/$BASHPID/status" || return 2
+    [[ $R2_EXPANDED_CPU_LIST == "$R2_DISK_WALK_CPUS" ]] || return 2
+    measured=$(r2_measure_checkout_mib "$root") || return
+    IFS=$'"'"'\t'"'"' read -r measured_started size <<<"$measured"
+    [[ $measured_started =~ ^[0-9]+$ && $size =~ ^[0-9]+$ ]] || return 2
+    started=$((origin + ordinal * 50000000))
+    printf "%s\t%s\t%s\t%s\t%s\n" "$ordinal" "$started" \
+      "$((started - origin))" "$size" "$kind" >>"$raw"
+  }
   shift
   r2_sample_checkout_disk \
     "$@"
@@ -381,7 +397,8 @@ async_scheduled_count=0
 } <"$async_samples"
 [[ $async_count -ge 41 && $async_scheduled_count -ge 40 &&
   $async_gap_ns -le 100000000 && $async_terminal_count -eq 1 &&
-  $async_terminal_started -ge $async_stop_started && ! -e $async_parts ]] ||
+  $async_terminal_started -eq $((async_started + (async_count - 1) * 50000000)) &&
+  ! -e $async_parts ]] ||
   fail 'asynchronous sampler did not preserve exact cadence/session/terminal evidence'
 async_affinity_count=0
 declare -A async_affinity_parent_workers=()
@@ -915,6 +932,8 @@ overload_hold=$temporary/overload-disk.release
 overload_started=$(date +%s%N)
 printf 'ordinal\tsample_start_ns\telapsed_ns\tmebibytes\tkind\n' >"$overload_samples"
 mkdir "$overload_state" "$overload_launches"
+# Hold exact fake walks and advance only the launch-slot clock. All 32 pool
+# workers still start and bind normally, but no fifth exact walk may begin.
 set +e
 setsid taskset -c "$disk_test_controller_cpus" env \
   R2_TEST_DU_STABLE=1 \
@@ -925,6 +944,17 @@ setsid taskset -c "$disk_test_controller_cpus" env \
   bash -c '
   set -euo pipefail
   source "$1"
+  eval "$(declare -f r2_monotonic_now_ns | sed \
+    "1s/r2_monotonic_now_ns/r2_real_monotonic_now_ns/")"
+  gate_probe=0
+  r2_monotonic_now_ns() {
+    if [[ ${FUNCNAME[1]:-} == wait_for_launch_slot ]]; then
+      gate_probe=$((gate_probe + 1))
+      R2_MONOTONIC_NS=$((gate_probe * 1000000000))
+      return 0
+    fi
+    r2_real_monotonic_now_ns
+  }
   shift
   r2_sample_checkout_disk "$@"
 ' r2-overload-sampler "$harness_lib_source" \
@@ -937,10 +967,11 @@ wait "$overload_sampler_pid" 2>>"$temporary/overload.stderr"
 overload_status=$?
 set -e
 overload_launch_count=$(find "$overload_launches" -maxdepth 1 -type f | wc -l)
-[[ $overload_status -ne 0 && ! -s $temporary/overload.stdout &&
-  $(wc -l <"$overload_samples") -eq 1 && $overload_launch_count -eq 32 ]] ||
+[[ $overload_status -eq 137 && ! -s $temporary/overload.stdout &&
+  $(wc -l <"$overload_samples") -eq 1 && $overload_launch_count -eq 4 ]] ||
   fail 'asynchronous sampler permitted unbounded concurrent walks'
-[[ $(grep -Fxc 'R2 disk sampler: thirty-two concurrent du walks are still active' \
+[[ $(grep -Fxc \
+  'R2 disk sampler: four concurrent du walks did not make room before timeout' \
   "$temporary/overload.stderr") -eq 1 ]] ||
   fail 'asynchronous sampler concurrency-limit diagnostic differs'
 if r2_sampler_session_has_members "$overload_session"; then
@@ -952,3 +983,7 @@ fi
   fail 'concurrency-limit sampler session closure could not be proved'
 overload_sampler_pid=
 plant_count=$((plant_count + 1))
+
+# Keep timing-boundary races separate from the already-large lifecycle suite.
+# shellcheck source=docs/evaluation/r2-disk-slot-race-plants.sh
+source "$script_directory/r2-disk-slot-race-plants.sh"
