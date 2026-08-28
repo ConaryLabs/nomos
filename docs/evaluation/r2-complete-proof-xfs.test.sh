@@ -73,8 +73,17 @@ for workflow_tool_list in "${workflow_tool_lists[@]}"; do
   [[ $actual_workflow_tools == "$expected_workflow_tools" ]] ||
     fail 'complete-proof workflow preflight differs from the executable tool union'
 done
-record_wrapper_tools "$test_root/wrapper-tools.tsv"
-pwd_tool_path=$(/usr/bin/awk -F '\t' '$1 == "pwd" {print $2}' "$test_root/wrapper-tools.tsv")
+wrapper_tool_tsv=$test_root/wrapper-tools.tsv
+wrapper_tool_json=$test_root/wrapper-tools.json
+(
+  run_as_user() { "$@"; }
+  record_wrapper_tools "$wrapper_tool_tsv"
+  for wrapper_user_tool in rustup cargo rustc; do
+    record_wrapper_user_tool "$wrapper_tool_tsv" "$wrapper_user_tool"
+  done
+  record_wrapper_tool_json "$wrapper_tool_tsv" "$wrapper_tool_json"
+)
+pwd_tool_path=$(/usr/bin/awk -F '\t' '$1 == "pwd" {print $2}' "$wrapper_tool_tsv")
 [[ $pwd_tool_path == /* && -x $pwd_tool_path ]] || fail 'wrapper tool recorder did not resolve external pwd'
 
 # GNU find does not descend through a command-line descriptor symlink under

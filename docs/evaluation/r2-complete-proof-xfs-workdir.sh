@@ -719,7 +719,7 @@ record_wrapper_tool_json() {
   /usr/bin/chmod 0644 "$strict_json.tmp"
   /usr/bin/mv -f -- "$strict_json.tmp" "$strict_json"
   /usr/bin/jq -e '
-    (keys | sort) == ["awk", "bash", "blkid", "blockdev", "bwrap", "cargo", "chmod", "chown", "cp", "cut", "date", "dirname", "du", "env", "fallocate", "filefrag", "find", "findmnt", "fuser", "git", "grep", "id", "ionice", "jq", "losetup", "mkdir", "mkfs.xfs", "mount", "mv", "node", "pwd", "readlink", "realpath", "rm", "rustc", "rustup", "setpriv", "sha256sum", "sh", "stat", "sudo", "sync", "tar", "tr", "umount", "unshare", "xfs_info", "xfs_quota"]
+    (keys | sort) == ["awk", "bash", "blkid", "blockdev", "bwrap", "cargo", "chmod", "chown", "cp", "cut", "date", "dirname", "du", "env", "fallocate", "filefrag", "find", "findmnt", "fuser", "git", "grep", "id", "ionice", "jq", "losetup", "mkdir", "mkfs.xfs", "mount", "mv", "node", "pwd", "readlink", "realpath", "rm", "rustc", "rustup", "setpriv", "sh", "sha256sum", "stat", "sudo", "sync", "tar", "tr", "umount", "unshare", "xfs_info", "xfs_quota"]
     and all(.[]; (.path | startswith("/")) and (.version_argv | type == "string" and length > 0)
       and (.version_status | type == "number" and floor == .)
       and (.sha256 | test("^[0-9a-f]{64}$")) and (.version | type == "string" and length > 0))

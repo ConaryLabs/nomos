@@ -138,6 +138,29 @@ judgment, or acceptance requirement.
   `5dcee23c3a3710a5ab9e60c68285612253da6e6ad47878a3aea7cb029975a52c`.
   No proof loop, mount, or backing image was created; the pre/post host loop
   inventories were identical. This attempt remains setup-red.
+- An operator invocation intended for candidate
+  `00f79f1faedbeedf5ae889c16d6bea8952972a72` used the development checkout's
+  wrapper instead of the frozen source wrapper. The source-binding guard
+  rejected it before supervisor setup and left work
+  `/data/dev/src/nomos-r2-xfs-run.9SqI3T` empty. It is not a candidate proof.
+- Candidate `00f79f1faedbeedf5ae889c16d6bea8952972a72`, tree
+  `213a59583141f7a2f702429045249c0eedce8f89`, source
+  `/data/dev/src/nomos-r2-candidate.yg1gre`, work
+  `/data/dev/src/nomos-r2-xfs-run.mugsce`: the candidate-native attempt failed
+  before image creation because the strict wrapper-tool validator compared its
+  sorted 48-key register with an expected array whose `sh` and `sha256sum`
+  entries were not in sorted order. The complete TSV register SHA-256 is
+  `3b03a74c3652b1e8cc832715f1d568710f4f4625331aac8b930eabc3c962919a`;
+  its JSON projection SHA-256 is
+  `b6daa8d60c1a47fce00b5f9a2171dc0e3f9888a8a84f197909ebf086f7963963`;
+  supervisor stderr SHA-256 is
+  `a29d8c7d2d07b2723ce570dfb19babf891ef1719460dcad31acfd6cd3e4c2659`;
+  and receipt stderr SHA-256 is
+  `327bd97ddf07ae97fb17ee077652f4410426d417d6ea7150c464990e6bc602b9`.
+  No proof loop, mount, backing image, or final receipt was created. The
+  pre/post host loop inventories are byte-identical at SHA-256
+  `e951f122f209cb4a215522a5b5e708d1a855da1e65e9aedfa014b849f4be6a74`.
+  This attempt remains setup-red.
 
 ## Clean-room and adopter boundary
 
