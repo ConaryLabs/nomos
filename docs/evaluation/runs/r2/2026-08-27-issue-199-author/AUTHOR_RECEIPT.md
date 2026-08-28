@@ -73,13 +73,15 @@ require a new run.
 
 The checkout-wide disk observer reads each allowed logical CPU's Linux
 `thread_siblings_list` and fails closed on an absent, malformed, contradictory,
-partial, or fewer-than-three-physical-core topology. It assigns the first
-complete sibling group to the sampler controller, the last complete group to
-the proof workload, and every intervening complete group to disk walks. On
-the 12-logical-CPU, six-core reference host, the controller uses CPUs `0,6`, a
-bounded pool of 32 persistent workers uses CPUs `1,2,3,4,7,8,9,10`, and the
-proof workload uses CPUs `5,11`. The workload enters its mask before the
-sampler is launched; all three roles are pairwise physically disjoint.
+partial, or fewer-than-three-physical-core topology. It assigns one complete
+sibling group to the sampler controller, then splits the remaining complete
+groups between disk walks and the proof workload; when that remainder is odd,
+the disk-walk side receives the extra group while the workload retains at
+least one. On the 12-logical-CPU, six-core reference host, the controller uses
+CPUs `0,6`, a bounded pool of 32 persistent workers uses CPUs
+`1,2,3,7,8,9`, and the proof workload uses CPUs `4,5,10,11`. The workload
+enters its mask before the sampler is launched; all three roles are pairwise
+physically disjoint.
 
 Each pool worker is a direct child in the sampler's dedicated session, enters
 the walk mask once before reporting readiness, and receives ordinal-bound work
@@ -89,9 +91,10 @@ Workers retain canonical integer-nanosecond start times taken immediately
 before each successful walk. The controller publishes them in chronological
 order while independently requiring unique contiguous launch ordinals. All 32
 workers are ready before use, but no more than four exact walks may be active
-on the reference host's isolated four-group disk mask. A full gate waits
-against its own four-second monotonic deadline, remains subject to an earlier
-active drain deadline, and never dispatches a fifth walk concurrently. One
+on the reference host's isolated three-group disk mask. A full gate checks for
+completion after one-millisecond poll delays, waits against its own four-second
+monotonic deadline, remains subject to an earlier active drain deadline, and
+never dispatches a fifth walk concurrently. One
 controller derives the exact absolute schedule
 `origin + ordinal * 50 ms`; it never turns that schedule into a relative delay.
 The recorded nominal interval remains 50 ms and the unchanged maximum
@@ -921,3 +924,39 @@ disk method, authentic timestamp, absolute 50 ms schedule, 100 ms gap ceiling,
 workload, or resource ceiling changes. A new development commit must pass the
 complete local matrix and fresh standalone rehearsals before any candidate can
 enter the formal author protocol.
+
+Development commit `b58200b287d018692dc286c08ed4e469c3c3133a` (tree
+`e7e8c887530674ccb1e48460c78891e79f87917a`) then ran the exact complete
+harness once in a new fresh, detached, full, clean standalone clone at
+`/data/dev/src/nomos-r2-rehearsal-disk4-a.1XjqEn/checkout`. Commands 1 through
+32 exited zero. Command 33 emitted 100 byte-identical maximum-scene outputs
+but failed both compile ceilings: median numerator `213452723/2` ns and p95
+149,809,497 ns. The clean release build remained below its ceiling at 45.84
+seconds, browser smoke reproduced the exact contact sheet, and peak checkout
+disk was 1,356 MiB.
+
+The controller-one/disk-four/workload-one observer also remained red. Its
+5,251 scheduled rows contained 89 scheduled-to-scheduled gaps over
+100,000,000 ns, with a 218,251,717 ns maximum; failure cleanup added a
+281,118,025 ns scheduled-to-terminal gap. The preserved independently audited
+report is
+`/data/dev/src/nomos-r2-rehearsal-disk4-a.1XjqEn/rehearsal-failure-report.md`,
+SHA-256
+`862a9d6f9f48f143f76815d0d1e127f1b2cc6ab48481cdaa269df4d16a6d4ad4`.
+This development commit remains red and will not be retried. The `1/4/1`
+allocation is retired: it worsened cadence and more than doubled compile
+latency relative to the earlier active-four `1/3/2` rehearsal.
+
+The selected next experiment restores the known-best controller-one/disk-
+three/workload-two topology and retains four active walks. Relative to
+development commit `99a1970`, the only steady-state cadence mechanism changed
+is the saturated-slot polling delay, from five milliseconds to one. The
+procfs snapshot classification added since that commit affects bounded initial
+readiness, not steady-state launch cadence. A deterministic deadline plant
+binds each saturated-slot delay to exactly `0.001` seconds while retaining the
+unchanged absolute monotonic deadline. The exact disk method, authentic
+timestamp, absolute 50 ms schedule, 100 ms gap ceiling, workload, and every
+resource ceiling remain unchanged. This is a diagnostic development
+experiment, not a presumed fix; if its fresh full rehearsal remains red,
+polling is retired and the next design question is explicit per-core worker
+lanes rather than another scheduler-delay tweak.

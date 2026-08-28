@@ -152,12 +152,12 @@ for pair in '0 6' '1 7' '2 8' '3 9' '4 10' '5 11'; do
 done
 r2_partition_cpu_topology 0-11 "$topology_root" ||
   fail 'canonical sibling topology was refused'
-[[ $R2_CONTROLLER_CPUS == 0,6 && $R2_DISK_CPUS == 1,2,3,4,7,8,9,10 &&
-  $R2_WORKLOAD_CPUS == 5,11 &&
+[[ $R2_CONTROLLER_CPUS == 0,6 && $R2_DISK_CPUS == 1,2,3,7,8,9 &&
+  $R2_WORKLOAD_CPUS == 4,5,10,11 &&
   $R2_CPU_TOPOLOGY_GROUPS == '0,6;1,7;2,8;3,9;4,10;5,11' &&
   $R2_CONTROLLER_PHYSICAL_GROUPS == '0,6' &&
-  $R2_DISK_PHYSICAL_GROUPS == '1,7;2,8;3,9;4,10' &&
-  $R2_WORKLOAD_PHYSICAL_GROUPS == '5,11' ]] ||
+  $R2_DISK_PHYSICAL_GROUPS == '1,7;2,8;3,9' &&
+  $R2_WORKLOAD_PHYSICAL_GROUPS == '4,10;5,11' ]] ||
   fail 'canonical three-way physical-core role split differs'
 r2_validate_physical_cpu_isolation "$R2_CONTROLLER_CPUS" "$R2_DISK_CPUS" \
   "$topology_root" || fail 'controller and disk walks share a physical core'
@@ -177,12 +177,12 @@ r2_partition_cpu_topology '0-3,6-9' "$topology_root" ||
   fail 'four-group physical-core role split differs'
 r2_partition_cpu_topology '0-4,6-10' "$topology_root" ||
   fail 'five-group sibling topology was refused'
-[[ $R2_CONTROLLER_CPUS == 0,6 && $R2_DISK_CPUS == 1,2,3,7,8,9 &&
-  $R2_WORKLOAD_CPUS == 4,10 &&
+[[ $R2_CONTROLLER_CPUS == 0,6 && $R2_DISK_CPUS == 1,2,7,8 &&
+  $R2_WORKLOAD_CPUS == 3,4,9,10 &&
   $R2_CPU_TOPOLOGY_GROUPS == '0,6;1,7;2,8;3,9;4,10' &&
   $R2_CONTROLLER_PHYSICAL_GROUPS == '0,6' &&
-  $R2_DISK_PHYSICAL_GROUPS == '1,7;2,8;3,9' &&
-  $R2_WORKLOAD_PHYSICAL_GROUPS == '4,10' ]] ||
+  $R2_DISK_PHYSICAL_GROUPS == '1,7;2,8' &&
+  $R2_WORKLOAD_PHYSICAL_GROUPS == '3,9;4,10' ]] ||
   fail 'five-group physical-core role split differs'
 r2_partition_cpu_topology '1,3-4,7,9-10' "$topology_root" ||
   fail 'irregular complete sibling topology was refused'
@@ -622,17 +622,20 @@ deadline_stop=$temporary/deadline.stop
 deadline_state=$temporary/deadline-state
 deadline_clock=$temporary/deadline-clock
 deadline_trace=$temporary/deadline-trace
+deadline_sleeps=$temporary/deadline-sleeps
 deadline_origin=$(date +%s%N)
 printf 'ordinal\tsample_start_ns\telapsed_ns\tmebibytes\tkind\n' >"$deadline_samples"
 mkdir "$deadline_state"
 printf '1000000000\n' >"$deadline_clock"
 : >"$deadline_trace"
+: >"$deadline_sleeps"
 deadline_wall_start=$(date +%s%N)
 setsid taskset -c "$test_controller_cpu" bash -c '
   set -euo pipefail
   source "$1"
   deadline_clock=$7
   deadline_trace=$8
+  deadline_sleeps=$9
   r2_monotonic_now_ns() {
     local current caller=${FUNCNAME[1]:-}
     if [[ $caller != wait_for_launch_slot ]]; then
@@ -645,6 +648,14 @@ setsid taskset -c "$test_controller_cpu" bash -c '
     printf "%s\n" "$((current + 1000000000))" >"$deadline_clock"
     R2_MONOTONIC_NS=$current
   }
+  sleep() {
+    if [[ ${FUNCNAME[1]:-} == wait_for_launch_slot ]]; then
+      [[ $# -eq 1 && $1 == 0.001 ]] || return 2
+      printf "%s\n" "$1" >>"$deadline_sleeps"
+      return 0
+    fi
+    command sleep "$@"
+  }
   r2_record_checkout_mib() {
     [[ $# -eq 5 ]] || return 2
     local raw=$2 origin=$3 ordinal=$4 kind=$5 started
@@ -656,7 +667,7 @@ setsid taskset -c "$test_controller_cpu" bash -c '
   r2_sample_checkout_disk "$2" "$3" "$4" "$5" "$6" 50000000
 ' r2-deadline-sampler "$script_directory/r2-complete-proof-lib.sh" \
   "$repo_root" "$deadline_samples" "$deadline_stop" "$deadline_state" \
-  "$deadline_origin" "$deadline_clock" "$deadline_trace" \
+  "$deadline_origin" "$deadline_clock" "$deadline_trace" "$deadline_sleeps" \
   >"$temporary/deadline-controller.stdout" \
   2>"$temporary/deadline-controller.stderr" &
 deadline_sampler_pid=$!
@@ -667,8 +678,10 @@ deadline_status=$?
 set -e
 deadline_wall_end=$(date +%s%N)
 deadline_trace_text=$(paste -sd, "$deadline_trace")
+deadline_sleep_text=$(paste -sd, "$deadline_sleeps")
 [[ $deadline_status -eq 137 && $deadline_trace_text == \
   '1000000000,2000000000,3000000000,4000000000,5000000000' &&
+  $deadline_sleep_text == '0.001,0.001,0.001' &&
   $((deadline_wall_end - deadline_wall_start)) -lt 2000000000 &&
   $(wc -l <"$deadline_samples") -eq 1 ]] ||
   fail 'scripted four-walk deadline was extended or published a ledger'

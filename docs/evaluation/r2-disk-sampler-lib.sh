@@ -126,8 +126,9 @@ r2_sample_checkout_disk() {
   local ready=$state/ready drain_request=$state/drain-request
   local drain_ready=$state/drain-ready raw_samples=$state/samples.unsorted.tsv
   # Keep the full prestarted identity pool, but admit only four exact walks at
-  # once on the reference host's isolated four-group disk mask. The retained-
-  # start validator remains the final cadence authority.
+  # once on the reference host's isolated three-group disk mask. The fourth
+  # buffered walk sustains coverage through the measured full-workload tail;
+  # the retained-start validator remains the final cadence authority.
   local sorted_samples=$state/samples.sorted.tsv pool_size=32 active_limit=4
   local ordinal=0 deadline now monotonic_now delay delay_seconds status=0 attempt
   local launch_status
@@ -361,7 +362,7 @@ r2_sample_checkout_disk() {
         abort_dedicated_sampler_group || true
         return 1
       }
-      sleep 0.005 || {
+      sleep 0.001 || {
         status=1
         abort_dedicated_sampler_group || true
         return 1
