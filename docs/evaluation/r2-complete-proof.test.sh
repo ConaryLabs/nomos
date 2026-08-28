@@ -30,10 +30,12 @@ script_directory=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)
 repo_root=$(cd -- "$script_directory/../.." && pwd -P)
 harness_source=$script_directory/r2-complete-proof.sh
 harness_lib_source=$script_directory/r2-complete-proof-lib.sh
+harness_disk_control_source=$script_directory/r2-disk-control-lib.sh
 [[ -f $harness_source && ! -L $harness_source ]] || fail 'complete-proof harness is absent'
 [[ -f $harness_lib_source && ! -L $harness_lib_source ]] || fail 'complete-proof library is absent'
+[[ -f $harness_disk_control_source && ! -L $harness_disk_control_source ]] || fail 'disk-control library is absent'
 
-for command in git cp ln chmod mkdir mktemp grep jq ps realpath readlink wc sed find id sleep setsid taskset; do
+for command in git cp ln chmod mkdir mktemp mv grep jq ps realpath readlink wc sed find id sleep setsid taskset; do
   command -v "$command" >/dev/null 2>&1 || fail "required executable not found: $command"
 done
 
@@ -47,7 +49,10 @@ same_group_root=
 same_group_job_pid=
 group_leak_pid=
 stop_test_pid=
+async_sampler_pid=
+history_sampler_pid=
 cleanup() {
+  local sampler_pid
   case $temporary in
     "$repo_root"/target/r2-complete-proof-plants.*)
       if [[ -n ${leaked_child_pid:-} ]] && kill -0 "$leaked_child_pid" 2>/dev/null; then
@@ -67,10 +72,12 @@ cleanup() {
         kill "$group_leak_pid" 2>/dev/null || true
         wait "$group_leak_pid" 2>/dev/null || true
       fi
-      if [[ -n ${stop_test_pid:-} ]] && kill -0 "$stop_test_pid" 2>/dev/null; then
-        kill -KILL -- "-$stop_test_pid" 2>/dev/null || true
-        wait "$stop_test_pid" 2>/dev/null || true
-      fi
+      for sampler_pid in "${stop_test_pid:-}" "${async_sampler_pid:-}"; do
+        [[ -z $sampler_pid ]] || kill -KILL -- "-$sampler_pid" 2>/dev/null || true
+        [[ -z $sampler_pid ]] || wait "$sampler_pid" 2>/dev/null || true
+      done
+      [[ -z ${history_sampler_pid:-} ]] || kill "$history_sampler_pid" 2>/dev/null || true
+      [[ -z ${history_sampler_pid:-} ]] || wait "$history_sampler_pid" 2>/dev/null || true
       # Retain the closed plant fixture beneath checkout-local target. Its
       # bytes stay inside the measured write boundary, and deleting the Git
       # trees here would make the exact checkout-wide `du` observer race a
@@ -94,6 +101,7 @@ mkdir -p "$seed/docs/evaluation" "$seed/apps/nomos-viewer/smoke"
 cp "$repo_root/.gitignore" "$repo_root/rust-toolchain.toml" "$seed/"
 cp "$harness_source" "$seed/docs/evaluation/r2-complete-proof.sh"
 cp "$harness_lib_source" "$seed/docs/evaluation/r2-complete-proof-lib.sh"
+cp "$harness_disk_control_source" "$seed/docs/evaluation/r2-disk-control-lib.sh"
 cp "$repo_root/apps/nomos-viewer/smoke/chrome.mjs" \
   "$seed/apps/nomos-viewer/smoke/chrome.mjs"
 chmod 755 "$seed/docs/evaluation/r2-complete-proof.sh"
@@ -693,10 +701,12 @@ setsid taskset -c "$disk_test_controller_cpus" env \
   "$async_started" 50000000 &
 async_sampler_pid=$!
 async_session_bound=0
+async_sampler_start=
 for ((attempt = 0; attempt < 100; attempt += 1)); do
   if r2_read_process_stat "/proc/$async_sampler_pid/stat" &&
     [[ $R2_PROC_GROUP == "$async_sampler_pid" &&
       $R2_PROC_SESSION == "$async_sampler_pid" && $R2_PROC_STATE != Z ]]; then
+    async_sampler_start=$R2_PROC_START
     async_session_bound=1
     break
   fi
@@ -712,9 +722,12 @@ for ((attempt = 0; attempt < 100; attempt += 1)); do
 done
 [[ -f $async_parts/ready ]] || fail 'asynchronous sampler did not become ready'
 sleep 0.26
-async_stop_started=$(date +%s%N)
-: >"$async_stop"
-wait "$async_sampler_pid" || fail 'asynchronous sampler rejected complete walks'
+unset R2_DISK_STOP_REQUESTED_NS
+r2_prepare_and_stop_disk_sampler "$async_sampler_pid" "$async_sampler_start" \
+  "$disk_test_controller_cpus" "$async_stop" "$async_parts" 0 ||
+  fail 'asynchronous sampler rejected complete walks'
+async_stop_started=$R2_DISK_STOP_REQUESTED_NS
+async_sampler_pid=
 async_count=0
 async_gap_ns=0
 async_previous_started=0
@@ -780,7 +793,8 @@ r2_publish_checkout_disk_samples "$chronology_samples" "$chronology_state" \
   fail 'chronological publication reordered by launch identity'
 chronology_stop=$temporary/chronology.stop
 chronology_summary=$temporary/chronology-summary.json
-printf '1090000000\n' >"$chronology_stop"
+r2_publish_decimal_control_marker "$chronology_stop" 1090000000 ||
+  fail 'could not publish chronology stop marker'
 r2_write_checkout_disk_summary "$chronology_samples" "$chronology_stop" \
   "$chronology_summary" 1000000000 50000000 1090000000 ||
   fail 'disk summary refused chronological raw evidence and its stop marker'
@@ -799,13 +813,9 @@ run_exact_gap_sampler() {
   local planted_origin=1000000000
   (
     r2_record_checkout_mib() {
-      [[ $# -eq 6 ]] || return 2
-      local raw=$2 origin=$3 ordinal=$4 kind=$5 signal=$6
+      [[ $# -eq 5 ]] || return 2
+      local raw=$2 origin=$3 ordinal=$4 kind=$5
       local started=$((origin + ordinal * planted_gap))
-      if [[ $kind == terminal ]]; then
-        [[ -f $signal && $(<"$signal") == $'0\t1000000000' ]] || return 2
-      fi
-      printf '%s\t%s\n' "$ordinal" "$started" >"$signal"
       printf '%s\t%s\t%s\t17\t%s\n' \
         "$ordinal" "$started" "$((started - origin))" "$kind" >>"$raw"
     }
@@ -819,7 +829,8 @@ gap_pass_samples=$temporary/exact-gap-pass.tsv
 gap_pass_stop=$temporary/exact-gap-pass.stop
 gap_pass_state=$temporary/exact-gap-pass-state
 printf 'ordinal\tsample_start_ns\telapsed_ns\tmebibytes\tkind\n' >"$gap_pass_samples"
-: >"$gap_pass_stop"
+r2_publish_decimal_control_marker "$gap_pass_stop" 1050000000 ||
+  fail 'could not publish exact-gap pass stop marker'
 mkdir "$gap_pass_state"
 run_exact_gap_sampler 100000000 "$gap_pass_samples" "$gap_pass_stop" "$gap_pass_state" ||
   fail 'disk sampler refused an exact 100000000 ns retained-start gap'
@@ -833,7 +844,8 @@ gap_fail_samples=$temporary/exact-gap-fail.tsv
 gap_fail_stop=$temporary/exact-gap-fail.stop
 gap_fail_state=$temporary/exact-gap-fail-state
 printf 'ordinal\tsample_start_ns\telapsed_ns\tmebibytes\tkind\n' >"$gap_fail_samples"
-: >"$gap_fail_stop"
+r2_publish_decimal_control_marker "$gap_fail_stop" 1050000000 ||
+  fail 'could not publish exact-gap failure stop marker'
 mkdir "$gap_fail_state"
 set +e
 run_exact_gap_sampler 100000001 "$gap_fail_samples" "$gap_fail_stop" "$gap_fail_state" \
@@ -867,10 +879,9 @@ run_history_sampler() {
     r2_read_process_stat_unprobed "$@"
   }
   r2_record_checkout_mib() {
-    [[ $# -eq 6 ]] || return 2
-    local raw=$2 origin=$3 ordinal=$4 kind=$5 signal=$6
+    [[ $# -eq 5 ]] || return 2
+    local raw=$2 origin=$3 ordinal=$4 kind=$5
     local started=$((origin + ordinal * 10000000))
-    printf '%s\t%s\n' "$ordinal" "$started" >"$signal"
     printf '%s\t%s\t%s\t17\t%s\n' \
       "$ordinal" "$started" "$((started - origin))" "$kind" >>"$raw"
   }
@@ -887,8 +898,10 @@ for ((attempt = 0; attempt < 100; attempt += 1)); do
 done
 [[ -f $history_parts/ready ]] || fail 'history sampler did not become ready'
 sleep 0.8
-: >"$history_stop"
+r2_publish_decimal_control_marker "$history_stop" "$(date +%s%N)" ||
+  fail 'could not publish history-sampler stop marker'
 wait "$history_sampler_pid" || fail 'history sampler rejected quick complete walks'
+history_sampler_pid=
 history_count=$(awk 'NR > 1 { count += 1 } END { print count + 0 }' "$history_samples")
 history_probe_count=$(wc -l <"$history_probes")
 # Deterministic quick workers need only a small active set; sixteen probes per

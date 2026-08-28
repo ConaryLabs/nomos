@@ -21,7 +21,7 @@ output_argument=$2
 host_tools=(
   git realpath readlink find grep awk sed sort cmp cut sha256sum stat date du jq
   /usr/bin/time ar basename bash bwrap cargo cc chmod cp diff dirname env getconf
-  head id install ionice ip ld ln mkdir mktemp node paste ps rm rustc rustup seq setpriv
+  head id install ionice ip ld ln mkdir mktemp mv node paste ps rm rustc rustup seq setpriv
   setsid sh sleep strings sudo tar taskset timeout touch tr uname unshare wc
 )
 for command in "${host_tools[@]}"; do
@@ -516,8 +516,10 @@ sampler_running=0
 stop_sampler() {
   local incoming=${1:-0} result
   if [[ $sampler_running -eq 1 ]]; then
-    if r2_stop_disk_sampler "$disk_sampler_pid" "$disk_sampler_start_ticks" \
-      "$sampler_controller_affinity" "$disk_sampler_stop" "$incoming"; then
+    if r2_prepare_and_stop_disk_sampler \
+      "$disk_sampler_pid" "$disk_sampler_start_ticks" \
+      "$sampler_controller_affinity" "$disk_sampler_stop" \
+      "$disk_sample_state" "$incoming"; then
       result=0
     else
       result=$?

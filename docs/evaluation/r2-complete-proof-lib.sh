@@ -2,6 +2,14 @@
 
 # Source-only primitives shared by the complete proof and its refusal suite.
 
+case ${BASH_SOURCE[0]} in
+  */*) r2_complete_proof_lib_directory=${BASH_SOURCE[0]%/*} ;;
+  *) r2_complete_proof_lib_directory=. ;;
+esac
+# shellcheck source=docs/evaluation/r2-disk-control-lib.sh
+source "$r2_complete_proof_lib_directory/r2-disk-control-lib.sh"
+unset r2_complete_proof_lib_directory
+
 r2_read_process_stat() {
   [[ $# -eq 1 && -n $1 ]] || return 2
   local process_stat process_fields
@@ -242,7 +250,7 @@ r2_stop_disk_sampler() {
     marker_status=1
   elif ! marker_ns=$(date +%s%N) ||
     [[ ! $marker_ns =~ ^(0|[1-9][0-9]*)$ ]] ||
-    ! printf '%s\n' "$marker_ns" >"$stop"; then
+    ! r2_publish_decimal_control_marker "$stop" "$marker_ns"; then
     marker_status=1
   else
     # shellcheck disable=SC2034 # Returned global binds summary and marker.
@@ -317,6 +325,50 @@ r2_stop_disk_sampler() {
   [[ $marker_status -eq 0 ]] || return "$marker_status"
   [[ $forced -eq 0 ]] || return 1
   return "$wait_status"
+}
+
+r2_prepare_and_stop_disk_sampler() {
+  [[ $# -eq 6 && $1 =~ ^[1-9][0-9]*$ &&
+    ( -z $2 || $2 =~ ^[0-9]+$ ) && -n $3 && -n $4 &&
+    -d $5 && ! -L $5 && $6 =~ ^[0-9]+$ && $6 -le 255 ]] || return 2
+  local pid=$1 start=$2 expected_cpu_list=$3 stop=$4 state=$5 incoming=$6
+  local request=$state/drain-request ready=$state/drain-ready
+  local request_ns='' prepare_status=0 prepared=0 attempt cleanup_status
+
+  if [[ $incoming -ne 0 ]]; then
+    r2_stop_disk_sampler "$pid" "$start" "$expected_cpu_list" "$stop" "$incoming"
+    return
+  fi
+
+  if [[ -z $start || -e $request || -L $request || -e $ready || -L $ready ]] ||
+    ! r2_sampler_identity_stable "$pid" "$start" "$expected_cpu_list" ||
+    ! request_ns=$(date +%s%N) ||
+    [[ ! $request_ns =~ ^(0|[1-9][0-9]*)$ ]] ||
+    ! r2_publish_decimal_control_marker "$request" "$request_ns"; then
+    prepare_status=1
+  fi
+
+  if [[ $prepare_status -eq 0 ]]; then
+    for ((attempt = 0; attempt < 500; attempt += 1)); do
+      if r2_read_decimal_control_marker "$ready" 2>/dev/null &&
+        [[ $R2_CONTROL_MARKER == "$request_ns" ]]; then
+        prepared=1
+        break
+      fi
+      r2_sampler_identity_stable "$pid" "$start" "$expected_cpu_list" || break
+      sleep 0.01 || break
+    done
+    [[ $prepared -eq 1 ]] || prepare_status=1
+  fi
+
+  if [[ $prepare_status -ne 0 ]]; then
+    cleanup_status=$incoming
+    [[ $cleanup_status -ne 0 ]] || cleanup_status=1
+    r2_stop_disk_sampler \
+      "$pid" "$start" "$expected_cpu_list" "$stop" "$cleanup_status" || return
+    return "$cleanup_status"
+  fi
+  r2_stop_disk_sampler "$pid" "$start" "$expected_cpu_list" "$stop" "$incoming"
 }
 
 r2_measure_process_closure() {
@@ -540,9 +592,10 @@ r2_measure_checkout_mib() {
 }
 
 r2_record_checkout_mib() {
-  [[ $# -eq 6 && -d $1 && -f $2 && ! -L $2 && $3 =~ ^[0-9]+$ &&
+  [[ ( $# -eq 5 || $# -eq 6 ) && -d $1 && -f $2 && ! -L $2 && $3 =~ ^[0-9]+$ &&
     $4 =~ ^[0-9]+$ && ( $5 == scheduled || $5 == terminal ) &&
-    -n $6 && ! -L $6 && -n ${R2_DISK_WALK_CPUS:-} ]] || {
+    ( $# -eq 5 || ( -n ${6:-} && ! -L ${6:-} ) ) &&
+    -n ${R2_DISK_WALK_CPUS:-} ]] || {
     printf 'R2 disk sampler: invalid sample arguments\n' >&2
     return 2
   }
@@ -551,10 +604,14 @@ r2_record_checkout_mib() {
   local sampler_started=$3
   local ordinal=$4
   local kind=$5
-  local started_signal=$6
+  local started_signal=${6:-}
   local row measured_started size elapsed
   taskset -pc "$R2_DISK_WALK_CPUS" "$BASHPID" >/dev/null || return 2
-  row=$(r2_measure_checkout_mib "$root" "$started_signal" "$ordinal") || return
+  if [[ -n $started_signal ]]; then
+    row=$(r2_measure_checkout_mib "$root" "$started_signal" "$ordinal") || return
+  else
+    row=$(r2_measure_checkout_mib "$root") || return
+  fi
   IFS=$'\t' read -r measured_started size <<<"$row"
   [[ $measured_started =~ ^[0-9]+$ && $measured_started -ge $sampler_started &&
     $size =~ ^[0-9]+$ ]] || return 2
@@ -653,56 +710,6 @@ r2_write_checkout_disk_summary() {
     >"$summary"
 }
 
-r2_disk_deadline_ns() {
-  [[ $# -eq 3 && $1 =~ ^(0|[1-9][0-9]*)$ &&
-    $2 =~ ^(0|[1-9][0-9]*)$ && $3 =~ ^[1-9][0-9]*$ ]] || return 2
-  local origin=$1 ordinal=$2 period=$3 deadline value
-  local maximum=9223372036854775807
-  for value in "$origin" "$ordinal" "$period"; do
-    # shellcheck disable=SC2071 # Equal-length canonical decimals need lexical comparison before arithmetic.
-    if [[ ${#value} -gt ${#maximum} ||
-        ( ${#value} -eq ${#maximum} && $value > "$maximum" ) ]]; then
-      return 2
-    fi
-  done
-  if [[ $ordinal -gt 0 && $period -gt $(( (maximum - origin) / ordinal )) ]]; then
-    return 2
-  fi
-  deadline=$((origin + ordinal * period))
-  # shellcheck disable=SC2034 # Returned global avoids a command-substitution fork per sample.
-  R2_DISK_DEADLINE_NS=$deadline
-}
-
-r2_disk_interleaved_deadline_ns() {
-  [[ $# -eq 3 && $1 =~ ^(0|[1-9][0-9]*)$ &&
-    $2 =~ ^(0|[1-9][0-9]*)$ && $3 =~ ^[1-9][0-9]*$ ]] || return 2
-  local origin=$1 ordinal=$2 period=$3 cycle phase half_period deadline value
-  local maximum=9223372036854775807
-  for value in "$ordinal" "$period"; do
-    # shellcheck disable=SC2071 # Equal-length canonical decimals need lexical comparison before arithmetic.
-    if [[ ${#value} -gt ${#maximum} ||
-        ( ${#value} -eq ${#maximum} && $value > "$maximum" ) ]]; then
-      return 2
-    fi
-  done
-  [[ $((period % 2)) -eq 0 ]] || return 2
-  cycle=$((ordinal / 2))
-  phase=$((ordinal % 2))
-  half_period=$((period / 2))
-
-  # Even ordinals are one fixed-origin 50 ms phase and odd ordinals are a
-  # second fixed-origin 50 ms phase offset by 25 ms. The union samples more
-  # frequently without changing the nominal interval recorded in evidence.
-  r2_disk_deadline_ns "$origin" "$cycle" "$period" || return
-  deadline=$R2_DISK_DEADLINE_NS
-  if [[ $phase -eq 1 ]]; then
-    [[ $deadline -le $((maximum - half_period)) ]] || return 2
-    deadline=$((deadline + half_period))
-  fi
-  # shellcheck disable=SC2034 # Returned global avoids a command-substitution fork per sample.
-  R2_DISK_DEADLINE_NS=$deadline
-}
-
 r2_sample_checkout_disk() {
   [[ $# -eq 6 && -d $1 && -f $2 && ! -L $2 && -n $3 &&
     -d $4 && ! -L $4 && $5 =~ ^[0-9]+$ && $6 =~ ^[1-9][0-9]*$ ]] || {
@@ -716,23 +723,33 @@ r2_sample_checkout_disk() {
   local sampler_started=$5
   local period_ns=$6
   local ready=$state/ready
+  local drain_request=$state/drain-request
+  local drain_ready=$state/drain-ready
   local raw_samples=$state/samples.unsorted.tsv
   local sorted_samples=$state/samples.sorted.tsv
   local ordinal=0 deadline now delay delay_seconds pid status=0 attempt
-  local child_start started_signal signal_ordinal signal_value signal_extra
-  local signal_ready active initial_ready=0
+  local child_start child_reaped active initial_ready=0 draining=0 drain_remaining
+  local request_ns='' stop_ns='' bridge_ordinal='' bridge_pending=0 stat_status
+  local controller_start controller_group controller_session
   local -a sample_pids=()
   local -A sample_starts=()
+  local -A drain_roots=()
 
   # One controller follows two interleaved absolute nominal-period phases.
   # Deadlines are derived from the fixed origin, never from completion of the
   # prior walk.
   r2_disk_interleaved_deadline_ns "$sampler_started" 0 "$period_ns" || return
+  r2_read_process_stat "/proc/$BASHPID/stat" || return 2
+  controller_start=$R2_PROC_START
+  controller_group=$R2_PROC_GROUP
+  controller_session=$R2_PROC_SESSION
 
+  [[ -z $(find "$state" -mindepth 1 -print -quit) ]] || return 2
   : >"$raw_samples"
+  [[ -f $raw_samples && ! -L $raw_samples ]] || return 2
 
   reap_finished_samples() {
-    local candidate expected_start
+    local candidate expected_start candidate_stat
     local -a still_running=()
 
     # Reap completed children immediately and retain only the bounded active
@@ -742,56 +759,95 @@ r2_sample_checkout_disk() {
     for candidate in "${sample_pids[@]}"; do
       expected_start=${sample_starts[$candidate]}
       if r2_read_process_stat "/proc/$candidate/stat" &&
-        [[ $R2_PROC_START == "$expected_start" && $R2_PROC_STATE != Z ]]; then
-        still_running+=("$candidate")
-      elif ! wait "$candidate"; then
-        status=1
-        unset 'sample_starts[$candidate]'
+        [[ $R2_PROC_START == "$expected_start" &&
+          $R2_PROC_PARENT == "$BASHPID" && $R2_PROC_GROUP == "$controller_group" &&
+          $R2_PROC_SESSION == "$controller_session" ]]; then
+        if [[ $R2_PROC_STATE != Z ]]; then
+          still_running+=("$candidate")
+          continue
+        fi
       else
-        unset 'sample_starts[$candidate]'
+        candidate_stat=$?
+        if [[ $candidate_stat -ne 1 || -e /proc/$candidate ]] ||
+          kill -0 "$candidate" 2>/dev/null; then
+          status=1
+          still_running+=("$candidate")
+          continue
+        fi
       fi
+      wait "$candidate" || status=1
+      unset 'sample_starts[$candidate]'
     done
     sample_pids=("${still_running[@]}")
     [[ $status -eq 0 ]]
   }
 
+  abort_dedicated_sampler_group() {
+    if r2_read_process_stat "/proc/$BASHPID/stat" &&
+      [[ $R2_PROC_START == "$controller_start" && $R2_PROC_GROUP == "$BASHPID" &&
+        $R2_PROC_SESSION == "$BASHPID" && $R2_PROC_STATE != Z ]]; then
+      kill -KILL -- "-$BASHPID"
+    fi
+    return 1
+  }
+
+  wait_for_sample_set() {
+    for ((attempt = 0; attempt < 400; attempt += 1)); do
+      reap_finished_samples || true
+      [[ ${#sample_pids[@]} -ne 0 ]] || { [[ $status -eq 0 ]]; return; }
+      sleep 0.01 || { status=1; break; }
+    done
+    status=1
+    printf 'R2 disk sampler: sample workers did not close before timeout\n' >&2
+    abort_dedicated_sampler_group || true
+    return 1
+  }
+
   launch_sample() {
     [[ $# -eq 1 && ( $1 == scheduled || $1 == terminal ) ]] || return 2
-    local launched_ordinal=$ordinal
     reap_finished_samples || return
     active=${#sample_pids[@]}
     [[ $active -lt 32 ]] || {
       printf 'R2 disk sampler: thirty-two concurrent du walks are still active\n' >&2
       return 3
     }
-    started_signal=$state/start-ack
-    [[ ! -L $started_signal ]] || return 2
     r2_record_checkout_mib \
-      "$root" "$raw_samples" "$sampler_started" "$ordinal" "$1" \
-      "$started_signal" &
+      "$root" "$raw_samples" "$sampler_started" "$ordinal" "$1" &
     pid=$!
     child_start=
-    if r2_read_process_stat "/proc/$pid/stat"; then
-      child_start=$R2_PROC_START
+    child_reaped=0
+    for ((attempt = 0; attempt < 100; attempt += 1)); do
+      if r2_read_process_stat "/proc/$pid/stat"; then
+        if [[ $R2_PROC_PARENT != "$BASHPID" ||
+          $R2_PROC_GROUP != "$controller_group" ||
+          $R2_PROC_SESSION != "$controller_session" ]]; then
+          status=1
+        elif [[ $R2_PROC_STATE == Z ]]; then
+          wait "$pid" || status=1
+          child_reaped=1
+        else
+          child_start=$R2_PROC_START
+        fi
+        break
+      fi
+      stat_status=$?
+      if [[ $stat_status -eq 1 && ! -e /proc/$pid ]] &&
+        ! kill -0 "$pid" 2>/dev/null; then
+        wait "$pid" || status=1
+        child_reaped=1
+        break
+      fi
+      sleep 0.001 || { status=1; break; }
+    done
+    if [[ -n $child_start ]]; then
       sample_pids+=("$pid")
       sample_starts["$pid"]=$child_start
-    elif ! wait "$pid"; then
+    elif [[ $child_reaped -eq 0 ]]; then
       status=1
+      abort_dedicated_sampler_group || true
     fi
     ordinal=$((ordinal + 1))
-    signal_ready=0
-    for ((attempt = 0; attempt < 100; attempt += 1)); do
-      if [[ -f $started_signal && ! -L $started_signal ]]; then
-        if IFS=$'\t' read -r signal_ordinal signal_value signal_extra \
-          <"$started_signal" && [[ $signal_ordinal == "$launched_ordinal" &&
-          $signal_value =~ ^(0|[1-9][0-9]*)$ && -z $signal_extra ]]; then
-          signal_ready=1
-          break
-        fi
-      fi
-      sleep 0.001 || return 2
-    done
-    [[ $status -eq 0 && $signal_ready -eq 1 ]]
+    [[ $status -eq 0 ]]
   }
 
   initial_sample_retained() {
@@ -813,11 +869,39 @@ r2_sample_checkout_disk() {
       : >"$ready"
       initial_ready=1
     fi
-    [[ ! -e $stop || $initial_ready -eq 0 ]] || break
-    if [[ -e $stop ]]; then
+    if [[ -e $stop || -L $stop ]]; then
+      r2_read_decimal_control_marker "$stop" || { status=1; break; }
+      stop_ns=$R2_CONTROL_MARKER
+      [[ $initial_ready -eq 0 ]] || break
       sleep 0.001 || status=1
       [[ $status -eq 0 ]] || break
       continue
+    fi
+    if [[ -e $drain_request || -L $drain_request ]]; then
+      if ! r2_read_decimal_control_marker "$drain_request"; then
+        status=1
+        break
+      fi
+      if [[ $draining -eq 0 ]]; then
+        draining=1
+        request_ns=$R2_CONTROL_MARKER
+        bridge_pending=1
+        for pid in "${sample_pids[@]}"; do
+          drain_roots["$pid"]=1
+        done
+      elif [[ $R2_CONTROL_MARKER != "$request_ns" ]]; then
+        status=1
+        break
+      fi
+      drain_remaining=0
+      for pid in "${!drain_roots[@]}"; do
+        if [[ -n ${sample_starts[$pid]+present} ]]; then
+          drain_remaining=1
+        else
+          unset 'drain_roots[$pid]'
+        fi
+      done
+      [[ $drain_remaining -eq 1 || $bridge_pending -eq 1 ]] || break
     fi
     if ! r2_disk_interleaved_deadline_ns \
       "$sampler_started" "$ordinal" "$period_ns"; then
@@ -838,40 +922,67 @@ r2_sample_checkout_disk() {
         break
       fi
     fi
-    if [[ ! -e $stop ]] && ! launch_sample scheduled; then
-      status=1
-      break
+    if [[ ! -e $stop && ! -L $stop ]]; then
+      if [[ $draining -eq 1 && $bridge_pending -eq 1 ]]; then
+        bridge_ordinal=$ordinal
+      fi
+      if ! launch_sample scheduled; then
+        status=1
+        break
+      fi
+      [[ $draining -ne 1 || $bridge_pending -ne 1 ]] || bridge_pending=0
     fi
   done
 
-  # Quiesce every scheduled walk after the stop marker. A worker may have
-  # raced a deletion and begun a later retry, so merely launching the terminal
-  # worker last would not make its retained start chronologically final.
-  reap_finished_samples || status=1
-  for pid in "${sample_pids[@]}"; do
-    wait "$pid" || status=1
-    unset 'sample_starts[$pid]'
-  done
-  sample_pids=()
+  # A normal stop is prepared before its canonical marker is written. Continue
+  # the absolute schedule while every worker that was live at the drain request
+  # quiesces, then wait the bounded bridge set. This prevents controller
+  # shutdown itself from opening an uncovered interval.
+  wait_for_sample_set || status=1
 
-  # This distinct final walk begins only after the stop marker exists and all
-  # scheduled workers have retained their rows.
+  if [[ $status -eq 0 && $draining -eq 1 ]]; then
+    [[ ! -e $stop && ! -L $stop && ! -e $drain_ready && ! -L $drain_ready &&
+      $bridge_ordinal =~ ^(0|[1-9][0-9]*)$ ]] || status=1
+    [[ $status -ne 0 ]] || r2_validate_disk_drain_handoff \
+      "$raw_samples" "$sorted_samples" "$sampler_started" "$ordinal" \
+      "$request_ns" "$bridge_ordinal" "$((period_ns + period_ns / 2))" || status=1
+    [[ $status -ne 0 ]] || r2_publish_decimal_control_marker \
+      "$drain_ready" "$request_ns" || status=1
+    for ((attempt = 0; status == 0 && attempt < 5000; attempt += 1)); do
+      r2_read_decimal_control_marker "$drain_request" || { status=1; break; }
+      [[ $R2_CONTROL_MARKER == "$request_ns" ]] || { status=1; break; }
+      if [[ -e $stop || -L $stop ]]; then
+        r2_read_decimal_control_marker "$stop" || { status=1; break; }
+        stop_ns=$R2_CONTROL_MARKER
+        [[ $stop_ns -ge $request_ns && $stop_ns -ge $R2_DISK_HANDOFF_LATEST_NS &&
+          $((stop_ns - R2_DISK_HANDOFF_LATEST_NS)) -le 100000000 ]] || status=1
+        break
+      fi
+      sleep 0.001 || status=1
+    done
+    [[ $status -ne 0 || $stop_ns =~ ^(0|[1-9][0-9]*)$ ]] || status=1
+  elif [[ $status -eq 0 ]]; then
+    r2_read_decimal_control_marker "$stop" || status=1
+    [[ $status -ne 0 ]] || stop_ns=$R2_CONTROL_MARKER
+  fi
+
+  # This distinct final walk begins only after the canonical stop marker exists
+  # and every scheduled or pre-stop bridge worker has retained its row.
   [[ $status -ne 0 ]] || launch_sample terminal || status=1
 
-  reap_finished_samples || status=1
-  for pid in "${sample_pids[@]}"; do
-    wait "$pid" || status=1
-    unset 'sample_starts[$pid]'
-  done
+  wait_for_sample_set || status=1
   [[ $status -eq 0 ]] || {
     printf 'R2 disk sampler: one or more scheduled samples failed\n' >&2
     return 1
   }
 
+  [[ -f $ready && ! -L $ready ]] || return 2
   find "$ready" -delete
-  started_signal=$state/start-ack
-  [[ -f $started_signal && ! -L $started_signal ]] || return 2
-  find "$started_signal" -delete
+  if [[ $draining -eq 1 ]]; then
+    [[ -f $drain_request && ! -L $drain_request &&
+      -f $drain_ready && ! -L $drain_ready ]] || return 2
+    find "$drain_request" "$drain_ready" -delete
+  fi
   r2_publish_checkout_disk_samples \
     "$samples" "$state" "$raw_samples" "$sorted_samples" \
     "$sampler_started" "$ordinal"

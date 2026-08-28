@@ -89,11 +89,22 @@ fixed origin: even ordinals are `origin + n * 50 ms`, and odd ordinals are
 delay. Their union samples every 25 ms, as the contract expressly permits,
 while the recorded nominal interval remains 50 ms and the unchanged maximum
 consecutive retained-start gap remains 100 ms.
-After the stop marker, the controller waits for all scheduled walks and only
-then launches the distinct final row, so its retained start is chronologically
-last as well as after the canonical timestamp in `host/disk-sampler.stop`.
+After process closure, the parent requests a drain while the canonical stop
+marker is still absent. Request, ready, and stop records are complete decimal
+lines published by same-directory atomic rename without overwriting an
+existing destination. The controller maintains fixed-origin bridge coverage
+until the request-time workers quiesce and always retains at least one
+post-intent bridge, including when no worker is live at intent. Before
+readiness it validates the complete scheduled-only ledger, bridge timestamp,
+unchanged 100 ms maximum gap, and a 75 ms freshness bound. The parent then
+writes `host/disk-sampler.stop`; the controller requires its timestamp to
+remain within the 100 ms handoff window, launches no scheduled row after it,
+and launches the distinct final row.
 Sampler identity includes PID, process group, session, start ticks, and
-affinity; shutdown is bounded and proves that the dedicated session has closed.
+affinity. Worker capture and reaping never block on a live or mismatched PID;
+one shared deadline per active worker set and the parent's identity-bound
+TERM/KILL watchdog bound shutdown and prove that the dedicated session has
+closed.
 
 ## Preserved execution history and repair disposition
 
@@ -232,6 +243,42 @@ phase sequences, fixed-origin rather than relative scheduling, a delayed
 successful retry, chronological publication, the exact 100 ms gap boundary,
 terminal ordering, and fail-closed overload behaviour. Physical-core role
 isolation and the sparse retained schema plants remain unchanged.
+
+Candidate `cc32f4ce25bd80175cf7646f6962288a9b403b31` (tree
+`6f10f17975c43560e24f6caf079aebb52de58a01`) then ran in a new fresh,
+detached, standalone author clone. All 33 workload commands exited zero. The
+compile-latency median numerator was `82800004/2` ns and the p95 was
+`46214693` ns; peak checkout disk was 1,358 MiB. All three remained below
+their unchanged ceilings. The sampler retained 4,505 complete rows but
+rejected five steady-state retained-start gaps from 102,449,920 ns through
+112,933,376 ns, plus a 136,123,648 ns final scheduled-to-terminal gap. Its
+controller had accumulated roughly 30.4 seconds of fixed-origin schedule lag
+because every production launch synchronously waited for a worker
+acknowledgement. The final gap separately occurred while the controller waited
+for a live scheduled walk before launching its terminal row. No final receipt,
+evidence manifest, or disk summary was emitted. The preserved failure report
+is `/data/dev/src/nomos-r2-author-cc32f4c.TiBgeF/author-failure-report.md`,
+SHA-256
+`efb01708d632b1c56b669b7cda345e71eeaac85697f0f7c45ec497a74f5022ca`.
+It binds the external streams, complete command ledger, raw and sorted sampler
+rows, environment, and compile outputs. This run remains red.
+
+The next repair keeps the two absolute 50 ms phases and every existing
+ceiling. Production launches no longer wait for an acknowledgement file;
+PID/start identity, the 32-worker cap, exit status, exact successful-attempt
+timestamps, complete contiguous ordinals, and chronological publication still
+fail closed. The six-argument acknowledgement form is retained only for the
+direct retry plant so successful-attempt timestamp semantics remain
+independently exercised. Terminal shutdown now uses atomically published
+pre-stop intent, forces a post-intent bridge even with an empty active set,
+validates the scheduled handoff ledger and freshness, and atomically publishes
+readiness. Only then does the parent atomically publish the canonical stop
+marker, after which no scheduled row is launched and the distinct terminal
+walk begins. Plants additionally bind partial-publication invisibility,
+multiple delayed timestamps arriving out of launch order, and bounded cleanup
+of a hung dedicated sampler session. This resolves shutdown coverage without
+reinterpreting “stop,” fabricating a timestamp, or changing the accepted
+method.
 
 On 2026-08-28 the owner authorized an implementation repair, not a contract or
 ceiling change. The repair preserves the failed rerun as red evidence, does not
