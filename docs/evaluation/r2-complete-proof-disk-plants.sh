@@ -933,7 +933,7 @@ overload_started=$(date +%s%N)
 printf 'ordinal\tsample_start_ns\telapsed_ns\tmebibytes\tkind\n' >"$overload_samples"
 mkdir "$overload_state" "$overload_launches"
 # Hold exact fake walks and advance only the launch-slot clock. All 32 pool
-# workers still start and bind normally, but no sixth exact walk may begin.
+# workers still start and bind normally, but no fifth exact walk may begin.
 set +e
 setsid taskset -c "$disk_test_controller_cpus" env \
   R2_TEST_DU_STABLE=1 \
@@ -968,10 +968,10 @@ overload_status=$?
 set -e
 overload_launch_count=$(find "$overload_launches" -maxdepth 1 -type f | wc -l)
 [[ $overload_status -eq 137 && ! -s $temporary/overload.stdout &&
-  $(wc -l <"$overload_samples") -eq 1 && $overload_launch_count -eq 5 ]] ||
+  $(wc -l <"$overload_samples") -eq 1 && $overload_launch_count -eq 4 ]] ||
   fail 'asynchronous sampler permitted unbounded concurrent walks'
 [[ $(grep -Fxc \
-  'R2 disk sampler: five concurrent du walks did not make room before timeout' \
+  'R2 disk sampler: four concurrent du walks did not make room before timeout' \
   "$temporary/overload.stderr") -eq 1 ]] ||
   fail 'asynchronous sampler concurrency-limit diagnostic differs'
 if r2_sampler_session_has_members "$overload_session"; then

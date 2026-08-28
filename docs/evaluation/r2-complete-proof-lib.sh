@@ -143,7 +143,7 @@ r2_validate_physical_cpu_isolation() {
 r2_partition_cpu_topology() {
   [[ $# -eq 2 ]] || return 2
   local allowed_text topology_root=$2 cpu sibling group group_list=''
-  local observer_group_count index controller_text='' disk_text='' workload_text=''
+  local workload_group_index index controller_text='' disk_text='' workload_text=''
   local controller_groups_text='' disk_groups_text='' workload_groups_text=''
   local -a cpus=() siblings=() groups=() controller_cpus=() disk_cpus=() workload_cpus=()
   local -A allowed_set=() cpu_group=() group_index=() sibling_group=()
@@ -194,18 +194,18 @@ r2_partition_cpu_topology() {
     done
   done
 
-  # Reserve the first complete physical-core group for the controller, then
-  # split the remaining groups between disk walks and measured work. When that
-  # remainder is odd, disk walks receive the extra group: checkout-wide walks
-  # are the observer's sustained bottleneck, while the workload still retains
-  # at least one complete group on every admitted topology.
-  observer_group_count=$(( (${#groups[@]} + 2) / 2 ))
+  # Reserve the first complete physical-core group for the controller and the
+  # last for measured work. Every complete group between them belongs to the
+  # disk-walk mask. Checkout-wide walks are the observer's measured sustained
+  # bottleneck, while every admitted topology still retains one complete,
+  # physically isolated workload group.
+  workload_group_index=$(( ${#groups[@]} - 1 ))
   for cpu in "${cpus[@]}"; do
     group=${cpu_group[$cpu]}
     index=${group_index[$group]}
     if [[ $index -eq 0 ]]; then
       controller_cpus+=("$cpu")
-    elif [[ $index -lt $observer_group_count ]]; then
+    elif [[ $index -lt $workload_group_index ]]; then
       disk_cpus+=("$cpu")
     else
       workload_cpus+=("$cpu")
@@ -218,8 +218,8 @@ r2_partition_cpu_topology() {
   printf -v workload_text '%s,' "${workload_cpus[@]}"
   printf -v group_list '%s;' "${groups[@]}"
   printf -v controller_groups_text '%s;' "${groups[@]:0:1}"
-  printf -v disk_groups_text '%s;' "${groups[@]:1:observer_group_count - 1}"
-  printf -v workload_groups_text '%s;' "${groups[@]:observer_group_count}"
+  printf -v disk_groups_text '%s;' "${groups[@]:1:workload_group_index - 1}"
+  printf -v workload_groups_text '%s;' "${groups[@]:workload_group_index}"
   controller_text=${controller_text%,}
   disk_text=${disk_text%,}
   workload_text=${workload_text%,}

@@ -73,15 +73,13 @@ require a new run.
 
 The checkout-wide disk observer reads each allowed logical CPU's Linux
 `thread_siblings_list` and fails closed on an absent, malformed, contradictory,
-partial, or fewer-than-three-physical-core topology. It assigns one complete
-sibling group to the sampler controller, then splits the remaining complete
-groups between disk walks and the proof workload; when that remainder is odd,
-the disk-walk side receives the extra group while the workload retains at
-least one. On the 12-logical-CPU, six-core reference host, the controller uses
-CPUs `0,6`, a bounded pool of 32 persistent workers uses CPUs
-`1,2,3,7,8,9`, and the proof workload uses CPUs `4,5,10,11`. The workload
-enters its mask before the sampler is launched; all three roles are pairwise
-physically disjoint.
+partial, or fewer-than-three-physical-core topology. It assigns the first
+complete sibling group to the sampler controller, the last complete group to
+the proof workload, and every intervening complete group to disk walks. On
+the 12-logical-CPU, six-core reference host, the controller uses CPUs `0,6`, a
+bounded pool of 32 persistent workers uses CPUs `1,2,3,4,7,8,9,10`, and the
+proof workload uses CPUs `5,11`. The workload enters its mask before the
+sampler is launched; all three roles are pairwise physically disjoint.
 
 Each pool worker is a direct child in the sampler's dedicated session, enters
 the walk mask once before reporting readiness, and receives ordinal-bound work
@@ -90,10 +88,10 @@ idle-I/O-priority `du -sm -- <checkout>` without per-sample affinity setup.
 Workers retain canonical integer-nanosecond start times taken immediately
 before each successful walk. The controller publishes them in chronological
 order while independently requiring unique contiguous launch ordinals. All 32
-workers are ready before use, but no more than five exact walks may be active
-on the reference host's isolated three-group disk mask. A full gate waits
+workers are ready before use, but no more than four exact walks may be active
+on the reference host's isolated four-group disk mask. A full gate waits
 against its own four-second monotonic deadline, remains subject to an earlier
-active drain deadline, and never dispatches a sixth walk concurrently. One
+active drain deadline, and never dispatches a fifth walk concurrently. One
 controller derives the exact absolute schedule
 `origin + ordinal * 50 ms`; it never turns that schedule into a relative delay.
 The recorded nominal interval remains 50 ms and the unchanged maximum
@@ -149,7 +147,7 @@ still-live worker whose structural identity changes during shutdown aborts the
 dedicated group instead of being marked reaped. Worker result collection never
 waits a live or mismatched PID. A monotonic-clock, deadline-construction, or
 sleep failure during orderly shutdown also aborts the group rather than
-returning with live children. A saturated five-walk gate receives a fresh
+returning with live children. A saturated four-walk gate receives a fresh
 four-second Linux-monotonic deadline but cannot outlive an already-running
 drain deadline. Drain-time bridge scheduling and result collection, the
 terminal set, and orderly pool shutdown receive their applicable bounded
@@ -880,3 +878,46 @@ Development failures and rehearsals are not acceptance evidence. The repaired
 source still lacks a green formal standalone author proof; a new exact
 candidate's external receipt and the later exact-head non-author receipt must
 bind the exact green commands, environment, outputs, and candidate identity.
+
+Development commit `9e6fc50655a5bf509b3e6a9323ed144110de0a23` (tree
+`b03cd1422910407c921aa41eae97813e1b35161a`) then ran the exact complete
+harness once in a new fresh, detached, full, clean standalone clone at
+`/data/dev/src/nomos-r2-rehearsal-active5-b.rPA5pK/checkout`. The procfs
+snapshot repair held: all 33 workload commands exited zero, the clean release
+build took 23.50 seconds, 100 compile outputs were byte-identical with median
+numerator `77748716/2` ns and p95 41,889,629 ns, browser smoke reproduced the
+exact contact sheet, and peak checkout disk was 1,356 MiB. Every non-cadence
+workload and resource ceiling passed.
+
+The active-five observer was nevertheless decisively red at full scale. Its
+3,640 scheduled rows had p50 49,792,171 ns, p90 59,952,194 ns, p95
+66,912,275 ns, p99 99,286,994 ns, and maximum 143,231,038 ns retained-start
+gaps. Thirty-three gaps exceeded the unchanged 100,000,000 ns ceiling across
+workspace tests, browser smoke, provenance plants, compiler tests, scene-one
+reproduction, and viewer tests. Drain validation therefore withheld drain
+readiness, stop, terminal, disk summary, evidence manifest, and final receipt.
+The preserved report is
+`/data/dev/src/nomos-r2-rehearsal-active5-b.rPA5pK/rehearsal-failure-report.md`,
+SHA-256
+`5104f54900b743be370742e3e09376957cc7362a7a99744cfee40add1f924088`.
+This development commit remains red and will not be retried.
+
+The active-three, active-four, and active-five full rehearsals retained 14,
+five, and 33 cadence violations respectively; active five also raised the
+maximum from active four's 109,640,840 ns to 143,231,038 ns. Increasing
+bounded concurrency on the three-group disk mask is therefore retired. The
+next controlled experiment restores four active walks and changes the
+already-separated physical-core split from controller one/disk three/workload
+two to controller one/disk four/workload one on the reference host. Relative
+to the earlier active-four result, allocation is the only changed variable;
+relative to the immediately preceding active-five result, both admission and
+allocation change, so that pair alone is not a causal comparison. The
+general rule reserves the first complete group for the controller and the last
+for workload, assigning only the intervening groups to disk walks, so the
+minimum admitted three-group topology remains one/one/one. Deterministic
+plants bind the three-, four-, five-, and six-group results, saturate four
+walks, refuse the fifth, and preserve the existing stop/drain boundaries. No
+disk method, authentic timestamp, absolute 50 ms schedule, 100 ms gap ceiling,
+workload, or resource ceiling changes. A new development commit must pass the
+complete local matrix and fresh standalone rehearsals before any candidate can
+enter the formal author protocol.
