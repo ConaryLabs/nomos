@@ -110,6 +110,6 @@ expect_refusal duplicate \
 expect_refusal third \
   'r2 schema ownership: FAIL: R2 crate declares an absent, duplicate, or third schema identity'
 
-# Retain the bounded fixture. Recursive deletion while the checkout-wide `du`
-# observer is live would create evidence gaps without testing another claim.
+# Retain the bounded fixture so a refusal remains inspectable and teardown does
+# not add unrelated allocation churn to the persistent filesystem samples.
 # The three refusal lines above are also the frozen receipt-verifier output.

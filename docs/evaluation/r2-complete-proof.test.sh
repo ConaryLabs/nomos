@@ -25,6 +25,9 @@ unset \
   NOMOS_R2_OUTPUT_RELATIVE \
   NOMOS_R2_PROOF_TOKEN \
   NOMOS_R2_EXTERNAL_POSITIVE \
+  NOMOS_R2_OUTER_PREFLIGHT_LOG \
+  NOMOS_R2_OUTER_POSITIVE_STDOUT \
+  NOMOS_R2_OUTER_POSITIVE_STDERR \
   NOMOS_R2_XFS_WRAPPER \
   NOMOS_R2_XFS_UUID \
   NOMOS_R2_XFS_FRAGMENT_SIZE \
@@ -361,10 +364,81 @@ expect_failure forged-pid-marker 'forged isolation marker or unchanged PID names
 # non-ancestor process as proof-owned.
 # shellcheck source=docs/evaluation/r2-complete-proof.sh
 source "$harness_source"
+# shellcheck source=docs/evaluation/r2-complete-proof-outer.sh
+source "$harness_outer_source"
 fail() {
   printf 'R2 complete proof plants: FAIL: %s\n' "$*" >&2
   exit 1
 }
+
+# Outer preflight is machine-readable and must reject any capability, namespace,
+# or no-new-privileges mutation before a host log can be accepted.
+outer_preflight_fixture=$temporary/outer-preflight.json
+printf '%s\n' \
+  '{"cap_ambient":"0000000000000000","cap_bounding":"0000000000000000","cap_effective":"0000000000000000","cap_inheritable":"0000000000000000","cap_permitted":"0000000000000000","host_network_namespace":"net:[10]","host_pid_namespace":"pid:[20]","network_namespace":"net:[30]","no_new_privs":1,"pid_namespace":"pid:[40]"}' \
+  >"$outer_preflight_fixture"
+r2_validate_outer_preflight_log "$outer_preflight_fixture" 'net:[10]' 'pid:[20]' ||
+  fail 'valid outer preflight evidence was rejected'
+jq -c '.cap_effective = "0000000000000001"' "$outer_preflight_fixture" \
+  >"$outer_preflight_fixture.mutated"
+if r2_validate_outer_preflight_log "$outer_preflight_fixture.mutated" 'net:[10]' 'pid:[20]'; then
+  fail 'outer preflight capability mutation was accepted'
+fi
+plant_count=$((plant_count + 1))
+
+# Retained positive-control streams must be byte-identical regular files; a
+# changed staging stream and a symlinked output stream are both terminal.
+outer_positive_fixture=$temporary/outer-positive
+mkdir "$outer_positive_fixture"
+outer_host_stdout=$outer_positive_fixture/host.stdout
+outer_host_stderr=$outer_positive_fixture/host.stderr
+outer_stage_stdout=$outer_positive_fixture/stage.stdout
+outer_stage_stderr=$outer_positive_fixture/stage.stderr
+outer_output_stdout=$outer_positive_fixture/output.stdout
+outer_output_stderr=$outer_positive_fixture/output.stderr
+printf 'connected\n' >"$outer_host_stdout"
+: >"$outer_host_stderr"
+cp "$outer_host_stdout" "$outer_stage_stdout"
+cp "$outer_host_stderr" "$outer_stage_stderr"
+cp "$outer_host_stdout" "$outer_output_stdout"
+cp "$outer_host_stderr" "$outer_output_stderr"
+r2_compare_outer_positive \
+  "$outer_host_stdout" "$outer_host_stderr" \
+  "$outer_stage_stdout" "$outer_stage_stderr" \
+  "$outer_output_stdout" "$outer_output_stderr" ||
+  fail 'matching outer positive-control evidence was rejected'
+printf 'mutated\n' >"$outer_stage_stdout"
+if r2_compare_outer_positive \
+  "$outer_host_stdout" "$outer_host_stderr" \
+  "$outer_stage_stdout" "$outer_stage_stderr" \
+  "$outer_output_stdout" "$outer_output_stderr"; then
+  fail 'positive-control staging mutation was accepted'
+fi
+cp "$outer_host_stdout" "$outer_stage_stdout"
+mv "$outer_output_stdout" "$outer_positive_fixture/output.real"
+ln -s output.real "$outer_output_stdout"
+if r2_compare_outer_positive \
+  "$outer_host_stdout" "$outer_host_stderr" \
+  "$outer_stage_stdout" "$outer_stage_stderr" \
+  "$outer_output_stdout" "$outer_output_stderr"; then
+  fail 'symlinked positive-control output was accepted'
+fi
+plant_count=$((plant_count + 1))
+
+# The sidecar binds each actual executor argv to its ordinal and command id;
+# changing one argument must fail the same row-level validation.
+argv_ledger=$temporary/command-argv.ndjson
+r2_init_command_argv_ledger "$argv_ledger" || fail 'argv ledger was not initialized'
+r2_record_command_argv "$argv_ledger" 1 argv-mutation /bin/printf hello ||
+  fail 'argv ledger row was not recorded'
+argv_record=$(<"$argv_ledger")
+r2_validate_command_argv_record 1 argv-mutation "$argv_record" /bin/printf hello ||
+  fail 'argv ledger row did not validate'
+argv_mutation=$(jq -c '.argv[1] = "mutated"' "$argv_ledger")
+if r2_validate_command_argv_record 1 argv-mutation "$argv_mutation" /bin/printf hello; then
+  fail 'argv mutation was accepted'
+fi
+plant_count=$((plant_count + 1))
 
 # Procfs can expose a live task's stat file while it is between updates. Keep
 # the bounded generic reader plants here after retiring the observer-specific

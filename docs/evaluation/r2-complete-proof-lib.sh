@@ -732,6 +732,51 @@ r2_execute_step() {
   ) >"$stdout_file" 2>"$stderr_file"
 }
 
+# Keep the executable argument vector beside the human-readable command
+# ledger.  The receipt verifier can bind this sidecar without having to infer
+# argv from a display string, while this row-level check makes a mutation of
+# the vector fail before the row is published.
+r2_command_argv_json() {
+  [[ $# -ge 1 ]] || return 2
+  R2_COMMAND_ARGV_JSON=$(jq -cn --args '$ARGS.positional' -- "$@") || return 1
+}
+
+r2_validate_command_argv_record() {
+  [[ $# -ge 4 && $1 =~ ^[1-9][0-9]*$ && $2 =~ ^[a-z0-9-]+$ ]] || return 2
+  local record=$3 ordinal=$1 command_id=$2 canonical
+  shift 3
+  r2_command_argv_json "$@" || return 1
+  canonical=$(jq -cn --arg ordinal "$ordinal" --arg command_id "$command_id" \
+    --argjson argv "$R2_COMMAND_ARGV_JSON" \
+    '{ordinal:($ordinal|tonumber),command_id:$command_id,argv:$argv}') || return 1
+  [[ $record == "$canonical" ]] || return 1
+  jq -e --arg ordinal "$ordinal" --arg command_id "$command_id" \
+    --argjson expected "$R2_COMMAND_ARGV_JSON" '
+      type == "object" and (keys | sort) == ["argv", "command_id", "ordinal"] and
+      .ordinal == ($ordinal | tonumber) and .command_id == $command_id and
+      .argv == $expected
+    ' >/dev/null <<<"$record"
+}
+
+r2_init_command_argv_ledger() {
+  [[ $# -eq 1 && $1 == /* && $1 != *$'\n'* && $1 != *$'\t'* &&
+    ! -e $1 && ! -L $1 ]] || return 2
+  : >"$1"
+}
+
+r2_record_command_argv() {
+  [[ $# -ge 4 && $1 == /* && $2 =~ ^[1-9][0-9]*$ &&
+    $3 =~ ^[a-z0-9-]+$ && -f $1 && ! -L $1 ]] || return 2
+  local ledger=$1 ordinal=$2 command_id=$3 record
+  shift 3
+  r2_command_argv_json "$@" || return 1
+  record=$(jq -cn --arg ordinal "$ordinal" --arg command_id "$command_id" \
+    --argjson argv "$R2_COMMAND_ARGV_JSON" \
+    '{ordinal:($ordinal|tonumber),command_id:$command_id,argv:$argv}') || return 1
+  r2_validate_command_argv_record "$ordinal" "$command_id" "$record" "$@" || return 1
+  printf '%s\n' "$record" >>"$ledger"
+}
+
 r2_emit_recorded_tool_version() {
   [[ $# -ge 4 && -f $1 && ! -L $1 && $2 =~ ^[a-z0-9-]+$ &&
     $3 =~ ^[a-z0-9-]+$ ]] || {

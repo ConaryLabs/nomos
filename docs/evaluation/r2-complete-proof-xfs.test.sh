@@ -1,10 +1,221 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2016,SC2034,SC2154 # Static plants and sourced dynamic-scope helpers are intentional.
 set -Eeuo pipefail
 
 script_directory=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)
+repository_script_directory=$script_directory
 wrapper=$script_directory/r2-complete-proof-xfs.sh
+workdir_helper=$script_directory/r2-complete-proof-xfs-workdir.sh
+[[ -f $workdir_helper && ! -L $workdir_helper ]]
+fail() {
+  printf 'r2-complete-proof-xfs shell validation tests: FAIL: %s\n' "$*" >&2
+  exit 1
+}
+# shellcheck source=docs/evaluation/r2-complete-proof-xfs-workdir.sh
+source "$workdir_helper"
+outer=$script_directory/r2-complete-proof-outer.sh
+# shellcheck source=docs/evaluation/r2-complete-proof-outer.sh
+source "$outer"
+grep -Fq 'r2_pin_work_directory' "$wrapper"
+grep -Fq 'work_fd_path=/proc/self/fd/' "$workdir_helper"
+grep -Fq 'r2_public_open_work_directory' "$workdir_helper"
+grep -Fq 'r2_public_pinned_exec' "$workdir_helper"
+grep -Fq 'r2_public_pinned_exec /usr/bin/node' "$wrapper"
+grep -Fq '/usr/bin/bash "$pinned_supervisor_path" --pinned-supervise' "$wrapper"
+if grep -Fq '/usr/bin/mount --bind' "$workdir_helper"; then
+  printf 'descriptor boundary must not rely on a canonical-path bind mount\n' >&2
+  exit 1
+fi
+r2_validate_private_parent_targets /tmp/source /tmp/work /data/dev/helpers
+if r2_validate_private_parent_targets /work /tmp/source; then
+  fail 'receipt sandbox accepted a direct child of the filesystem root'
+fi
+grep -Fq 'r2_validate_precreated_work_inventory' "$workdir_helper"
+grep -Fq "! -L \$entry" "$workdir_helper"
+grep -Fq "'%h'" "$workdir_helper"
+grep -Fq 'outer_preflight_log=$work/outer-preflight.json' "$wrapper"
+grep -Fq 'NOMOS_R2_OUTER_PREFLIGHT_LOG="$outer_preflight_log"' "$wrapper"
+grep -Fq '/usr/bin/env NOMOS_R2_XFS_WRAPPER=1' "$wrapper"
+if grep -Fq 'chmod 0733' "$wrapper"; then
+  printf 'wrapper temporarily reopens caller top-level write authority\n' >&2
+  exit 1
+fi
 test_root=$(mktemp -d "${TMPDIR:-/tmp}/nomos-r2-xfs-shell-test.XXXXXX")
 trap 'rm -rf -- "$test_root"' EXIT
+
+# Adversarial rename plant: a canonical work spelling is replaced after the
+# supervisor-side descriptor is opened. A descriptor-derived privileged write
+# must stay on the original inode and must not land in the replacement.
+rename_parent=$test_root/rename-parent
+rename_original=$rename_parent/work
+rename_moved=$rename_parent/work-moved
+mkdir -- "$rename_parent" "$rename_original"
+work_real=$rename_original
+work_identity=$(stat -c '%d:%i' -- "$work_real")
+caller_uid=$(id -u)
+caller_gid=$(id -g)
+r2_public_open_work_directory
+work=$public_work_fd_path
+mv -- "$rename_original" "$rename_moved"
+mkdir -- "$rename_original"
+printf 'descriptor-original\n' >"$work/descriptor-proof"
+[[ -f $rename_moved/descriptor-proof && ! -e $rename_original/descriptor-proof ]]
+if r2_public_work_identity_ok; then
+  fail 'production work identity accepted a canonical replacement'
+fi
+r2_public_close_work_directory
+
+# Positive-control streams retain their descriptor spelling. A host rename
+# must not redirect the comparison back to a replacement canonical dentry.
+positive_original=$test_root/positive-original
+positive_moved=$test_root/positive-moved
+mkdir -- "$positive_original"
+printf 'connected\n' >"$positive_original/stdout"
+: >"$positive_original/stderr"
+cp -- "$positive_original/stdout" "$test_root/positive-staged.stdout"
+cp -- "$positive_original/stderr" "$test_root/positive-staged.stderr"
+cp -- "$positive_original/stdout" "$test_root/positive-output.stdout"
+cp -- "$positive_original/stderr" "$test_root/positive-output.stderr"
+exec {positive_fd}<"$positive_original"
+mv -- "$positive_original" "$positive_moved"
+mkdir -- "$positive_original"
+printf 'replacement\n' >"$positive_original/stdout"
+: >"$positive_original/stderr"
+r2_compare_outer_positive "/proc/self/fd/$positive_fd/stdout" "/proc/self/fd/$positive_fd/stderr" \
+  "$test_root/positive-staged.stdout" "$test_root/positive-staged.stderr" \
+  "$test_root/positive-output.stdout" "$test_root/positive-output.stderr" ||
+  fail 'outer positive control was redirected after a host rename'
+exec {positive_fd}<&-
+
+# Receipt-side canonical paths are resolved only after Bubblewrap mounts the
+# retained descriptor over that spelling.  Rename the host spelling after the
+# child has entered its namespace: it must read the original inode, and the
+# wrapper helper must still return red when its post-run identity check sees
+# the replacement.
+pinned_parent=$test_root/pinned-parent
+pinned_original=$pinned_parent/work
+pinned_moved=$pinned_parent/work-moved
+mkdir -- "$pinned_parent" "$pinned_original"
+printf 'pinned-original\n' >"$pinned_original/value"
+module_source=$test_root/module-source
+module_directory=$module_source/docs/evaluation
+mkdir -p -- "$module_directory"
+for module in \
+  r2-complete-proof-xfs-receipt.mjs \
+  r2-complete-proof-xfs-evidence.mjs \
+  r2-complete-proof-xfs-ledger.mjs \
+  r2-filesystem-accounting.mjs; do
+  cp -- "$repository_script_directory/$module" "$module_directory/$module"
+done
+git -C "$module_source" init --quiet
+git -C "$module_source" config user.email test@example.invalid
+git -C "$module_source" config user.name 'R2 Module Test'
+git -C "$module_source" add docs/evaluation
+git -C "$module_source" commit --quiet -m modules
+git -C "$module_source" checkout --quiet --detach HEAD
+source=$module_source
+script_directory=$module_directory
+assert_source_head=$(git -C "$source" rev-parse --verify 'HEAD^{commit}')
+assert_source_tree=$(git -C "$source" rev-parse --verify 'HEAD^{tree}')
+r2_public_open_source_directory
+r2_public_open_receipt_modules
+exec {public_helper_fd}<"$script_directory"
+public_helper_fd_path=/proc/self/fd/$public_helper_fd
+public_helper_identity=$(stat -Lc '%d:%i' -- "$public_helper_fd_path")
+work_real=$pinned_original
+work_identity=$(stat -c '%d:%i' -- "$work_real")
+r2_public_open_work_directory
+work=$public_work_fd_path
+NODE_OPTIONS=--require=/definitely/missing r2_public_pinned_exec \
+  /usr/bin/node -e 'process.stdout.write("clean-env\n")' >"$test_root/clean-env.stdout"
+[[ $(<"$test_root/clean-env.stdout") == clean-env ]] || fail 'receipt sandbox inherited caller Node options'
+set +e
+r2_public_pinned_exec /usr/bin/node "$script_directory/r2-complete-proof-xfs-receipt.mjs" \
+  >"$test_root/module-entry.stdout" 2>"$test_root/module-entry.stderr"
+module_entry_status=$?
+set -e
+[[ $module_entry_status -eq 2 ]] || fail 'receipt module snapshot did not load its complete ESM graph'
+grep -Fq 'usage: r2-complete-proof-xfs-receipt.mjs' "$test_root/module-entry.stderr"
+set +e
+r2_public_pinned_exec /usr/bin/bash -ceu '
+  printf "ready\n" >"$1/ready"
+  /usr/bin/sleep 1
+  head -n 1 "$1/value" >"$1/observed"
+' _ "$work_real" >"$test_root/pinned-public.stdout" 2>"$test_root/pinned-public.stderr" &
+pinned_pid=$!
+set -e
+for _ in $(seq 1 500); do
+  [[ -e $work/ready ]] && break
+  kill -0 "$pinned_pid" 2>/dev/null || break
+  sleep 0.01
+done
+[[ -e $work/ready ]] || fail 'pinned public child did not enter its mount namespace'
+mv -- "$pinned_original" "$pinned_moved"
+mkdir -- "$pinned_original"
+printf 'replacement\n' >"$pinned_original/value"
+set +e
+wait "$pinned_pid"
+pinned_status=$?
+set -e
+[[ $pinned_status -eq 125 ]] || fail 'pinned public helper accepted a renamed canonical work path'
+[[ -f $pinned_moved/observed && ! -e $pinned_original/observed &&
+   $(<"$pinned_moved/observed") == pinned-original ]] ||
+  fail "pinned public helper did not retain the original inode: $(<"$test_root/pinned-public.stderr")"
+r2_public_close_work_directory
+
+# Receipt code is copied into immutable per-invocation files and checked
+# against the asserted candidate tree before Node starts. An in-place write to
+# the host inode after Bubblewrap has entered must neither change the imported
+# bytes nor be accepted by the post-run identity check.
+mutation_work=$test_root/module-mutation-work
+mkdir -- "$mutation_work"
+r2_public_open_source_directory
+r2_public_open_receipt_modules
+exec {public_helper_fd}<"$script_directory"
+public_helper_fd_path=/proc/self/fd/$public_helper_fd
+public_helper_identity=$(stat -Lc '%d:%i' -- "$public_helper_fd_path")
+work_real=$mutation_work
+work_identity=$(stat -c '%d:%i' -- "$work_real")
+r2_public_open_work_directory
+work=$public_work_fd_path
+set +e
+r2_public_pinned_exec /usr/bin/node --input-type=module -e '
+  const { writeFileSync } = await import("node:fs");
+  writeFileSync(`${process.argv[1]}/ready`, "ready\n");
+  await new Promise((resolve) => setTimeout(resolve, 1000));
+  await import(`file://${process.argv[2]}`);
+  writeFileSync(`${process.argv[1]}/original-imported`, "original\n");
+' "$work_real" "$script_directory/r2-complete-proof-xfs-receipt.mjs" \
+  >"$test_root/module-mutation.stdout" 2>"$test_root/module-mutation.stderr" &
+mutation_pid=$!
+set -e
+for _ in $(seq 1 500); do
+  [[ -e $work/ready ]] && break
+  kill -0 "$mutation_pid" 2>/dev/null || break
+  sleep 0.01
+done
+[[ -e $work/ready ]] || fail 'receipt module mutation child did not enter its sandbox'
+printf '%s\n' \
+  'import { writeFileSync } from "node:fs";' \
+  "writeFileSync('$work_real/mutated-imported', 'mutated\\n');" \
+  >"$script_directory/r2-complete-proof-xfs-receipt.mjs"
+set +e
+wait "$mutation_pid"
+mutation_status=$?
+set -e
+[[ $mutation_status -eq 125 ]] || fail 'receipt helper accepted an in-place candidate-module mutation'
+[[ -f $work/original-imported && ! -e $work/mutated-imported ]] ||
+  fail 'receipt child imported mutable host bytes instead of the candidate snapshot'
+r2_public_close_work_directory
+script_directory=$repository_script_directory
+
+# Once production has activated the descriptor boundary, privileged I/O must
+# not resolve a work-derived path through the caller-renamable spelling.
+if awk '/^supervisor\(\)/,/^if \[\[ \$\{1:-\}/' "$wrapper" |
+  awk '/r2_pin_work_directory/{seen=1; next} seen' |
+  grep -Eq '<"\$work_real/|>"\$work_real/|\(\s*"\$work_real/'; then
+  fail 'supervisor retains a privileged work-real path I/O after pinning'
+fi
 
 run_expect_fail() {
   local output status
@@ -21,17 +232,67 @@ run_expect_fail "$wrapper" >"$test_root/usage.log"
 grep -Fq 'usage: r2-complete-proof-xfs.sh --source CLEAN --work EMPTY' "$test_root/usage.log"
 [[ -z $(find "$test_root/work" -mindepth 1 -print -quit) ]]
 
-# The private branch must refuse an unprivileged caller before it can inspect
-# or mutate any provisioning path.  A root runner instead exercises the
-# argument-shape guard, which also avoids attempting a privileged eight-GiB
-# lifecycle in a unit test.
-if [[ $(id -u) != 0 ]]; then
-  run_expect_fail "$wrapper" --supervise a b c d 1 1 user PATH /tmp /tmp '' '' >"$test_root/private.log"
-  grep -Fq 'private supervisor is root-only' "$test_root/private.log"
+# The caller PATH must not redirect any helper that resolves the exact script
+# later passed to sudo. The shebang still finds the real Bash because this
+# hostile directory deliberately contains only the security-sensitive helpers.
+hostile_bin=$test_root/hostile-bin
+hostile_marker=$test_root/hostile-helper-called
+mkdir -- "$hostile_bin"
+for helper in dirname pwd realpath find id readlink; do
+  printf '%s\n' '#!/usr/bin/env bash' "printf '%s\\n' '$helper' >>'$hostile_marker'" 'exit 97' \
+    >"$hostile_bin/$helper"
+  chmod 755 "$hostile_bin/$helper"
+done
+run_expect_fail /usr/bin/env PATH="$hostile_bin:$PATH" "$wrapper" >"$test_root/hostile-usage.log"
+grep -Fq 'usage: r2-complete-proof-xfs.sh --source CLEAN --work EMPTY' "$test_root/hostile-usage.log"
+[[ ! -e $hostile_marker ]]
+
+# The root supervisor is read from an already-open file descriptor. Replacing
+# its canonical pathname after that open must not change the bytes a child
+# executes through the handoff.
+pinned_wrapper_copy=$test_root/pinned-wrapper.sh
+pinned_replacement_marker=$test_root/pinned-replacement-executed
+cp -- "$wrapper" "$pinned_wrapper_copy"
+exec {pinned_wrapper_fd}<"$pinned_wrapper_copy"
+exec {pinned_helper_fd}<"$workdir_helper"
+rm -- "$pinned_wrapper_copy"
+printf '%s\n' '#!/usr/bin/env bash' "touch '$pinned_replacement_marker'" >"$pinned_wrapper_copy"
+chmod 755 "$pinned_wrapper_copy"
+if [[ $(id -u) == 0 ]]; then
+  pinned_expected='private supervisor argument shape is invalid'
 else
-  run_expect_fail "$wrapper" --supervise a b c d 1 1 user PATH /tmp /tmp '' >"$test_root/private.log"
-  grep -Fq 'private supervisor argument shape is invalid' "$test_root/private.log"
+  pinned_expected='private supervisor is root-only'
 fi
+run_expect_fail /usr/bin/bash "/proc/$BASHPID/fd/$pinned_wrapper_fd" \
+  --pinned-supervise "$script_directory" "/proc/$BASHPID/fd/$pinned_helper_fd" \
+  >"$test_root/pinned-supervisor.log"
+grep -Fq "$pinned_expected" "$test_root/pinned-supervisor.log"
+[[ ! -e $pinned_replacement_marker ]] || fail 'canonical replacement executed instead of pinned supervisor bytes'
+exec {pinned_wrapper_fd}<&-
+exec {pinned_helper_fd}<&-
+
+# Network isolation belongs to the post-drop inner harness. Prove both the
+# static ownership boundary and Bubblewrap's actual no-capability entry state.
+if grep -Eq 'unshare[[:space:]]+--net|ip[[:space:]]+link[[:space:]]+set[[:space:]]+lo' "$wrapper"; then
+  printf 'privileged wrapper owns a forbidden network-namespace operation\n' >&2
+  exit 1
+fi
+grep -Fq -- '--unshare-net --unshare-pid' "$outer"
+# shellcheck disable=SC2016 # The confined child expands its own procfs fields.
+/usr/bin/setpriv --no-new-privs /usr/bin/bwrap \
+  --die-with-parent --new-session --unshare-net --unshare-pid \
+  --ro-bind / / --dev /dev --proc /proc /usr/bin/bash -ceu '
+    for field in CapInh CapPrm CapEff CapBnd CapAmb; do
+      [[ $(/usr/bin/awk -v wanted="$field:" "\$1 == wanted {print \$2}" /proc/self/status) == 0000000000000000 ]]
+    done
+    [[ $(/usr/bin/awk "/^NoNewPrivs:/ {print \$2}" /proc/self/status) == 1 ]]
+    /usr/sbin/ip -j link show lo | /usr/bin/jq -e ".[0].ifname == \"lo\" and (.[0].flags | index(\"UP\")) != null" >/dev/null
+  '
+
+# A canonical-path private entry is never accepted; only the descriptor-backed
+# handoff above may reach the supervisor.
+run_expect_fail "$wrapper" --supervise a b c >"$test_root/private.log"
+grep -Fq 'private supervisor requires the pinned descriptor handoff' "$test_root/private.log"
 
 run_expect_fail "$wrapper" --source "$test_root/missing-source" --work "$test_root/work" >"$test_root/source.log"
 grep -Fq 'source does not exist' "$test_root/source.log"
@@ -46,6 +307,14 @@ printf 'test\n' >"$source/file"
 git -C "$source" add file
 git -C "$source" commit --quiet -m test
 git -C "$source" checkout --quiet --detach HEAD
+
+hostile_work=$test_root/hostile-work
+mkdir -- "$hostile_work"
+run_expect_fail /usr/bin/env PATH="$hostile_bin:$PATH" RUSTUP_HOME="$test_root/missing-rustup-home" \
+  "$wrapper" --source "$source" --work "$hostile_work" >"$test_root/hostile-path.log"
+grep -Fq 'RUSTUP_HOME does not exist' "$test_root/hostile-path.log"
+[[ ! -e $hostile_marker ]]
+[[ -z $(find "$hostile_work" -mindepth 1 -print -quit) ]]
 
 symlink_work=$test_root/symlink-work
 mkdir -- "$test_root/real-work"

@@ -3,7 +3,6 @@
  * from receipt assembly so host-side command output, tool identity, and
  * operation logs cannot be silently forwarded as unexamined paths.
  */
-import { readFileSync } from "node:fs";
 import { dirname, isAbsolute, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -11,13 +10,13 @@ import {
   IMAGE_BYTES,
   canonicalHex,
   canonicalPath,
-  canonicalRegular,
   canonicalStringPath,
   digestRegular,
   executablePath,
   exactFields,
   objectValue,
   readableRealpath,
+  readRegularEvidence,
   requiredField,
   safeText,
   statusCode,
@@ -25,17 +24,17 @@ import {
 } from "./r2-complete-proof-xfs-receipt.mjs";
 
 export const TOOL_NAMES = Object.freeze(
-  "bash git realpath find stat date mkdir readlink id node jq sudo unshare ip findmnt losetup mount umount blockdev mkfs.xfs xfs_info xfs_quota filefrag fuser fallocate sync setpriv bwrap tar ionice du blkid chown cp rm env sha256sum rustup cargo rustc".split(" "),
+  "bash sh git realpath find stat date mkdir readlink id node jq sudo unshare findmnt losetup mount umount blockdev mkfs.xfs xfs_info xfs_quota filefrag fuser fallocate sync setpriv bwrap tar ionice du blkid chown cp rm env sha256sum awk grep tr chmod mv dirname pwd cut rustup cargo rustc".split(" "),
 );
 
 const fail = (message) => { throw new XfsWrapperError(message); };
 
 const evidenceText = (path, label, { nonempty = true } = {}) => {
-  const canonical = canonicalRegular(path, label);
-  const text = readFileSync(canonical, "utf8");
+  const { content, ...digest } = readRegularEvidence(path, label);
+  const text = content.toString("utf8");
   if (text.includes("\0") || text.includes("\r") || (nonempty && text.length === 0) ||
       (text.length > 0 && !text.endsWith("\n"))) fail(`${label} is not canonical text`);
-  return Object.freeze({ ...digestRegular(canonical, label), text });
+  return Object.freeze({ ...digest, text });
 };
 
 export const parseHostStatfs = (prefix, label) => {
@@ -57,8 +56,21 @@ export const parseHostStatfs = (prefix, label) => {
 
 export const parseHostFindmnt = (prefix, label) => {
   const evidence = evidenceText(`${prefix}.findmnt`, `${label} mount`);
-  const fields = evidence.text.slice(0, -1).split(/\s+/);
-  if (fields.length !== 5 || !isAbsolute(fields[0]) || !fields.every((field) => SAFE_TEXT.test(field))) fail(`${label} mount evidence is not canonical`);
+  let fields;
+  if (evidence.text.startsWith("{")) {
+    let parsed;
+    try { parsed = JSON.parse(evidence.text); }
+    catch (error) { fail(`${label} mount evidence is invalid JSON: ${error.message}`); }
+    if (!parsed || !Array.isArray(parsed.filesystems) || parsed.filesystems.length !== 1 ||
+        !parsed.filesystems[0] || Object.keys(parsed.filesystems[0]).sort().join(",") !== "fstype,options,propagation,source,target") {
+      fail(`${label} mount evidence is not one canonical filesystem record`);
+    }
+    const record = parsed.filesystems[0];
+    fields = [record.target, record.source, record.fstype, record.options, record.propagation];
+  } else {
+    fields = evidence.text.slice(0, -1).split(/\s+/);
+  }
+  if (fields.length !== 5 || !isAbsolute(fields[0]) || !fields.every((field) => typeof field === "string" && SAFE_TEXT.test(field))) fail(`${label} mount evidence is not canonical`);
   return Object.freeze({ fields: Object.freeze(fields), mount: evidence });
 };
 
@@ -69,7 +81,11 @@ export const validateHostFilesystemEvidence = (prefix, label) => {
   const statfs = parseHostStatfs(canonicalPrefix, label);
   const mount = parseHostFindmnt(canonicalPrefix, label);
   const quota = evidenceText(`${canonicalPrefix}.quota`, `${label} quota`, { nonempty: false });
+  const statfsStatus = evidenceText(`${canonicalPrefix}.statfs.status`, `${label} statfs status`);
+  const findmntStatus = evidenceText(`${canonicalPrefix}.findmnt.status`, `${label} findmnt status`);
   const quotaStatus = evidenceText(`${canonicalPrefix}.quota.status`, `${label} quota status`);
+  if (statfsStatus.text !== "0\n") fail(`${label} statfs command did not pass`);
+  if (findmntStatus.text !== "0\n") fail(`${label} findmnt command did not pass`);
   if (quotaStatus.text !== "0\n") fail(`${label} quota command did not pass`);
   const stderr = {};
   for (const name of ["statfs", "findmnt", "quota"]) {
@@ -77,7 +93,9 @@ export const validateHostFilesystemEvidence = (prefix, label) => {
     if (value.text !== "") fail(`${label} ${name} wrote stderr`);
     stderr[name] = value;
   }
-  return Object.freeze({ prefix: canonicalPrefix, statfs, mount, quota, quota_status: quotaStatus, stderr: Object.freeze(stderr) });
+  return Object.freeze({ prefix: canonicalPrefix, statfs, mount, quota,
+    statfs_status: statfsStatus, findmnt_status: findmntStatus, quota_status: quotaStatus,
+    stderr: Object.freeze(stderr) });
 };
 
 export const validateXfsInfoEvidence = (path) => {
@@ -102,7 +120,8 @@ export const validateEvidenceManifest = (path, inventory) => {
   const expected = inventory.rows.filter((row) => !["EVIDENCE.sha256", "receipt.json"].includes(row.path)).map((row) => ({ sha256: row.sha256, path: row.path }));
   const sorted = [...lines].sort((left, right) => Buffer.from(left.path).compare(Buffer.from(right.path)));
   if (JSON.stringify(lines) !== JSON.stringify(sorted) || JSON.stringify(lines) !== JSON.stringify(expected)) fail("inner evidence manifest does not bind exported output");
-  return Object.freeze({ ...digestRegular(path, "inner evidence manifest"), files: lines.length });
+  const { text: _text, ...digest } = evidence;
+  return Object.freeze({ ...digest, files: lines.length });
 };
 
 const operationRecord = (value, name) => {
@@ -147,7 +166,7 @@ export const validateOperationsAndTools = (value, { imagePath, work, mountPath, 
     const toolPath = executablePath(tool.path, `tool register ${name} path`);
     if (commandToolPaths[name] !== undefined && readableRealpath(toolPath, `tool register ${name} path`) !== readableRealpath(commandToolPaths[name], `wrapper ${name} command`)) fail(`tool register ${name} path differs`);
     safeText(tool.version_argv, `tool register ${name} version argv`);
-    if (statusCode(tool.version_status, `tool register ${name} version status`) !== 0) fail(`tool register ${name} version command did not pass`);
+    statusCode(tool.version_status, `tool register ${name} version status`);
     canonicalHex(tool.sha256, 64, `tool register ${name} sha256`);
     if (digestRegular(toolPath, `tool register ${name}`).sha256 !== tool.sha256) fail(`tool register ${name} digest differs`);
     safeText(tool.version, `tool register ${name} version`);

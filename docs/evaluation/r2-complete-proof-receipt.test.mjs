@@ -17,6 +17,7 @@ import { dirname, join, relative, resolve } from "node:path";
 import test, { before } from "node:test";
 import { fileURLToPath } from "node:url";
 
+import { expectedCommandArgv } from "./r2-complete-proof-argv.mjs";
 import { assembleReceipt, verifyReceipt } from "./r2-complete-proof-receipt.mjs";
 import {
   RAW_HEADER,
@@ -358,6 +359,9 @@ const makeTemplate = () => {
     ledger.push(`${index + 1}\t${id}\t${1000 + index}\t${1001 + index}\t0\t${stdout}\t${stderr}\t${commandDisplays[index]}`);
   }
   writeFileSync(join(template, "commands.tsv"), `${ledger.join("\n")}\n`);
+  const argvRows = expectedCommandArgv({ repo, output: template }).map((argv, index) =>
+    JSON.stringify({ ordinal: index + 1, command_id: commandIds[index], argv }));
+  writeFileSync(join(template, "commands.argv.ndjson"), `${argvRows.join("\n")}\n`);
 
   writeFileSync(join(template, "measurements/clean-release-time.txt"), "\tElapsed (wall clock) time (h:mm:ss or m:ss): 0:12.34\n\tExit status: 0\n");
   const filesystemEvidence = makeFilesystemEvidence();
@@ -571,6 +575,8 @@ const fixtureForCase = () => {
   }
   const samples = join(output, "r2/compile-benchmark/samples.tsv");
   writeFileSync(samples, readFileSync(samples, "utf8").replaceAll(template, output));
+  const argv = join(output, "commands.argv.ndjson");
+  writeFileSync(argv, readFileSync(argv, "utf8").replaceAll(template, output));
   const browser = join(output, "r2/browser-smoke/receipt.json");
   writeFileSync(browser, readFileSync(browser, "utf8").replaceAll(template, output));
   fixtureSnapshot = new Map(inventory(output).map((row) => [row.path, readFileSync(join(output, row.path))]));
@@ -619,6 +625,7 @@ test("synthetic complete evidence assembles and verifies without trusting summar
   const output = fixtureForCase();
   const receipt = assemble(output);
   assert.equal(receipt.outcome, "pass");
+  assert.equal(receipt.summary.commands.argv_count, 33);
   assert.equal(receipt.summary.r2.compile.samples, 100);
   assert.equal(receipt.summary.r2.browser.closures, 22);
   assert.equal(receipt.summary.budgets.checkout_peak_mib, 489);
@@ -639,6 +646,28 @@ test("synthetic complete evidence assembles and verifies without trusting summar
   const commands = join(output, "commands.tsv");
   writeFileSync(commands, readFileSync(commands, "utf8").replace(commandDisplays[0], "forged workspace-fmt"));
   assert.throws(() => verifyReceipt({ repo, output, liveChecks: false }), /digest\/path drift/);
+
+  const argvOutput = fixtureForCase();
+  const argv = join(argvOutput, "commands.argv.ndjson");
+  const argvLines = readFileSync(argv, "utf8").trimEnd().split("\n");
+  const forgedArgv = JSON.parse(argvLines[0]);
+  forgedArgv.argv.push("forged");
+  argvLines[0] = JSON.stringify(forgedArgv);
+  writeFileSync(argv, `${argvLines.join("\n")}\n`);
+  assert.throws(() => assemble(argvOutput), /expected command argv/);
+
+  const extraArgv = fixtureForCase();
+  const extraArgvPath = join(extraArgv, "commands.argv.ndjson");
+  const extraArgvText = readFileSync(extraArgvPath, "utf8");
+  writeFileSync(extraArgvPath, `${extraArgvText}${extraArgvText.split("\n")[0]}\n`);
+  assert.throws(() => assemble(extraArgv), /argv row count/);
+
+  const duplicateArgv = fixtureForCase();
+  const duplicateArgvPath = join(duplicateArgv, "commands.argv.ndjson");
+  const duplicateArgvLines = readFileSync(duplicateArgvPath, "utf8").trimEnd().split("\n");
+  duplicateArgvLines[1] = duplicateArgvLines[0];
+  writeFileSync(duplicateArgvPath, `${duplicateArgvLines.join("\n")}\n`);
+  assert.throws(() => assemble(duplicateArgv), /argv row 2 is a duplicate/);
 
   const missing = fixtureForCase();
   assemble(missing);

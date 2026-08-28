@@ -61,6 +61,7 @@ cmp -s "$tmp_dir/rows" "$tmp_dir/sorted-rows" || fail 'register rows are not LC_
 
 (
   cd "$repo_root"
+  printf '%s\n' .github/workflows/nomos-viewer.yml
   find crates/nomos-observed-scene -mindepth 1 -type f -printf '%p\n'
   if [[ -d apps/nomos-observed-viewer ]]; then
     find apps/nomos-observed-viewer -path '*/dist' -prune -o -type f -printf '%p\n'
@@ -97,6 +98,18 @@ check_tree() {
   fi
 }
 
+require_no_symlink_components() {
+  local relative=$1 label=$2 current=$repo_root component
+  local -a components=()
+  IFS=/ read -r -a components <<<"$relative"
+  for component in "${components[@]}"; do
+    [[ -n $component && $component != . && $component != .. ]] ||
+      fail "$label contains an unsafe path component: $relative"
+    current+=/$component
+    [[ ! -L $current ]] || fail "$label traverses a symlink: $relative"
+  done
+}
+
 check_tree crates/nomos-observed-scene
 check_tree fixtures/r2
 if [[ -e $repo_root/docs/evaluation/r2-second-scene-packet ]]; then
@@ -121,11 +134,13 @@ fi
 
 while IFS=$'\t' read -r path digest origin receipt license; do
   [[ $path != /* && $path != *'..'* && $path != *'//' ]] || fail "unsafe registered path: $path"
+  require_no_symlink_components "$path" 'registered path'
   [[ $digest =~ ^[0-9a-f]{64}$ ]] || fail "invalid SHA-256 spelling for $path"
   [[ -f $repo_root/$path && ! -L $repo_root/$path ]] ||
     fail "registered path is absent, non-regular, or symlinked: $path"
   actual=$(sha256sum "$repo_root/$path" | awk '{print $1}')
   [[ $actual == "$digest" ]] || fail "digest mismatch for $path"
+  require_no_symlink_components "$receipt" 'producing receipt'
   [[ -f $repo_root/$receipt && ! -L $repo_root/$receipt ]] ||
     fail "producing receipt is dangling for $path: $receipt"
 
@@ -150,14 +165,17 @@ while IFS=$'\t' read -r path digest origin receipt license; do
           ;;
         docs/evaluation/r2-complete-proof-control.sh | \
         docs/evaluation/r2-complete-proof-control.test.sh | \
+        docs/evaluation/r2-complete-proof-argv.mjs | \
         docs/evaluation/r2-complete-proof-lib.sh | \
         docs/evaluation/r2-complete-proof-outer.sh | \
         docs/evaluation/r2-complete-proof-receipt.mjs | \
         docs/evaluation/r2-complete-proof-receipt.test.mjs | \
         docs/evaluation/r2-complete-proof-xfs-evidence.mjs | \
         docs/evaluation/r2-complete-proof-xfs-evidence.test.mjs | \
+        docs/evaluation/r2-complete-proof-xfs-ledger.mjs | \
         docs/evaluation/r2-complete-proof-xfs-receipt.mjs | \
         docs/evaluation/r2-complete-proof-xfs-receipt.test.mjs | \
+        docs/evaluation/r2-complete-proof-xfs-workdir.sh | \
         docs/evaluation/r2-complete-proof-xfs.sh | \
         docs/evaluation/r2-complete-proof-xfs.test.sh | \
         docs/evaluation/r2-complete-proof.sh | \
@@ -167,6 +185,7 @@ while IFS=$'\t' read -r path digest origin receipt license; do
         docs/evaluation/r2-filesystem-evidence.mjs | \
         docs/evaluation/r2-filesystem-evidence.test.mjs | \
         docs/evaluation/r2-filesystem-sampler.mjs | \
+        docs/evaluation/r2-schema-ownership-plants.sh | \
         docs/evaluation/r2-source-provenance.test.sh)
           [[ $receipt == docs/evaluation/runs/r2/2026-08-28-issue-199-revision-3-author/AUTHOR_RECEIPT.md ]] ||
             fail "unexpected R2 final-proof author receipt for $path"
@@ -175,14 +194,18 @@ while IFS=$'\t' read -r path digest origin receipt license; do
         apps/nomos-observed-viewer/smoke/smoke.mjs | \
         apps/nomos-observed-viewer/test/smoke.test.mjs | \
         docs/evaluation/r2-complete-proof-process.mjs | \
-        docs/evaluation/r2-complete-proof-process.test.mjs | \
-        docs/evaluation/r2-schema-ownership-plants.sh)
+        docs/evaluation/r2-complete-proof-process.test.mjs)
           [[ $receipt == docs/evaluation/runs/r2/2026-08-27-issue-199-author/AUTHOR_RECEIPT.md ]] ||
             fail "unexpected unchanged R2 process/plant receipt for $path"
           ;;
         *)
-          [[ $receipt == docs/evaluation/runs/r2/2026-08-27-issue-197-author/AUTHOR_RECEIPT.md ]] ||
-            fail "unexpected R2-2 primary-author receipt for $path"
+          if [[ $path == .github/workflows/nomos-viewer.yml ]]; then
+            [[ $receipt == docs/evaluation/runs/r2/2026-08-28-issue-199-revision-3-author/AUTHOR_RECEIPT.md ]] ||
+              fail "unexpected R2 final-proof workflow receipt for $path"
+          else
+            [[ $receipt == docs/evaluation/runs/r2/2026-08-27-issue-197-author/AUTHOR_RECEIPT.md ]] ||
+              fail "unexpected R2-2 primary-author receipt for $path"
+          fi
           ;;
       esac
       ;;

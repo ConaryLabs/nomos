@@ -9,10 +9,11 @@ authority: R2.md revision 3 section 4
 # R2 per-file source provenance register
 
 This inventory covers every current regular file in the R2 carrier crate,
-isolated browser application, R2 fixtures, R2-specific evaluation source, and
-committed visual-evidence scope, plus the three R1 Three.js vendor files
-referenced by the epoch contract. The independent scene and browser evidence
-entered unchanged from the hash-frozen author packet.
+isolated browser application, R2 fixtures, R2-specific evaluation source,
+committed visual-evidence scope, and the workflow that executes the R2 lanes,
+plus the three R1 Three.js vendor files referenced by the epoch contract. The
+independent scene and browser evidence entered unchanged from the hash-frozen
+author packet.
 
 `R2_SOURCE_PROVENANCE.md`, `r2-source-provenance.sh`, and producing receipts
 beneath `docs/evaluation/runs/r2/` are control evidence. Per the contract's
@@ -30,6 +31,7 @@ license bytes in the first inventory row.
 
 | Path | SHA-256 | Origin class | Producing receipt | License disposition |
 | --- | --- | --- | --- | --- |
+| `.github/workflows/nomos-viewer.yml` | `7d9b060a848d3467e80487051e7711dab745ef183419f4d15456ab470635d114` | `r2_authored` | `docs/evaluation/runs/r2/2026-08-28-issue-199-revision-3-author/AUTHOR_RECEIPT.md` | `project_mit` |
 | `apps/nomos-observed-viewer/PUBLIC_FILES` | `7f53e4db82e1faed7d523be4165cfb024b57d12e2ebb9cf2b0f356fd27560da9` | `r2_authored` | `docs/evaluation/runs/r2/2026-08-27-issue-197-author/AUTHOR_RECEIPT.md` | `project_mit` |
 | `apps/nomos-observed-viewer/README.md` | `7195b279cbf644cb2535c40dabaea91eb99e138787c651e894acda827ed75cef` | `r2_authored` | `docs/evaluation/runs/r2/2026-08-27-issue-197-author/AUTHOR_RECEIPT.md` | `project_mit` |
 | `apps/nomos-observed-viewer/SOURCE_MANIFEST` | `84585a60921f3281920fdccc635be15ac61cfe3d9b8a9868cea352f7dd58361c` | `r2_authored` | `docs/evaluation/runs/r2/2026-08-27-issue-199-author/AUTHOR_RECEIPT.md` | `project_mit` |
@@ -83,22 +85,25 @@ license bytes in the first inventory row.
 | `docs/evaluation/measure-r2-compile.mjs` | `7c76a885d133968bcd5fda8cf9b71bb175986c4c5697224fe281f749cc0ba4a2` | `r2_authored` | `docs/evaluation/runs/r2/2026-08-27-issue-195-author/AUTHOR_RECEIPT.md` | `project_mit` |
 | `docs/evaluation/r2-adopter-neutrality.sh` | `27f15ba8a211e36f383d49922444eced104dbf63fcdf918ff362fc01073ce3d8` | `r2_authored` | `docs/evaluation/runs/r2/2026-08-27-issue-197-author/AUTHOR_RECEIPT.md` | `project_mit` |
 | `docs/evaluation/r2-adopter-neutrality.test.sh` | `c90458bd2b6977ed9f4f8cd6e173d19590170fb80cfff3c0e661ce034a471144` | `r2_authored` | `docs/evaluation/runs/r2/2026-08-27-issue-197-author/AUTHOR_RECEIPT.md` | `project_mit` |
+| `docs/evaluation/r2-complete-proof-argv.mjs` | `eaf8230098f32a0f86137b340de73899fb2211a02f252254308b16f3792d51ea` | `r2_authored` | `docs/evaluation/runs/r2/2026-08-28-issue-199-revision-3-author/AUTHOR_RECEIPT.md` | `project_mit` |
 | `docs/evaluation/r2-complete-proof-control.sh` | `3acb459d52cb7c62f4c6727b5f4458d6c9cd919b963e048d1aa5d0030ff9e674` | `r2_authored` | `docs/evaluation/runs/r2/2026-08-28-issue-199-revision-3-author/AUTHOR_RECEIPT.md` | `project_mit` |
 | `docs/evaluation/r2-complete-proof-control.test.sh` | `bf50a4b79f438754c2d85735ccf9b01cb6fb6c132bec9bb4b2bb393f3f545a90` | `r2_authored` | `docs/evaluation/runs/r2/2026-08-28-issue-199-revision-3-author/AUTHOR_RECEIPT.md` | `project_mit` |
-| `docs/evaluation/r2-complete-proof-lib.sh` | `27d9ac84135f767feb0f9cb3e107910fdd9455108823d33b23e6604ec33ba82d` | `r2_authored` | `docs/evaluation/runs/r2/2026-08-28-issue-199-revision-3-author/AUTHOR_RECEIPT.md` | `project_mit` |
-| `docs/evaluation/r2-complete-proof-outer.sh` | `a5af332091c5592b44e363361558d72a79605f2689bafec699baa0e15b13fb34` | `r2_authored` | `docs/evaluation/runs/r2/2026-08-28-issue-199-revision-3-author/AUTHOR_RECEIPT.md` | `project_mit` |
+| `docs/evaluation/r2-complete-proof-lib.sh` | `6290151c357a7c100685df6d9d231e5d9909b131adfa42df35bfda7aa4527f1b` | `r2_authored` | `docs/evaluation/runs/r2/2026-08-28-issue-199-revision-3-author/AUTHOR_RECEIPT.md` | `project_mit` |
+| `docs/evaluation/r2-complete-proof-outer.sh` | `ee78ddc04c8c4388054f45b97b9390b94e7fabc16332e3f17f7ed7b5b44f6351` | `r2_authored` | `docs/evaluation/runs/r2/2026-08-28-issue-199-revision-3-author/AUTHOR_RECEIPT.md` | `project_mit` |
 | `docs/evaluation/r2-complete-proof-process.mjs` | `3646a9593eb4d0803c68a8436c593b80e7d1fbae47b74b3a7612e92a116f7a94` | `r2_authored` | `docs/evaluation/runs/r2/2026-08-27-issue-199-author/AUTHOR_RECEIPT.md` | `project_mit` |
 | `docs/evaluation/r2-complete-proof-process.test.mjs` | `9e0849f898ea3c35877901c25e73101d06e5c985aa9a2a877a5ef8fe8e3556c7` | `r2_authored` | `docs/evaluation/runs/r2/2026-08-27-issue-199-author/AUTHOR_RECEIPT.md` | `project_mit` |
-| `docs/evaluation/r2-complete-proof-receipt.mjs` | `1b5d90748f529ee0c58d44e1022f5f6a966076d256094e71e18dac28b2ee0133` | `r2_authored` | `docs/evaluation/runs/r2/2026-08-28-issue-199-revision-3-author/AUTHOR_RECEIPT.md` | `project_mit` |
-| `docs/evaluation/r2-complete-proof-receipt.test.mjs` | `eb704106fff0047c69d81d0a70cf48e879ab5e13da7c896114173a4903d78baf` | `r2_authored` | `docs/evaluation/runs/r2/2026-08-28-issue-199-revision-3-author/AUTHOR_RECEIPT.md` | `project_mit` |
-| `docs/evaluation/r2-complete-proof-xfs-evidence.mjs` | `b9464afe1a6822654fc9cc571859aa5cd382f37f646f9fd53ecc081adab970a6` | `r2_authored` | `docs/evaluation/runs/r2/2026-08-28-issue-199-revision-3-author/AUTHOR_RECEIPT.md` | `project_mit` |
-| `docs/evaluation/r2-complete-proof-xfs-evidence.test.mjs` | `8947089ddd179d765208d92087293bb811e8d8ae0c59ddc98e453358056361fd` | `r2_authored` | `docs/evaluation/runs/r2/2026-08-28-issue-199-revision-3-author/AUTHOR_RECEIPT.md` | `project_mit` |
-| `docs/evaluation/r2-complete-proof-xfs-receipt.mjs` | `4c5df02daa1be816033cae5d64a34efe43c849dd982ef3116ae48183bf33b9b3` | `r2_authored` | `docs/evaluation/runs/r2/2026-08-28-issue-199-revision-3-author/AUTHOR_RECEIPT.md` | `project_mit` |
-| `docs/evaluation/r2-complete-proof-xfs-receipt.test.mjs` | `3fdd7db7c4b49e3d4d1e477add12f06cc8d6c42800a407425d1702de2aa4167d` | `r2_authored` | `docs/evaluation/runs/r2/2026-08-28-issue-199-revision-3-author/AUTHOR_RECEIPT.md` | `project_mit` |
-| `docs/evaluation/r2-complete-proof-xfs.sh` | `85b5f4fd3f95549b186802d9f5481f3bb5e07d6f229746ae59be10a0ed01d33e` | `r2_authored` | `docs/evaluation/runs/r2/2026-08-28-issue-199-revision-3-author/AUTHOR_RECEIPT.md` | `project_mit` |
-| `docs/evaluation/r2-complete-proof-xfs.test.sh` | `bb5656f0c56f24e79185a083cdf053c543e599cd7dcb12020fa147c4ed8bf58e` | `r2_authored` | `docs/evaluation/runs/r2/2026-08-28-issue-199-revision-3-author/AUTHOR_RECEIPT.md` | `project_mit` |
-| `docs/evaluation/r2-complete-proof.sh` | `af1551e505b658b1a7f1c83cd3a37eec75ea4227377037c8df08e65dc5307f40` | `r2_authored` | `docs/evaluation/runs/r2/2026-08-28-issue-199-revision-3-author/AUTHOR_RECEIPT.md` | `project_mit` |
-| `docs/evaluation/r2-complete-proof.test.sh` | `3f5d30bbfe0c0827d0d8c6c136884b350d777c327d314e90b5aadd41d8325d34` | `r2_authored` | `docs/evaluation/runs/r2/2026-08-28-issue-199-revision-3-author/AUTHOR_RECEIPT.md` | `project_mit` |
+| `docs/evaluation/r2-complete-proof-receipt.mjs` | `c4eb9a53a46ab68bee02cb3c93ccd83de41d39c43c033ac8fa52b5de44214a2f` | `r2_authored` | `docs/evaluation/runs/r2/2026-08-28-issue-199-revision-3-author/AUTHOR_RECEIPT.md` | `project_mit` |
+| `docs/evaluation/r2-complete-proof-receipt.test.mjs` | `b6814331c8bea3fdc3accf52eb0bba96c4a8a3d2e0bcc1a76d2d33987111fc82` | `r2_authored` | `docs/evaluation/runs/r2/2026-08-28-issue-199-revision-3-author/AUTHOR_RECEIPT.md` | `project_mit` |
+| `docs/evaluation/r2-complete-proof-xfs-evidence.mjs` | `c77b3c475e5d4a33f4bc7b950f8431587ef3f0fd9dd191b098ec4fdd74405bfc` | `r2_authored` | `docs/evaluation/runs/r2/2026-08-28-issue-199-revision-3-author/AUTHOR_RECEIPT.md` | `project_mit` |
+| `docs/evaluation/r2-complete-proof-xfs-evidence.test.mjs` | `eeedc74c42daf9ef9900ef12f2e853361d3f826049061bf7acb5af19c12df91b` | `r2_authored` | `docs/evaluation/runs/r2/2026-08-28-issue-199-revision-3-author/AUTHOR_RECEIPT.md` | `project_mit` |
+| `docs/evaluation/r2-complete-proof-xfs-ledger.mjs` | `a8ff3a1c0e7afe47f7d785d11d46cab7631ee510e11ba17c7aa533f8dfa345b3` | `r2_authored` | `docs/evaluation/runs/r2/2026-08-28-issue-199-revision-3-author/AUTHOR_RECEIPT.md` | `project_mit` |
+| `docs/evaluation/r2-complete-proof-xfs-receipt.mjs` | `dc602cac29c9b587b86a7dd08a7bb926286e36766d83c07ea1e4a78a687a3d50` | `r2_authored` | `docs/evaluation/runs/r2/2026-08-28-issue-199-revision-3-author/AUTHOR_RECEIPT.md` | `project_mit` |
+| `docs/evaluation/r2-complete-proof-xfs-receipt.test.mjs` | `447c6e55a13ce8a92e5f14378cc4cfe240c29487b1fa6feee8206edc43fde691` | `r2_authored` | `docs/evaluation/runs/r2/2026-08-28-issue-199-revision-3-author/AUTHOR_RECEIPT.md` | `project_mit` |
+| `docs/evaluation/r2-complete-proof-xfs-workdir.sh` | `80d31797212bff5287bbdabc7676a4370aeea54934cacc46a0b62903fbf32e6f` | `r2_authored` | `docs/evaluation/runs/r2/2026-08-28-issue-199-revision-3-author/AUTHOR_RECEIPT.md` | `project_mit` |
+| `docs/evaluation/r2-complete-proof-xfs.sh` | `15d9c2fa9414c98c95da0a0efcada4f489e4966302bf90d9d162761b63063ce6` | `r2_authored` | `docs/evaluation/runs/r2/2026-08-28-issue-199-revision-3-author/AUTHOR_RECEIPT.md` | `project_mit` |
+| `docs/evaluation/r2-complete-proof-xfs.test.sh` | `6073b5a095020075efc960de1c4861774ede150613d4104c6cd997f39914fe8d` | `r2_authored` | `docs/evaluation/runs/r2/2026-08-28-issue-199-revision-3-author/AUTHOR_RECEIPT.md` | `project_mit` |
+| `docs/evaluation/r2-complete-proof.sh` | `99df6804975c8966839e74491545d6844d874ebf76e25b98255065eeef995a23` | `r2_authored` | `docs/evaluation/runs/r2/2026-08-28-issue-199-revision-3-author/AUTHOR_RECEIPT.md` | `project_mit` |
+| `docs/evaluation/r2-complete-proof.test.sh` | `e6cd99ff4b1676cd23512284caa09928e7ebda10101f777e856f6178e2a507be` | `r2_authored` | `docs/evaluation/runs/r2/2026-08-28-issue-199-revision-3-author/AUTHOR_RECEIPT.md` | `project_mit` |
 | `docs/evaluation/r2-filesystem-accounting.mjs` | `51fbb06f714c84417b8edcc327fc14927e7859126d1db393557a6c843686202d` | `r2_authored` | `docs/evaluation/runs/r2/2026-08-28-issue-199-revision-3-author/AUTHOR_RECEIPT.md` | `project_mit` |
 | `docs/evaluation/r2-filesystem-accounting.test.mjs` | `15cc4377a17de31ca06a6bc3da307949dbeed009035f952072f00de2d4c6ec86` | `r2_authored` | `docs/evaluation/runs/r2/2026-08-28-issue-199-revision-3-author/AUTHOR_RECEIPT.md` | `project_mit` |
 | `docs/evaluation/r2-filesystem-evidence.mjs` | `cbc1bfa51ba26551703beeec09577ff674ff4b973593f3513bcad157f40ed182` | `r2_authored` | `docs/evaluation/runs/r2/2026-08-28-issue-199-revision-3-author/AUTHOR_RECEIPT.md` | `project_mit` |
@@ -107,7 +112,7 @@ license bytes in the first inventory row.
 | `docs/evaluation/r2-maximum.test.mjs` | `fefbb3428cce888f0561828471501170b12b89fff796fa1e8e38d250be0e87ba` | `r2_authored` | `docs/evaluation/runs/r2/2026-08-27-issue-195-author/AUTHOR_RECEIPT.md` | `project_mit` |
 | `docs/evaluation/r2-scene-signature.mjs` | `5aa86d8e5b2b86de4a83954c96d737231e3de43e4275485dff4d82e910eea8e2` | `r2_authored` | `docs/evaluation/runs/r2/2026-08-27-issue-197-author/AUTHOR_RECEIPT.md` | `project_mit` |
 | `docs/evaluation/r2-scene-signature.test.mjs` | `11e092d4414c4fe5f6c25c256d0ac196d7f7a57bc792d5380a878636c8ea9538` | `r2_authored` | `docs/evaluation/runs/r2/2026-08-27-issue-197-author/AUTHOR_RECEIPT.md` | `project_mit` |
-| `docs/evaluation/r2-schema-ownership-plants.sh` | `3d445c11ff19a5e6f74dcef6ae33acee68dc5de4a236fb3e96d53dc9aa38a8b4` | `r2_authored` | `docs/evaluation/runs/r2/2026-08-27-issue-199-author/AUTHOR_RECEIPT.md` | `project_mit` |
+| `docs/evaluation/r2-schema-ownership-plants.sh` | `ec4cc52c9f321e1eef5021b872f94a67d860b0eda15a19cdcccbb8f1280f1a6c` | `r2_authored` | `docs/evaluation/runs/r2/2026-08-28-issue-199-revision-3-author/AUTHOR_RECEIPT.md` | `project_mit` |
 | `docs/evaluation/r2-schema-ownership.sh` | `b563a52ed9808ed66251cada59faa70de0101bc960e2e5375cf8efb094f77510` | `r2_authored` | `docs/evaluation/runs/r2/2026-08-27-issue-195-author/AUTHOR_RECEIPT.md` | `project_mit` |
 | `docs/evaluation/r2-second-scene-packet.test.sh` | `2cdbfd40f1377e164ddf3accf24b26623fd63cfb5721479a28b3bb5d887154f4` | `r2_authored` | `docs/evaluation/runs/r2/2026-08-27-issue-197-author/AUTHOR_RECEIPT.md` | `project_mit` |
 | `docs/evaluation/r2-second-scene-packet/AUTHOR_TASK.md` | `d4c3ac919fc5e25bed4c406a4b58e44a29cadede6996c2e7065843cb9c056b3c` | `r2_authored` | `docs/evaluation/runs/r2/2026-08-27-issue-197-author/AUTHOR_RECEIPT.md` | `project_mit` |
@@ -116,7 +121,7 @@ license bytes in the first inventory row.
 | `docs/evaluation/r2-second-scene-packet/assemble.sh` | `645857754dd98e2024a7c154fe0d8c22251a43e574730017016011ba7136a91d` | `r2_authored` | `docs/evaluation/runs/r2/2026-08-27-issue-197-author/AUTHOR_RECEIPT.md` | `project_mit` |
 | `docs/evaluation/r2-second-scene-packet/audit-author-output.sh` | `7952c431858ec71029e7e4ce59fd5aa119e6174214e45e579c4ee1df3b452188` | `r2_authored` | `docs/evaluation/runs/r2/2026-08-27-issue-197-author/AUTHOR_RECEIPT.md` | `project_mit` |
 | `docs/evaluation/r2-second-scene-packet/verify.sh` | `e8cd7ebaf74ffdef5a5ed346e799427a16ae1157922c1e5704fd9465fb74e5d2` | `r2_authored` | `docs/evaluation/runs/r2/2026-08-27-issue-197-author/AUTHOR_RECEIPT.md` | `project_mit` |
-| `docs/evaluation/r2-source-provenance.test.sh` | `9e609caf3a8fff7d487b6579155d14c12d7b945f7f2ff1c629dcc74498d431eb` | `r2_authored` | `docs/evaluation/runs/r2/2026-08-28-issue-199-revision-3-author/AUTHOR_RECEIPT.md` | `project_mit` |
+| `docs/evaluation/r2-source-provenance.test.sh` | `0906fc9db1e7dda63d06ced197c0459453d058042b8ba6ba58de5c8b3bfcc0fe` | `r2_authored` | `docs/evaluation/runs/r2/2026-08-28-issue-199-revision-3-author/AUTHOR_RECEIPT.md` | `project_mit` |
 | `docs/evaluation/runs/r2/2026-08-27-issue-197-second-author/SCENE_SIGNATURES.json` | `6c8e38c78896bf5d5a166427f5f9567044dc00314dc4e65124173c57ccab50c4` | `r2_authored` | `docs/evaluation/runs/r2/2026-08-27-issue-197-second-author/SECOND_AUTHOR_RECEIPT.md` | `project_mit` |
 | `docs/evaluation/runs/r2/2026-08-27-issue-197-second-author/evidence/contact-sheet.png` | `b76edbd9dd03fce5a99c074200ee7311bf87d5d2e5829c800170c129d00bf576` | `browser_produced` | `docs/evaluation/runs/r2/2026-08-27-issue-197-second-author/BROWSER_RECEIPT.json` | `project_mit` |
 | `docs/evaluation/runs/r2/2026-08-27-issue-197-second-author/evidence/scene_1.png` | `27833755cea790f04353c930a2158044d4aab05c87989ee5751dc8dff66f5fb6` | `browser_produced` | `docs/evaluation/runs/r2/2026-08-27-issue-197-second-author/BROWSER_RECEIPT.json` | `project_mit` |

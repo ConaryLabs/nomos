@@ -13,6 +13,7 @@ import {
 } from "node:fs";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
+import { validateCommandArgv } from "./r2-complete-proof-argv.mjs";
 import { auditLiveProcessNamespace } from "./r2-complete-proof-process.mjs";
 import { validateFilesystemEvidence } from "./r2-filesystem-evidence.mjs";
 const CONSTANTS = Object.freeze({
@@ -877,6 +878,7 @@ export const validateEvidence = ({ repo: repoArgument, output: outputArgument, c
   validateCandidate(repo, output, candidate);
   const source = validateSourceBindings(repo, output, candidate);
   const ledger = parseLedger(output);
+  const argv = validateCommandArgv({ repo, output, commandRows: ledger });
   const tests = validateComponentLogs(output, ledger);
   const networkIsolation = validateIsolation(output, liveChecks);
   const filesystemIsolation = validateFilesystemIsolation(repo, output, liveChecks);
@@ -896,7 +898,12 @@ export const validateEvidence = ({ repo: repoArgument, output: outputArgument, c
     candidate,
     authority: source,
     isolation: { network: networkIsolation, filesystem: filesystemIsolation },
-    commands: { count: ledger.length, sha256: sha256(readRegular(join(output, "commands.tsv"))) },
+    commands: {
+      count: ledger.length,
+      sha256: sha256(readRegular(join(output, "commands.tsv"))),
+      argv_count: argv.count,
+      argv_sha256: argv.sha256,
+    },
     tests,
     r1,
     r2: { signatures, distribution_bytes: buildA.total, distribution_files: buildA.inventory.length, compile, browser },

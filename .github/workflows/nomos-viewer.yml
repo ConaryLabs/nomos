@@ -312,7 +312,7 @@ jobs:
 
       - name: Ten fresh browser profiles per scene
         run: |
-          CHROME_BIN=$(command -v google-chrome) \
+          CHROME_BIN=$(realpath -e "$(command -v google-chrome)") \
             node apps/nomos-observed-viewer/smoke/smoke.mjs \
               --dist target/r2-observed-dist \
               --out target/r2-observed-smoke \
@@ -400,3 +400,13 @@ jobs:
             !${{ runner.temp }}/nomos-r2-xfs/user-env
           if-no-files-found: error
           retention-days: 90
+
+      - name: Upload the red-run XFS backing image
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: r2-complete-proof-red-image
+          path: ${{ runner.temp }}/nomos-r2-xfs/filesystem.xfs
+          if-no-files-found: ignore
+          retention-days: 90
+          compression-level: 0

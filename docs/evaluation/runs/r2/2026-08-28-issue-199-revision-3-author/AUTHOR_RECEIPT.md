@@ -47,6 +47,8 @@ proof.
 The revision-3 provenance route covers these changed or newly introduced
 evaluation implementation and test files:
 
+- `.github/workflows/nomos-viewer.yml`
+- `docs/evaluation/r2-complete-proof-argv.mjs`
 - `docs/evaluation/r2-complete-proof-control.sh`
 - `docs/evaluation/r2-complete-proof-control.test.sh`
 - `docs/evaluation/r2-complete-proof-lib.sh`
@@ -55,8 +57,10 @@ evaluation implementation and test files:
 - `docs/evaluation/r2-complete-proof-receipt.test.mjs`
 - `docs/evaluation/r2-complete-proof-xfs-evidence.mjs`
 - `docs/evaluation/r2-complete-proof-xfs-evidence.test.mjs`
+- `docs/evaluation/r2-complete-proof-xfs-ledger.mjs`
 - `docs/evaluation/r2-complete-proof-xfs-receipt.mjs`
 - `docs/evaluation/r2-complete-proof-xfs-receipt.test.mjs`
+- `docs/evaluation/r2-complete-proof-xfs-workdir.sh`
 - `docs/evaluation/r2-complete-proof-xfs.sh`
 - `docs/evaluation/r2-complete-proof-xfs.test.sh`
 - `docs/evaluation/r2-complete-proof.sh`
@@ -66,6 +70,7 @@ evaluation implementation and test files:
 - `docs/evaluation/r2-filesystem-evidence.mjs`
 - `docs/evaluation/r2-filesystem-evidence.test.mjs`
 - `docs/evaluation/r2-filesystem-sampler.mjs`
+- `docs/evaluation/r2-schema-ownership-plants.sh`
 - `docs/evaluation/r2-source-provenance.test.sh`
 
 The following revision-2 recursive-observer files are retired and removed from
@@ -86,6 +91,39 @@ The unchanged process-closure files
 along with other unchanged evaluation sources, remain bound to their existing
 historical producing receipts. This receipt is not used to reattribute those
 bytes.
+
+## Revision-3 development rehearsals retained as red
+
+Two local rehearsal runs predate the next frozen candidate. They are retained
+as failure evidence and do not satisfy any author-proof, non-author, CI, owner
+judgment, or acceptance requirement.
+
+- Candidate `2f2c27c40241621c934844f9b087b6069ac04d78`, tree
+  `2a054de5477874721cde10797f4aa8b26d39d87c`, source
+  `/data/dev/src/nomos-r2-candidate.Gzpnma`, work
+  `/data/dev/src/nomos-r2-xfs-run.My4lZV`: the wrapper failed before the inner
+  proof because network isolation attempted passwordless `sudo` only after the
+  privilege/capability drop. The wrapper receipt SHA-256 is
+  `f3f9c90fb6cbd6e28af837bb922dba145f62af76f71ac75eb515c0dd06c7c018`;
+  the supervisor-facts SHA-256 is
+  `d27e5d9ca8f3518d2cc6e1ba28e3e48dd442cc7a1b798a07262bd56d078ddb3a`.
+  Teardown was clean. This run remains red.
+- Candidate `5d579db688d1e6d6a72a9706f7c3619545486328`, tree
+  `5f3dc0c53875d2ca5c77f24c48eef05e3cabf49e`, source
+  `/data/dev/src/nomos-r2-candidate.Y9eWAI`, work
+  `/data/dev/src/nomos-r2-xfs-run.FvfjEo`: commands 1-32 passed and command 33
+  failed its compile-median ceiling. The measured median was 58,361,295 ns
+  (`116722590 / 2`) against 50,000,000 ns; p95 was 77,710,111 ns against
+  100,000,000 ns. The wrapper receipt SHA-256 is
+  `6aa2294947cb12f9db24e081d989c659309e5e3afd96130d9e57f683d151954a`;
+  supervisor-facts SHA-256 is
+  `aee1b6c19a721871df40fd4d8bcdd90ea9ee3e21caf308d64b9b2c2ba8442bea`;
+  compile summary SHA-256 is
+  `b437dc0eef7dd220dc6fcda3922960390f2395ca1bfbdda586491db6d2aa5cec`;
+  and samples SHA-256 is
+  `04b356dafb0c0b3659e2b3ed6d285b593af114a55a3a258c408d3d423f9617ec`.
+  Teardown was clean. A later standalone diagnostic under the same transient
+  host load passed; it does not relabel this rehearsal.
 
 ## Clean-room and adopter boundary
 

@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -18,14 +19,25 @@ test("host evidence parser binds canonical statfs, mount, quota, and empty stder
   const root = temporary();
   try {
     const prefix = join(root, "host-before");
-    writeFileSync(`${prefix}.statfs`, "f_frsize=4096 f_blocks=100 f_bfree=90 f_bavail=80 f_type=0x58465342 f_fsid=123\n");
+    const statfsText = "f_frsize=4096 f_blocks=100 f_bfree=90 f_bavail=80 f_type=0x58465342 f_fsid=123\n";
+    writeFileSync(`${prefix}.statfs`, statfsText);
     writeFileSync(`${prefix}.findmnt`, `${root} /dev/loop0 xfs rw,nodev,nosuid,noquota private\n`);
     writeFileSync(`${prefix}.quota`, "");
+    writeFileSync(`${prefix}.statfs.status`, "0\n");
+    writeFileSync(`${prefix}.findmnt.status`, "0\n");
     writeFileSync(`${prefix}.quota.status`, "0\n");
     for (const name of ["statfs", "findmnt", "quota"]) writeFileSync(`${prefix}.${name}.stderr`, "");
-    assert.equal(parseHostStatfs(prefix, "host").facts.free_blocks, "90");
+    const parsedStatfs = parseHostStatfs(prefix, "host");
+    assert.equal(parsedStatfs.facts.free_blocks, "90");
+    assert.equal(parsedStatfs.statfs.sha256, createHash("sha256").update(statfsText).digest("hex"));
     assert.equal(parseHostFindmnt(prefix, "host").fields[4], "private");
-    assert.equal(validateHostFilesystemEvidence(prefix, "host").quota.text, "");
+    const evidence = validateHostFilesystemEvidence(prefix, "host");
+    assert.equal(evidence.quota.text, "");
+    assert.equal(evidence.statfs_status.text, "0\n");
+    assert.equal(evidence.findmnt_status.text, "0\n");
+    assert.equal(evidence.statfs_status.sha256.length, 64);
+    writeFileSync(`${prefix}.findmnt`, `${JSON.stringify({ filesystems: [{ target: root, source: "/dev/loop0", fstype: "xfs", options: "rw,nodev,nosuid,noquota", propagation: "private" }] })}\n`);
+    assert.equal(parseHostFindmnt(prefix, "host").fields[0], root);
     writeFileSync(`${prefix}.statfs`, "f_frsize=4096 f_blocks=100 f_bfree=90 f_bavail=91 f_type=0x58465342 f_fsid=123\n");
     assert.throws(() => parseHostStatfs(prefix, "host"), /canonical|inconsistent/);
   } finally {
@@ -58,10 +70,15 @@ test("host evidence rejects command stderr and quota failure", () => {
     writeFileSync(`${prefix}.statfs`, "f_frsize=4096 f_blocks=100 f_bfree=90 f_bavail=80 f_type=xfs f_fsid=123\n");
     writeFileSync(`${prefix}.findmnt`, `${root} /dev/loop0 xfs rw,nodev,nosuid,noquota private\n`);
     writeFileSync(`${prefix}.quota`, "");
+    writeFileSync(`${prefix}.statfs.status`, "0\n");
+    writeFileSync(`${prefix}.findmnt.status`, "0\n");
     writeFileSync(`${prefix}.quota.status`, "1\n");
     for (const name of ["statfs", "findmnt", "quota"]) writeFileSync(`${prefix}.${name}.stderr`, "");
     assert.throws(() => validateHostFilesystemEvidence(prefix, "host"), /quota/);
     writeFileSync(`${prefix}.quota.status`, "0\n");
+    writeFileSync(`${prefix}.statfs.status`, "1\n");
+    assert.throws(() => validateHostFilesystemEvidence(prefix, "host"), /statfs/);
+    writeFileSync(`${prefix}.statfs.status`, "0\n");
     writeFileSync(`${prefix}.findmnt.stderr`, "failure\n");
     assert.throws(() => validateHostFilesystemEvidence(prefix, "host"), /stderr/);
   } finally {

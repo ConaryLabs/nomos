@@ -13,7 +13,7 @@ script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)
 repo_root=$(cd "$script_dir/../.." && pwd -P)
 checker=$script_dir/r2-source-provenance.sh
 
-for command in awk cp find git ln mktemp sed sort tar; do
+for command in awk cp find git ln mktemp mv sed sort tar; do
   command -v "$command" >/dev/null 2>&1 || fail "required executable not found: $command"
 done
 
@@ -26,8 +26,8 @@ R2_PROVENANCE_ROOT=$repo_root "$checker" >/dev/null ||
 
 # The real repository check above owns closed-inventory coverage. Plant roots
 # need only the already-verified registered bytes and their producing receipts;
-# copying the 150+ MiB historical evaluation archive for every mutation makes
-# the checkout-wide 50 ms disk sampler measure accumulated disposable fixtures.
+# copying the 150+ MiB historical evaluation archive for every mutation would
+# make the persistent 50 ms filesystem sampler measure disposable fixtures.
 baseline_paths=$tmp_dir/baseline-paths
 {
   printf '%s\n' LICENSE docs/evaluation/R2_SOURCE_PROVENANCE.md
@@ -71,6 +71,11 @@ plant_symlink() {
   ln -s /dev/null "$1/crates/nomos-observed-scene/src/value.rs"
 }
 
+plant_ancestor_symlink() {
+  mv -- "$1/.github" "$1/.github-real"
+  ln -s .github-real "$1/.github"
+}
+
 plant_digest_drift() {
   printf '\n' >>"$1/crates/nomos-observed-scene/src/value.rs"
 }
@@ -105,6 +110,7 @@ plant_wrong_final_receipt() {
 expect_failure missing plant_missing
 expect_failure extra plant_extra
 expect_failure symlink plant_symlink
+expect_failure ancestor-symlink plant_ancestor_symlink
 expect_failure digest-drift plant_digest_drift
 expect_failure project-license-drift plant_project_license_drift
 expect_failure unknown-origin plant_unknown_origin
@@ -113,4 +119,4 @@ expect_failure dangling-receipt plant_dangling_receipt
 expect_failure wrong-final-receipt plant_wrong_final_receipt
 
 printf 'R2_SOURCE_PROVENANCE_PLANTS PASS\n'
-printf 'planted_failures 9\n'
+printf 'planted_failures 10\n'

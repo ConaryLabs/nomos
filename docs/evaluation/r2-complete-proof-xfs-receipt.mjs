@@ -10,7 +10,7 @@
 
 import { createHash } from "node:crypto";
 import { closeSync, existsSync, fchmodSync, fstatSync, lstatSync, mkdirSync, statSync,
-  openSync, readFileSync, readdirSync, readSync, realpathSync, writeFileSync,
+  openSync, readdirSync, readSync, realpathSync, writeFileSync,
   writeSync } from "node:fs";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -27,6 +27,12 @@ import {
   validateOperationsAndTools,
   validateXfsInfoEvidence,
 } from "./r2-complete-proof-xfs-evidence.mjs";
+import {
+  validateBoundHostMonitor as validateBoundHostMonitorCore,
+  validateCommandLedger,
+  validateHostMonitor as validateHostMonitorCore,
+  validateOuterPreflight,
+} from "./r2-complete-proof-xfs-ledger.mjs";
 
 export const SCHEMA = "nomos-r2-xfs-proof/1";
 export const IMAGE_BYTES = 8_589_934_592n;
@@ -57,7 +63,7 @@ const SECTION_FIELDS = Object.freeze({
   loop_device: ["path", "major_minor", "size_bytes", "attached"],
   filesystem: ["type", "uuid", "fragment_size", "capacity_limit_bytes", "capacity_ok", "mounted_statfs_path", "checkout_statfs_path", "close_statfs_path", "host_filesystem_before_path", "host_filesystem_after_path", "xfs_info_path"],
   mount: ["path", "source", "options", "propagation", "status", "mounted", "unmounted", "mount_absent"],
-  invocation: ["argv", "cwd", "uid", "gid", "user", "status", "inner_pass", "start_ns", "end_ns", "stdout_path", "stderr_path"],
+  invocation: ["argv", "cwd", "uid", "gid", "user", "status", "inner_pass", "start_ns", "end_ns", "stdout_path", "stderr_path", "command_ledger_path", "execution_ledger_path", "outer_preflight_path"],
   export: ["source", "destination", "status", "equal", "source_inventory_sha256", "export_inventory_sha256", "inventory_path", "inventory_digest_path", "inner_evidence_manifest_path"],
   teardown: ["unmounted", "loop_detached", "no_holder", "mount_absent", "image_unattached", "fuser_status", "umount_status", "detach_status", "supervisor_status", "host_monitor"],
 });
@@ -370,94 +376,66 @@ export const validateReservationDelta = ({ before, after, allocated }) => {
   return true;
 };
 
-const readLoopRows = (value) => {
-  let parsed = value;
-  if (typeof value === "string") {
-    try { parsed = JSON.parse(value); } catch (error) { fail(`losetup JSON is invalid: ${error.message}`); }
-  }
-  requireValue(parsed && Array.isArray(parsed.loopdevices), "losetup JSON has no loopdevices array");
-  return parsed.loopdevices;
+export const validateHostMonitor = (options = {}) => {
+  try { return validateHostMonitorCore(options); }
+  catch (error) { fail(error instanceof Error ? error.message : String(error)); }
 };
 
-const loopName = (row) => row.name ?? row.NAME;
-const loopBacking = (row) => row.backing_file ?? row["back-file"] ?? row.BACK_FILE ?? row["BACK-FILE"] ?? null;
+const validateBoundHostMonitor = (monitor, options = {}) => {
+  try { return validateBoundHostMonitorCore(monitor, options); }
+  catch (error) { fail(error instanceof Error ? error.message : String(error)); }
+};
 
-export const validateHostMonitor = ({
-  beforeMount = "",
-  afterMount = "",
-  beforeLoops,
-  afterLoops,
-  image,
-  mountpoint,
-  mountNamespaceBefore,
-  mountNamespaceAfter,
-  proofLoopDevice,
-} = {}) => {
-  requireValue(typeof beforeMount === "string" && beforeMount === "", "mountpoint was already mounted before provisioning");
-  requireValue(typeof afterMount === "string" && afterMount === "", "proof mount remains in host namespace");
-  requireValue(typeof mountpoint === "string" && mountpoint.startsWith("/"), "host monitor mountpoint is invalid");
-  const before = readLoopRows(beforeLoops);
-  const after = readLoopRows(afterLoops);
-  const canonicalImage = canonicalPath(image, "backing image");
-  requireValue(typeof proofLoopDevice === "string" && /^\/dev\/loop[0-9]+$/.test(proofLoopDevice), "host monitor proof loop device is missing");
-  for (const row of [...before, ...after]) requireValue(/^\/dev\/loop[0-9]+$/.test(loopName(row) ?? ""), "host monitor loop identity is malformed");
-  const beforeByName = new Map(before.map((row) => [loopName(row), loopBacking(row)]));
-  const newLoopDevices = after.filter((row) => {
-    const name = loopName(row);
-    return typeof name === "string" && (!beforeByName.has(name) || beforeByName.get(name) !== loopBacking(row));
-  }).map((row) => loopName(row));
-  requireValue(newLoopDevices.length === 0, `host monitor observed new or changed loop devices: ${newLoopDevices.join(",")}`);
-  const attached = (rows) => rows.filter((row) => {
-    const backing = loopBacking(row);
-    if (typeof backing !== "string") return false;
-    try { return realpathSync.native(backing) === canonicalImage; } catch { return resolve(backing) === canonicalImage; }
-  });
-  requireValue(attached(after).length === 0, "proof backing image remains attached in host namespace");
-  const namedProofLoop = after.filter((row) => loopName(row) === proofLoopDevice);
-  requireValue(namedProofLoop.length === 0, `proof loop device remains in host namespace: ${proofLoopDevice}`);
-  requireValue(typeof mountNamespaceBefore === "string" && typeof mountNamespaceAfter === "string" && mountNamespaceBefore === mountNamespaceAfter,
-    "host monitor changed mount namespace");
-  return Object.freeze({ clean: true, mountpoint, proof_loop_device: proofLoopDevice, new_loop_devices: [], mount_namespace: mountNamespaceAfter });
+export const bindHostMonitor = (facts, monitor) => {
+  const value = objectValue(facts, "facts");
+  const teardown = objectValue(requiredField(value, "teardown"), "teardown");
+  const checkedMonitor = objectValue(monitor, "host monitor");
+  return { ...value, host_monitor: checkedMonitor, teardown: { ...teardown, host_monitor: checkedMonitor } };
+};
+
+export const readRegularEvidence = (path, label) => {
+  const canonical = canonicalPath(path, label);
+  const before = lstatSync(canonical, { bigint: true });
+  if (!before.isFile() || before.isSymbolicLink()) fail(`${label} is not one regular file`);
+  const flags = 0 | 0x20000 /* O_NOFOLLOW on Linux */;
+  let descriptor;
+  try { descriptor = openSync(canonical, flags); }
+  catch (error) { fail(`cannot safely open ${label}: ${error.message}`); }
+  const hash = createHash("sha256");
+  const chunks = [];
+  const buffer = Buffer.allocUnsafe(1024 * 1024);
+  let bytes = 0n;
+  try {
+    const opened = fstatSync(descriptor, { bigint: true });
+    if (!opened.isFile() || opened.dev !== before.dev || opened.ino !== before.ino || opened.size !== before.size) {
+      fail(`${label} changed while opening`);
+    }
+    for (;;) {
+      const count = readSync(descriptor, buffer, 0, buffer.length, null);
+      if (count === 0) break;
+      const chunk = Buffer.from(buffer.subarray(0, count));
+      chunks.push(chunk);
+      hash.update(chunk);
+      bytes += BigInt(count);
+    }
+    const after = fstatSync(descriptor, { bigint: true });
+    if (!after.isFile() || after.dev !== opened.dev || after.ino !== opened.ino ||
+        after.size !== opened.size || bytes !== opened.size) fail(`${label} changed while reading`);
+  } finally {
+    closeSync(descriptor);
+  }
+  return Object.freeze({ path: canonical, bytes: bytes.toString(), sha256: hash.digest("hex"), content: Buffer.concat(chunks) });
 };
 
 export const digestRegular = (path, label) => {
-  const canonical = canonicalPath(path, label);
-  const info = lstatSync(canonical);
-  if (!info.isFile() || info.isSymbolicLink()) fail(`${label} is not one regular file`);
-  const digest = hashRegularFile(canonical, info);
-  return Object.freeze({ path: canonical, bytes: digest.bytes.toString(), sha256: digest.sha256 });
-};
-
-const readCommandLedger = (path) => {
-  const digest = digestRegular(path, "wrapper command ledger");
-  const text = readFileSync(digest.path, "utf8");
-  requireValue(text.length === 0 || text.endsWith("\n"), "wrapper command ledger is not newline terminated");
-  const records = text.split("\n").filter((line) => line.length > 0).map((line, index) => {
-    let record;
-    try { record = JSON.parse(line); } catch (error) { fail(`wrapper command ledger row ${index + 1} is invalid JSON: ${error.message}`); }
-    requireValue(record && typeof record === "object" && !Array.isArray(record), `wrapper command ledger row ${index + 1} is not an object`);
-    safeText(record.id, `wrapper command ledger row ${index + 1} id`);
-    decimal(record.started_ns, `wrapper command ledger row ${index + 1} start`);
-    decimal(record.ended_ns, `wrapper command ledger row ${index + 1} end`);
-    requireValue(typeof record.status === "number" && Number.isInteger(record.status), `wrapper command ledger row ${index + 1} status is not an integer`);
-    requireValue(Array.isArray(record.argv) && record.argv.length > 0, `wrapper command ledger row ${index + 1} argv is empty`);
-    record.argv.forEach((argument, argumentIndex) => safeText(argument, `wrapper command ledger row ${index + 1} argv ${argumentIndex}`));
-    requireValue(typeof record.cwd === "string" && isAbsolute(record.cwd) && resolve(record.cwd) === record.cwd && SAFE_TEXT.test(record.cwd),
-      `wrapper command ledger row ${index + 1} cwd is not a canonical absolute path`);
-    canonicalPath(record.stdout_path, `wrapper command ledger row ${index + 1} stdout`);
-    canonicalPath(record.stderr_path, `wrapper command ledger row ${index + 1} stderr`);
-    requireValue(typeof record.uid === "number" && Number.isInteger(record.uid) && record.uid >= 0,
-      `wrapper command ledger row ${index + 1} uid is invalid`);
-    requireValue(typeof record.gid === "number" && Number.isInteger(record.gid) && record.gid >= 0,
-      `wrapper command ledger row ${index + 1} gid is invalid`);
-    return record;
-  });
-  return Object.freeze({ ...digest, records: Object.freeze(records) });
+  const { content: _content, ...digest } = readRegularEvidence(path, label);
+  return Object.freeze(digest);
 };
 
 const readToolRegister = (path) => {
-  const digest = digestRegular(path, "wrapper tool register");
-  const text = readFileSync(digest.path, "utf8");
+  const evidence = readRegularEvidence(path, "wrapper tool register");
+  const { content, ...digest } = evidence;
+  const text = content.toString("utf8");
   const lines = text.split("\n");
   requireValue(lines[0] === "name\tpath\tversion_argv\tversion_status\tsha256\tversion", "wrapper tool register header differs");
   requireValue(text.endsWith("\n"), "wrapper tool register is not newline terminated");
@@ -567,8 +545,8 @@ export const executablePath = (value, label) => {
 };
 
 const jsonEvidence = (value, label) => {
-  const canonical = canonicalRegular(value, label);
-  try { return { path: canonical, value: JSON.parse(readFileSync(canonical, "utf8")) }; }
+  const evidence = readRegularEvidence(value, label);
+  try { return { path: evidence.path, value: JSON.parse(evidence.content.toString("utf8")), digest: Object.freeze({ path: evidence.path, bytes: evidence.bytes, sha256: evidence.sha256 }) }; }
   catch (error) { fail(`${label} is invalid JSON: ${error.message}`); }
 };
 
@@ -581,7 +559,8 @@ const requireOption = (options, option, label) => {
 };
 
 const imageStatFacts = (path) => {
-  const text = readFileSync(canonicalRegular(path, "image stat evidence"), "utf8");
+  const evidence = readRegularEvidence(path, "image stat evidence");
+  const text = evidence.content.toString("utf8");
   if (!text.endsWith("\n") || text.includes("\r")) fail("image stat evidence is not canonical");
   const rows = text.slice(0, -1).split("\n");
   const facts = {};
@@ -592,7 +571,7 @@ const imageStatFacts = (path) => {
   }
   const expected = ["logical_bytes", "st_blocks", "allocated_bytes", "block_size"];
   if (JSON.stringify(Object.keys(facts)) !== JSON.stringify(expected)) fail("image stat evidence fields differ");
-  return facts;
+  return { facts, digest: Object.freeze({ path: evidence.path, bytes: evidence.bytes, sha256: evidence.sha256 }) };
 };
 
 export const exactFields = (value, fields, label) => {
@@ -637,8 +616,9 @@ export const validatePassFacts = (facts, { statReader = (path) => statSync(path,
   }
   const filefragEvidence = validateFilefragEvidence(requiredField(image, "filefrag_path", "filefrag path"));
   const imageStatPath = requiredField(image, "stat_path", "image stat path");
-  const imageStatEvidence = digestRegular(imageStatPath, "image stat evidence");
-  const imageStat = imageStatFacts(imageStatPath);
+  const imageStatRead = imageStatFacts(imageStatPath);
+  const imageStatEvidence = imageStatRead.digest;
+  const imageStat = imageStatRead.facts;
   if (decimal(imageStat.logical_bytes, "image stat logical bytes") !== IMAGE_BYTES ||
       decimal(imageStat.allocated_bytes, "image stat allocated bytes") < IMAGE_BYTES ||
       decimal(imageStat.allocated_bytes, "image stat allocated bytes") !==
@@ -657,9 +637,11 @@ export const validatePassFacts = (facts, { statReader = (path) => statSync(path,
   const fragmentSize = decimal(requiredField(filesystem, "fragment_size"), "filesystem fragment size");
   if (fragmentSize === 0n || decimal(requiredField(filesystem, "capacity_limit_bytes")) !== IMAGE_BYTES || filesystem.capacity_ok !== true) fail("filesystem capacity binding is invalid");
   const statfsSnapshots = [];
+  const statfsEvidence = {};
   for (const field of ["mounted_statfs_path", "checkout_statfs_path", "close_statfs_path"]) {
     const parsed = jsonEvidence(requiredField(filesystem, field, `filesystem ${field}`), `filesystem ${field}`);
     statfsSnapshots.push(validateStatfsSnapshot(parsed.value, { fragmentSize, capacityLimitBytes: IMAGE_BYTES }));
+    statfsEvidence[field] = parsed.digest;
   }
   for (const field of ["f_type", "f_bsize", "f_blocks", "f_frsize"]) {
     if (new Set(statfsSnapshots.map((snapshot) => snapshot[field])).size !== 1) fail(`filesystem ${field} drifted across checkpoints`);
@@ -704,7 +686,7 @@ export const validatePassFacts = (facts, { statReader = (path) => statSync(path,
   const inventoryDocument = jsonEvidence(requiredField(exportSection, "inventory_path", "export inventory path"), "export inventory").value;
   if (inventoryDocument.source !== exportSource || inventoryDocument.destination !== exportDestination || inventoryDocument.source_inventory_sha256 !== destinationInventory.sha256 ||
       inventoryDocument.export_inventory_sha256 !== destinationInventory.sha256 || inventoryDocument.equal !== true || inventoryDocument.rows !== destinationInventory.rows.length) fail("export inventory document differs");
-  const digestText = readFileSync(canonicalRegular(requiredField(exportSection, "inventory_digest_path", "export inventory digest path"), "export inventory digest"), "utf8");
+  const digestText = readRegularEvidence(requiredField(exportSection, "inventory_digest_path", "export inventory digest path"), "export inventory digest").content.toString("utf8");
   if (digestText !== `source\t${destinationInventory.sha256}\nexport\t${destinationInventory.sha256}\n`) fail("export inventory digest evidence differs");
   const manifestPath = requiredField(exportSection, "inner_evidence_manifest_path", "inner evidence manifest path");
   const manifest = canonicalRegular(manifestPath, "inner evidence manifest");
@@ -733,25 +715,53 @@ export const validatePassFacts = (facts, { statReader = (path) => statSync(path,
     if (statusCode(requiredField(teardown, field, `teardown ${field}`), `teardown ${field}`) !== expected) fail(`teardown ${field} is invalid`);
   }
   const nestedMonitor = objectValue(requiredField(teardown, "host_monitor", "teardown host monitor"), "teardown host monitor");
-  exactFields(nestedMonitor, ["clean", "mountpoint", "proof_loop_device", "new_loop_devices", "mount_namespace"], "teardown host monitor");
+  exactFields(nestedMonitor, ["clean", "mountpoint", "proof_loop_device", "new_loop_devices", "mount_namespace", "evidence"], "teardown host monitor");
   const monitor = objectValue(value.host_monitor ?? nestedMonitor, "host monitor");
-  exactFields(monitor, ["clean", "mountpoint", "proof_loop_device", "new_loop_devices", "mount_namespace"], "host monitor");
+  exactFields(monitor, ["clean", "mountpoint", "proof_loop_device", "new_loop_devices", "mount_namespace", "evidence"], "host monitor");
   if (JSON.stringify(nestedMonitor) !== JSON.stringify(monitor)) fail("host monitor copies differ");
-  if (monitor.clean !== true || monitor.mountpoint !== mountPath || monitor.proof_loop_device !== loopPath ||
-      !Array.isArray(monitor.new_loop_devices) || monitor.new_loop_devices.length !== 0 || typeof monitor.mount_namespace !== "string" || monitor.mount_namespace.length === 0) fail("host monitor is not clean and bound");
+  const monitorEvidencePaths = {
+    before_mount: join(work, "host-before-mount.txt"),
+    after_mount: join(work, "host-after-mount.txt"),
+    before_mount_stderr: join(work, "host-before-mount.stderr"),
+    after_mount_stderr: join(work, "host-after-mount.stderr"),
+    before_mount_status: join(work, "host-before-mount.status"),
+    after_mount_status: join(work, "host-after-mount.status"),
+    before_loops: join(work, "host-before-loops.json"),
+    after_loops: join(work, "host-after-loops.json"),
+    before_loops_status: join(work, "host-before-loops.status"),
+    after_loops_status: join(work, "host-after-loops.status"),
+    before_loops_stderr: join(work, "host-before-loops.stderr"),
+    after_loops_stderr: join(work, "host-after-loops.stderr"),
+    mount_namespace_before: join(work, "host-before-mnt-ns"),
+    mount_namespace_after: join(work, "host-after-mnt-ns"),
+  };
+  validateBoundHostMonitor(monitor, { image: imagePath, mountpoint: mountPath, proofLoopDevice: loopPath,
+    expectedEvidencePaths: monitorEvidencePaths });
   const commandEvidence = validateOperationsAndTools(value, {
     imagePath, work, mountPath, checkout, output, loopPath, exportDestination,
     inventoryPath: exportSection.inventory_path,
   });
+  const commandLedger = validateCommandLedger(requiredField(invocation, "command_ledger_path", "wrapper command ledger path"), {
+    work, checkout, source: candidateSource, imagePath, loopPath, mountPath, proofScript, output,
+    receiptHelper: value.operations.export.argv[1], inventoryPath: exportSection.inventory_path,
+    uuid: filesystem.uuid, fragmentSize: filesystem.fragment_size, majorMinor: loop.major_minor,
+    hostQuotaTarget: hostBefore.mount.fields[0], callerUid: invocation.uid, callerGid: invocation.gid,
+    invocationStartNs: startNs.toString(), invocationEndNs: endNs.toString(), operations: value.operations,
+    executionPath: requiredField(invocation, "execution_ledger_path", "wrapper execution ledger path"),
+  });
+  const preflight = validateOuterPreflight(
+    requiredField(invocation, "outer_preflight_path", "outer preflight path"), { work });
   return Object.freeze({
     image: Object.freeze({ stat: imageStatEvidence, filefrag: filefragEvidence, xfs_info: xfsInfoEvidence }),
     filesystem: Object.freeze({
-      statfs: Object.freeze(Object.fromEntries(["mounted_statfs_path", "checkout_statfs_path", "close_statfs_path"].map((field) => [field, digestRegular(value.filesystem[field], `filesystem ${field}`)]))),
+      statfs: Object.freeze(statfsEvidence),
       host: Object.freeze(hostFilesystem),
     }),
     manifest: manifestEvidence,
     operations: commandEvidence.operations,
     tool_register: commandEvidence.tool_register,
+    command_ledger: commandLedger,
+    preflight,
   });
 };
 
@@ -777,6 +787,8 @@ export const assembleReceipt = (facts = {}, options = {}) => {
     stderr: invocationSource.stderr_path ? digestRegular(invocationSource.stderr_path, "proof stderr") : null,
     operations: passEvidence?.operations ?? value.operations ?? null,
     tool_register: passEvidence?.tool_register ?? value.tool_register ?? null,
+    command_ledger: passEvidence?.command_ledger ?? null,
+    preflight: passEvidence?.preflight ?? null,
   };
   let exportSection = {
     source: exportSource.source ?? null,
@@ -833,9 +845,11 @@ const requiredArg = (options, key) => {
 };
 
 const readJson = (path, label) => {
-  const bytes = readFileSync(canonicalPath(path, label), "utf8");
+  const bytes = readRegularEvidence(path, label).content.toString("utf8");
   try { return JSON.parse(bytes); } catch (error) { fail(`${label} is invalid JSON: ${error.message}`); }
 };
+
+const readEvidenceText = (path, label) => readRegularEvidence(path, label).content.toString("utf8");
 
 export const runCli = (argv = process.argv.slice(2)) => {
   const command = argv.shift();
@@ -881,13 +895,19 @@ export const runCli = (argv = process.argv.slice(2)) => {
     }
     if (command === "du-check") {
       const options = parseArgs(argv);
-      const result = parseDuOutput(readFileSync(requiredArg(options, "stdout"), "utf8"), requiredArg(options, "path"), readFileSync(requiredArg(options, "stderr"), "utf8"), Number(requiredArg(options, "status")));
+      const result = parseDuOutput(
+        readEvidenceText(requiredArg(options, "stdout"), "du stdout"), requiredArg(options, "path"),
+        readEvidenceText(requiredArg(options, "stderr"), "du stderr"), Number(requiredArg(options, "status")),
+      );
       process.stdout.write(`${JSON.stringify({ ...result, mib: result.mib.toString() })}\n`);
       return 0;
     }
     if (command === "du-validate") {
       const options = parseArgs(argv);
-      const du = parseDuOutput(readFileSync(requiredArg(options, "stdout"), "utf8"), requiredArg(options, "path"), readFileSync(requiredArg(options, "stderr"), "utf8"), Number(requiredArg(options, "status")));
+      const du = parseDuOutput(
+        readEvidenceText(requiredArg(options, "stdout"), "du stdout"), requiredArg(options, "path"),
+        readEvidenceText(requiredArg(options, "stderr"), "du stderr"), Number(requiredArg(options, "status")),
+      );
       const snapshot = readJson(requiredArg(options, "statfs"), "statfs snapshot");
       const accounting = accountingFromStatfs(snapshot, { fragmentSize: requiredArg(options, "fragment_size") });
       validateDuAgainstStatfs(du, accounting);
@@ -896,8 +916,11 @@ export const runCli = (argv = process.argv.slice(2)) => {
     }
     if (command === "receipt") {
       const options = parseArgs(argv);
-      const facts = readJson(requiredArg(options, "facts"), "facts");
-      if (options.host_monitor !== undefined) facts.host_monitor = readJson(options.host_monitor, "host monitor");
+      let facts = readJson(requiredArg(options, "facts"), "facts");
+      if (options.host_monitor !== undefined) {
+        const monitor = readJson(options.host_monitor, "host monitor");
+        facts = bindHostMonitor(facts, monitor);
+      }
       const receipt = assembleReceipt(facts);
       const output = requiredArg(options, "output");
       writeFileSync(output, `${JSON.stringify(receipt, null, 2)}\n`, { flag: "wx" });
@@ -906,15 +929,32 @@ export const runCli = (argv = process.argv.slice(2)) => {
     }
     if (command === "host-check") {
       const options = parseArgs(argv);
+      const beforeMount = requiredArg(options, "before_mount");
+      const afterMount = requiredArg(options, "after_mount");
+      const beforeMountStderr = requiredArg(options, "before_mount_stderr");
+      const afterMountStderr = requiredArg(options, "after_mount_stderr");
+      const beforeMountStatus = requiredArg(options, "before_mount_status");
+      const afterMountStatus = requiredArg(options, "after_mount_status");
+      const beforeLoops = requiredArg(options, "before_loops");
+      const afterLoops = requiredArg(options, "after_loops");
+      const beforeLoopsStatus = requiredArg(options, "before_loops_status");
+      const afterLoopsStatus = requiredArg(options, "after_loops_status");
+      const beforeLoopsStderr = requiredArg(options, "before_loops_stderr");
+      const afterLoopsStderr = requiredArg(options, "after_loops_stderr");
+      const mountNamespaceBefore = requiredArg(options, "mount_ns_before");
+      const mountNamespaceAfter = requiredArg(options, "mount_ns_after");
       const result = validateHostMonitor({
-        beforeMount: readFileSync(requiredArg(options, "before_mount"), "utf8"),
-        afterMount: readFileSync(requiredArg(options, "after_mount"), "utf8"),
-        beforeLoops: readJson(requiredArg(options, "before_loops"), "before loops"),
-        afterLoops: readJson(requiredArg(options, "after_loops"), "after loops"),
+        evidencePaths: {
+          before_mount: beforeMount, after_mount: afterMount,
+          before_mount_stderr: beforeMountStderr, after_mount_stderr: afterMountStderr,
+          before_mount_status: beforeMountStatus, after_mount_status: afterMountStatus,
+          before_loops: beforeLoops, after_loops: afterLoops,
+          before_loops_status: beforeLoopsStatus, after_loops_status: afterLoopsStatus,
+          before_loops_stderr: beforeLoopsStderr, after_loops_stderr: afterLoopsStderr,
+          mount_namespace_before: mountNamespaceBefore, mount_namespace_after: mountNamespaceAfter,
+        },
         image: requiredArg(options, "image"),
         mountpoint: requiredArg(options, "mountpoint"),
-        mountNamespaceBefore: readFileSync(requiredArg(options, "mount_ns_before"), "utf8").trim(),
-        mountNamespaceAfter: readFileSync(requiredArg(options, "mount_ns_after"), "utf8").trim(),
         proofLoopDevice: options.proof_loop_device,
       });
       process.stdout.write(`${JSON.stringify(result)}\n`);

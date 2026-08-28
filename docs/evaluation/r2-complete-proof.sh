@@ -426,9 +426,10 @@ setup_du_json=$(node "$filesystem_evidence_helper" du-check \
   fail 'setup du crosscheck or immediate statfs snapshot failed'
 printf '%s\n' "$setup_du_json" >"$filesystem_evidence_dir/du-setup.json"
 
-commands_ledger=$evidence_dir/commands.tsv
+commands_ledger=$evidence_dir/commands.tsv; command_argv_ledger=$evidence_dir/commands.argv.ndjson
 printf 'ordinal\tcommand_id\tstarted_ns\tended_ns\texit_code\tstdout_path\tstderr_path\tcommand\n' \
   >"$commands_ledger"
+r2_init_command_argv_ledger "$command_argv_ledger" || fail 'command argv ledger is not fresh'
 next_ordinal=1
 
 run_step() {
@@ -450,6 +451,8 @@ run_step() {
   status=$?
   set -e
   ended=$(date +%s%N)
+  r2_record_command_argv "$command_argv_ledger" "$next_ordinal" "$command_id" "$@" ||
+    fail "command $number argv record is invalid"
   printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
     "$next_ordinal" "$command_id" "$started" "$ended" "$status" \
     "$stdout_relative" "$stderr_relative" "$display" >>"$commands_ledger"
@@ -485,15 +488,16 @@ stop_sampler() {
     else
       result=$?
     fi
-    sampler_running=0
+    if [[ $result -eq 0 ]]; then sampler_running=0; fi
     return "$result"
   fi
   return "$incoming"
 }
 cleanup_sampler() {
-  local incoming=$? result
-  trap - EXIT INT TERM
-  if stop_sampler "$incoming"; then result=0; else result=$?; fi
+  local incoming=$? result attempt; trap - EXIT INT TERM
+  result=$incoming; for ((attempt = 0; attempt < 2 && sampler_running == 1; attempt += 1)); do
+    if stop_sampler "$result"; then result=0; else result=$?; fi
+  done
   exit "$result"
 }
 trap cleanup_sampler EXIT
@@ -501,8 +505,7 @@ trap 'exit 130' INT
 trap 'exit 143' TERM
 set +m
 sampler_launch_signal=0
-# Defer INT/TERM only across sampler launch and identity capture. This ensures
-# EXIT cleanup always has the child PID/start identity and knows to stop it.
+# Defer INT/TERM across launch/identity capture so EXIT cleanup has the child identity.
 trap 'sampler_launch_signal=130' INT
 trap 'sampler_launch_signal=143' TERM
 # Vacate the sampler's physical core before launch. The child explicitly enters
@@ -912,7 +915,7 @@ shutdown_du_json=$(node "$filesystem_evidence_helper" du-check \
 a_before_bytes=$(printf '%s\n' "$shutdown_du_json" | jq -er \
   '.snapshot.used_bytes | select(test("^(0|[1-9][0-9]*)$"))') ||
   fail 'shutdown statfs A_before is missing or malformed'
-/usr/bin/unlink "$reservation"
+/usr/bin/unlink "$reservation"; [[ ! -e $reservation && ! -L $reservation ]] || fail 'finalization reservation was recreated'
 /usr/bin/sync -f "$evidence_dir"
 release_json=$(node "$filesystem_evidence_helper" release-check \
   "${filesystem_cli_args[@]}" \
