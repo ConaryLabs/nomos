@@ -673,6 +673,36 @@ r2_disk_deadline_ns() {
   R2_DISK_DEADLINE_NS=$deadline
 }
 
+r2_disk_interleaved_deadline_ns() {
+  [[ $# -eq 3 && $1 =~ ^(0|[1-9][0-9]*)$ &&
+    $2 =~ ^(0|[1-9][0-9]*)$ && $3 =~ ^[1-9][0-9]*$ ]] || return 2
+  local origin=$1 ordinal=$2 period=$3 cycle phase half_period deadline value
+  local maximum=9223372036854775807
+  for value in "$ordinal" "$period"; do
+    # shellcheck disable=SC2071 # Equal-length canonical decimals need lexical comparison before arithmetic.
+    if [[ ${#value} -gt ${#maximum} ||
+        ( ${#value} -eq ${#maximum} && $value > "$maximum" ) ]]; then
+      return 2
+    fi
+  done
+  [[ $((period % 2)) -eq 0 ]] || return 2
+  cycle=$((ordinal / 2))
+  phase=$((ordinal % 2))
+  half_period=$((period / 2))
+
+  # Even ordinals are one fixed-origin 50 ms phase and odd ordinals are a
+  # second fixed-origin 50 ms phase offset by 25 ms. The union samples more
+  # frequently without changing the nominal interval recorded in evidence.
+  r2_disk_deadline_ns "$origin" "$cycle" "$period" || return
+  deadline=$R2_DISK_DEADLINE_NS
+  if [[ $phase -eq 1 ]]; then
+    [[ $deadline -le $((maximum - half_period)) ]] || return 2
+    deadline=$((deadline + half_period))
+  fi
+  # shellcheck disable=SC2034 # Returned global avoids a command-substitution fork per sample.
+  R2_DISK_DEADLINE_NS=$deadline
+}
+
 r2_sample_checkout_disk() {
   [[ $# -eq 6 && -d $1 && -f $2 && ! -L $2 && -n $3 &&
     -d $4 && ! -L $4 && $5 =~ ^[0-9]+$ && $6 =~ ^[1-9][0-9]*$ ]] || {
@@ -694,9 +724,10 @@ r2_sample_checkout_disk() {
   local -a sample_pids=()
   local -A sample_starts=()
 
-  # One controller follows the contract's absolute nominal schedule. Deadlines
-  # are derived from the fixed origin, never from completion of the prior walk.
-  r2_disk_deadline_ns "$sampler_started" 0 "$period_ns" || return
+  # One controller follows two interleaved absolute nominal-period phases.
+  # Deadlines are derived from the fixed origin, never from completion of the
+  # prior walk.
+  r2_disk_interleaved_deadline_ns "$sampler_started" 0 "$period_ns" || return
 
   : >"$raw_samples"
 
@@ -788,7 +819,8 @@ r2_sample_checkout_disk() {
       [[ $status -eq 0 ]] || break
       continue
     fi
-    if ! r2_disk_deadline_ns "$sampler_started" "$ordinal" "$period_ns"; then
+    if ! r2_disk_interleaved_deadline_ns \
+      "$sampler_started" "$ordinal" "$period_ns"; then
       status=1
       break
     fi

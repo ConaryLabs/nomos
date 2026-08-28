@@ -31,6 +31,23 @@ if r2_disk_deadline_ns 1000000000 1 0 ||
   fail 'a zero, out-of-range, or overflowing nominal period was accepted'
 fi
 
+interleaved_deadlines=()
+for ordinal in 0 1 2 3 4 5; do
+  r2_disk_interleaved_deadline_ns 1000000000 "$ordinal" 50000000
+  interleaved_deadlines+=("$R2_DISK_DEADLINE_NS")
+done
+[[ ${interleaved_deadlines[*]} == \
+  '1000000000 1025000000 1050000000 1075000000 1100000000 1125000000' &&
+  $((interleaved_deadlines[2] - interleaved_deadlines[0])) -eq 50000000 &&
+  $((interleaved_deadlines[3] - interleaved_deadlines[1])) -eq 50000000 ]] ||
+  fail 'interleaved absolute 50 ms phase deadlines differ'
+if r2_disk_interleaved_deadline_ns 1000000000 1 50000001 ||
+  r2_disk_interleaved_deadline_ns 1000000000 1 0 ||
+  r2_disk_interleaved_deadline_ns 9223372036854775800 1 100 ||
+  r2_disk_interleaved_deadline_ns 0 9223372036854775807 50000000; then
+  fail 'an odd, zero, out-of-range, or overflowing interleaved period was accepted'
+fi
+
 mkdir -p "$repo_root/target"
 temporary=$(mktemp -d "$repo_root/target/r2-disk-terminal-order.XXXXXX")
 
@@ -80,8 +97,9 @@ write_sibling_group 0 0,6
 write_sibling_group 1 1,7
 
 # Exercise the real controller against a deterministic clock. Each worker adds
-# 7 ms of planted bookkeeping before acknowledging its launch. Absolute
-# deadlines therefore remain +0/+50/+100/+150 ms; relative sleeps would drift.
+# 7 ms of planted bookkeeping before acknowledging its launch. The two
+# absolute 50 ms phases therefore remain +0/+25/+50/+75 ms; relative sleeps
+# would drift.
 absolute_samples=$temporary/absolute-samples.tsv
 absolute_stop=$temporary/absolute-stop
 absolute_state=$temporary/absolute-state
@@ -123,10 +141,10 @@ mkdir "$absolute_state"
     "$absolute_state" "$absolute_origin" 50000000
 ) || fail 'deterministic absolute-schedule controller trace was refused'
 [[ $(sed -n '1,4p' "$absolute_trace") == \
-  $'0\tscheduled\t1000000000\n1\tscheduled\t1050000000\n2\tscheduled\t1100000000\n3\tscheduled\t1150000000' &&
+  $'0\tscheduled\t1000000000\n1\tscheduled\t1025000000\n2\tscheduled\t1050000000\n3\tscheduled\t1075000000' &&
   $(awk -F '\t' 'END { print $2 }' "$absolute_trace") == terminal &&
-  $(<"$absolute_stop") == 1150000000 && ! -e $absolute_state ]] ||
-  fail 'controller launches are not on the absolute 50 ms schedule'
+  $(<"$absolute_stop") == 1075000000 && ! -e $absolute_state ]] ||
+  fail 'controller launches are not on the interleaved absolute 50 ms phases'
 
 samples=$temporary/samples.tsv
 stop=$temporary/stop
@@ -137,17 +155,18 @@ mkdir "$state"
 
 # Ordinal 1 acknowledges its launch immediately, then waits for ordinal 3's
 # stop marker before retaining its planted successful-retry timestamp. Fixed
-# clock values keep the exact 50 ms schedule away from the 100 ms gap boundary.
-# The terminal measurement must wait for that outstanding scheduled row.
+# clock values keep the two exact 50 ms phases away from the 100 ms gap
+# boundary. The terminal measurement must wait for that outstanding scheduled
+# row.
 (
   r2_record_checkout_mib() {
     [[ $# -eq 6 ]] || return 2
     local raw=$2 sampler_origin=$3 ordinal=$4 kind=$5 signal=$6 started
-    started=$((sampler_origin + ordinal * 50000000))
+    started=$((sampler_origin + ordinal * 25000000))
     if [[ $ordinal -eq 1 ]]; then
       printf '%s\t%s\n' "$ordinal" "$started" >"$signal"
       while [[ ! -e $stop ]]; do sleep 0.001; done
-      started=$((sampler_origin + 175000000))
+      started=$((sampler_origin + 87500000))
     fi
     printf '%s\t%s\t%s\t17\t%s\n' \
       "$ordinal" "$started" "$((started - sampler_origin))" "$kind" >>"$raw"
@@ -165,16 +184,22 @@ mkdir "$state"
 stop_requested=$(<"$stop")
 [[ $stop_requested =~ ^(0|[1-9][0-9]*)$ ]] || fail 'stop marker is not canonical'
 ordinal_three_started=$(awk -F '\t' '$1 == 3 { print $2 }' "$samples")
-[[ $stop_requested == "$ordinal_three_started" ]] ||
+[[ $stop_requested == "$ordinal_three_started" &&
+  $stop_requested -eq $((origin + 75000000)) ]] ||
   fail 'stop marker differs from ordinal 3'
-awk -F '\t' -v stop="$stop_requested" '
+awk -F '\t' -v origin="$origin" -v stop="$stop_requested" '
+  NR > 1 {
+    if (previous != "" && ($2 <= previous || $2 - previous > 100000000)) bad = 1
+    previous = $2
+  }
   NR > 1 && $1 == 1 { delayed = $3 }
   NR > 1 && $1 == 3 { stopped = $3 }
   NR > 1 && $5 == "scheduled" && $2 > scheduled_max { scheduled_max = $2 }
   NR > 1 && $5 == "terminal" { terminal_count += 1; terminal = $2 }
   END {
-    exit !(delayed > stopped && terminal_count == 1 &&
-      terminal > scheduled_max && terminal >= stop)
+    exit !(bad == 0 && delayed == 87500000 && stopped == 75000000 &&
+      terminal_count == 1 && terminal == origin + 100000000 &&
+      delayed > stopped && terminal > scheduled_max && terminal >= stop)
   }
 ' "$samples" || fail 'terminal row is not uniquely last and after the stop marker'
 

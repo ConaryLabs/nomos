@@ -83,10 +83,12 @@ shares a physical core with the other.
 Workers retain canonical integer-nanosecond start times taken immediately
 before each successful walk, and the controller publishes them in
 chronological order while independently requiring unique contiguous launch
-ordinals. One controller derives every deadline from the fixed origin as
-`origin + ordinal * 50 ms`; it never turns the schedule into a relative delay or
-a hidden 25 ms phase. The unchanged maximum consecutive retained-start gap is
-100 ms.
+ordinals. One controller derives two explicit absolute 50 ms phases from the
+fixed origin: even ordinals are `origin + n * 50 ms`, and odd ordinals are
+`origin + 25 ms + n * 50 ms`. It never turns either phase into a relative
+delay. Their union samples every 25 ms, as the contract expressly permits,
+while the recorded nominal interval remains 50 ms and the unchanged maximum
+consecutive retained-start gap remains 100 ms.
 After the stop marker, the controller waits for all scheduled walks and only
 then launches the distinct final row, so its retained start is chronologically
 last as well as after the canonical timestamp in `host/disk-sampler.stop`.
@@ -204,6 +206,32 @@ the proof output's `host/tmp`, where the closed evidence manifest binds it,
 rather than recursively deleted while the observer is live. No accepted
 source, checker assertion, `du -sm` method, successful-attempt
 timestamp, process-closure assertion, or budget ceiling changes.
+
+Candidate `42b92ada6865e7998c4a8bf8e37781760164f693` (tree
+`a1813b1df3f46d45abc2023efef7d868f9cab1af`) then ran in a new fresh,
+detached, standalone author clone. All 33 workload commands exited zero. The
+compile-latency median numerator was `81521596/2` ns and the p95 was
+`46609834` ns, both below their unchanged ceilings. The physical-core split
+therefore removed the prior compile interference, and the schema plants no
+longer produced a cleanup spike. Peak checkout disk was 1,356 MiB. The
+observer nevertheless rejected eight retained-start gaps over 100,000,000 ns;
+the maximum was 103,188,736 ns. Chronological rows show that successful retry
+timestamps reordered around otherwise present controller launches. No final
+receipt or evidence manifest was emitted. The preserved failure report is
+`/data/dev/src/nomos-r2-author-42b92ad.qulGiw/author-failure-report.md`,
+SHA-256
+`fd116ea091e0178c88180c4266c37f63224a53a96aad84dea74c3c83047de8b6`.
+It binds the external streams, complete command ledger, raw and sorted sampler
+rows, environment, and compile outputs. This run remains red.
+
+The selected follow-up repair changes no contract, evidence timestamp, disk
+command, concurrency bound, or ceiling. It runs the sampler's one controller
+as two fixed-origin 50 ms phases offset by 25 ms, which decision 0024
+explicitly permits as more-frequent sampling. Deterministic plants bind both
+phase sequences, fixed-origin rather than relative scheduling, a delayed
+successful retry, chronological publication, the exact 100 ms gap boundary,
+terminal ordering, and fail-closed overload behaviour. Physical-core role
+isolation and the sparse retained schema plants remain unchanged.
 
 On 2026-08-28 the owner authorized an implementation repair, not a contract or
 ceiling change. The repair preserves the failed rerun as red evidence, does not

@@ -722,8 +722,6 @@ async_terminal_count=0
 async_terminal_started=0
 async_terminal_seen=0
 async_scheduled_count=0
-async_scheduled_previous=0
-async_scheduled_minimum_gap=0
 {
   IFS= read -r async_header
   [[ $async_header == $'ordinal\tsample_start_ns\telapsed_ns\tmebibytes\tkind' ]] ||
@@ -744,14 +742,6 @@ async_scheduled_minimum_gap=0
     fi
     case $async_kind in
       scheduled)
-        if [[ $async_scheduled_count -gt 0 ]]; then
-          async_scheduled_gap=$((async_sample_started - async_scheduled_previous))
-          if [[ $async_scheduled_minimum_gap -eq 0 ||
-              $async_scheduled_gap -lt $async_scheduled_minimum_gap ]]; then
-            async_scheduled_minimum_gap=$async_scheduled_gap
-          fi
-        fi
-        async_scheduled_previous=$async_sample_started
         async_scheduled_count=$((async_scheduled_count + 1))
         ;;
       terminal)
@@ -766,9 +756,8 @@ async_scheduled_minimum_gap=0
   done
 } <"$async_samples"
 [[ $async_count -ge 5 && $async_scheduled_count -ge 4 &&
-  $async_scheduled_minimum_gap -ge 40000000 && $async_gap_ns -le 100000000 &&
-  $async_terminal_count -eq 1 && $async_terminal_started -ge $async_stop_started &&
-  ! -e $async_parts ]] ||
+  $async_gap_ns -le 100000000 && $async_terminal_count -eq 1 &&
+  $async_terminal_started -ge $async_stop_started && ! -e $async_parts ]] ||
   fail 'asynchronous sampler did not preserve exact cadence/session/terminal evidence'
 
 # Publication is chronological even when workers start out of launch order;
