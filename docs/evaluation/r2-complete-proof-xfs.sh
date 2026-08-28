@@ -213,12 +213,14 @@ supervisor() {
   # privileged lookup may consult the caller-controlled PATH.
   export PATH=$SYSTEM_PATH
   [[ $(/usr/bin/id -u) == 0 ]] || fail 'private supervisor is root-only'
-  [[ $# -eq 11 ]] || fail 'private supervisor argument shape is invalid'
+  [[ $# -eq 13 ]] || fail 'private supervisor argument shape is invalid'
   # Bash runs EXIT after unwinding function locals. These values intentionally
   # live for the private supervisor process so its EXIT trap can always detach
   # the exact loop and emit truthful failure facts after any intermediate exit.
-  source=$1 work=$2 expected_head=$3 expected_tree=$4 caller_uid=$5 caller_gid=$6
-  caller_user=$7 caller_path=$8 rustup_home=$9 caller_browser=${10} work_identity=${11}
+  source=$1 source_handoff=$2 source_identity=$3 work=$4 expected_head=$5 expected_tree=$6
+  caller_uid=$7 caller_gid=$8 caller_user=$9 caller_path=${10} rustup_home=${11}
+  caller_browser=${12} work_identity=${13}
+  source_fd='' source_fd_path=''
   work_real=$work
   work_fd=''
   work_fd_path=''
@@ -296,7 +298,7 @@ supervisor() {
     # but only after the descriptor still resolves to the original inode.  A
     # rename/replacement therefore makes facts fail closed instead of binding
     # a root operation to an attacker-selected path.
-    r2_work_path_identity_ok || return 1
+    r2_work_path_identity_ok && r2_source_path_identity_ok || return 1
     local display_work display_fs display_checkout display_output display_image
     local display_image_stat display_image_filefrag display_image_fallocate_stdout display_image_fallocate_stderr
     local display_image_sync_stdout display_image_sync_stderr display_xfs_info display_setup_statfs
@@ -470,11 +472,11 @@ supervisor() {
   trap 'exit 143' TERM
   trap supervisor_cleanup EXIT
 
-  # This is the only privileged operation before work pinning and does not
-  # touch caller-supplied paths.  Keep every privileged lookup on a fixed
-  # system path.  The caller's PATH is passed only inside run_as_user after the
-  # identity/capability drop.
+  # Mount propagation is the only host mutation before work pinning. Root
+  # reopens the read-only source handoff next; every executable lookup stays on
+  # the fixed system path until run_as_user drops identity and capabilities.
   /usr/bin/mount --make-rprivate /
+  r2_pin_source_directory "$source_handoff"
   r2_pin_work_directory
   r2_display_work_path "$work" >/dev/null || fail 'work directory changed immediately after pinning'
   r2_display_work_path "$fs" >/dev/null || fail 'work directory changed before filesystem setup'
@@ -499,10 +501,11 @@ supervisor() {
   record_wrapper_user_tool "$tool_register" rustc
   record_wrapper_tool_json "$tool_register" "$tool_register_json"
   tool_register_json_value=$(<"$tool_register_json")
-  [[ $(run_as_user /usr/bin/git -C "$source" rev-parse --verify 'HEAD^{commit}') == "$expected_head" &&
-     $(run_as_user /usr/bin/git -C "$source" rev-parse --verify 'HEAD^{tree}') == "$expected_tree" ]] || fail 'source identity changed before provisioning'
-  if run_as_user /usr/bin/git -C "$source" symbolic-ref -q HEAD >/dev/null 2>&1; then fail 'source HEAD became attached'; fi
-  [[ -z $(run_as_user /usr/bin/git -C "$source" status --porcelain=v1 --untracked-files=all) ]] || fail 'source became dirty'
+  [[ $(run_as_user /usr/bin/git -C "$source_fd_path" rev-parse --verify 'HEAD^{commit}') == "$expected_head" &&
+     $(run_as_user /usr/bin/git -C "$source_fd_path" rev-parse --verify 'HEAD^{tree}') == "$expected_tree" ]] || fail 'source identity changed before provisioning'
+  if run_as_user /usr/bin/git -C "$source_fd_path" symbolic-ref -q HEAD >/dev/null 2>&1; then fail 'source HEAD became attached'; fi
+  [[ -z $(run_as_user /usr/bin/git -C "$source_fd_path" status --porcelain=v1 --untracked-files=all) ]] || fail 'source became dirty'
+  r2_source_path_identity_ok || fail 'source path changed during candidate validation'
   source_status=0
 
   [[ ! -e $image && ! -L $image ]] || fail 'backing image path is not fresh'
@@ -603,10 +606,11 @@ supervisor() {
   # identity.  The environment is allowlisted and Git hooks/config filters
   # are disabled before any checkout material is materialized.
   [[ ! -e $checkout && ! -L $checkout ]] || fail 'checkout destination is not fresh'
+  r2_source_path_identity_ok || fail 'source path changed before caller clone'
   r2_display_work_path "$checkout" >/dev/null || fail 'work directory changed before caller clone'
   run_capture "$work/clone.stdout" "$work/clone.stderr" run_as_user /usr/bin/git \
     -c protocol.file.allow=always clone --no-local --no-hardlinks --no-checkout \
-    --config core.hooksPath=/dev/null "$source" "$checkout"
+    --config core.hooksPath=/dev/null "$source_fd_path" "$checkout"
   clone_status=$RUN_STATUS
   [[ $clone_status -eq 0 ]] || fail 'standalone clone failed'
   [[ -d $checkout/.git && ! -L $checkout/.git ]] || fail 'clone did not produce local Git metadata'
@@ -886,14 +890,16 @@ r2_capture_host_filesystem "$work" "$work/host-monitor-filesystem-before"
 launcher_pid=$BASHPID
 pinned_supervisor_path=/proc/$launcher_pid/fd/$public_self_fd
 pinned_workdir_helper_path=/proc/$launcher_pid/fd/$public_workdir_helper_fd
-[[ -r $pinned_supervisor_path && -r $pinned_workdir_helper_path ]] ||
+pinned_source_path=/proc/$launcher_pid/fd/$public_source_fd
+[[ -r $pinned_supervisor_path && -r $pinned_workdir_helper_path && -r $pinned_source_path ]] ||
   fail 'pinned supervisor handoff descriptors are unreadable'
 set +e
 # shellcheck disable=SC2024
 /usr/bin/sudo -n /usr/bin/unshare --mount --propagation private --fork --kill-child=TERM \
   /usr/bin/bash "$pinned_supervisor_path" --pinned-supervise \
   "$script_directory" "$pinned_workdir_helper_path" \
-  "$source" "$work_real" "$assert_source_head" "$assert_source_tree" \
+  "$source" "$pinned_source_path" "$public_source_identity" \
+  "$work_real" "$assert_source_head" "$assert_source_tree" \
   "$caller_uid" "$caller_gid" "$caller_user" "$caller_path" "$rustup_home" \
   "$caller_browser" "$work_identity" \
   >"$work/supervisor.stdout" 2>"$work/supervisor.stderr"

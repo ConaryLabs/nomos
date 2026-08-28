@@ -4,7 +4,6 @@
  * operation logs cannot be silently forwarded as unexamined paths.
  */
 import { dirname, isAbsolute, join } from "node:path";
-import { fileURLToPath } from "node:url";
 
 import {
   IMAGE_BYTES,
@@ -136,7 +135,7 @@ const operationRecord = (value, name) => {
 export const validateOperationsAndTools = (value, { imagePath, work, mountPath, checkout, output, loopPath, exportDestination, inventoryPath }) => {
   const operationNames = ["fallocate", "image_sync", "loop_attach", "mkfs_xfs", "mount", "proof", "export", "sync_before_umount", "umount", "loop_detach"];
   exactFields(value.operations, operationNames, "operations");
-  const helperPath = fileURLToPath(new URL("./r2-complete-proof-xfs-receipt.mjs", import.meta.url));
+  const helperPath = join(checkout, "docs", "evaluation", "r2-complete-proof-xfs-receipt.mjs");
   const expected = {
     fallocate: ["/usr/bin/fallocate", "--posix", "--length", IMAGE_BYTES.toString(), imagePath],
     image_sync: ["/usr/bin/sync", "-f", imagePath],

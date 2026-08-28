@@ -42,15 +42,24 @@ validate_source() {
   [[ $SOURCE_HEAD =~ ^[0-9a-f]{40}$ && $SOURCE_TREE =~ ^[0-9a-f]{40}$ ]] || fail 'source identity is not a full lowercase Git ID'
 }
 
+R2_INNER_REQUIRED_TOOLS=(
+  git realpath readlink find grep awk sed sort cmp cut sha256sum stat date du jq
+  /usr/bin/time /usr/bin/fallocate /usr/bin/sync /usr/bin/unlink
+  ar basename bash bwrap cargo cc chmod cp diff dirname env getconf
+  head id install ionice ip ld ln mkdir mktemp mv node paste ps rm rustc rustup seq setpriv
+  setsid sh sleep strings sudo tar taskset timeout touch tr uname unshare wc
+)
+R2_WRAPPER_REQUIRED_TOOLS=(
+  bash sh git realpath find stat date mkdir readlink id node jq sudo unshare findmnt losetup
+  mount umount blockdev mkfs.xfs xfs_info xfs_quota filefrag fuser fallocate sync setpriv
+  bwrap tar ionice du blkid chown cp rm env sha256sum awk grep tr chmod mv dirname pwd cut
+  rustup cargo rustc
+)
+
 require_public_tools() {
   local tool
-  for tool in git realpath find stat date mkdir readlink id node jq sudo unshare findmnt losetup rustup cargo rustc sha256sum \
-    awk grep tr chmod mv dirname pwd cut ip wc cmp mktemp; do
-    command -v "$tool" >/dev/null 2>&1 || fail "required host executable is missing: $tool"
-  done
-  for tool in mount umount blockdev mkfs.xfs xfs_info xfs_quota filefrag fuser fallocate sync setpriv bwrap tar ionice du blkid \
-    bash sh chown cp rm env; do
-    command -v "$tool" >/dev/null 2>&1 || fail "required supervisor executable is missing: $tool"
+  for tool in "${R2_INNER_REQUIRED_TOOLS[@]}" "${R2_WRAPPER_REQUIRED_TOOLS[@]}"; do
+    type -P -- "$tool" >/dev/null 2>&1 || fail "required executable is missing: $tool"
   done
   [[ -f $receipt_helper && ! -L $receipt_helper ]] || fail 'wrapper receipt helper is missing or symlinked'
 }
@@ -153,6 +162,37 @@ r2_observe_work_identity() {
   printf '%s:%s\n' "$current_device" "$current_inode"
 }
 
+r2_pin_source_directory() {
+  local handoff=$1 launcher source_type source_device source_inode fd_target
+  [[ $handoff =~ ^/proc/([1-9][0-9]*)/fd/[1-9][0-9]*$ ]] ||
+    fail 'supervisor source handoff is malformed'
+  launcher=${BASH_REMATCH[1]}
+  [[ $script_source =~ ^/proc/$launcher/fd/[1-9][0-9]*$ &&
+     ${source_identity:-} =~ ^[0-9]+:[0-9]+$ ]] ||
+    fail 'supervisor source handoff is not from the pinned launcher'
+  exec {source_fd}<"$handoff" || fail 'supervisor could not open source handoff'
+  source_fd_path=/proc/self/fd/$source_fd
+  fd_target=$(/usr/bin/readlink -e -- "$source_fd_path") ||
+    fail 'supervisor source descriptor is unreadable'
+  read -r source_type source_device source_inode \
+    < <(/usr/bin/stat -Lc '%F %d %i' -- "$source_fd_path") ||
+    fail 'supervisor source descriptor cannot be stated'
+  [[ $fd_target == "$source" && $source_type == directory &&
+     "$source_device:$source_inode" == "$source_identity" ]] ||
+    fail 'supervisor source directory identity differs'
+}
+
+r2_source_path_identity_ok() {
+  local current_path source_type source_device source_inode
+  [[ -n ${source:-} && -n ${source_fd_path:-} &&
+     ${source_identity:-} =~ ^[0-9]+:[0-9]+$ ]] || return 1
+  current_path=$(/usr/bin/readlink -e -- "$source_fd_path") || return 1
+  read -r source_type source_device source_inode \
+    < <(/usr/bin/stat -Lc '%F %d %i' -- "$source_fd_path") || return 1
+  [[ $current_path == "$source" && $source_type == directory &&
+     "$source_device:$source_inode" == "$source_identity" ]]
+}
+
 r2_display_work_path() {
   local path=$1 suffix
   r2_work_path_identity_ok || return 1
@@ -166,9 +206,16 @@ r2_display_work_path() {
 }
 
 r2_display_work_argument() {
-  local argument=$1 key value mapped
+  local argument=$1 key value mapped suffix
   if [[ $argument == "$work_fd_path"* ]]; then
     r2_display_work_path "$argument"
+    return
+  fi
+  if [[ -n ${source_fd_path:-} && $argument == "$source_fd_path"* ]]; then
+    r2_source_path_identity_ok || return 1
+    suffix=${argument#"$source_fd_path"}
+    [[ -z $suffix || $suffix == /* ]] || return 1
+    printf '%s%s\n' "$source" "$suffix"
     return
   fi
   # Inner-proof environment assignments carry descriptor-derived files after
@@ -179,6 +226,13 @@ r2_display_work_argument() {
     if [[ $value == "$work_fd_path"* ]]; then
       mapped=$(r2_display_work_path "$value") || return 1
       printf '%s=%s\n' "$key" "$mapped"
+      return
+    fi
+    if [[ -n ${source_fd_path:-} && $value == "$source_fd_path"* ]]; then
+      r2_source_path_identity_ok || return 1
+      suffix=${value#"$source_fd_path"}
+      [[ -z $suffix || $suffix == /* ]] || return 1
+      printf '%s=%s%s\n' "$key" "$source" "$suffix"
       return
     fi
   fi
@@ -600,7 +654,7 @@ record_wrapper_tools() {
   local tool path version status digest version_text
   local -a version_argv
   for tool in "${tools[@]}"; do
-    path=$(command -v "$tool") || fail "tool disappeared while recording: $tool"
+    path=$(type -P -- "$tool") || fail "tool disappeared while recording: $tool"
     path=$(/usr/bin/realpath -e -- "$path") || fail "tool path is not canonical: $tool"
     [[ -f $path && -x $path && ! -L $path ]] || fail "tool is not one executable file: $tool"
     case $tool in

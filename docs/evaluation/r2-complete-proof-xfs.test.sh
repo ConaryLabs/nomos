@@ -6,6 +6,8 @@ script_directory=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)
 repository_script_directory=$script_directory
 wrapper=$script_directory/r2-complete-proof-xfs.sh
 workdir_helper=$script_directory/r2-complete-proof-xfs-workdir.sh
+inner=$script_directory/r2-complete-proof.sh
+workflow=$script_directory/../../.github/workflows/nomos-viewer.yml
 [[ -f $workdir_helper && ! -L $workdir_helper ]]
 fail() {
   printf 'r2-complete-proof-xfs shell validation tests: FAIL: %s\n' "$*" >&2
@@ -22,6 +24,7 @@ grep -Fq 'r2_public_open_work_directory' "$workdir_helper"
 grep -Fq 'r2_public_pinned_exec' "$workdir_helper"
 grep -Fq 'r2_public_pinned_exec /usr/bin/node' "$wrapper"
 grep -Fq '/usr/bin/bash "$pinned_supervisor_path" --pinned-supervise' "$wrapper"
+grep -Fq -- '--config core.hooksPath=/dev/null "$source_fd_path" "$checkout"' "$wrapper"
 if grep -Fq '/usr/bin/mount --bind' "$workdir_helper"; then
   printf 'descriptor boundary must not rely on a canonical-path bind mount\n' >&2
   exit 1
@@ -42,6 +45,37 @@ if grep -Fq 'chmod 0733' "$wrapper"; then
 fi
 test_root=$(mktemp -d "${TMPDIR:-/tmp}/nomos-r2-xfs-shell-test.XXXXXX")
 trap 'rm -rf -- "$test_root"' EXIT
+
+# The outer preflight is the union of every tool the inner proof can execute
+# and every tool the wrapper itself executes. Keep that declaration in exact
+# parity with the inner harness and both complete-proof workflow lanes.
+inner_tool_text=$(/usr/bin/awk '/^host_tools=\(/ {inside=1; next} inside && /^\)/ {exit} inside {print}' "$inner" | /usr/bin/tr '\n' ' ')
+read -r -a declared_inner_tools <<<"$inner_tool_text"
+[[ ${declared_inner_tools[*]} == "${R2_INNER_REQUIRED_TOOLS[*]}" ]] ||
+  fail 'outer preflight tool set differs from the inner proof'
+expected_workflow_tools=$(printf '%s\n' "${R2_INNER_REQUIRED_TOOLS[@]}" "${R2_WRAPPER_REQUIRED_TOOLS[@]}" |
+  /usr/bin/sed 's#.*/##' | /usr/bin/sort -u)
+mapfile -t workflow_tool_lists < <(/usr/bin/awk '
+  /^[[:space:]]*for tool in \\/ {inside=1; list=""; next}
+  inside {
+    line=$0
+    sub(/; do.*/, "", line)
+    gsub(/\\/, "", line)
+    gsub(/^[[:space:]]+|[[:space:]]+$/, "", line)
+    list=list " " line
+    if ($0 ~ /; do/) {sub(/^ /, "", list); print list; inside=0}
+  }
+' "$workflow")
+[[ ${#workflow_tool_lists[@]} -eq 2 ]] || fail 'complete-proof workflow tool loops differ in count'
+for workflow_tool_list in "${workflow_tool_lists[@]}"; do
+  read -r -a workflow_tools <<<"$workflow_tool_list"
+  actual_workflow_tools=$(printf '%s\n' "${workflow_tools[@]}" | /usr/bin/sed 's#.*/##' | /usr/bin/sort -u)
+  [[ $actual_workflow_tools == "$expected_workflow_tools" ]] ||
+    fail 'complete-proof workflow preflight differs from the executable tool union'
+done
+record_wrapper_tools "$test_root/wrapper-tools.tsv"
+pwd_tool_path=$(/usr/bin/awk -F '\t' '$1 == "pwd" {print $2}' "$test_root/wrapper-tools.tsv")
+[[ $pwd_tool_path == /* && -x $pwd_tool_path ]] || fail 'wrapper tool recorder did not resolve external pwd'
 
 # Adversarial rename plant: a canonical work spelling is replaced after the
 # supervisor-side descriptor is opened. A descriptor-derived privileged write
@@ -64,6 +98,36 @@ if r2_public_work_identity_ok; then
   fail 'production work identity accepted a canonical replacement'
 fi
 r2_public_close_work_directory
+
+# The root handoff reopens the public source descriptor, so a rename cannot
+# redirect repository reads to a replacement canonical dentry. The retained
+# descriptor still reads the original while its canonical identity check reds.
+source_parent=$test_root/source-rename-parent
+source_original=$source_parent/source
+source_moved=$source_parent/source-moved
+mkdir -- "$source_parent" "$source_original"
+printf 'source-original\n' >"$source_original/value"
+source=$source_original
+source_identity=$(/usr/bin/stat -c '%d:%i' -- "$source")
+exec {public_source_fd}<"$source"
+source_launcher=$BASHPID
+source_handoff=/proc/$source_launcher/fd/$public_source_fd
+exec {source_wrapper_fd}<"$wrapper"
+script_source=/proc/$source_launcher/fd/$source_wrapper_fd
+r2_pin_source_directory "$source_handoff"
+mv -- "$source_original" "$source_moved"
+mkdir -- "$source_original"
+printf 'source-replacement\n' >"$source_original/value"
+[[ $(<"$source_fd_path/value") == source-original ]] ||
+  fail 'supervisor source descriptor was redirected to a canonical replacement'
+if r2_source_path_identity_ok; then
+  fail 'supervisor source identity accepted a canonical replacement'
+fi
+exec {source_fd}<&-
+exec {public_source_fd}<&-
+exec {source_wrapper_fd}<&-
+source_fd='' public_source_fd=''
+script_source=$wrapper
 
 # Positive-control streams retain their descriptor spelling. A host rename
 # must not redirect the comparison back to a replacement canonical dentry.

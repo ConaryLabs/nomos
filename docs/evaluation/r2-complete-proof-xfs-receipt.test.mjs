@@ -318,7 +318,7 @@ test("receipt has exact top-level schema and success requires inner plus teardow
       mkfs_xfs: operation("mkfs_xfs", ["/usr/sbin/mkfs.xfs", "-f", "-l", "internal", "/dev/loop9"], work),
       mount: operation("mount", ["/usr/bin/mount", "-t", "xfs", "-o", "rw,nodev,nosuid", "/dev/loop9", fs], work),
       proof: operation("proof", ["/usr/bin/bash", join(checkout, "docs", "evaluation", "r2-complete-proof.sh"), "--output", output], checkout),
-      export: operation("export", ["/usr/bin/node", new URL("./r2-complete-proof-xfs-receipt.mjs", import.meta.url).pathname, "copy", "--source", output, "--destination", exportDestination, "--output", inventoryPath], work),
+      export: operation("export", ["/usr/bin/node", join(checkout, "docs", "evaluation", "r2-complete-proof-xfs-receipt.mjs"), "copy", "--source", output, "--destination", exportDestination, "--output", inventoryPath], work),
       sync_before_umount: operation("sync_before_umount", ["/usr/bin/sync", "-f", fs], work),
       umount: operation("umount", ["/usr/bin/umount", fs], work),
       loop_detach: operation("loop_detach", ["/usr/sbin/losetup", "--detach", "/dev/loop9"], work),
@@ -405,9 +405,11 @@ test("receipt has exact top-level schema and success requires inner plus teardow
     writeFileSync(ledgerPath, ledgerText);
     const executionLedgerPath = join(work, "wrapper-execution.ndjson");
     const executionRoot = "/proc/self/fd/19";
+    const executionSourceRoot = "/proc/self/fd/18";
     const toDescriptorPath = (value) => value === work ? executionRoot :
       value.startsWith(`${work}/`) ? `${executionRoot}${value.slice(work.length)}` : value;
-    const toActualArgument = (_id, value) => {
+    const toActualArgument = (id, value) => {
+      if (id === "clone" && value === source) return executionSourceRoot;
       const direct = toDescriptorPath(value);
       if (direct !== value) return direct;
       const separator = value.indexOf("=");
@@ -473,11 +475,30 @@ test("receipt has exact top-level schema and success requires inner plus teardow
     assert.equal(receipt.invocation.command_ledger.sha256, digestRegular(ledgerPath, "ledger").sha256);
     assert.equal(receipt.invocation.command_ledger.execution.record_count, ledgerRows.length);
     assert.equal(receipt.invocation.command_ledger.execution.work_identity, workIdentity);
+    assert.equal(receipt.invocation.command_ledger.execution.source_descriptor_root, executionSourceRoot);
     assert.equal(receipt.invocation.preflight.sha256,
       digestRegular(outerPreflightPath, "outer preflight").sha256);
+    const validatorHelper = new URL("./r2-complete-proof-xfs-receipt.mjs", import.meta.url).pathname;
+    const wrongHelperFacts = {
+      ...facts,
+      operations: {
+        ...facts.operations,
+        export: { ...facts.operations.export, argv: facts.operations.export.argv.with(1, validatorHelper) },
+      },
+    };
+    assert.throws(() => assembleReceipt(wrongHelperFacts, receiptOptions),
+      /operation export argv differs from the exact wrapper command/);
     const rewriteExecutionLedger = (rows) =>
       writeFileSync(executionLedgerPath, rows.map((row) => JSON.stringify(row)).join("\n") + "\n");
     const mutatedExecutionRows = executionLedgerText.trimEnd().split("\n").map((row) => JSON.parse(row));
+    const cloneExecution = mutatedExecutionRows.find(({ id }) => id === "clone");
+    cloneExecution.actual_argv[cloneExecution.actual_argv.length - 2] = source;
+    rewriteExecutionLedger(mutatedExecutionRows);
+    assert.throws(() => assembleReceipt(facts, receiptOptions), /clone source is not descriptor-derived/);
+    cloneExecution.actual_argv[cloneExecution.actual_argv.length - 2] = executionRoot;
+    rewriteExecutionLedger(mutatedExecutionRows);
+    assert.throws(() => assembleReceipt(facts, receiptOptions), /clone source is not a distinct descriptor root/);
+    cloneExecution.actual_argv = executionRows.find(({ id }) => id === "clone").actual_argv;
     mutatedExecutionRows.find(({ id }) => id === "loop-attach").actual_argv =
       ["/usr/sbin/losetup", "--find", "--show", image];
     rewriteExecutionLedger(mutatedExecutionRows);

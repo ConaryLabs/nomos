@@ -209,11 +209,11 @@ jobs:
             git realpath find stat date mkdir readlink id node jq sudo unshare \
             findmnt losetup rustup cargo rustc sha256sum mount umount blockdev \
             mkfs.xfs xfs_info xfs_quota filefrag fuser fallocate sync setpriv \
-            bwrap tar ionice du blkid bash awk sed sort cmp cut ar basename cc \
+            bwrap tar ionice du blkid bash awk grep sed sort cmp cut ar basename cc \
             chmod cp diff dirname env getconf head install ip ld ln mktemp mv \
             paste ps rm seq setsid sh sleep strings taskset timeout touch tr \
-            uname wc /usr/bin/time /usr/bin/unlink; do
-            command -v "$tool" >/dev/null
+            uname wc chown pwd /usr/bin/time /usr/bin/unlink; do
+            type -P -- "$tool" >/dev/null
           done
           rustc --version
           cargo --version
@@ -366,11 +366,11 @@ jobs:
             git realpath find stat date mkdir readlink id node jq sudo unshare \
             findmnt losetup rustup cargo rustc sha256sum mount umount blockdev \
             mkfs.xfs xfs_info xfs_quota filefrag fuser fallocate sync setpriv \
-            bwrap tar ionice du blkid bash awk sed sort cmp cut ar basename cc \
+            bwrap tar ionice du blkid bash awk grep sed sort cmp cut ar basename cc \
             chmod cp diff dirname env getconf head install ip ld ln mktemp mv \
             paste ps rm seq setsid sh sleep strings taskset timeout touch tr \
-            uname wc /usr/bin/time /usr/bin/unlink; do
-            command -v "$tool" >/dev/null
+            uname wc chown pwd /usr/bin/time /usr/bin/unlink; do
+            type -P -- "$tool" >/dev/null
           done
 
       - name: Run the detached complete proof

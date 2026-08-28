@@ -193,11 +193,13 @@ const descriptorRoot = (path, label) => {
   return `/proc/self/fd/${match[1]}`;
 };
 
-const mapExecutionValue = (value, root, work, label) => {
+const mapExecutionValue = (value, mappings, label) => {
   safeText(value, label);
   const mapPath = (path) => {
-    if (path === root) return work;
-    if (path.startsWith(`${root}/`)) return `${work}${path.slice(root.length)}`;
+    for (const [root, canonical] of mappings) {
+      if (path === root) return canonical;
+      if (path.startsWith(`${root}/`)) return `${canonical}${path.slice(root.length)}`;
+    }
     return null;
   };
   const direct = mapPath(value);
@@ -228,7 +230,7 @@ const descriptorWorkValue = (value, root) => {
   return path === root || path.startsWith(`${root}/`);
 };
 
-const validateExecutionLedger = (path, semantic, work) => {
+const validateExecutionLedger = (path, semantic, work, source) => {
   const execution = readExecutionLedger(path);
   required(execution.path === join(work, "wrapper-execution.ndjson"),
     "wrapper execution ledger path differs");
@@ -236,6 +238,18 @@ const validateExecutionLedger = (path, semantic, work) => {
     "wrapper execution ledger row count differs");
   const root = descriptorRoot(execution.records[0]?.actual_stdout_path ?? "",
     "wrapper execution ledger descriptor root");
+  const cloneIndex = semantic.records.findIndex(({ id }) => id === "clone");
+  required(cloneIndex >= 0, "wrapper execution ledger clone row is missing");
+  const cloneBound = semantic.records[cloneIndex];
+  const cloneActual = execution.records[cloneIndex];
+  const sourceArgumentIndex = cloneBound.argv.length - 2;
+  required(cloneBound.argv[sourceArgumentIndex] === source,
+    "wrapper execution ledger canonical clone source differs");
+  const sourceRoot = descriptorRoot(cloneActual.actual_argv[sourceArgumentIndex] ?? "",
+    "wrapper execution ledger clone source");
+  required(cloneActual.actual_argv[sourceArgumentIndex] === sourceRoot && sourceRoot !== root,
+    "wrapper execution ledger clone source is not a distinct descriptor root");
+  const mappings = Object.freeze([[root, work], [sourceRoot, source]]);
   const workInfo = statSync(work, { bigint: true });
   required(workInfo.isDirectory(), "wrapper execution ledger work path is not a directory");
   const actualIdentity = `${workInfo.dev}:${workInfo.ino}`;
@@ -268,7 +282,7 @@ const validateExecutionLedger = (path, semantic, work) => {
       descriptorRoot(record.actual_stderr_path, `wrapper execution ledger ${bound.id} actual stderr`) === root,
     `wrapper execution ledger ${bound.id} uses inconsistent descriptor roots`);
     const mappedArgv = record.actual_argv.map((argument, argumentIndex) =>
-      mapExecutionValue(argument, root, work,
+      mapExecutionValue(argument, mappings,
         `wrapper execution ledger ${bound.id} actual argv ${argumentIndex}`));
     for (let argumentIndex = 0; argumentIndex < bound.argv.length; argumentIndex += 1) {
       if (workPathValue(bound.argv[argumentIndex], work)) {
@@ -277,11 +291,11 @@ const validateExecutionLedger = (path, semantic, work) => {
       }
     }
     required(JSON.stringify(mappedArgv) === JSON.stringify(bound.argv) &&
-      mapExecutionValue(record.actual_cwd, root, work,
+      mapExecutionValue(record.actual_cwd, mappings,
         `wrapper execution ledger ${bound.id} actual cwd`) === bound.cwd &&
-      mapExecutionValue(record.actual_stdout_path, root, work,
+      mapExecutionValue(record.actual_stdout_path, mappings,
         `wrapper execution ledger ${bound.id} actual stdout`) === bound.stdout_path &&
-      mapExecutionValue(record.actual_stderr_path, root, work,
+      mapExecutionValue(record.actual_stderr_path, mappings,
         `wrapper execution ledger ${bound.id} actual stderr`) === bound.stderr_path,
     `wrapper execution ledger ${bound.id} actual projection differs`);
     if (Object.prototype.hasOwnProperty.call(dangerousLastArguments, bound.id)) {
@@ -292,7 +306,7 @@ const validateExecutionLedger = (path, semantic, work) => {
   return Object.freeze({
     path: execution.path, bytes: execution.bytes, sha256: execution.sha256,
     record_count: execution.records.length, descriptor_root: root,
-    work_identity: actualIdentity, records: execution.records,
+    source_descriptor_root: sourceRoot, work_identity: actualIdentity, records: execution.records,
   });
 };
 
@@ -456,7 +470,7 @@ export const validateCommandLedger = (path, {
   const proofRecord = ledger.records.find(({ id }) => id === "inner-proof");
   required(proofRecord.started_ns === String(invocationStartNs) && proofRecord.ended_ns === String(invocationEndNs),
     "wrapper command ledger inner-proof timestamps differ from invocation");
-  const execution = validateExecutionLedger(executionPath, ledger, work);
+  const execution = validateExecutionLedger(executionPath, ledger, work, source);
   return Object.freeze({
     path: ledger.path, bytes: ledger.bytes, sha256: ledger.sha256,
     record_count: ledger.records.length, records: ledger.records, execution,
