@@ -101,9 +101,9 @@ plant_dangling_receipt() {
     "$1/docs/evaluation/R2_SOURCE_PROVENANCE.md"
 }
 
-plant_wrong_final_receipt() {
+plant_wrong_revision_4_receipt() {
   # shellcheck disable=SC2016
-  sed -i '\|`docs/evaluation/r2-complete-proof.sh`|s|`docs/evaluation/runs/r2/2026-08-28-issue-199-revision-3-author/AUTHOR_RECEIPT.md`|`docs/evaluation/runs/r2/2026-08-27-issue-197-author/AUTHOR_RECEIPT.md`|' \
+  sed -i '\|`docs/evaluation/r2-complete-proof.sh`|s|`docs/evaluation/runs/r2/2026-08-29-issue-199-revision-4-author/AUTHOR_RECEIPT.md`|`docs/evaluation/runs/r2/2026-08-28-issue-199-revision-3-author/AUTHOR_RECEIPT.md`|' \
     "$1/docs/evaluation/R2_SOURCE_PROVENANCE.md"
 }
 
@@ -116,7 +116,7 @@ expect_failure project-license-drift plant_project_license_drift
 expect_failure unknown-origin plant_unknown_origin
 expect_failure unlicensed plant_unlicensed
 expect_failure dangling-receipt plant_dangling_receipt
-expect_failure wrong-final-receipt plant_wrong_final_receipt
+expect_failure wrong-revision-4-receipt plant_wrong_revision_4_receipt
 
 printf 'R2_SOURCE_PROVENANCE_PLANTS PASS\n'
 printf 'planted_failures 10\n'

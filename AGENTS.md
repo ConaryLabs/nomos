@@ -3,6 +3,7 @@
 Read [README.md](README.md), then [docs/HANDOFF.md](docs/HANDOFF.md), then
 [docs/decisions/0019-r1-final-disposition.md](docs/decisions/0019-r1-final-disposition.md),
 then [docs/decisions/0022-mortal-estate-presentation-adoption-evidence.md](docs/decisions/0022-mortal-estate-presentation-adoption-evidence.md),
+then [docs/decisions/0026-r2-compile-latency-observation.md](docs/decisions/0026-r2-compile-latency-observation.md),
 then [docs/decisions/0025-r2-filesystem-accounting.md](docs/decisions/0025-r2-filesystem-accounting.md),
 then [docs/decisions/0021-runtime-revision-4.md](docs/decisions/0021-runtime-revision-4.md),
 then [THESIS.md](THESIS.md), [KERNEL.md](KERNEL.md), and [RUNTIME.md](RUNTIME.md).
@@ -11,6 +12,12 @@ under `docs/decisions/`.
 
 Nomos is the project/runtime; The Signed World is the thesis it tests. Nothing
 here is authority for any other project.
+
+The Mortal Estate is a sister project attempting to consume Nomos. Generally
+useful discoveries and fixes from that use may flow back into adopter-neutral
+Nomos work, but the repositories, authority, adopter mapping, and acceptance
+remain separate. This relationship does not authorize Mortal Estate integration
+or game adoption in a Nomos issue.
 
 ## Working rules
 

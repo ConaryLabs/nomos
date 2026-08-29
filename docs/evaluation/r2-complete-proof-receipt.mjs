@@ -22,9 +22,10 @@ import { auditLiveProcessNamespace } from "./r2-complete-proof-process.mjs";
 import { validateFilesystemEvidence } from "./r2-filesystem-evidence.mjs";
 const CONSTANTS = Object.freeze({
   issue: 199,
-  issue_body_sha256: "0a701b4238fd6b7f23ba0ae40022bc7c23ca450ad1a8f0febc05ab440f6b3c88",
-  r2_contract_sha256: "625f4bb1ea7c7400a6717c14b51cc6da51b32421e49bba98cf3d7ed9ff4a1254",
+  issue_body_sha256: "a1282d0802a45fc7d11872dec8156a745fac65f98d782ff209a7ab38eff209b2",
+  r2_contract_sha256: "81c31f3ef5f9f4919f33fcc89f27e03eed344f84f44b1f6e9e04a19ac363ad8b",
   r2_revision_3_authority_sha256: "a6a50bca56c4a990b44968ffefc31103a88e48b52904728693a166ba0d66d3ae",
+  r2_revision_4_authority_sha256: "b23bfa6275d8579b6782aa24b70b2edaae13b3960ba8ff8e9d79810a48149c73",
   runtime_contract_sha256: "dd6f4b2ce48557f48df61d50cdc25b4ebaf0904331f4fd78d804e3af536db593",
   catalog_sha256: "6259520fbf318ae0393ea4ae69649864acb154db4034d081435416be2ffa9323",
   packet_manifest_sha256: "d5708087cf7967a420667c56a7b02ed052b7058ed8545af06e6771170003c948",
@@ -151,7 +152,7 @@ const validateSourceBindings = (repo, output, candidate) => {
   const source = readJson(join(output, "metadata/source-tree.json"), "source-tree.json");
   exactKeys(source, [
     "outcome", "commit", "tree", "issue", "issue_body_sha256", "r2_contract_sha256",
-    "r2_revision_3_authority_sha256",
+    "r2_revision_3_authority_sha256", "r2_revision_4_authority_sha256",
     "runtime_contract_sha256", "catalog_sha256", "packet_manifest_sha256",
     "committed_contact_sheet_sha256", "plan_sha256", "scene_signature_sha256",
   ], "source-tree.json");
@@ -163,6 +164,7 @@ const validateSourceBindings = (repo, output, candidate) => {
   const expected = {
     r2_contract_sha256: CONSTANTS.r2_contract_sha256,
     r2_revision_3_authority_sha256: CONSTANTS.r2_revision_3_authority_sha256,
+    r2_revision_4_authority_sha256: CONSTANTS.r2_revision_4_authority_sha256,
     runtime_contract_sha256: CONSTANTS.runtime_contract_sha256,
     catalog_sha256: CONSTANTS.catalog_sha256,
     packet_manifest_sha256: CONSTANTS.packet_manifest_sha256,
@@ -173,6 +175,7 @@ const validateSourceBindings = (repo, output, candidate) => {
   required(JSON.stringify(source.scene_signature_sha256) === JSON.stringify(CONSTANTS.signatures), "frozen signatures differ");
   digestFile(repo, "R2.md", CONSTANTS.r2_contract_sha256, "R2.md");
   digestFile(repo, "docs/decisions/0025-r2-filesystem-accounting.md", CONSTANTS.r2_revision_3_authority_sha256, "R2 revision-3 authority");
+  digestFile(repo, "docs/decisions/0026-r2-compile-latency-observation.md", CONSTANTS.r2_revision_4_authority_sha256, "R2 revision-4 authority");
   digestFile(repo, "RUNTIME.md", CONSTANTS.runtime_contract_sha256, "RUNTIME.md");
   digestFile(repo, "apps/nomos-observed-viewer/src/catalog.mjs", CONSTANTS.catalog_sha256, "catalog");
   digestFile(repo, "docs/evaluation/r2-second-scene-packet/MANIFEST.sha256", CONSTANTS.packet_manifest_sha256, "second-scene packet");
@@ -264,7 +267,6 @@ const validateComponentLogs = (repo, output, ledger, candidate) => {
     "clean-r1-viewer-build": "NOMOS_VIEWER_BUILD PASS",
     "clean-r2-viewer-build-a": "NOMOS_OBSERVED_BUILD PASS",
     "clean-r2-viewer-build-b": "NOMOS_OBSERVED_BUILD PASS",
-    "maximum-compile-benchmark": "r2 compile latency:",
   };
   for (const [id, marker] of Object.entries(proofMarkers)) required(stdout(id).includes(marker), `${id} proof marker is absent`);
   const xfsValidationStdout = readText(join(output, "metadata/xfs-shell-validation.stdout"), "XFS shell-validation stdout");
@@ -285,7 +287,6 @@ const validateComponentLogs = (repo, output, ledger, candidate) => {
   required(xfsValidationCandidate.outcome === "pass" &&
     xfsValidationCandidate.commit === candidate.commit && xfsValidationCandidate.tree === candidate.tree &&
     xfsValidationCandidate.porcelain === "", "outer XFS shell-validation candidate differs");
-  required(stdout("maximum-compile-benchmark").includes("; PASS"), "maximum-compile-benchmark PASS marker is absent");
   const schemaPlants = stdout("r2-schema-plants");
   required(schemaPlants === "expected refusal: missing\nexpected refusal: duplicate\nexpected refusal: third\n", "r2-schema-plants output differs");
   const r1GaolTap = tapSummary(stdout("r1-gaol-verify"), "R1 gaol tests");
@@ -609,7 +610,7 @@ const validateScenes = (repo, output) => {
   return scenes.map((row) => ({ sha256: row.sha256, axis_sha256: row.axis_sha256 }));
 };
 
-const validateCompileBenchmark = (repo, output) => {
+const validateCompileBenchmark = (repo, output, benchmarkStdout) => {
   const root = join(output, "r2/compile-benchmark");
   const fixturePath = join(repo, "fixtures/r2/maximum-observed-scene.json");
   const devices = [repo, output, root, fixturePath].map((path) => statSync(path).dev);
@@ -643,19 +644,19 @@ const validateCompileBenchmark = (repo, output) => {
   const summary = readJson(join(root, "summary.json"));
   exactKeys(summary, [
     "architecture", "binary", "binary_sha256", "cpu_count", "fixture", "fixture_sha256",
-    "hostname", "median_ceiling_ns", "median_denominator", "median_numerator_ns",
-    "median_pass", "node", "output_digest", "p95_ceiling_ns", "p95_ns", "p95_pass",
+    "hostname", "measurement_role", "median_denominator", "median_numerator_ns",
+    "node", "output_digest", "p95_ns",
     "platform", "release", "recorded_samples", "warmups",
   ], "compile summary");
   required(summary.recorded_samples === 100 && summary.warmups === 10 && summary.median_denominator === 2 && summary.median_numerator_ns === medianNumerator.toString() && summary.p95_ns === p95.toString(), "compile summary arithmetic differs");
-  required(summary.median_ceiling_ns === 50_000_000 && summary.p95_ceiling_ns === 100_000_000 && summary.median_pass === true && summary.p95_pass === true, "compile summary ceilings differ");
-  required(medianNumerator <= 100_000_000n && p95 <= 100_000_000n, "compile latency ceiling exceeded");
+  required(summary.measurement_role === "recorded_observation", "compile summary measurement role differs");
+  required(benchmarkStdout === `r2 compile latency: median ${medianNumerator}/2 ns; p95 ${p95} ns; RECORDED\n`, "maximum-compile-benchmark stdout differs");
   required(summary.fixture_sha256 === CONSTANTS.maximum_fixture_sha256 && summary.output_digest === `${outputs[0].bytes}:${outputs[0].sha256}`, "compile summary fixture/output differs");
   const expectedBinary = realpathSync(join(repo, "target/r2-complete-release/release/nomos-observed-scene"));
   required(realpathSync(summary.binary) === expectedBinary && HEX.test(summary.binary_sha256) && sha256(readRegular(summary.binary)) === summary.binary_sha256, "compile benchmark binary binding differs");
   required(realpathSync(summary.fixture) === realpathSync(fixturePath), "compile benchmark fixture path differs");
   required(typeof summary.architecture === "string" && summary.architecture.length > 0 && Number.isInteger(summary.cpu_count) && summary.cpu_count > 0 && typeof summary.hostname === "string" && summary.hostname.length > 0 && typeof summary.node === "string" && summary.node.length > 0 && typeof summary.platform === "string" && summary.platform.length > 0 && typeof summary.release === "string" && summary.release.length > 0, "compile summary environment fields differ");
-  return { warmups: 10, samples: 100, median_numerator_ns: medianNumerator.toString(), median_denominator: 2, p95_ns: p95.toString(), output_sha256: outputs[0].sha256 };
+  return { measurement_role: "recorded_observation", warmups: 10, samples: 100, median_numerator_ns: medianNumerator.toString(), median_denominator: 2, p95_ns: p95.toString(), output_sha256: outputs[0].sha256 };
 };
 
 const pngDimensions = (bytes, label) => {
@@ -890,7 +891,8 @@ export const validateEvidence = ({ repo: repoArgument, output: outputArgument, c
   const buildB = validateBuildReceipt(repo, join(output, "r2/viewer-b"), CONSTANTS.plans);
   required(JSON.stringify(buildA.inventory) === JSON.stringify(buildB.inventory), "two clean R2 distributions are not byte-identical");
   required(JSON.stringify(proofBuild.inventory) === JSON.stringify(buildA.inventory), "R2 smoke distribution differs from the clean builds");
-  const compile = validateCompileBenchmark(repo, output);
+  const compileStdout = readText(join(output, ledger.find((row) => row.id === "maximum-compile-benchmark").stdout));
+  const compile = validateCompileBenchmark(repo, output, compileStdout);
   const browser = validateBrowser(repo, output);
   return {
     candidate,

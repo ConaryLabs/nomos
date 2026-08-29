@@ -106,7 +106,7 @@ validate_output() {
 validate_checkout
 validate_output
 issue=199
-issue_body_sha256=0a701b4238fd6b7f23ba0ae40022bc7c23ca450ad1a8f0febc05ab440f6b3c88
+issue_body_sha256=a1282d0802a45fc7d11872dec8156a745fac65f98d782ff209a7ab38eff209b2
 [[ ${NOMOS_R2_XFS_WRAPPER:-} == 1 ]] ||
   fail 'invoke the complete proof through r2-complete-proof-xfs.sh'
 [[ ${NOMOS_R2_XFS_UUID:-} =~ ^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$ ]] ||
@@ -241,6 +241,7 @@ sha() {
 
 r2_contract_sha=$(sha R2.md)
 r2_revision_3_authority_sha=$(sha docs/decisions/0025-r2-filesystem-accounting.md)
+r2_revision_4_authority_sha=$(sha docs/decisions/0026-r2-compile-latency-observation.md)
 runtime_contract_sha=$(sha RUNTIME.md)
 catalog_sha=$(sha apps/nomos-observed-viewer/src/catalog.mjs)
 packet_sha=$(sha docs/evaluation/r2-second-scene-packet/MANIFEST.sha256)
@@ -251,10 +252,12 @@ plan_two_sha=$(sha fixtures/r2/plans/scene_two.json)
 signature_one_sha=ef11771f3f8c210fdd8c9366e780ab720349a49dad88ae8dca969fcbe16c30d2
 signature_two_sha=9afb46dc4d7ddb5b79cdcabd63b67d162b3c230aecfde9383e038128572f0f3d
 
-[[ $r2_contract_sha == 625f4bb1ea7c7400a6717c14b51cc6da51b32421e49bba98cf3d7ed9ff4a1254 ]] ||
+[[ $r2_contract_sha == 81c31f3ef5f9f4919f33fcc89f27e03eed344f84f44b1f6e9e04a19ac363ad8b ]] ||
   fail 'R2.md digest moved'
 [[ $r2_revision_3_authority_sha == a6a50bca56c4a990b44968ffefc31103a88e48b52904728693a166ba0d66d3ae ]] ||
   fail 'R2 revision-3 authority digest moved'
+[[ $r2_revision_4_authority_sha == b23bfa6275d8579b6782aa24b70b2edaae13b3960ba8ff8e9d79810a48149c73 ]] ||
+  fail 'R2 revision-4 authority digest moved'
 [[ $runtime_contract_sha == dd6f4b2ce48557f48df61d50cdc25b4ebaf0904331f4fd78d804e3af536db593 ]] ||
   fail 'RUNTIME.md digest moved'
 [[ $catalog_sha == 6259520fbf318ae0393ea4ae69649864acb154db4034d081435416be2ffa9323 ]] ||
@@ -276,6 +279,7 @@ jq -n \
   --arg issue_body_sha256 "$issue_body_sha256" \
   --arg r2_contract_sha256 "$r2_contract_sha" \
   --arg r2_revision_3_authority_sha256 "$r2_revision_3_authority_sha" \
+  --arg r2_revision_4_authority_sha256 "$r2_revision_4_authority_sha" \
   --arg runtime_contract_sha256 "$runtime_contract_sha" \
   --arg catalog_sha256 "$catalog_sha" \
   --arg packet_manifest_sha256 "$packet_sha" \
@@ -287,6 +291,7 @@ jq -n \
   '{outcome:$outcome,commit:$commit,tree:$tree,issue:$issue,
     issue_body_sha256:$issue_body_sha256,r2_contract_sha256:$r2_contract_sha256,
     r2_revision_3_authority_sha256:$r2_revision_3_authority_sha256,
+    r2_revision_4_authority_sha256:$r2_revision_4_authority_sha256,
     runtime_contract_sha256:$runtime_contract_sha256,catalog_sha256:$catalog_sha256,
     packet_manifest_sha256:$packet_manifest_sha256,
     committed_contact_sheet_sha256:$committed_contact_sheet_sha256,

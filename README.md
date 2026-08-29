@@ -26,8 +26,8 @@ line, and operational gotchas.
 | R1 runtime epoch | all five criteria passed; accepted and closed under decision 0019 |
 | R1 contract | `RUNTIME.md` revision 4, in force under decision 0021 |
 | Game adoption | not authorized |
-| Mortal Estate evidence | bounded evidence produced one admitted dependency point, representative frame, and classified capability gap |
-| R2 observed-scene epoch | revision 3 authorized; R2-1 and R2-2 landed; issue #199 final proof is implemented locally but has no passing author proof or disposition |
+| Mortal Estate evidence | sister-project prospective adopter; bounded evidence produced one admitted dependency point, representative frame, and classified adopter-neutral capability gap; no adoption |
+| R2 observed-scene epoch | revision 4 authorized under decision 0026; R2-1 and R2-2 landed; the revision-3 formal red remains historical and a fresh revision-4 author proof is pending |
 
 R1 is the accepted runtime baseline for this repository. That result does not
 rewrite Gate K, pass a later gate, approve production art, or authorize Nomos
@@ -38,18 +38,27 @@ Decision 0022 authorized one bounded presentation-adoption evidence program for
 The Mortal Estate. That program admitted an immutable R1 dependency point,
 recorded a representative adopter frame, and reduced its presentation gap to an
 adopter-neutral fixture classified `reusable missing Nomos capability`.
+Nomos and The Mortal Estate are sister projects: the game is attempting to
+consume Nomos, and generally useful discoveries from that work should return as
+adopter-neutral Nomos fixes. Their repositories, authority, adopter mapping,
+acceptance, and final adoption decisions remain separate. This relationship
+does not authorize Mortal Estate integration in issue #199.
 
 Decision 0023 opens one narrow R2 observed-scene presentation epoch from that
-evidence. The separately reviewed root contract `R2.md` revision 3 is
-owner-authorized after decisions 0024 and 0025 repaired the finalization order
-and falsified recursive-disk-observer method without changing an R2 criterion
-or ceiling. R2-1's strict carrier and compiler landed at
+evidence. Decisions 0024 and 0025 repaired the finalization order and falsified
+recursive-disk-observer method. Decision 0026 then established the current
+`R2.md` revision 4 by retaining the exact maximum-scene compile workload and
+measurement as required evidence while correcting its ungrounded numeric
+latency classification from acceptance ceiling to recorded observation. R2-1's
+strict carrier and compiler landed at
 `cc47a7235f92d0ed460c7db5d178448b12fdba02`; R2-2's isolated offline consumer
 and hash-frozen independent second-scene evidence landed through PR #198.
-Issue #199 carries the revision-3 final-proof implementation. R2 is not admitted
-until one combined candidate passes the complete author proof, exact-head
-non-author rerun, owner visual judgment, required CI, and owner disposition.
-No platform choice or game adoption is authorized.
+Issue #199 carries the revision-4 contract-and-proof repair. Its fresh complete
+candidate-native XFS author proof is next. The retained revision-3 attempt stays
+formal red under the contract it ran against and cannot satisfy revision 4. R2
+is not admitted until one revision-4 combined candidate passes the complete
+author proof, exact-head non-author rerun, owner visual judgment, required CI,
+and owner disposition. No platform choice or game adoption is authorized.
 
 The implementation includes:
 
@@ -114,7 +123,7 @@ The browser lane requires Node 22 or newer and Chrome/Chromium; set
 [docs/HANDOFF.md](docs/HANDOFF.md) for complete setup and worktree rules.
 
 Run the R2 portable checks and two-scene browser proof with the commands
-recorded in the handoff. The revision-3 final proof additionally requires the
+recorded in the handoff. The revision-4 final proof additionally requires the
 dedicated XFS wrapper and host tools named there. It requires no npm
 installation and reuses only the accepted, digest-checked Three.js bytes.
 
@@ -128,21 +137,24 @@ installation and reuses only the accepted, digest-checked Three.js bytes.
    — bounded Mortal Estate evidence authority and upstream-admission stop line.
 4. [decision 0023](docs/decisions/0023-observed-scene-presentation-epoch.md)
    — narrow R2 authority, semantic boundary, target order, and stop line.
-5. [decision 0025](docs/decisions/0025-r2-filesystem-accounting.md) — R2
-   revision 3's bounded XFS accounting repair and exact retained red evidence.
-6. [decision 0024](docs/decisions/0024-r2-final-proof-finalization-order.md) —
+5. [decision 0026](docs/decisions/0026-r2-compile-latency-observation.md) — R2
+   revision 4's compile-observation classification repair, retained red
+   evidence, and exact owner disposition.
+6. [decision 0025](docs/decisions/0025-r2-filesystem-accounting.md) — R2
+   revision 3's bounded XFS accounting repair.
+7. [decision 0024](docs/decisions/0024-r2-final-proof-finalization-order.md) —
    R2 revision 2's terminal-evidence ordering repair.
-7. [THESIS.md](THESIS.md) — the exploratory architecture and adoption bars.
-8. [KERNEL.md](KERNEL.md) — frozen Gate K revision 7 contract.
-9. [RUNTIME.md](RUNTIME.md) — accepted R1 revision 4 contract.
-10. [decision 0021](docs/decisions/0021-runtime-revision-4.md) — revision 4's
+8. [THESIS.md](THESIS.md) — the exploratory architecture and adoption bars.
+9. [KERNEL.md](KERNEL.md) — frozen Gate K revision 7 contract.
+10. [RUNTIME.md](RUNTIME.md) — accepted R1 revision 4 contract.
+11. [decision 0021](docs/decisions/0021-runtime-revision-4.md) — revision 4's
    lifecycle-history repair after R1 closed.
-11. [decision 0020](docs/decisions/0020-runtime-revision-3.md) — revision 3's
+12. [decision 0020](docs/decisions/0020-runtime-revision-3.md) — revision 3's
    exact comparison-count repair.
-12. [decision 0013](docs/decisions/0013-gate-k-disposition.md) and
+13. [decision 0013](docs/decisions/0013-gate-k-disposition.md) and
    [decision 0016](docs/decisions/0016-terminate-gate-k-round-two.md) — the
    historical Gate K dispositions.
-13. [docs/workspace.md](docs/workspace.md) — crate map and dependency boundary.
+14. [docs/workspace.md](docs/workspace.md) — crate map and dependency boundary.
 
 Subsystem designs and receipts live under `docs/review/` and
 `docs/evaluation/`. The large `docs/evaluation/runs/` archive and `gate-k-*`
@@ -177,15 +189,17 @@ runtime epoch, Gate K attempt, or game adoption requires a new owner decision.
 
 Decision 0023 is the narrow exception for the observed-scene R2 epoch. R2-1 and
 R2-2 are complete, and issue #199 is the active final-evidence-and-disposition
-slice required by `R2.md` section 11. Its latest candidate-native revision-3
-XFS author attempt is retained red on the maximum-scene compile-median ceiling.
-Stop for owner disposition. Issue #199 forbids compiler edits in this final
-slice. Any product optimization requires separately recorded falsifiable
-implementation authority and must preserve the frozen workload, synced atomic
-publication, and latency ceilings; identical-byte retry and criterion weakening
-are not authorized. A later passing candidate must still receive the
-contract-required exact-head non-author rerun and stop for the owner's visual
-and R2 verdicts. Do not start a later epoch from this branch.
+slice required by `R2.md` section 11. Decision 0026 records the owner's exact
+disposition to repair the contract and rerun affected evidence. The latest
+revision-3 XFS attempt remains formal red under revision 3; it is not relabelled
+as a revision-4 pass. Issue #199 still forbids compiler edits, and no product
+optimization is authorized in this slice. After the proof machinery binds
+revision 4 and the frozen issue body, create fresh candidate/source/work paths
+and run the complete candidate-native XFS author proof. A passing candidate
+still requires the contract's exact-head non-author rerun, public-repository
+hosted workflows, and the owner's visual and R2 verdicts. GitHub Actions is
+available; any currently local-only branch state is a pending workflow step,
+not an Actions-quota constraint. Do not start a later epoch from this branch.
 
 Nomos is authority only for this repository. Nothing here becomes authority for
 another project without that project's own explicit decision.

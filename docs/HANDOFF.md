@@ -1,8 +1,8 @@
 # Nomos handoff
 
-Status snapshot: 2026-08-29, at the issue #199 revision-3 implementation
-handoff boundary. This file is an operational map; owner decisions and
-revisioned contracts remain the authority when prose conflicts.
+Status snapshot: 2026-08-29, during the issue #199 revision-4 contract-and-proof
+repair. This file is an operational map; owner decisions and revisioned
+contracts remain the authority when prose conflicts.
 
 **Play the accepted six-area viewer:** <https://conarylabs.github.io/nomos/>
 
@@ -15,12 +15,13 @@ point, recorded one representative adopter frame, and reduced the observed gap
 to an adopter-neutral fixture classified `reusable missing Nomos capability`.
 
 Nomos and The Mortal Estate operate as sister projects with separate
-repositories and authority trees. The Mortal Estate is the concrete prospective
-adopter: it tests admitted, digest-pinned Nomos artifacts, while reusable
-adopter-neutral gaps exposed by that work are reduced, authorized, implemented,
-and proved in Nomos before the game updates. Game-specific content, mechanics,
-integration, and the final adoption decision remain in The Mortal Estate. This
-working relationship is not itself a game-adoption verdict.
+repositories and authority trees. The Mortal Estate is attempting to consume
+Nomos as a prospective adopter. Generally useful discoveries and fixes from
+that use should flow back through separately authorized, adopter-neutral Nomos
+work. Game-specific content, mechanics, integration, adopter mapping,
+acceptance, and the final adoption decision remain in The Mortal Estate. This
+working relationship is not itself a game-adoption verdict and issue #199 does
+not authorize Mortal Estate integration.
 
 Decision 0023 opens one narrow R2 observed-scene presentation epoch. R2-1's
 strict carrier and compiler landed through PR #196 at
@@ -33,13 +34,18 @@ not themselves admit R2.
 
 Issue #199 is now the active final-evidence-and-disposition slice. Decision
 0024 established R2 revision 2 by repairing the impossible terminal-evidence
-order. Decision 0025 established current `R2.md` revision 3 by replacing the
-falsified recursive disk observer with bounded accounting on a dedicated,
-fully allocated 8 GiB XFS image. Neither repair changed an R2 criterion or
-ceiling. Branch `feat/issue-199-r2-final` contains the revision-3 proof
-implementation and its retained formal-red records. It has no passing formal
-author proof, no exact-head non-author proof, no owner visual verdict, no owner
-R2 verdict, and no merge authorization.
+order. Decision 0025 established R2 revision 3 by replacing the falsified
+recursive disk observer with bounded accounting on a dedicated, fully allocated
+8 GiB XFS image. Decision 0026 establishes current `R2.md` revision 4 under the
+owner's exact disposition `repair the contract and rerun affected evidence`.
+It retains the exact maximum-scene workload, process and publication method,
+raw samples, arithmetic, environment, and deterministic-output checks, but
+corrects the unsupported 50 ms median and 100 ms p95 classification from
+acceptance ceilings to required recorded observations. Branch
+`feat/issue-199-r2-final` contains the historical revision-3 formal-red records
+and the revision-4 contract-and-proof repair. R2 still has no passing formal
+author proof, exact-head non-author proof, owner visual verdict, owner R2
+verdict, or merge authorization.
 
 The most recent formal attempt was candidate
 `fc8b0f8cbf28e0f4eaf84f8e80b5bbe91a881798`, tree
@@ -52,20 +58,21 @@ or about 59.57 ms, against 50 ms. Every sample exceeded 50 ms, with a minimum of
 51,686,070 ns. An earlier retained run of the same compiler binary and fixture
 measured a 58.36 ms median and 77.71 ms p95; only two of the combined 200
 recorded samples met 50 ms. This is a repeatable criterion-4 budget miss under
-`R2.md` section 9, not a harness, XFS-accounting, browser, or determinism
-failure. Cleanup unmounted and detached `/dev/loop1`; pre/post loop inventories
-were byte-identical, the host monitor was clean, and the unrelated `/dev/loop0`
-was untouched.
+`R2.md` revision 3 section 9, not a harness, XFS-accounting, browser, or
+determinism failure. It remains formal red under revision 3; decision 0026 does
+not relabel it as passing evidence or permit it to satisfy revision 4. Cleanup
+unmounted and detached `/dev/loop1`; pre/post loop inventories were
+byte-identical, the host monitor was clean, and the unrelated `/dev/loop0` was
+untouched.
 
-The stop line is deliberate: preserve the red source, work directory, backing
-image, exported partial evidence, and logs, then obtain the owner's disposition.
-Issue #199 deliverable 5 forbids compiler edits in this final slice. Pursuing a
-product optimization therefore requires separately recorded falsifiable
-implementation authority and must preserve the exact fixture,
-spawn-through-synced-publication method, and both latency ceilings. The evidence
-supports neither an identical-byte retry nor a contract weakening. Any later
-authorized retry uses one new standalone source clone and one new empty work
-directory. Do not reuse a prior source or work path.
+Preserve that red source, work directory, backing image, exported partial
+evidence, and logs as historical evidence. The owner has now supplied the
+disposition that was previously pending. Issue #199 deliverable 5 still forbids
+compiler edits, and this classification repair changes no product bytes. Once
+the revision-4 contract, issue body, proof machinery, tests, and provenance are
+bound in a clean candidate, the next formal action is one fresh complete
+candidate-native XFS author proof using one new standalone source clone and one
+new empty work directory. Do not reuse or relabel a prior source or work path.
 
 A fresh agent must not infer active work from an old remote branch. The
 repository intentionally retains evidence branches and annotated tags. Check
@@ -110,13 +117,14 @@ source, compiled plan, signatures, browser receipt, and pixels entered unchanged
 | R1 contract | revision 4 in force | `RUNTIME.md`, decision 0021 |
 | Game adoption | not authorized; thesis applies to no game | decision 0019 |
 | Mortal Estate presentation evidence | bounded prerequisite evidence complete; no adoption | decisions 0022 and 0023 evidence |
-| R2 observed-scene presentation epoch | revision 3 in force; R2-1 and R2-2 landed; epoch not admitted | `R2.md`, decisions 0023–0025 |
-| R2 final evidence | issue #199 has three retained formal red attempts; no passing author proof | issue #199, branch `feat/issue-199-r2-final` |
-| Current queue | owner disposition of the measured compile-median red; compiler optimization needs separate falsifiable implementation authority because issue #199 forbids those edits | issue #199 and `R2.md` sections 9, 11, and 13 |
+| R2 observed-scene presentation epoch | revision 4 in force; R2-1 and R2-2 landed; epoch not admitted | `R2.md`, decisions 0023–0026 |
+| R2 final evidence | revision-3 attempts remain historical formal red; no revision-4 author proof has run | issue #199, decision 0026, branch `feat/issue-199-r2-final` |
+| Current queue | finish and freeze the revision-4 proof repair, then run one fresh complete candidate-native XFS author proof | issue #199 and `R2.md` sections 9, 11, and 13 |
 
 ## Current local verification
 
-Immediately before this handoff commit, the revision-3 working bytes passed:
+Before the retained revision-3 formal attempt, its exact-head working bytes
+passed:
 
 - `cargo fmt --all -- --check`, workspace Clippy with warnings denied, all
   locked workspace tests, and `cargo xtask boundary`;
@@ -128,10 +136,12 @@ Immediately before this handoff commit, the revision-3 working bytes passed:
 - ShellCheck on every changed shell file with only the repository's existing
   dynamic-source-path and source-only function-analysis exemptions.
 
-The source-provenance register SHA-256 for these implementation bytes is
-`61ab821b9ecd7bc5089d7881555054eb669f51faf461e8b56d67a6a038baabee`.
-These were local pre-freeze checks and are not a formal author result. Rerun
-them from the clean committed tip before provisioning XFS.
+The source-provenance register SHA-256 for those revision-3 implementation
+bytes is `61ab821b9ecd7bc5089d7881555054eb669f51faf461e8b56d67a6a038baabee`.
+Those checks do not prove the revision-4 changes now in progress. Rerun the
+portable preflight from the clean committed revision-4 tip before provisioning
+XFS; do not claim a revision-4 author result until the fresh complete wrapper
+finishes and its receipt independently verifies.
 
 The latest retained formal-red work is
 `/data/dev/src/nomos-r2-xfs-run.Ri8Z2H`, with its standalone source at
@@ -176,22 +186,25 @@ disposition, not an extension of the accepted R1 play runtime.
    bounded evidence authority, upstream-admission rule, and stop line.
 5. `docs/decisions/0023-observed-scene-presentation-epoch.md` — the narrow R2
    authority, first-target order, adopter boundary, and stop line.
-6. `docs/decisions/0025-r2-filesystem-accounting.md` — current R2 revision 3,
+6. `docs/decisions/0026-r2-compile-latency-observation.md` — current R2
+   revision 4, the compile-observation classification repair, retained
+   revision-3 red evidence, and exact owner disposition.
+7. `docs/decisions/0025-r2-filesystem-accounting.md` — R2 revision 3,
    the falsified recursive-observer record, and the XFS replacement method.
-7. `docs/decisions/0024-r2-final-proof-finalization-order.md` — R2 revision 2's
+8. `docs/decisions/0024-r2-final-proof-finalization-order.md` — R2 revision 2's
    dependency-correct terminal evidence order.
-8. `R2.md` — owner-authorized revision 3 acceptance contract.
-9. `THESIS.md` — exploratory design thesis; not authority for another project.
-10. `KERNEL.md` — frozen Gate K revision 7 contract and historical failed bar.
-11. `RUNTIME.md` — accepted R1 revision 4 contract.
-12. `docs/decisions/0021-runtime-revision-4.md` — revision 4's exact
+9. `R2.md` — owner-authorized revision 4 acceptance contract.
+10. `THESIS.md` — exploratory design thesis; not authority for another project.
+11. `KERNEL.md` — frozen Gate K revision 7 contract and historical failed bar.
+12. `RUNTIME.md` — accepted R1 revision 4 contract.
+13. `docs/decisions/0021-runtime-revision-4.md` — revision 4's exact
    lifecycle-history repair.
-13. `docs/decisions/0020-runtime-revision-3.md` — revision 3's exact
+14. `docs/decisions/0020-runtime-revision-3.md` — revision 3's exact
    comparison-count repair.
-14. `docs/decisions/0013-gate-k-disposition.md` and
+15. `docs/decisions/0013-gate-k-disposition.md` and
    `docs/decisions/0016-terminate-gate-k-round-two.md` — historical Gate K
    verdicts.
-15. `docs/workspace.md` — crate graph and boundary proof.
+16. `docs/workspace.md` — crate graph and boundary proof.
 
 Read design records under `docs/review/` only for the subsystem being changed.
 The large `docs/evaluation/runs/` tree is immutable historical evidence, not a
@@ -213,7 +226,7 @@ Install these host tools before expecting the complete proof to run:
 - common GNU userland used by the proof scripts, including `jq`, `sha256sum`,
   `find`, `sort`, `diff`, `cmp`, `sed`, `grep`, `stat`, and `timeout`.
 
-The revision-3 complete proof additionally requires Linux with loop and XFS
+The revision-4 complete proof additionally requires Linux with loop and XFS
 support, at least 8 GiB available for one fully allocated backing image,
 passwordless non-interactive `sudo` for the invoking user, and the exact host
 tools checked by the wrapper. On Ubuntu 24.04 the non-base packages are
@@ -418,9 +431,10 @@ At this snapshot, local `main` and `origin/main` are still PR #198's merge
 `6cbce64cb867aef24faf227e62bdfc585bbcbd5d`; issue #199 work is on
 `feat/issue-199-r2-final`. Do not expect the feature branch to have an upstream
 or infer a pull request from its existence. The repository is public and
-Actions is enabled, but this branch has not been pushed and has no exact-head
-hosted run. Old remote heads may still exist; they do not override the owner
-decisions, open issue, or this candidate state.
+Actions is available; the branch does not need to remain local because of a
+quota. It has not yet been pushed and therefore has no exact-head hosted run.
+Old remote heads may still exist; they do not override the owner decisions,
+open issue, or this candidate state.
 
 ## What can happen next
 
@@ -428,18 +442,17 @@ Ordinary bug maintenance against the accepted R1 baseline may start from a new
 issue with falsifiable acceptance.
 
 Decision 0023 authorizes the R2 epoch boundary and nothing past its stated
-order. `R2.md` revision 3 defines exact acceptance, finite input and output
-grammars, ownership, workspace boundaries, budgets, and proof. R2-1 and R2-2
-are complete after PR #198. Issue #199 is already the authorized final-evidence
-slice; do not open a replacement issue. The current candidate is formally red
-on the maximum-scene compile median, so stop for the owner's disposition. Issue
-#199 expressly forbids compiler edits. A product-optimization path must first
-receive separate falsifiable implementation authority, is not a replacement
-for #199, and must preserve the frozen workload, synced atomic publication, and
-50 ms median and 100 ms p95 ceilings before any fresh candidate-native XFS
-author proof. If a later candidate passes, obtain the required exact-head
-non-author proof and owner visual judgment, then stop for the exact owner
-verdicts and a distinct merge disposition required by issue #199.
+order. `R2.md` revision 4 defines exact acceptance, finite input and output
+grammars, ownership, workspace boundaries, ceilings, the required compile
+observation, and proof. R2-1 and R2-2 are complete after PR #198. Issue #199 is
+already the authorized final-evidence slice; do not open a replacement issue.
+Decision 0026 authorizes only the contract-and-proof classification repair and
+rerun. It does not authorize compiler edits or relabel the revision-3 red. Once
+the repair is clean and committed, run one fresh full candidate-native XFS
+author proof from new source and work paths. If it passes, obtain the required
+fresh exact-head Luna Max proof, applicable hosted workflows, and owner visual
+judgment, then stop for the exact owner verdicts and distinct merge disposition
+required by issue #199.
 
 A deeper adopter boundary, platform choice, Gate K attempt, R2 scope expansion,
 or adoption into a game requires its own owner decision. Work toward an actual

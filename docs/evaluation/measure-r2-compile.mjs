@@ -52,8 +52,6 @@ assert.equal(outputDigests.size, 1, "maximum-scene outputs are not byte-identica
 const sorted = samples.map((row) => row.elapsed).sort((left, right) => (left < right ? -1 : left > right ? 1 : 0));
 const medianNumerator = sorted[49] + sorted[50];
 const p95 = sorted[Math.ceil(0.95 * sorted.length) - 1];
-const medianPass = medianNumerator <= 100_000_000n;
-const p95Pass = p95 <= 100_000_000n;
 
 writeFileSync(
   join(output, "samples.tsv"),
@@ -72,15 +70,12 @@ writeFileSync(
     fixture,
     fixture_sha256: digest(readFileSync(fixture)),
     hostname: hostname(),
-    median_ceiling_ns: 50_000_000,
+    measurement_role: "recorded_observation",
     median_denominator: 2,
     median_numerator_ns: medianNumerator.toString(),
-    median_pass: medianPass,
     node: process.version,
     output_digest: [...outputDigests][0],
-    p95_ceiling_ns: 100_000_000,
     p95_ns: p95.toString(),
-    p95_pass: p95Pass,
     platform: platform(),
     release: release(),
     recorded_samples: 100,
@@ -89,6 +84,4 @@ writeFileSync(
   { flag: "wx" },
 );
 
-assert(medianPass, `median exceeds 50 ms: ${medianNumerator}/2 ns`);
-assert(p95Pass, `p95 exceeds 100 ms: ${p95} ns`);
-console.log(`r2 compile latency: median ${medianNumerator}/2 ns; p95 ${p95} ns; PASS`);
+console.log(`r2 compile latency: median ${medianNumerator}/2 ns; p95 ${p95} ns; RECORDED`);

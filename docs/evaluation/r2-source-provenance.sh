@@ -150,7 +150,6 @@ while IFS=$'\t' read -r path digest origin receipt license; do
         crates/nomos-observed-scene/* | \
         docs/evaluation/R2_SCHEMA_OWNERSHIP.md | \
         docs/evaluation/generate-r2-maximum.mjs | \
-        docs/evaluation/measure-r2-compile.mjs | \
         docs/evaluation/r2-maximum.test.mjs | \
         docs/evaluation/r2-schema-ownership.sh | \
         fixtures/r2/maximum-observed-scene.json | \
@@ -163,13 +162,19 @@ while IFS=$'\t' read -r path digest origin receipt license; do
           [[ $receipt == docs/evaluation/runs/r2/2026-08-27-issue-197-second-author/SECOND_AUTHOR_RECEIPT.md ]] ||
             fail "unexpected independent-author receipt for $path"
           ;;
+        docs/evaluation/measure-r2-compile.mjs | \
+        docs/evaluation/r2-complete-proof-receipt.mjs | \
+        docs/evaluation/r2-complete-proof-receipt.test.mjs | \
+        docs/evaluation/r2-complete-proof.sh | \
+        docs/evaluation/r2-source-provenance.test.sh)
+          [[ $receipt == docs/evaluation/runs/r2/2026-08-29-issue-199-revision-4-author/AUTHOR_RECEIPT.md ]] ||
+            fail "unexpected R2 revision-4 repair receipt for $path"
+          ;;
         docs/evaluation/r2-complete-proof-control.sh | \
         docs/evaluation/r2-complete-proof-control.test.sh | \
         docs/evaluation/r2-complete-proof-argv.mjs | \
         docs/evaluation/r2-complete-proof-lib.sh | \
         docs/evaluation/r2-complete-proof-outer.sh | \
-        docs/evaluation/r2-complete-proof-receipt.mjs | \
-        docs/evaluation/r2-complete-proof-receipt.test.mjs | \
         docs/evaluation/r2-complete-proof-xfs-evidence.mjs | \
         docs/evaluation/r2-complete-proof-xfs-evidence.test.mjs | \
         docs/evaluation/r2-complete-proof-xfs-ledger.mjs | \
@@ -178,15 +183,13 @@ while IFS=$'\t' read -r path digest origin receipt license; do
         docs/evaluation/r2-complete-proof-xfs-workdir.sh | \
         docs/evaluation/r2-complete-proof-xfs.sh | \
         docs/evaluation/r2-complete-proof-xfs.test.sh | \
-        docs/evaluation/r2-complete-proof.sh | \
         docs/evaluation/r2-complete-proof.test.sh | \
         docs/evaluation/r2-filesystem-accounting.mjs | \
         docs/evaluation/r2-filesystem-accounting.test.mjs | \
         docs/evaluation/r2-filesystem-evidence.mjs | \
         docs/evaluation/r2-filesystem-evidence.test.mjs | \
         docs/evaluation/r2-filesystem-sampler.mjs | \
-        docs/evaluation/r2-schema-ownership-plants.sh | \
-        docs/evaluation/r2-source-provenance.test.sh)
+        docs/evaluation/r2-schema-ownership-plants.sh)
           [[ $receipt == docs/evaluation/runs/r2/2026-08-28-issue-199-revision-3-author/AUTHOR_RECEIPT.md ]] ||
             fail "unexpected R2 final-proof author receipt for $path"
           ;;

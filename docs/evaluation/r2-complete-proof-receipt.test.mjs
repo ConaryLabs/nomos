@@ -50,12 +50,13 @@ const fixtureSourcePaths = [
   "apps/nomos-observed-viewer",
   "fixtures/r2",
   "docs/decisions/0025-r2-filesystem-accounting.md",
+  "docs/decisions/0026-r2-compile-latency-observation.md",
   "docs/evaluation/r2-second-scene-packet/MANIFEST.sha256",
   "docs/evaluation/runs/r2/2026-08-27-issue-197-second-author/SCENE_SIGNATURES.json",
   "docs/evaluation/runs/r2/2026-08-27-issue-197-second-author/evidence/contact-sheet.png",
 ];
 const sha256 = (bytes) => createHash("sha256").update(bytes).digest("hex");
-const issueBody = "0a701b4238fd6b7f23ba0ae40022bc7c23ca450ad1a8f0febc05ab440f6b3c88";
+const issueBody = "a1282d0802a45fc7d11872dec8156a745fac65f98d782ff209a7ab38eff209b2";
 const filesystemUuid = "11111111-2222-3333-4444-555555555555";
 const filesystemDevice = "/dev/loop7";
 const filesystemMajorMinor = "7:7";
@@ -278,8 +279,9 @@ const makeTemplate = () => {
   const tree = execFileSync("git", ["-C", repo, "rev-parse", "HEAD^{tree}"], { encoding: "utf8" }).trim();
   json(join(template, "metadata/source-tree.json"), {
     outcome: "pass", commit, tree, issue: 199, issue_body_sha256: issueBody,
-    r2_contract_sha256: "625f4bb1ea7c7400a6717c14b51cc6da51b32421e49bba98cf3d7ed9ff4a1254",
+    r2_contract_sha256: "81c31f3ef5f9f4919f33fcc89f27e03eed344f84f44b1f6e9e04a19ac363ad8b",
     r2_revision_3_authority_sha256: "a6a50bca56c4a990b44968ffefc31103a88e48b52904728693a166ba0d66d3ae",
+    r2_revision_4_authority_sha256: "b23bfa6275d8579b6782aa24b70b2edaae13b3960ba8ff8e9d79810a48149c73",
     runtime_contract_sha256: "dd6f4b2ce48557f48df61d50cdc25b4ebaf0904331f4fd78d804e3af536db593",
     catalog_sha256: "6259520fbf318ae0393ea4ae69649864acb154db4034d081435416be2ffa9323",
     packet_manifest_sha256: "d5708087cf7967a420667c56a7b02ed052b7058ed8545af06e6771170003c948",
@@ -364,7 +366,7 @@ const makeTemplate = () => {
     if (id === "r2-compiler-tests") content = "R2_SECOND_SCENE_PACKET_PLANTS PASS\n";
     if (["r2-viewer-build", "clean-r2-viewer-build-a", "clean-r2-viewer-build-b"].includes(id)) content = "NOMOS_OBSERVED_BUILD PASS\n";
     if (id === "r2-browser-smoke") content = "NOMOS_OBSERVED_SMOKE PASS scenes=2 samples=20 external=0\n";
-    if (id === "maximum-compile-benchmark") content = "r2 compile latency: median 20000000/2 ns; p95 10000000 ns; PASS\n";
+    if (id === "maximum-compile-benchmark") content = "r2 compile latency: median 200000002/2 ns; p95 100000001 ns; RECORDED\n";
     writeFileSync(join(template, stdout), content);
     writeFileSync(join(template, stderr), "");
     ledger.push(`${index + 1}\t${id}\t${1000 + index}\t${1001 + index}\t0\t${stdout}\t${stderr}\t${commandDisplays[index]}`);
@@ -464,7 +466,7 @@ const makeTemplate = () => {
   for (let index = 0; index < 100; index += 1) {
     const path = join(benchmark, `sample-${String(index).padStart(3, "0")}.json`);
     writeFileSync(path, plan);
-    sampleRows.push(`${index}\t10000000\t${Buffer.byteLength(plan)}\t${sha256(plan)}\t${path}`);
+    sampleRows.push(`${index}\t100000001\t${Buffer.byteLength(plan)}\t${sha256(plan)}\t${path}`);
   }
   writeFileSync(join(benchmark, "samples.tsv"), `${sampleRows.join("\n")}\n`);
   json(join(benchmark, "summary.json"), {
@@ -472,11 +474,11 @@ const makeTemplate = () => {
     fixture: join(repo, "fixtures/r2/maximum-observed-scene.json"),
     fixture_sha256: "fe332f711437dab15e4d1315cc3ca57dba6521350ff673941e77feb414585909",
     hostname: "synthetic",
-    recorded_samples: 100, warmups: 10, median_denominator: 2, median_numerator_ns: "20000000",
-    p95_ns: "10000000", median_ceiling_ns: 50000000, p95_ceiling_ns: 100000000,
-    median_pass: true, node: process.version,
+    measurement_role: "recorded_observation",
+    recorded_samples: 100, warmups: 10, median_denominator: 2, median_numerator_ns: "200000002",
+    p95_ns: "100000001", node: process.version,
     output_digest: `${Buffer.byteLength(plan)}:${sha256(plan)}`,
-    p95_pass: true, platform: process.platform, release: "synthetic",
+    platform: process.platform, release: "synthetic",
   });
 
   const browser = join(template, "r2/browser-smoke");
@@ -637,7 +639,10 @@ test("synthetic complete evidence assembles and verifies without trusting summar
   const receipt = assemble(output);
   assert.equal(receipt.outcome, "pass");
   assert.equal(receipt.summary.commands.argv_count, 33);
+  assert.equal(receipt.summary.r2.compile.measurement_role, "recorded_observation");
   assert.equal(receipt.summary.r2.compile.samples, 100);
+  assert(BigInt(receipt.summary.r2.compile.median_numerator_ns) / 2n > 50_000_000n);
+  assert(BigInt(receipt.summary.r2.compile.p95_ns) > 100_000_000n);
   assert.equal(receipt.summary.r2.browser.closures, 22);
   assert.equal(receipt.summary.budgets.checkout_peak_mib, 489);
   assert.equal(receipt.summary.budgets.disk_samples, 2);
@@ -796,6 +801,7 @@ test("major plants fail closed before a receipt can be assembled", async (t) => 
       writeFileSync(path, readFileSync(path, "utf8").replace(commandDisplays[0], "cargo fmt --all"));
     }, /command workspace-fmt display differs/],
     ["proof-marker", (out) => writeFileSync(join(out, "logs/04-workspace-boundary.stdout"), "forged pass\n"), /proof marker is absent/],
+    ["compile-stdout", (out) => writeFileSync(join(out, "logs/33-maximum-compile-benchmark.stdout"), "r2 compile latency: median 1/2 ns; p95 1 ns; RECORDED\n"), /maximum-compile-benchmark stdout differs/],
     ["authority-drift", (out) => {
       const path = join(out, "metadata/source-tree.json");
       const value = JSON.parse(readFileSync(path));
@@ -866,15 +872,12 @@ test("major plants fail closed before a receipt can be assembled", async (t) => 
       const path = join(out, "r2/compile-benchmark/samples.tsv");
       writeFileSync(path, readFileSync(path, "utf8").replace("sample-000.json", "sample-001.json"));
     }, /sample 0 path differs/],
-    ["compile-ceiling", (out) => {
-      const samplesPath = join(out, "r2/compile-benchmark/samples.tsv");
-      writeFileSync(samplesPath, readFileSync(samplesPath, "utf8").replaceAll("\t10000000\t", "\t100000001\t"));
+    ["compile-role", (out) => {
       const summaryPath = join(out, "r2/compile-benchmark/summary.json");
       const value = JSON.parse(readFileSync(summaryPath));
-      value.median_numerator_ns = "200000002";
-      value.p95_ns = "100000001";
+      value.measurement_role = "acceptance_ceiling";
       json(summaryPath, value);
-    }, /latency ceiling exceeded/],
+    }, /measurement role differs/],
     ["dist-drift", (out) => writeFileSync(join(out, "r2/viewer-b/dist/extra"), "extra\n"), /receipt does not match its dist tree/],
     ["dist-prohibited-payload", (out) => {
       for (const name of ["viewer-proof", "viewer-a", "viewer-b"]) {
