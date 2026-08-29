@@ -27,7 +27,7 @@ line, and operational gotchas.
 | R1 contract | `RUNTIME.md` revision 4, in force under decision 0021 |
 | Game adoption | not authorized |
 | Mortal Estate evidence | sister-project prospective adopter; bounded evidence produced one admitted dependency point, representative frame, and classified adopter-neutral capability gap; no adoption |
-| R2 observed-scene epoch | revision 4 authorized under decision 0026; R2-1 and R2-2 landed; two revision-4 full attempts are wrapper-red and a repaired fresh author proof is pending |
+| R2 observed-scene epoch | revision 4 authorized under decision 0026; R2-1 and R2-2 landed; three revision-4 full attempts are wrapper-red and a repaired fresh author proof is pending |
 
 R1 is the accepted runtime baseline for this repository. That result does not
 rewrite Gate K, pass a later gate, approve production art, or authorize Nomos
@@ -63,7 +63,12 @@ the verifier compared a pre-format allocation snapshot for exact equality with
 the post-teardown inode after its host-XFS allocation accounting increased by 4
 KiB, a result consistent with extent-map metadata. The contract requires at
 least 8 GiB allocated, not checkpoint equality. The harness now binds the two
-checkpoints independently; a wholly fresh
+checkpoints independently. A third fresh attempt proved that repair and again
+passed every inner command, but the outer verifier incorrectly compared the
+file-only evidence manifest against canonical inventory directory rows, which
+have no file digest. All 1,880 manifest-listed exported files match; a
+nested-file fixture now guards the narrow file-row projection repair while the
+full export inventory continues to bind directory paths and modes. A wholly fresh
 candidate-native author run is next. No retained red attempt can satisfy the
 repaired candidate. R2 is not admitted until one revision-4 combined candidate
 passes the complete author proof, exact-head non-author rerun, owner visual
@@ -205,9 +210,10 @@ revision-3 XFS attempt remains formal red under revision 3; it is not relabelled
 as a revision-4 pass. Issue #199 still forbids compiler edits, and no product
 optimization is authorized in this slice. After the proof machinery binds
 revision 4 and the frozen issue body, create fresh candidate/source/work paths
-and run the complete candidate-native XFS author proof. Do not reuse either
-revision-4 run whose inner proof passed but whose outer receipt refused the
-backing-image evidence. A passing candidate
+and run the complete candidate-native XFS author proof. Do not reuse the two
+revision-4 runs whose inner proofs passed but whose outer receipts refused the
+backing-image evidence, or the later run refused by the manifest projection
+bug. A passing candidate
 still requires the contract's exact-head non-author rerun, public-repository
 hosted workflows, and the owner's visual and R2 verdicts. GitHub Actions is
 available; any currently local-only branch state is a pending workflow step,

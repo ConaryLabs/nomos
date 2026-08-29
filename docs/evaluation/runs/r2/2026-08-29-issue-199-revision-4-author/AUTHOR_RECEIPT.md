@@ -225,9 +225,95 @@ and contain only the unrelated, untouched `/dev/loop0`. Preserve both exact
 second-run paths and all contents. Nothing from this run may be resumed,
 spliced, relabelled, or carried into the repaired candidate's proof.
 
+## Retained third revision-4 formal red
+
+Candidate `c1b50cfb4930ec6fb2298b235464133855135b58`, tree
+`036ad93f1d2f0729b79a219bdf8bdc5b100f087c`, was run once from the fresh,
+detached, non-shallow, clean source
+`/data/dev/src/nomos-r4-checkpoint-candidate.vQg7jb` with fresh work directory
+`/data/dev/src/nomos-r4-checkpoint-xfs-run.cxAdBh`. Its complete clean-head
+portable preflight had passed before launch. The candidate-native inner proof
+passed all 33 ordered commands, assembled and independently verified its
+receipt, and exported byte-identical evidence. The supervisor exited zero.
+The outer receipt assembler exited one with exact error `inner evidence
+manifest does not bind exported output`; the wrapper reported `R2 XFS wrapper:
+RED (receipt=1 supervisor=0)` and emitted no `wrapper-receipt.json`. The run is
+therefore formal red, and no retry was launched from either retained path.
+
+The two-checkpoint repair worked exactly as intended. The pre-format snapshot
+recorded logical size `8,589,934,592`, `st_blocks` `16,777,216`, 512-byte block
+units, and allocated size `8,589,934,592`. After sync, ordinary unmount, loop
+detach, and proof of no remaining association, both the post-teardown snapshot
+and live inode recorded logical size `8,589,934,592`, `st_blocks` `16,777,224`,
+and allocated size `8,589,938,688`. The facts bind each checkpoint separately,
+so the prior extra-contractual equality refusal did not recur.
+
+Read-only diagnosis proved that the inner manifest and exported regular files
+do bind. The canonical export inventory contains 2,344 rows: 1,882 regular
+files and 462 directories. Excluding the manifest and final receipt themselves
+leaves 1,880 regular files, exactly the 1,880 byte-path-sorted manifest rows,
+with zero missing paths, extra paths, digest drift, or ordering difference. The
+outer validator incorrectly projected every inventory row other than those two
+paths, including directory rows that have no SHA-256, while the contract's
+evidence manifest and the inner assembler cover regular files. The earlier
+positive outer-receipt fixture was flat and therefore contained no directory
+row. This is a proof-validator and test-fixture defect, not output mutation,
+finalization timing, a product result, or a contract defect. The narrow repair
+filters the manifest comparison to canonical inventory rows whose type is
+`file`; the full source/export inventory continues to bind directory paths and
+modes. A nested-file positive fixture makes the prior implementation fail and
+the repaired implementation pass.
+
+The retained diagnostic evidence is:
+
+- inner receipt SHA-256:
+  `7d040b5246b79cf48b8fb6c726d294af0504a0b8ee591bb0d4209b7879123e28`;
+- inner `EVIDENCE.sha256` SHA-256:
+  `eae5d98e48108e3516be8ee43bfb3f80f2d4c86647dd6ba7b27f9ebc21c9b1b2`,
+  with all 1,880 listed regular files hash-valid;
+- equal source and export inventory digest:
+  `77e8a165fc0be9d93b8134352118826bdea4da55992ed4087b3b6f37c4c34557`,
+  over 2,344 rows; export-inventory document SHA-256
+  `49e05cccd6f9db1bd901761422d4700757724ef35deaf04094f24609e6a28035`;
+- compile-summary SHA-256:
+  `2d46f7b28093b235b7524f2158826d166548139fc242b29a408931594943946c`,
+  recording median numerator `114562392` ns over denominator `2` (57,281,196
+  ns), p95 `77071650` ns, and 100 separately published 111,604-byte outputs,
+  all with SHA-256
+  `aa36d6befffa48870d8f6cee00663139ec301bb1b606b9270e5e7984566cd6f0`;
+- raw compile-sample table SHA-256:
+  `fc507f8322e1962025fc6ac6f832ac185b68f9c681bcffc2844221f6e95bf2c5`;
+- supervisor-facts SHA-256:
+  `882e02cd87203ca662157f2fa71adee271b0fe0c3adc1de232b8ec3a2df5e2da`;
+- pre-format and post-teardown image-stat SHA-256 respectively
+  `80ad97fd657fac7c80f9ee3eefe09c1f7b00b5914356abd1fdbe1a1858bbeab2`
+  and `11c40235dc8cdf1d00dd0a7a7e236e4e38324332e4c2c862a4a0e05e9a8ef4db`;
+- wrapper-command and execution-ledger SHA-256 respectively
+  `227d5f41a003830859d5f7757eb23be82578375e4fb15943f91923f7d6085e8b`
+  and `27b0689daede3e5f49c5e08c6c8c0b4e3af0d36af3337bc88e3e4be477bb6050`;
+- clean host-monitor SHA-256:
+  `d0590c27884032d41364cca1615575b11bfa4bffa1c1038a49829c8995a0f869`;
+  and outer receipt-stderr SHA-256:
+  `fc4612d2ddd8ca9ca8316c87e1ddee08fd41680c05c2e08454f7f928f2e6df35`.
+
+The inner clean release build took 10.88 seconds; peak checkout allocation was
+1,547 MiB; the 3,642-sample filesystem trace had maximum gap `74,748,991` ns;
+XFS capacity was `8,511,139,840` bytes; the distribution was 805,600 bytes in
+14 files; and both browser lanes, all 20 browser samples, bounded process
+closures, and zero-external-request checks passed. These measurements do not
+promote the run.
+
+Teardown unmounted and detached `/dev/loop1`; no proof mount, holder, or image
+association remains. The before/after loop inventories are byte-identical at
+SHA-256
+`e951f122f209cb4a215522a5b5e708d1a855da1e65e9aedfa014b849f4be6a74`
+and contain only the unrelated, untouched `/dev/loop0`. Preserve both exact
+third-run paths and all contents. Nothing from this run may be resumed,
+spliced, relabelled, or carried into the repaired candidate's proof.
+
 ## Proof obligation and status
 
-The prior revision-3 proof and both retained revision-4 wrapper-red attempts
+The prior revision-3 proof and all three retained revision-4 wrapper-red attempts
 cannot be resumed, promoted, or reclassified. Revision 4 therefore requires a
 fresh candidate-native author proof on a newly created dedicated 8,192 MiB XFS
 filesystem from wholly new source and work paths. If that author proof passes,

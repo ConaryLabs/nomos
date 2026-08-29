@@ -169,7 +169,9 @@ export const validateEvidenceManifest = (path, inventory) => {
     if (!match || match[2].startsWith("/") || match[2].split("/").some((part) => part === "" || part === "." || part === "..")) fail("inner evidence manifest row is unsafe");
     return { sha256: match[1], path: match[2] };
   });
-  const expected = inventory.rows.filter((row) => !["EVIDENCE.sha256", "receipt.json"].includes(row.path)).map((row) => ({ sha256: row.sha256, path: row.path }));
+  const expected = inventory.rows
+    .filter((row) => row.type === "file" && !["EVIDENCE.sha256", "receipt.json"].includes(row.path))
+    .map((row) => ({ sha256: row.sha256, path: row.path }));
   const sorted = [...lines].sort((left, right) => Buffer.from(left.path).compare(Buffer.from(right.path)));
   if (JSON.stringify(lines) !== JSON.stringify(sorted) || JSON.stringify(lines) !== JSON.stringify(expected)) fail("inner evidence manifest does not bind exported output");
   const { text: _text, ...digest } = evidence;

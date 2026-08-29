@@ -238,10 +238,12 @@ test("receipt has exact top-level schema and success requires inner plus teardow
     writeFileSync(image, "image\n");
     writeFileSync(stdout, "proof output\n");
     writeFileSync(stderr, "");
-    writeFileSync(join(output, "result.txt"), "result\n");
-    writeFileSync(join(exportDestination, "result.txt"), "result\n");
-    const resultDigest = digestRegular(join(output, "result.txt"), "result").sha256;
-    const evidenceBytes = `${resultDigest}  result.txt\n`;
+    mkdirSync(join(output, "nested"));
+    mkdirSync(join(exportDestination, "nested"));
+    writeFileSync(join(output, "nested", "result.txt"), "result\n");
+    writeFileSync(join(exportDestination, "nested", "result.txt"), "result\n");
+    const resultDigest = digestRegular(join(output, "nested", "result.txt"), "result").sha256;
+    const evidenceBytes = `${resultDigest}  nested/result.txt\n`;
     writeFileSync(evidence, evidenceBytes);
     writeFileSync(join(exportDestination, "EVIDENCE.sha256"), evidenceBytes);
     for (const path of [
@@ -708,9 +710,9 @@ test("receipt has exact top-level schema and success requires inner plus teardow
     assert.throws(() => assembleReceipt({ ...facts, filesystem: { ...facts.filesystem, xfs_info_path: null } }, receiptOptions), /XFS info/);
     assert.throws(() => assembleReceipt({ ...facts, export: { ...facts.export, inner_evidence_manifest_path: output } }, receiptOptions), /inner evidence manifest/);
     assert.throws(() => assembleReceipt({ ...facts, operations: { ...facts.operations, proof: { ...facts.operations.proof, argv: ["/usr/bin/false"] } } }, receiptOptions), /operation proof argv/);
-    writeFileSync(join(exportDestination, "EVIDENCE.sha256"), `${"0".repeat(64)}  result.txt\n`);
+    writeFileSync(join(exportDestination, "EVIDENCE.sha256"), `${"0".repeat(64)}  nested/result.txt\n`);
     assert.throws(() => assembleReceipt(facts, receiptOptions), /inner evidence manifest|export inventory digest/);
-    writeFileSync(join(exportDestination, "EVIDENCE.sha256"), `${digestRegular(join(exportDestination, "result.txt"), "export result").sha256}  result.txt\n`);
+    writeFileSync(join(exportDestination, "EVIDENCE.sha256"), `${digestRegular(join(exportDestination, "nested", "result.txt"), "export result").sha256}  nested/result.txt\n`);
     writeFileSync(join(work, "host-filesystem-before.statfs"), "f_frsize=4096 f_blocks=2000000 f_bfree=1990000 f_bavail=1990001 f_type=xfs f_fsid=1234\n");
     assert.throws(() => assembleReceipt(facts, receiptOptions), /host_filesystem_before_path statfs counters/);
   } finally {
