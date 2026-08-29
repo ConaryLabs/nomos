@@ -11,6 +11,13 @@ under `docs/decisions/`.
 Nomos is the project/runtime; The Signed World is the thesis it tests. Nothing
 here is authority for any other project.
 
+Nomos and The Mortal Estate are collaborating sister projects. The Mortal
+Estate is attempting to consume Nomos as a prospective adopter, and generally
+useful discoveries from that work should return through separately authorized,
+adopter-neutral Nomos changes. Their repositories, authority, integration,
+acceptance, and final adoption decisions remain separate; Nomos does not decide
+what The Mortal Estate adopts.
+
 ## Working rules
 
 - **Acceptance precedes implementation.** `KERNEL.md` is the executable contract.

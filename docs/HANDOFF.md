@@ -1,8 +1,11 @@
 # Nomos handoff
 
-Status snapshot: 2026-08-27, at the R2-2 implementation stop line. This file is
-an operational map; owner decisions and revisioned contracts remain the
-authority when prose conflicts.
+Status snapshot: 2026-08-29, after issue #199's exact final-evidence candidate
+passed its applicable proofs and the owner rejected its committed visual family.
+The separate R2 disposition and merge disposition remain pending while the
+owner considers the project's direction. This file is an operational map;
+owner decisions and revisioned contracts remain the authority when prose
+conflicts.
 
 **Play the accepted six-area viewer:** <https://conarylabs.github.io/nomos/>
 
@@ -14,15 +17,40 @@ baseline. Decision 0019 expressly does **not** adopt Nomos into a game. Decision
 point, recorded one representative adopter frame, and reduced the observed gap
 to an adopter-neutral fixture classified `reusable missing Nomos capability`.
 
+Nomos and The Mortal Estate are collaborating sister projects. The Mortal
+Estate is attempting to consume Nomos as a prospective adopter, and reusable
+discoveries should return as separately authorized, adopter-neutral Nomos work.
+Their repositories, authority, integration, acceptance, and adoption decisions
+remain separate. No Mortal Estate integration or adoption has occurred.
+
 Decision 0023 opens one narrow R2 observed-scene presentation epoch. The
 separately reviewed root `R2.md` revision 1 is owner-authorized. R2-1's strict
 carrier and compiler landed through PR #196 at
 `cc47a7235f92d0ed460c7db5d178448b12fdba02`, tree
 `2bce614d2df94464c20042cdf059a7b22ec39c09`. R2-2's isolated offline consumer
-and independent second scene land through PR #198. Those implementation
-targets do not themselves admit R2. The next target is a new, separately
-falsifiable final-evidence-and-disposition issue; no platform choice or
-game-adoption claim is authorized.
+and independent second scene landed through PR #198. Those implementation
+targets do not themselves admit R2.
+
+Issue #199 and draft PR #201 carry later owner-authorized proof-contract repairs
+and exact unmerged candidate
+`ad99db0daa3215a7f3af56540c6081bb12ce3121`, tree
+`60c49a38ed22d6db331c23831b392ce06b05a735`. Fresh author and non-author
+reference-host XFS proofs passed at that exact candidate. Public `verify` run
+`33241067563` and `gate-k-evidence` run `33241067527` passed. In viewer run
+`33241067564`, the ordinary viewer, R1, and portable R2 jobs passed; detached
+XFS job `99070385152` remains formally red. The owner ruled that job retained
+supplemental red rather than applicable required acceptance CI; the ruling does
+not relabel it or claim every job green.
+
+The repository is public and GitHub Actions are available. Any earlier note
+that the branch had to remain local because of an Actions quota is obsolete.
+
+The owner then replied `Agreed. Rejected` to the committed `2560x720` contact
+sheet with SHA-256
+`b76edbd9dd03fce5a99c074200ee7311bf87d5d2e5829c800170c129d00bf576`.
+That exact candidate therefore cannot be accepted as R2. R2 remains unadmitted.
+No contract repair, stop verdict, merge, platform choice, or game-adoption claim
+may be inferred from the rejection or the present owner pause.
 
 A fresh agent must not infer active work from an old remote branch. The
 repository intentionally retains evidence branches and annotated tags. Check
@@ -56,6 +84,9 @@ missing Nomos capability`. Decision 0023 is the resulting epoch boundary.
 R2-1 then landed through PR #196. R2-2's packet-frozen second scene was authored
 by an independent Luna Max agent without repository or adopter access; its
 source, compiled plan, signatures, browser receipt, and pixels entered unchanged.
+Issue #199 then produced the exact proof candidate and verdict ledger summarized
+above. Preserve draft PR #201 at its proved head: a new commit there would create
+a new candidate and invalidate its exact-head proof claim.
 
 ## Authoritative state
 
@@ -67,8 +98,8 @@ source, compiled plan, signatures, browser receipt, and pixels entered unchanged
 | R1 contract | revision 4 in force | `RUNTIME.md`, decision 0021 |
 | Game adoption | not authorized; thesis applies to no game | decision 0019 |
 | Mortal Estate presentation evidence | bounded prerequisite evidence complete; no adoption | decisions 0022 and 0023 evidence |
-| R2 observed-scene presentation epoch | R2-1 and R2-2 implementation complete; epoch not yet admitted | `R2.md`, PRs #196 and #198 |
-| Current queue | after PR #198, a new R2 final-evidence-and-disposition issue is next | GitHub issues and PRs, `R2.md` section 11 |
+| R2 observed-scene presentation epoch | R2-1 and R2-2 remain isolated on `main`; exact draft final candidate visually rejected; epoch unadmitted | `R2.md`, issue #199, draft PR #201 |
+| Current queue | owner direction pause; await explicit R2 disposition and a separate merge disposition; start no R2 implementation | issue #199 and PR #201 verdict ledger |
 
 The accepted R1 surface consists of:
 
@@ -94,7 +125,9 @@ The unadmitted R2 implementation adds one dependency-isolated
 `nomos-observed-scene` crate and `apps/nomos-observed-viewer`. It proves a
 finite observed-scene carrier through two independently different scenes and a
 render-only isometric browser boundary. It is evidence awaiting the R2 final
-disposition, not an extension of the accepted R1 play runtime.
+disposition, not an extension of the accepted R1 play runtime. The rejected
+visual family prevents the exact draft candidate from being admitted as R2; it
+does not erase the carrier/compiler evidence or convert it into accepted work.
 
 ## Read in this order
 
@@ -279,11 +312,11 @@ gh pr list --state open
 gh run list --branch main --limit 8
 ```
 
-Expected steady state after this handoff merges: clean `main` matching
-`origin/main`, zero open issues, zero open PRs, and successful applicable main
-workflows. Pages retains its last applicable successful run when its path
-filter does not select the decision change. Old remote heads may still exist;
-they do not override that state.
+Do not expect zero open work at this pause. Issue #199 and draft PR #201 retain
+the R2 proof and verdict ledger; issue #200 separately tracks repository-transfer
+cleanup; issue #202 scopes this current-state documentation. Verify the live
+lists rather than treating any branch as a queue. `main` and the exact PR #201
+candidate must each remain clean at their separately recorded identities.
 
 ## What can happen next
 
@@ -291,11 +324,16 @@ Ordinary bug maintenance against the accepted R1 baseline may start from a new
 issue with falsifiable acceptance.
 
 Decision 0023 authorizes the R2 epoch boundary and nothing past its stated
-order. `R2.md` revision 1 defines exact acceptance, finite input and output
-grammars, ownership, workspace boundaries, budgets, and proof. R2-1 and R2-2
-are complete after PR #198. The next slice is R2 final evidence and disposition,
-starting from a new falsifiable issue and stopping for the owner's explicit
-`accept`, `repair and rerun`, or `stop` verdict.
+order. R2-1 and R2-2 are complete after PR #198; issue #199 completed its
+applicable final proof and stopped on the rejected visual family. Because that
+verdict makes `accept R2` incompatible with the exact candidate, the owner must
+separately choose exactly `repair the contract and rerun affected evidence` or
+`stop R2`. Until then, make no R2 implementation, candidate, or merge change.
+
+Whether Nomos's strict semantic and presentation boundary supplies enough
+marginal value to justify more adopter work is explicitly unresolved. This
+pause is not an architectural verdict, a contract repair, an R2 stop, or
+permission to infer a direction.
 
 A deeper adopter boundary, platform choice, Gate K attempt, R2 scope expansion,
 or adoption into a game requires its own owner decision. Work toward an actual

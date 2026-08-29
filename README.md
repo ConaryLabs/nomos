@@ -26,8 +26,8 @@ line, and operational gotchas.
 | R1 runtime epoch | all five criteria passed; accepted and closed under decision 0019 |
 | R1 contract | `RUNTIME.md` revision 4, in force under decision 0021 |
 | Game adoption | not authorized |
-| Mortal Estate evidence | bounded evidence produced one admitted dependency point, representative frame, and classified capability gap |
-| R2 observed-scene epoch | revision 1 authorized; R2-1 and R2-2 implementation targets complete; final evidence and disposition remain |
+| Mortal Estate evidence | sister-project prospective adopter; one R1 dependency point admitted, representative frame recorded, and reusable capability gap classified; no integration or adoption |
+| R2 observed-scene epoch | R2-1 and R2-2 remain isolated on `main`; exact draft candidate `ad99db0` passed its applicable proofs but its visual family was owner-rejected; R2 is unadmitted |
 
 R1 is the accepted runtime baseline for this repository. That result does not
 rewrite Gate K, pass a later gate, approve production art, or authorize Nomos
@@ -38,14 +38,25 @@ Decision 0022 authorized one bounded presentation-adoption evidence program for
 The Mortal Estate. That program admitted an immutable R1 dependency point,
 recorded a representative adopter frame, and reduced its presentation gap to an
 adopter-neutral fixture classified `reusable missing Nomos capability`.
+Nomos and The Mortal Estate are collaborating sister projects: reusable findings
+may flow upstream into Nomos, while each repository retains its own authority,
+integration, acceptance, and adoption decisions.
 
 Decision 0023 opens one narrow R2 observed-scene presentation epoch from that
-evidence. The separately reviewed root contract `R2.md` revision 1 is
-owner-authorized. R2-1's strict carrier and compiler landed at
-`cc47a7235f92d0ed460c7db5d178448b12fdba02`; R2-2 adds the isolated offline
-consumer and hash-frozen independent second-scene evidence through PR #198.
-R2 is not admitted until its separately authorized final evidence and owner
-disposition target passes. No platform choice or game adoption is authorized.
+evidence. `main` carries the owner-authorized `R2.md` revision 1, R2-1's strict
+carrier/compiler at `cc47a7235f92d0ed460c7db5d178448b12fdba02`, and R2-2's
+isolated offline consumer and independent second scene through PR #198. Issue
+#199 and draft PR #201 carry later owner-authorized proof-contract repairs and
+exact unmerged candidate `ad99db0daa3215a7f3af56540c6081bb12ce3121`, tree
+`60c49a38ed22d6db331c23831b392ce06b05a735`. Its fresh author and non-author
+reference-host XFS proofs passed. Under the owner's applicability ruling, the
+required hosted lanes passed while detached XFS job `99070385152` remains
+retained supplemental red evidence. The owner rejected the candidate's
+committed `2560x720` contact sheet, SHA-256
+`b76edbd9dd03fce5a99c074200ee7311bf87d5d2e5829c800170c129d00bf576`.
+This exact candidate therefore cannot be accepted as R2. The separate R2 and
+merge dispositions remain pending; no platform choice or game adoption is
+authorized.
 
 The implementation includes:
 
@@ -61,7 +72,8 @@ The implementation includes:
   bounded headless-Chromium proof; plus
 - the unadmitted R2 `nomos-observed-scene` carrier/compiler and isolated
   `apps/nomos-observed-viewer`, with strict render-only decoding and two-scene
-  offline browser evidence awaiting the R2 final disposition.
+  offline browser evidence. Its exact final-evidence candidate's frozen visual
+  family was rejected, so the implementation remains unadmitted evidence.
 
 The proof corpus connects six independently authored areas from the
 quarantined executable-gaol study through one route. Two were cold-authored
@@ -166,12 +178,12 @@ remote branches do not. Ordinary maintenance begins with a falsifiable issue
 and follows [AGENTS.md](AGENTS.md). A new capability family, dependency policy,
 runtime epoch, Gate K attempt, or game adoption requires a new owner decision.
 
-Decision 0023 is the narrow exception for the observed-scene R2 epoch. With
-R2-1 and R2-2 complete, the next authorized action is the separately
-falsifiable R2 final-evidence-and-disposition issue required by `R2.md`
-section 11. It must bind one combined candidate, run the complete
-network-isolated proof, obtain an exact-head non-author rerun, and stop for the
-owner's R2 verdict.
+Decision 0023 is the narrow exception for the observed-scene R2 epoch. Issue
+#199 has reached its owner stop: final reference-host proof and applicable CI
+completed, and the visual family was rejected. Do not start another R2
+implementation or alter draft PR #201 while direction is under consideration.
+The remaining R2 disposition must be exactly `repair the contract and rerun
+affected evidence` or `stop R2`; merge remains a separate owner decision.
 
 Nomos is authority only for this repository. Nothing here becomes authority for
 another project without that project's own explicit decision.
