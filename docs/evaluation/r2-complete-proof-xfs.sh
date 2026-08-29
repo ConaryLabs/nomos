@@ -149,51 +149,18 @@ else
   source "$public_workdir_helper_fd_path"
 fi
 
-record_fs_statfs() {
-  local fs=$1
-  local fragment=$2
-  local output=$3
-  : >"$output.stderr"
-  set +e
-  /usr/bin/node --input-type=module - "$fs" "$fragment" "$IMAGE_BYTES" >"$output" 2>"$output.stderr" <<'NODE'
-import { statfsSync } from "node:fs";
-const [root, fragmentText, limitText] = process.argv.slice(2);
-const fragment = BigInt(fragmentText);
-const limit = BigInt(limitText);
-const stat = statfsSync(root, { bigint: true });
-if (stat.type !== 1481003842n || stat.bsize !== fragment || fragment === 0n) process.exit(2);
-if (stat.bavail > stat.bfree || stat.bfree > stat.blocks) process.exit(3);
-const capacity = stat.blocks * fragment;
-const allocated = (stat.blocks - stat.bfree) * fragment;
-if (capacity > limit) process.exit(4);
-process.stdout.write(JSON.stringify({
-  f_type: stat.type.toString(), f_bsize: stat.bsize.toString(), f_frsize: fragment.toString(),
-  f_blocks: stat.blocks.toString(), f_bfree: stat.bfree.toString(), f_bavail: stat.bavail.toString(),
-  capacity_bytes: capacity.toString(), allocated_bytes: allocated.toString(),
-  allocated_mib: ((allocated + 1048575n) / 1048576n).toString(),
-}) + "\n");
-NODE
-  RUN_STATUS=$?
-  set -e
-  [[ $RUN_STATUS -eq 0 ]] || return 1
-  jq -e '(.f_type == "1481003842" and .f_bsize == .f_frsize and
-    (.f_bavail | tonumber) <= (.f_bfree | tonumber) and
-    (.f_bfree | tonumber) <= (.f_blocks | tonumber) and
-    (.capacity_bytes | tonumber) <= 8589934592)' "$output" >/dev/null
-}
-
 supervisor() {
   # Establish the infrastructure path before even the root check; no
   # privileged lookup may consult the caller-controlled PATH.
   export PATH=$SYSTEM_PATH
   [[ $(/usr/bin/id -u) == 0 ]] || fail 'private supervisor is root-only'
-  [[ $# -eq 13 ]] || fail 'private supervisor argument shape is invalid'
+  [[ $# -eq 14 ]] || fail 'private supervisor argument shape is invalid'
   # Bash runs EXIT after unwinding function locals. These values intentionally
   # live for the private supervisor process so its EXIT trap can always detach
   # the exact loop and emit truthful failure facts after any intermediate exit.
   source=$1 source_handoff=$2 source_identity=$3 work=$4 expected_head=$5 expected_tree=$6
-  caller_uid=$7 caller_gid=$8 caller_user=$9 caller_path=${10} rustup_home=${11}
-  caller_browser=${12} work_identity=${13}
+  caller_uid=$7 caller_gid=$8 caller_user=$9 caller_node=${10} caller_path=${11}
+  rustup_home=${12} caller_browser=${13} work_identity=${14}
   source_fd='' source_fd_path=''
   work_real=$work
   work_fd=''
@@ -353,6 +320,7 @@ supervisor() {
       --arg execution_ledger "$display_execution_ledger" \
       --arg outer_preflight "$display_outer_preflight" \
       --arg caller_uid "$caller_uid" --arg caller_gid "$caller_gid" --arg caller_user "$caller_user" \
+      --arg caller_node "$caller_node" \
       --argjson wrapper_tools "$tool_register_json_value" \
       --argjson export_status "$export_status" --argjson export_equal "$export_equal" \
       --arg export_destination "$display_export_destination" --arg inventory_path "$display_inventory_path" \
@@ -395,7 +363,7 @@ supervisor() {
           mkfs_xfs:{argv:["/usr/sbin/mkfs.xfs","-f","-K","-l","internal",($loop_path|nz)],cwd:$display_work,status:$mkfs_status,stdout_path:($display_work+"/mkfs-xfs.stdout"),stderr_path:($display_work+"/mkfs-xfs.stderr")},
           mount:{argv:["/usr/bin/mount","-t","xfs","-o","rw,nodev,nosuid",($loop_path|nz),$fs],cwd:$display_work,status:$mount_status,stdout_path:($display_work+"/mount.stdout"),stderr_path:($display_work+"/mount.stderr")},
           proof:{argv:["/usr/bin/bash",$proof_script,"--output",$output],cwd:$checkout,status:$inner_status,stdout_path:$proof_stdout,stderr_path:$proof_stderr},
-          export:{argv:["/usr/bin/node",$receipt_helper,"copy","--source",$output,"--destination",$export_destination,"--output",$inventory_path],cwd:$display_work,status:$export_status,stdout_path:($display_work+"/export.stdout"),stderr_path:($display_work+"/export.stderr")},
+          export:{argv:[$caller_node,$receipt_helper,"copy","--source",$output,"--destination",$export_destination,"--output",$inventory_path],cwd:$display_work,status:$export_status,stdout_path:($display_work+"/export.stdout"),stderr_path:($display_work+"/export.stderr")},
           sync_before_umount:{argv:["/usr/bin/sync","-f",$fs],cwd:$display_work,status:$sync_before_umount_status,stdout_path:($display_work+"/sync-before-umount.stdout"),stderr_path:($display_work+"/sync-before-umount.stderr")},
           umount:{argv:["/usr/bin/umount",$fs],cwd:$display_work,status:$umount_status,stdout_path:($display_work+"/umount.stdout"),stderr_path:($display_work+"/umount.stderr")},
           loop_detach:{argv:["/usr/sbin/losetup","--detach",($loop_path|nz)],cwd:$display_work,status:$detach_status,stdout_path:($display_work+"/loop-detach.stdout"),stderr_path:($display_work+"/loop-detach.stderr")}
@@ -488,6 +456,7 @@ supervisor() {
   : >"$wrapper_command_ledger"
   : >"$wrapper_execution_ledger"
   record_wrapper_tools "$tool_register"
+  record_wrapper_user_tool "$tool_register" node "$caller_node"
   record_wrapper_user_tool "$tool_register" rustup
   record_wrapper_user_tool "$tool_register" cargo
   record_wrapper_user_tool "$tool_register" rustc
@@ -728,7 +697,7 @@ supervisor() {
   r2_display_work_path "$output" >/dev/null || fail 'work directory changed before export source handoff'
   r2_display_work_path "$export_destination" >/dev/null || fail 'work directory changed before export destination handoff'
   r2_display_work_path "$inventory_path" >/dev/null || fail 'work directory changed before export inventory handoff'
-  run_capture "$work/export.stdout" "$work/export.stderr" run_as_user /usr/bin/node "$receipt_helper" copy \
+  run_capture "$work/export.stdout" "$work/export.stderr" run_as_user "$caller_node" "$receipt_helper" copy \
     --source "$output" --destination "$export_destination" --output "$inventory_path"
   export_status=$RUN_STATUS
   if [[ $export_status -eq 0 ]]; then
@@ -844,7 +813,26 @@ caller_rustup=$(type -P rustup) || fail 'rustup executable is missing from calle
 caller_rustup=$(canonical_existing "$caller_rustup" rustup)
 caller_rustup_bin=$(/usr/bin/dirname -- "$caller_rustup")
 caller_rustup_bin=$(canonical_existing "$caller_rustup_bin" rustup bin)
-caller_path=$caller_rustup_bin:$SYSTEM_PATH
+caller_node=$(type -P node) || fail 'node executable is missing from caller PATH'
+caller_node=$(/usr/bin/realpath -e -- "$caller_node") || fail 'node executable does not exist'
+caller_node=$(canonical_existing "$caller_node" node)
+[[ -f $caller_node && -x $caller_node && ! -L $caller_node ]] || fail 'node is not one executable file'
+caller_node_bin=$(/usr/bin/dirname -- "$caller_node")
+caller_node_bin=$(canonical_existing "$caller_node_bin" node bin)
+base_caller_path=$caller_rustup_bin:$SYSTEM_PATH
+base_node=$(PATH=$base_caller_path type -P node 2>/dev/null || true)
+if [[ -n $base_node ]]; then base_node=$(/usr/bin/realpath -e -- "$base_node"); fi
+if [[ $base_node == "$caller_node" ]]; then
+  caller_path=$base_caller_path
+else
+  caller_path=$caller_node_bin:$base_caller_path
+fi
+r2_validate_caller_path "$caller_path" "$base_caller_path" "$caller_node"
+caller_node_major=$(/usr/bin/env -i PATH="$caller_node_bin:$SYSTEM_PATH" LC_ALL=C LANG=C \
+  "$caller_node" -p 'Number(process.versions.node.split(".")[0])') ||
+  fail 'node executable cannot report its major version'
+[[ $caller_node_major =~ ^[0-9]+$ && $caller_node_major -ge 22 ]] ||
+  fail 'Node 22 or newer is required'
 rustup_home=${RUSTUP_HOME:-$("$caller_rustup" show home)}
 rustup_home=$(canonical_existing "$rustup_home" RUSTUP_HOME)
 caller_browser=${CHROME_BIN:-}
@@ -902,7 +890,7 @@ set +e
   "$script_directory" "$pinned_workdir_helper_path" \
   "$source" "$pinned_source_path" "$public_source_identity" \
   "$work_real" "$assert_source_head" "$assert_source_tree" \
-  "$caller_uid" "$caller_gid" "$caller_user" "$caller_path" "$rustup_home" \
+  "$caller_uid" "$caller_gid" "$caller_user" "$caller_node" "$caller_path" "$rustup_home" \
   "$caller_browser" "$work_identity" \
   >"$work/supervisor.stdout" 2>"$work/supervisor.stderr"
 supervisor_status=$?
@@ -953,7 +941,7 @@ if [[ -f $work/filesystem.xfs && ! -L $work/filesystem.xfs && $after_loop_status
     --image "$display_work/filesystem.xfs" --mountpoint "$display_work/fs" \
     --mount-ns-before "$display_work/host-before-mnt-ns" --mount-ns-after "$display_work/host-after-mnt-ns")
   [[ -n $proof_loop_device ]] && host_check_args+=(--proof-loop-device "$proof_loop_device")
-  r2_public_pinned_exec /usr/bin/node "$receipt_helper" "${host_check_args[@]}" \
+  r2_public_pinned_exec "$caller_node" "$receipt_helper" "${host_check_args[@]}" \
     >"$work/host-check.stdout" 2>"$work/host-check.stderr"
   host_check_status=$?
   set -e
@@ -977,7 +965,7 @@ display_facts=$display_work/supervisor-facts.json
 display_host_monitor=$display_work/host-monitor.json
 display_receipt=$display_work/wrapper-receipt.json
 set +e
-r2_public_pinned_exec /usr/bin/node "$receipt_helper" receipt --facts "$display_facts" \
+r2_public_pinned_exec "$caller_node" "$receipt_helper" receipt --facts "$display_facts" \
   --host-monitor "$display_host_monitor" --output "$display_receipt" \
   >"$work/receipt.stdout" 2>"$work/receipt.stderr"
 receipt_status=$?

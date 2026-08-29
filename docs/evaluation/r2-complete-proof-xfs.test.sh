@@ -14,6 +14,10 @@ fail() {
   printf 'r2-complete-proof-xfs shell validation tests: FAIL: %s\n' "$*" >&2
   exit 1
 }
+node_bin=$(type -P node) || fail 'node executable is missing from the validation PATH'
+node_bin=$(/usr/bin/realpath -e -- "$node_bin") || fail 'node executable is not canonicalizable'
+[[ $node_bin == /* && -f $node_bin && -x $node_bin && ! -L $node_bin ]] ||
+  fail 'node executable is not one canonical regular file'
 [[ ${NOMOS_R2_PROOF_INNER:-} != 1 ]] ||
   fail 'XFS shell validation must run in the unprivileged outer proof before formal Bubblewrap'
 # shellcheck source=docs/evaluation/r2-complete-proof-xfs-workdir.sh
@@ -25,7 +29,14 @@ grep -Fq 'r2_pin_work_directory' "$wrapper"
 grep -Fq 'work_fd_path=/proc/self/fd/' "$workdir_helper"
 grep -Fq 'r2_public_open_work_directory' "$workdir_helper"
 grep -Fq 'r2_public_pinned_exec' "$workdir_helper"
-grep -Fq 'r2_public_pinned_exec /usr/bin/node' "$wrapper"
+if grep -Fq '/usr/bin/node' "$wrapper"; then
+  fail 'production wrapper retains the obsolete system Node assumption'
+fi
+grep -Fq 'caller_node=$(type -P node)' "$wrapper"
+grep -Fq 'record_wrapper_user_tool "$tool_register" node "$caller_node"' "$wrapper"
+grep -Fq 'run_as_user "$caller_node"' "$wrapper"
+[[ $(grep -Fc 'r2_public_pinned_exec "$caller_node"' "$wrapper") -eq 2 ]] ||
+  fail 'public receipt commands do not use the exact caller Node handoff'
 inner_viewer_test_text=$(/usr/bin/awk '/^r2_viewer_tests\(\) \{/{inside=1} inside{print} inside && /^\}/{exit}' "$inner")
 grep -Fq 'docs/evaluation/r2-complete-proof.test.sh' <<<"$inner_viewer_test_text"
 if grep -Fq 'docs/evaluation/r2-complete-proof-xfs.test.sh' <<<"$inner_viewer_test_text"; then
@@ -35,9 +46,49 @@ grep -Fq '/usr/bin/bash "$repo_root/docs/evaluation/r2-complete-proof-xfs.test.s
   fail 'formal outer proof does not execute the XFS shell-validation suite'
 grep -Fq 'docs/evaluation/r2-complete-proof-xfs.test.sh' "$workflow" ||
   fail 'hosted preflight does not execute the XFS shell-validation suite'
+observed_workflow_text=$(/usr/bin/awk '/^  r2-observed-viewer:/{inside=1} /^  r2-complete-proof:/{if (inside) exit} inside{print}' "$workflow")
 detached_workflow_text=$(/usr/bin/awk '/^  r2-complete-proof:/{inside=1} inside{print}' "$workflow")
 grep -Fq 'CHROME_BIN=$(realpath -e -- "$(command -v google-chrome)")' <<<"$detached_workflow_text" ||
   fail 'hosted detached proof does not pass a canonical Chrome executable'
+assert_hosted_sandbox_lane() {
+  local lane_text=$1 proof_step=$2 label=$3 prepare_line proof_line restore_line output_line clear_line
+  local expected_restore_output="original='\${{ steps.r2_sandbox.outputs.original }}'"
+  [[ $(grep -Fc 'name: Prepare the unprivileged R2 sandbox' <<<"$lane_text") -eq 1 &&
+     $(grep -Fc 'name: Restore the host AppArmor user-namespace gate' <<<"$lane_text") -eq 1 ]] ||
+    fail "$label does not configure and restore exactly one hosted sandbox gate"
+  grep -Fq 'gate=kernel.apparmor_restrict_unprivileged_userns' <<<"$lane_text"
+  grep -Fq 'case "$original" in 0|1) ;; *) exit 1 ;; esac' <<<"$lane_text"
+  grep -Fq 'sudo /usr/sbin/sysctl -w "$gate=0"' <<<"$lane_text"
+  grep -Fq 'test "$(/usr/sbin/sysctl -n "$gate")" = 0' <<<"$lane_text"
+  grep -Fq "$expected_restore_output" <<<"$lane_text"
+  grep -Fq 'sudo /usr/sbin/sysctl -w "$gate=$original"' <<<"$lane_text"
+  grep -Fq 'test "$(/usr/sbin/sysctl -n "$gate")" = "$original"' <<<"$lane_text"
+  grep -Fq $'name: Restore the host AppArmor user-namespace gate\n        if: always()' <<<"$lane_text"
+  grep -Fq '/usr/bin/setpriv --no-new-privs /usr/bin/bwrap' <<<"$lane_text"
+  grep -Fq -- '--die-with-parent --new-session --unshare-net --unshare-pid' <<<"$lane_text"
+  grep -Fq 'for field in CapInh CapPrm CapEff CapBnd CapAmb' <<<"$lane_text"
+  grep -Fq 'NoNewPrivs:' <<<"$lane_text"
+  grep -Fq 'ip -j address show' <<<"$lane_text"
+  grep -Fq 'route show table all' <<<"$lane_text"
+  grep -Fq 'findmnt --uniq --json -T / -o TARGET,OPTIONS' <<<"$lane_text"
+  prepare_line=$(grep -nF 'name: Prepare the unprivileged R2 sandbox' <<<"$lane_text" | cut -d: -f1)
+  output_line=$(grep -nF "printf 'original=%s\\n'" <<<"$lane_text" | cut -d: -f1)
+  clear_line=$(grep -nF 'sudo /usr/sbin/sysctl -w "$gate=0"' <<<"$lane_text" | cut -d: -f1)
+  proof_line=$(grep -nF "name: $proof_step" <<<"$lane_text" | cut -d: -f1)
+  restore_line=$(grep -nF 'name: Restore the host AppArmor user-namespace gate' <<<"$lane_text" | cut -d: -f1)
+  [[ $prepare_line =~ ^[0-9]+$ && $output_line =~ ^[0-9]+$ && $clear_line =~ ^[0-9]+$ &&
+     $proof_line =~ ^[0-9]+$ && $restore_line =~ ^[0-9]+$ &&
+     $prepare_line -lt $output_line && $output_line -lt $clear_line &&
+     $clear_line -lt $proof_line && $proof_line -lt $restore_line ]] ||
+    fail "$label sandbox probe or restoration is ordered incorrectly"
+}
+assert_hosted_sandbox_lane "$observed_workflow_text" \
+  'R2 registers, plants, signatures, and Node tests' 'hosted portable lane'
+assert_hosted_sandbox_lane "$detached_workflow_text" \
+  'Run the detached complete proof' 'hosted detached lane'
+if grep -Eq -- '--share-net|sudo[[:space:]].*bwrap|sudo[[:space:]].*r2-complete-proof' "$workflow"; then
+  fail 'hosted repair weakens or privileges the candidate isolation boundary'
+fi
 grep -Fq '/usr/bin/bash "$pinned_supervisor_path" --pinned-supervise' "$wrapper"
 grep -Fq -- '--config core.hooksPath=/dev/null "$source_fd_path" "$checkout"' "$wrapper"
 [[ $(grep -Fc '"/usr/sbin/mkfs.xfs","-f","-K","-l","internal",($loop_path|nz)' "$wrapper") -eq 1 ]] ||
@@ -139,9 +190,16 @@ for workflow_tool_list in "${workflow_tool_lists[@]}"; do
 done
 wrapper_tool_tsv=$test_root/wrapper-tools.tsv
 wrapper_tool_json=$test_root/wrapper-tools.json
+toolcache_node_directory=$test_root/toolcache/node/22.0.0/x64/bin
+mkdir -p -- "$toolcache_node_directory"
+cp -- "$node_bin" "$toolcache_node_directory/node"
+chmod 0755 -- "$toolcache_node_directory/node"
+toolcache_node=$(/usr/bin/realpath -e -- "$toolcache_node_directory/node")
+toolcache_caller_path=$toolcache_node_directory:$PATH
 (
-  run_as_user() { "$@"; }
+  run_as_user() { /usr/bin/env PATH="$toolcache_caller_path" "$@"; }
   record_wrapper_tools "$wrapper_tool_tsv"
+  record_wrapper_user_tool "$wrapper_tool_tsv" node "$toolcache_node"
   for wrapper_user_tool in rustup cargo rustc; do
     record_wrapper_user_tool "$wrapper_tool_tsv" "$wrapper_user_tool"
   done
@@ -149,6 +207,23 @@ wrapper_tool_json=$test_root/wrapper-tools.json
 )
 pwd_tool_path=$(/usr/bin/awk -F '\t' '$1 == "pwd" {print $2}' "$wrapper_tool_tsv")
 [[ $pwd_tool_path == /* && -x $pwd_tool_path ]] || fail 'wrapper tool recorder did not resolve external pwd'
+recorded_node_path=$(/usr/bin/awk -F '\t' '$1 == "node" {print $2}' "$wrapper_tool_tsv")
+[[ $recorded_node_path == "$toolcache_node" ]] || fail 'wrapper tool recorder did not bind non-system Node exactly'
+base_validation_path=$PATH
+r2_validate_caller_path "$toolcache_node_directory:$base_validation_path" \
+  "$base_validation_path" "$toolcache_node"
+shadow_directory=$test_root/shadowed-node-bin
+mkdir -- "$shadow_directory"
+cp -- "$node_bin" "$shadow_directory/node"
+cp -- /usr/bin/false "$shadow_directory/jq"
+chmod 0755 -- "$shadow_directory/node" "$shadow_directory/jq"
+set +e
+(r2_validate_caller_path "$shadow_directory:$base_validation_path" \
+  "$base_validation_path" "$shadow_directory/node") >"$test_root/shadow.stdout" 2>"$test_root/shadow.stderr"
+shadow_status=$?
+set -e
+[[ $shadow_status -ne 0 ]] || fail 'node directory was allowed to shadow a required proof tool'
+grep -Fq 'node directory shadows a required caller tool: jq' "$test_root/shadow.stderr"
 
 # findmnt reports the canonical mount-table target even when its lookup path
 # is a retained descriptor. A Bubblewrap namespace can stack its writable
@@ -188,14 +263,14 @@ write_facts_missing=$(/usr/bin/awk 'NR == FNR {present[$0]=1; next} !($0 in pres
 grep -Fq 'let invokedAsMain = import.meta.main;' "$receipt_helper" ||
   fail 'receipt helper does not use loader-provided main-module identity'
 set +e
-receipt_canonical_output=$(/usr/bin/node "$receipt_helper" unknown-command 2>&1)
+receipt_canonical_output=$("$node_bin" "$receipt_helper" unknown-command 2>&1)
 receipt_canonical_status=$?
 set -e
 [[ $receipt_canonical_status -eq 2 && $receipt_canonical_output == usage:* ]] ||
   fail "canonical receipt helper did not enter its CLI: status=$receipt_canonical_status output=$receipt_canonical_output"
 exec {receipt_entry_fd}<"$script_directory"
 set +e
-receipt_entry_output=$(/usr/bin/node "/proc/self/fd/$receipt_entry_fd/r2-complete-proof-xfs-receipt.mjs" unknown-command 2>&1)
+receipt_entry_output=$("$node_bin" "/proc/self/fd/$receipt_entry_fd/r2-complete-proof-xfs-receipt.mjs" unknown-command 2>&1)
 receipt_entry_status=$?
 set -e
 [[ $receipt_entry_status -eq 2 && $receipt_entry_output == usage:* ]] ||
@@ -207,7 +282,7 @@ receipt_cli_canonical=$(/usr/bin/realpath -e -- "$receipt_cli_root") ||
   fail 'could not canonicalize the descriptor CLI fixture'
 exec {receipt_cli_fd}<"$receipt_cli_root"
 receipt_cli_descriptor=/proc/self/fd/$receipt_cli_fd
-/usr/bin/node "/proc/self/fd/$receipt_entry_fd/r2-complete-proof-xfs-receipt.mjs" copy \
+"$node_bin" "/proc/self/fd/$receipt_entry_fd/r2-complete-proof-xfs-receipt.mjs" copy \
   --source "$receipt_cli_descriptor/source" \
   --destination "$receipt_cli_descriptor/export/target/r2-complete-proof" \
   --output "$receipt_cli_descriptor/inventory.json" >"$receipt_cli_root/copy.stdout"
@@ -385,10 +460,10 @@ work_identity=$(stat -c '%d:%i' -- "$work_real")
 r2_public_open_work_directory
 work=$public_work_fd_path
 NODE_OPTIONS=--require=/definitely/missing r2_public_pinned_exec \
-  /usr/bin/node -e 'process.stdout.write("clean-env\n")' >"$test_root/clean-env.stdout"
+  "$node_bin" -e 'process.stdout.write("clean-env\n")' >"$test_root/clean-env.stdout"
 [[ $(<"$test_root/clean-env.stdout") == clean-env ]] || fail 'receipt sandbox inherited caller Node options'
 set +e
-r2_public_pinned_exec /usr/bin/node "$script_directory/r2-complete-proof-xfs-receipt.mjs" \
+r2_public_pinned_exec "$node_bin" "$script_directory/r2-complete-proof-xfs-receipt.mjs" \
   >"$test_root/module-entry.stdout" 2>"$test_root/module-entry.stderr"
 module_entry_status=$?
 set -e
@@ -437,7 +512,7 @@ work_identity=$(stat -c '%d:%i' -- "$work_real")
 r2_public_open_work_directory
 work=$public_work_fd_path
 set +e
-r2_public_pinned_exec /usr/bin/node --input-type=module -e '
+r2_public_pinned_exec "$node_bin" --input-type=module -e '
   const { writeFileSync } = await import("node:fs");
   writeFileSync(`${process.argv[1]}/ready`, "ready\n");
   await new Promise((resolve) => setTimeout(resolve, 1000));

@@ -195,10 +195,11 @@ jobs:
           if ! command -v bwrap >/dev/null 2>&1 || \
              ! command -v mkfs.xfs >/dev/null 2>&1 || \
              ! command -v filefrag >/dev/null 2>&1 || \
-             ! command -v fuser >/dev/null 2>&1; then
+             ! command -v fuser >/dev/null 2>&1 || \
+             ! command -v sysctl >/dev/null 2>&1; then
             sudo apt-get update
             sudo apt-get install --yes --no-install-recommends \
-              bubblewrap e2fsprogs psmisc xfsprogs
+              bubblewrap e2fsprogs procps psmisc xfsprogs
           fi
           bwrap --version
           mkfs.xfs -V
@@ -278,6 +279,41 @@ jobs:
           cmp fixtures/r2/plans/scene_one.json target/r2-ci-scene-one.json
           cmp fixtures/r2/plans/scene_two.json target/r2-ci-scene-two.json
 
+      - name: Prepare the unprivileged R2 sandbox
+        id: r2_sandbox
+        run: |
+          set -euo pipefail
+          /usr/sbin/sysctl --version
+          gate=kernel.apparmor_restrict_unprivileged_userns
+          if original=$(/usr/sbin/sysctl -n "$gate" 2>/dev/null); then
+            case "$original" in 0|1) ;; *) exit 1 ;; esac
+          else
+            original=absent
+          fi
+          printf 'original=%s\n' "$original" >>"$GITHUB_OUTPUT"
+          if [[ $original != absent ]]; then
+            sudo /usr/sbin/sysctl -w "$gate=0"
+            test "$(/usr/sbin/sysctl -n "$gate")" = 0
+          fi
+          /usr/bin/setpriv --version
+          host_net=$(/usr/bin/readlink /proc/self/ns/net)
+          host_pid=$(/usr/bin/readlink /proc/self/ns/pid)
+          /usr/bin/setpriv --no-new-privs /usr/bin/bwrap \
+            --die-with-parent --new-session --unshare-net --unshare-pid \
+            --ro-bind / / --dev /dev --proc /proc /usr/bin/bash -ceu '
+              inner_net=$(/usr/bin/readlink /proc/self/ns/net)
+              inner_pid=$(/usr/bin/readlink /proc/self/ns/pid)
+              [[ $inner_net != "$1" && $inner_pid != "$2" ]]
+              for field in CapInh CapPrm CapEff CapBnd CapAmb; do
+                [[ $(/usr/bin/awk -v wanted="$field:" "\$1 == wanted {print \$2}" /proc/self/status) == 0000000000000000 ]]
+              done
+              [[ $(/usr/bin/awk "/^NoNewPrivs:/ {print \$2}" /proc/self/status) == 1 ]]
+              /usr/sbin/ip -j address show | /usr/bin/jq -e "length == 1 and .[0].ifname == \"lo\" and (.[0].flags | index(\"UP\")) != null and ([.[0].addr_info[].family] | sort) == [\"inet\",\"inet6\"]" >/dev/null
+              /usr/sbin/ip -j -4 route show table all | /usr/bin/jq -e "all(.[]; .dev == \"lo\" and (.dst | startswith(\"127.\")))" >/dev/null
+              /usr/sbin/ip -j -6 route show table all | /usr/bin/jq -e "all(.[]; .dev == \"lo\" and .dst == \"::1\")" >/dev/null
+              /usr/bin/findmnt --uniq --json -T / -o TARGET,OPTIONS | /usr/bin/jq -e ".filesystems | length == 1 and .[0].target == \"/\" and (.[0].options | split(\",\") | index(\"ro\")) != null" >/dev/null
+            ' r2-host-probe "$host_net" "$host_pid"
+
       - name: R2 registers, plants, signatures, and Node tests
         run: |
           set -euo pipefail
@@ -301,6 +337,21 @@ jobs:
             docs/evaluation/r2-complete-proof-xfs-receipt.test.mjs \
             docs/evaluation/r2-filesystem-accounting.test.mjs \
             docs/evaluation/r2-filesystem-evidence.test.mjs
+
+      - name: Restore the host AppArmor user-namespace gate
+        if: always()
+        run: |
+          set -euo pipefail
+          gate=kernel.apparmor_restrict_unprivileged_userns
+          original='${{ steps.r2_sandbox.outputs.original }}'
+          case "$original" in
+            absent) ;;
+            0|1)
+              sudo /usr/sbin/sysctl -w "$gate=$original"
+              test "$(/usr/sbin/sysctl -n "$gate")" = "$original"
+              ;;
+            *) exit 1 ;;
+          esac
 
       - name: Build and scan the two-scene artifact
         run: |
@@ -351,10 +402,11 @@ jobs:
           if ! command -v bwrap >/dev/null 2>&1 || \
              ! command -v mkfs.xfs >/dev/null 2>&1 || \
              ! command -v filefrag >/dev/null 2>&1 || \
-             ! command -v fuser >/dev/null 2>&1; then
+             ! command -v fuser >/dev/null 2>&1 || \
+             ! command -v sysctl >/dev/null 2>&1; then
             sudo apt-get update
             sudo apt-get install --yes --no-install-recommends \
-              bubblewrap e2fsprogs psmisc xfsprogs
+              bubblewrap e2fsprogs procps psmisc xfsprogs
           fi
           bwrap --version
           mkfs.xfs -V
@@ -373,6 +425,41 @@ jobs:
             type -P -- "$tool" >/dev/null
           done
 
+      - name: Prepare the unprivileged R2 sandbox
+        id: r2_sandbox
+        run: |
+          set -euo pipefail
+          /usr/sbin/sysctl --version
+          gate=kernel.apparmor_restrict_unprivileged_userns
+          if original=$(/usr/sbin/sysctl -n "$gate" 2>/dev/null); then
+            case "$original" in 0|1) ;; *) exit 1 ;; esac
+          else
+            original=absent
+          fi
+          printf 'original=%s\n' "$original" >>"$GITHUB_OUTPUT"
+          if [[ $original != absent ]]; then
+            sudo /usr/sbin/sysctl -w "$gate=0"
+            test "$(/usr/sbin/sysctl -n "$gate")" = 0
+          fi
+          /usr/bin/setpriv --version
+          host_net=$(/usr/bin/readlink /proc/self/ns/net)
+          host_pid=$(/usr/bin/readlink /proc/self/ns/pid)
+          /usr/bin/setpriv --no-new-privs /usr/bin/bwrap \
+            --die-with-parent --new-session --unshare-net --unshare-pid \
+            --ro-bind / / --dev /dev --proc /proc /usr/bin/bash -ceu '
+              inner_net=$(/usr/bin/readlink /proc/self/ns/net)
+              inner_pid=$(/usr/bin/readlink /proc/self/ns/pid)
+              [[ $inner_net != "$1" && $inner_pid != "$2" ]]
+              for field in CapInh CapPrm CapEff CapBnd CapAmb; do
+                [[ $(/usr/bin/awk -v wanted="$field:" "\$1 == wanted {print \$2}" /proc/self/status) == 0000000000000000 ]]
+              done
+              [[ $(/usr/bin/awk "/^NoNewPrivs:/ {print \$2}" /proc/self/status) == 1 ]]
+              /usr/sbin/ip -j address show | /usr/bin/jq -e "length == 1 and .[0].ifname == \"lo\" and (.[0].flags | index(\"UP\")) != null and ([.[0].addr_info[].family] | sort) == [\"inet\",\"inet6\"]" >/dev/null
+              /usr/sbin/ip -j -4 route show table all | /usr/bin/jq -e "all(.[]; .dev == \"lo\" and (.dst | startswith(\"127.\")))" >/dev/null
+              /usr/sbin/ip -j -6 route show table all | /usr/bin/jq -e "all(.[]; .dev == \"lo\" and .dst == \"::1\")" >/dev/null
+              /usr/bin/findmnt --uniq --json -T / -o TARGET,OPTIONS | /usr/bin/jq -e ".filesystems | length == 1 and .[0].target == \"/\" and (.[0].options | split(\",\") | index(\"ro\")) != null" >/dev/null
+            ' r2-host-probe "$host_net" "$host_pid"
+
       - name: Run the detached complete proof
         run: |
           set -euo pipefail
@@ -386,6 +473,21 @@ jobs:
             docs/evaluation/r2-complete-proof-xfs.sh \
               --source "$GITHUB_WORKSPACE" \
               --work "$work"
+
+      - name: Restore the host AppArmor user-namespace gate
+        if: always()
+        run: |
+          set -euo pipefail
+          gate=kernel.apparmor_restrict_unprivileged_userns
+          original='${{ steps.r2_sandbox.outputs.original }}'
+          case "$original" in
+            absent) ;;
+            0|1)
+              sudo /usr/sbin/sysctl -w "$gate=$original"
+              test "$(/usr/sbin/sysctl -n "$gate")" = "$original"
+              ;;
+            *) exit 1 ;;
+          esac
 
       - name: Upload the bound complete-proof evidence
         if: always()

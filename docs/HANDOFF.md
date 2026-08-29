@@ -1,11 +1,11 @@
 # Nomos handoff
 
 Status snapshot: 2026-08-29, after issue #199's local author and exact-head
-proofs through `acc8c02` and after its first public run exposed two pre-XFS
-proof-boundary portability reds. Their narrow repair is pending fresh author,
-exact-head non-author, and hosted reruns. This file is an operational map;
-owner decisions and revisioned contracts remain the authority when prose
-conflicts.
+proofs through `7b16d36` and after its second public run exposed two further
+pre-XFS hosted-runner defects. Their narrow repair is pending a fresh author
+proof, exact-head non-author proof, and hosted reruns. This file is an
+operational map; owner decisions and revisioned contracts remain the authority
+when prose conflicts.
 
 **Play the accepted six-area viewer:** <https://conarylabs.github.io/nomos/>
 
@@ -53,9 +53,13 @@ proof and the fresh exact-head Luna Max non-author proof. Record-only successor
 `acc8c02133f956f22de182bc6b67ff002c1553c5`, tree
 `968d4c77217da955814cb112ac4cd1d95b2d9fe8`, then passed its own fresh
 exact-head Luna Max rerun. Its first public workflow run exposed two pre-XFS
-proof-boundary portability reds. R2 still lacks a passing repaired candidate,
-fully green hosted workflows, owner visual verdict, owner R2 verdict, and
-merge authorization.
+proof-boundary portability reds. First-repair candidate
+`7b16d364276d10ca772cd2eb8ca03a4b6081de45`, tree
+`30db2b7adf4abdf305086bacb3547294f50620e7`, passed a fresh complete author
+proof and exact-head Luna Max rerun; its second public run exposed the distinct
+setup-node and hosted AppArmor defects recorded below. R2 still lacks a passing
+second-repair candidate, fully green hosted workflows, owner visual verdict,
+owner R2 verdict, and merge authorization.
 
 The author proof used fresh detached source
 `/data/dev/src/nomos-r4-manifest-candidate.2K7kNz` and fresh work
@@ -110,6 +114,62 @@ XFS. The repair canonicalizes the detached job's Chrome argument, uses
 canonical and descriptor-path CLI plants, and routes the changed workflow and
 proof sources through the revision-4 receipt.
 
+The first-repair author proof used detached source
+`/data/dev/src/nomos-r2-repaired-author-candidate.StgxqS` and fresh work
+`/data/dev/src/nomos-r2-repaired-author-xfs-run.LwpKU4`. Its wrapper receipt
+SHA-256 is
+`9ab7f585d13f536e1a86987d4e6afb561d2198d60690b0ce85f8b928136dcc2e`;
+the inner receipt and evidence-manifest SHA-256 are respectively
+`0eb538eabc5af194a60c0e73e9319011b87d59f1dddfef41d5c32630e3e4ba93`
+and `dee7e38160899cf306cc1db76f9e536884bb3267021df3f2a19069b8a1bcdbc3`.
+All 33 commands and the 14/14, 104/104, and 132/132 test groups passed. The
+build took 17.16 seconds; peak allocation was 1,572 MiB; 3,471 samples had
+maximum gap `91,251,965` ns; the distribution was 805,600 bytes in 14 files;
+browser combined p95 was `594,261,149` ns with zero external requests; and the
+compile observation was median `362135183 / 2` ns and p95 `236,481,415` ns.
+
+The exact-head Luna Max rerun used separate detached source
+`/data/dev/src/nomos-r2-repaired-luna-candidate.ouSBZl` and work
+`/data/dev/src/nomos-r2-repaired-luna-xfs-run.Njk1nu`. Its independently
+recomputed wrapper receipt SHA-256 is
+`37a192a87f700b8a2a0fa16f74197f8eda9a409417d0836577be4a566747aa66`;
+the inner receipt and evidence-manifest SHA-256 are respectively
+`b486a56484cae48ee214e2a44df9c3d1c46a1631a80e356f71d88209caf6de5b`
+and `55e6e142b4c237f2a3e1c5e4e9061f9f3e9ecd07daaab94e6ddf20c61049bac5`.
+The same command and test groups passed. The build took 10.22 seconds; peak
+allocation was 1,568 MiB; 2,767 samples had maximum gap `93,172,072` ns;
+browser combined p95 was `639,246,684` ns with zero external requests; and the
+compile observation was median `130683956 / 2` ns and p95 `86,925,130` ns.
+Both runs proved exact 8 GiB pre-format allocation, the permitted 4 KiB
+post-teardown allocation increase, clean unmount/detachment, and only the
+unrelated untouched `/dev/loop0`.
+
+Public run 33236083963 at exact head `7b16d36` made both ordinary viewer jobs
+green, while `verify` run 33236083997 and `gate-k-evidence` run 33236083960
+also passed. Its R2 jobs remained immutable pre-XFS red evidence. Portable job
+99057201605 passed provenance, neutrality, and complete-proof plants before
+the XFS shell suite tried `/usr/bin/node`; setup-node had installed Node 22 at
+`/opt/hostedtoolcache/node/.../bin/node`, so the suite stopped with status 127.
+Detached job 99057201685 stopped while recording that same absent system Node,
+before image, loop, mount, or XFS setup. Its fallback receipt sandbox then
+independently exposed Ubuntu 24.04's AppArmor user-namespace gate as
+`bwrap: loopback: Failed RTM_NEWADDR: Operation not permitted`. Artifact
+9709965583 preserves that setup-failed state; neither job touched a loop device.
+
+The second repair removes the false `/usr/bin/node` assumption. It resolves the
+exact caller Node before PATH collapse, refuses any Node directory that shadows
+a declared proof tool, passes the canonical executable positionally through
+the supervisor, executes it only after identity/capability drop, records and
+rehashes it, and derives the receipt's export argv from that validated tool
+record. Each hosted R2 job provisions `sysctl`, records and temporarily clears
+only `kernel.apparmor_restrict_unprivileged_userns`, proves the unchanged
+unprivileged Bubblewrap net/PID/read-only-root/zero-capability topology, then
+always restores and verifies the original value. The focused setup-node-shaped
+plant, ShellCheck, receipt tests, exact sandbox probe, 100-row provenance
+checker, and 11 provenance plants pass at register SHA-256
+`6ab5bd7eb266878b1ab8bd3f8811791f36438ecf938c36475981c63f7f45e4f5`.
+No new 8 GiB run has been launched for these bytes.
+
 The three earlier revision-4 formal-red attempts remain historical red and may
 not be promoted or spliced. Preserve the third-red source
 `/data/dev/src/nomos-r4-checkpoint-candidate.vQg7jb` and work
@@ -121,10 +181,10 @@ not be promoted or spliced. Preserve the third-red source
 Cleanup for all three runs removed `/dev/loop1`; the loop inventories were
 byte-identical and the unrelated `/dev/loop0` was untouched. The revision-4
 author receipt records all decisive hashes and metrics. Issue #199 deliverable
-5 still forbids product edits. Because hosted evidence changed the proof
-boundary, freeze the repair and run one fresh complete author XFS proof plus a
-separate exact-head Luna Max proof from new source/work paths. Do not commit an
-evidence summary after the exact-head rerun.
+5 still forbids product edits. Because the second hosted evidence changed the
+proof boundary, freeze the repair and run one fresh complete author XFS proof
+plus a separate exact-head Luna Max proof from new source/work paths. Do not
+commit an evidence summary after the exact-head rerun.
 
 A fresh agent must not infer active work from an old remote branch. The
 repository intentionally retains evidence branches and annotated tags. Check
@@ -170,7 +230,7 @@ source, compiled plan, signatures, browser receipt, and pixels entered unchanged
 | Game adoption | not authorized; thesis applies to no game | decision 0019 |
 | Mortal Estate presentation evidence | bounded prerequisite evidence complete; no adoption | decisions 0022 and 0023 evidence |
 | R2 observed-scene presentation epoch | revision 4 in force; R2-1 and R2-2 landed; epoch not admitted | `R2.md`, decisions 0023–0026 |
-| R2 final evidence | local proofs passed through `acc8c02`; three earlier local R4 attempts and two first-public-run proof-boundary jobs remain historical red; repaired candidate pending | issue #199, decision 0026, PR #201 |
+| R2 final evidence | local proofs passed through `7b16d36`; earlier local and both public-run proof-boundary reds remain historical; second-repair candidate pending | issue #199, decision 0026, PR #201 |
 | Current queue | freeze the hosted-portability repair, run fresh author and exact-head Luna Max proofs, rerun public workflows, obtain owner visual and R2 verdicts, and leave merge disposition to the owner | issue #199 and `R2.md` sections 9, 11, and 13 |
 
 ## Current local verification
@@ -192,14 +252,15 @@ The source-provenance register SHA-256 at that exact head is
 The fresh author and exact-head Luna Max complete XFS proofs then passed at that
 same commit/tree. Their retained paths, receipt hashes, measurements, and
 teardown evidence are recorded above and in the revision-4 author receipt.
-Record-only successor `acc8c02` also passed its fresh exact-head Luna Max
-complete XFS proof. Its first hosted run then exposed the two proof-boundary
-portability reds described above. The current repair passes focused XFS shell,
-receipt, and 100-row provenance validation at register SHA-256
-`2782c821f0e90eb214abe72f7cd0c35be74198610868096c5c5ca2647140263b`;
-its provenance suite now has 11 plants. Freeze it, rerun the full portable
-preflight, then obtain fresh author
-and exact-head Luna Max proofs. Earlier red paths and diagnostics remain
+Record-only successor `acc8c02` and first-repair candidate `7b16d36` have the
+additional passing proofs recorded above. The latter's second hosted run then
+exposed the setup-node and AppArmor reds. The current repair passes focused XFS
+shell, receipt, exact hosted-sandbox, and 100-row provenance validation at
+register SHA-256
+`6ab5bd7eb266878b1ab8bd3f8811791f36438ecf938c36475981c63f7f45e4f5`;
+its provenance suite has 11 plants. Freeze it, rerun the full portable
+preflight, then obtain fresh author and exact-head Luna Max proofs. Earlier red
+paths and diagnostics remain
 recorded in the revision-3 and revision-4 receipts and GitHub logs; do not
 relabel or reuse any of them.
 
@@ -437,9 +498,9 @@ A passing author run still needs a fresh exact-head Luna Max rerun, the owner
 visual judgment, the required hosted workflows, and the owner's explicit R2
 and merge dispositions. The repository is now public and its configured jobs
 use standard public-repository runners, so the prior Actions-minutes quota is no
-longer a blocker. Hosted CI remains pending because this exact candidate is
-still local with no pull request or workflow run; local proof does not replace
-that lane.
+longer a blocker. Hosted CI remains pending because this exact repair is still
+uncommitted and has not been pushed to PR #201 or run in a workflow; local
+proof does not replace that lane.
 
 The formal archived Gate K harnesses are historical and materially heavier.
 Do not launch a new cold-agent attempt, checker, retry, or evidence assembly:
@@ -499,13 +560,13 @@ observation, and proof. R2-1 and R2-2 are complete after PR #198. Issue #199 is
 already the authorized final-evidence slice; do not open a replacement issue.
 Decision 0026 authorizes only the contract-and-proof classification repair and
 rerun. It does not authorize compiler edits or relabel any historical red. The
-local author and exact-head Luna Max proofs passed through `acc8c02`, whose
-first hosted run exposed two early proof-plumbing defects. Freeze the narrow
-repair, run a fresh complete author XFS proof and fresh exact-head Luna Max
-rerun, and make no later evidence-summary commit. Push that unchanged head and
-require all applicable public workflows to pass before stopping for the owner
-visual judgment, exact R2 verdict, and distinct merge disposition required by
-issue #199.
+local author and exact-head Luna Max proofs passed through `7b16d36`, whose
+second hosted run exposed the setup-node path and hosted AppArmor defects.
+Freeze the narrow repair, run a fresh complete author XFS proof and fresh
+exact-head Luna Max rerun, and make no later evidence-summary commit. Push that
+unchanged head and require all applicable public workflows to pass before
+stopping for the owner visual judgment, exact R2 verdict, and distinct merge
+disposition required by issue #199.
 
 A deeper adopter boundary, platform choice, Gate K attempt, R2 scope expansion,
 or adoption into a game requires its own owner decision. Work toward an actual

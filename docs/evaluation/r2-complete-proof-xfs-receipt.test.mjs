@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { closeSync, existsSync, mkdtempSync, mkdirSync, openSync, readFileSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
+import { chmodSync, closeSync, copyFileSync, existsSync, mkdtempSync, mkdirSync, openSync, readFileSync, realpathSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -326,11 +326,19 @@ test("receipt has exact top-level schema and success requires inner plus teardow
     const inventoryDigestPath = join(work, "export.sha256");
     writeFileSync(inventoryPath, `${JSON.stringify({ source: output, destination: exportDestination, source_inventory_sha256: sourceInventory.sha256, export_inventory_sha256: exportInventory.sha256, rows: sourceInventory.rows.length, equal: true })}\n`);
     writeFileSync(inventoryDigestPath, `source\t${sourceInventory.sha256}\nexport\t${exportInventory.sha256}\n`);
+    const toolcacheNodeDirectory = join(root, "toolcache", "node", "22.0.0", "x64", "bin");
+    mkdirSync(toolcacheNodeDirectory, { recursive: true });
+    const toolcacheNode = join(toolcacheNodeDirectory, "node");
+    const fixtureExecutable = realpathSync.native("/usr/bin/true");
+    copyFileSync(fixtureExecutable, toolcacheNode);
+    chmodSync(toolcacheNode, 0o755);
     const toolNames = "bash sh git realpath find stat date mkdir readlink id node jq sudo unshare findmnt losetup mount umount blockdev mkfs.xfs xfs_info xfs_quota filefrag fuser fallocate sync setpriv bwrap tar ionice du blkid chown cp rm env sha256sum awk grep tr chmod mv dirname pwd cut rustup cargo rustc".split(" ");
-    const toolPaths = Object.fromEntries(toolNames.map((name) => [name, "/usr/bin/node"]));
+    const toolPaths = Object.fromEntries(toolNames.map((name) => [name, fixtureExecutable]));
     Object.assign(toolPaths, {
-      bash: "/usr/bin/bash", fallocate: "/usr/bin/fallocate", sync: "/usr/lib/cargo/bin/coreutils/sync", losetup: "/usr/sbin/losetup",
-      "mkfs.xfs": "/usr/sbin/mkfs.xfs", mount: "/usr/bin/mount", node: "/usr/bin/node", umount: "/usr/bin/umount",
+      bash: realpathSync.native("/usr/bin/bash"), fallocate: realpathSync.native("/usr/bin/fallocate"),
+      sync: realpathSync.native("/usr/bin/sync"), losetup: realpathSync.native("/usr/sbin/losetup"),
+      "mkfs.xfs": realpathSync.native("/usr/sbin/mkfs.xfs"), mount: realpathSync.native("/usr/bin/mount"),
+      node: toolcacheNode, umount: realpathSync.native("/usr/bin/umount"),
     });
     const toolRegister = Object.fromEntries(Object.entries(toolPaths).map(([name, path]) => [name, {
       path, version_argv: "--version", version_status: 0, sha256: digestRegular(path, `${name} test tool`).sha256, version: `${name} test-version`,
@@ -352,7 +360,7 @@ test("receipt has exact top-level schema and success requires inner plus teardow
       mkfs_xfs: operation("mkfs_xfs", ["/usr/sbin/mkfs.xfs", "-f", "-K", "-l", "internal", "/dev/loop9"], work),
       mount: operation("mount", ["/usr/bin/mount", "-t", "xfs", "-o", "rw,nodev,nosuid", "/dev/loop9", fs], work),
       proof: operation("proof", ["/usr/bin/bash", join(checkout, "docs", "evaluation", "r2-complete-proof.sh"), "--output", output], checkout),
-      export: operation("export", ["/usr/bin/node", join(checkout, "docs", "evaluation", "r2-complete-proof-xfs-receipt.mjs"), "copy", "--source", output, "--destination", exportDestination, "--output", inventoryPath], work),
+      export: operation("export", [toolcacheNode, join(checkout, "docs", "evaluation", "r2-complete-proof-xfs-receipt.mjs"), "copy", "--source", output, "--destination", exportDestination, "--output", inventoryPath], work),
       sync_before_umount: operation("sync_before_umount", ["/usr/bin/sync", "-f", fs], work),
       umount: operation("umount", ["/usr/bin/umount", fs], work),
       loop_detach: operation("loop_detach", ["/usr/sbin/losetup", "--detach", "/dev/loop9"], work),
@@ -548,6 +556,22 @@ test("receipt has exact top-level schema and success requires inner plus teardow
     };
     assert.throws(() => assembleReceipt(wrongHelperFacts, receiptOptions),
       /operation export argv differs from the exact wrapper command/);
+    const wrongNodeOperationFacts = {
+      ...facts,
+      operations: {
+        ...facts.operations,
+        export: { ...facts.operations.export, argv: facts.operations.export.argv.with(0, realpathSync.native(process.execPath)) },
+      },
+    };
+    assert.throws(() => assembleReceipt(wrongNodeOperationFacts, receiptOptions),
+      /operation export argv differs from the exact wrapper command/);
+    const nodeAlias = join(root, "toolcache-node-alias");
+    symlinkSync(toolcacheNode, nodeAlias);
+    assert.throws(() => assembleReceipt({
+      ...facts,
+      operations: { ...facts.operations, export: { ...facts.operations.export, argv: facts.operations.export.argv.with(0, nodeAlias) } },
+      tool_register: { ...facts.tool_register, node: { ...facts.tool_register.node, path: nodeAlias } },
+    }, receiptOptions), /tool register node path is not canonical/);
     const missingMkfsNoDiscardFacts = {
       ...facts,
       operations: {

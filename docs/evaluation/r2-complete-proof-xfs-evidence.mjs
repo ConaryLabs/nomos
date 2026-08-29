@@ -190,6 +190,21 @@ const operationRecord = (value, name) => {
 export const validateOperationsAndTools = (value, { imagePath, work, mountPath, checkout, output, loopPath, exportDestination, inventoryPath }) => {
   const operationNames = ["fallocate", "image_sync", "loop_attach", "mkfs_xfs", "mount", "proof", "export", "sync_before_umount", "umount", "loop_detach"];
   exactFields(value.operations, operationNames, "operations");
+  const tools = objectValue(requiredField(value, "tool_register"), "tool register");
+  exactFields(tools, TOOL_NAMES, "tool register");
+  const normalizedTools = {};
+  for (const name of TOOL_NAMES) {
+    const tool = objectValue(tools[name], `tool register ${name}`);
+    exactFields(tool, ["path", "version_argv", "version_status", "sha256", "version"], `tool register ${name}`);
+    const toolPath = executablePath(tool.path, `tool register ${name} path`);
+    if (readableRealpath(toolPath, `tool register ${name} path`) !== toolPath) fail(`tool register ${name} path is not canonical`);
+    safeText(tool.version_argv, `tool register ${name} version argv`);
+    statusCode(tool.version_status, `tool register ${name} version status`);
+    canonicalHex(tool.sha256, 64, `tool register ${name} sha256`);
+    if (digestRegular(toolPath, `tool register ${name}`).sha256 !== tool.sha256) fail(`tool register ${name} digest differs`);
+    safeText(tool.version, `tool register ${name} version`);
+    normalizedTools[name] = Object.freeze({ path: toolPath, version_argv: tool.version_argv, version_status: tool.version_status, sha256: tool.sha256, version: tool.version });
+  }
   const helperPath = join(checkout, "docs", "evaluation", "r2-complete-proof-xfs-receipt.mjs");
   const expected = {
     fallocate: ["/usr/bin/fallocate", "--posix", "--length", IMAGE_BYTES.toString(), imagePath],
@@ -198,33 +213,26 @@ export const validateOperationsAndTools = (value, { imagePath, work, mountPath, 
     mkfs_xfs: ["/usr/sbin/mkfs.xfs", "-f", "-K", "-l", "internal", loopPath],
     mount: ["/usr/bin/mount", "-t", "xfs", "-o", "rw,nodev,nosuid", loopPath, mountPath],
     proof: ["/usr/bin/bash", join(checkout, "docs", "evaluation", "r2-complete-proof.sh"), "--output", output],
-    export: ["/usr/bin/node", helperPath, "copy", "--source", output, "--destination", exportDestination, "--output", inventoryPath],
+    export: [normalizedTools.node.path, helperPath, "copy", "--source", output, "--destination", exportDestination, "--output", inventoryPath],
     sync_before_umount: ["/usr/bin/sync", "-f", mountPath],
     umount: ["/usr/bin/umount", mountPath],
     loop_detach: ["/usr/sbin/losetup", "--detach", loopPath],
   };
+  const commandToolPaths = {
+    fallocate: expected.fallocate[0], sync: expected.image_sync[0],
+    losetup: expected.loop_attach[0], "mkfs.xfs": expected.mkfs_xfs[0],
+    mount: expected.mount[0], bash: expected.proof[0], node: expected.export[0],
+    umount: expected.umount[0],
+  };
+  for (const [name, commandPath] of Object.entries(commandToolPaths)) {
+    if (readableRealpath(normalizedTools[name].path, `tool register ${name} path`) !== readableRealpath(commandPath, `wrapper ${name} command`)) fail(`tool register ${name} path differs`);
+  }
   const records = {};
   for (const name of operationNames) {
     const record = operationRecord(value.operations, name);
     if (JSON.stringify(record.operation.argv) !== JSON.stringify(expected[name])) fail(`operation ${name} argv differs from the exact wrapper command`);
     if (record.operation.cwd !== (name === "proof" ? checkout : work)) fail(`operation ${name} cwd differs from the wrapper root`);
     records[name] = Object.freeze({ argv: Object.freeze([...record.operation.argv]), cwd: record.operation.cwd, status: record.operation.status, stdout: record.stdout, stderr: record.stderr });
-  }
-  const tools = objectValue(requiredField(value, "tool_register"), "tool register");
-  exactFields(tools, TOOL_NAMES, "tool register");
-  const commandToolPaths = Object.fromEntries(operationNames.map((name) => [expected[name][0].split("/").pop(), expected[name][0]]));
-  const normalizedTools = {};
-  for (const name of TOOL_NAMES) {
-    const tool = objectValue(tools[name], `tool register ${name}`);
-    exactFields(tool, ["path", "version_argv", "version_status", "sha256", "version"], `tool register ${name}`);
-    const toolPath = executablePath(tool.path, `tool register ${name} path`);
-    if (commandToolPaths[name] !== undefined && readableRealpath(toolPath, `tool register ${name} path`) !== readableRealpath(commandToolPaths[name], `wrapper ${name} command`)) fail(`tool register ${name} path differs`);
-    safeText(tool.version_argv, `tool register ${name} version argv`);
-    statusCode(tool.version_status, `tool register ${name} version status`);
-    canonicalHex(tool.sha256, 64, `tool register ${name} sha256`);
-    if (digestRegular(toolPath, `tool register ${name}`).sha256 !== tool.sha256) fail(`tool register ${name} digest differs`);
-    safeText(tool.version, `tool register ${name} version`);
-    normalizedTools[name] = Object.freeze({ path: toolPath, version_argv: tool.version_argv, version_status: tool.version_status, sha256: tool.sha256, version: tool.version });
   }
   return Object.freeze({ operations: Object.freeze(records), tool_register: Object.freeze(normalizedTools) });
 };

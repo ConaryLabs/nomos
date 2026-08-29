@@ -1,13 +1,13 @@
 # R2 revision-4 implementation-author receipt
 
 Status: the revision-4 author and exact-head non-author proofs passed through
-record-only candidate `acc8c02133f956f22de182bc6b67ff002c1553c5`, tree
-`968d4c77217da955814cb112ac4cd1d95b2d9fe8`. Its first public run made nine
-required jobs green and exposed two pre-XFS proof-boundary portability reds.
-The narrow repair is pending a fresh author proof, exact-head Luna Max rerun,
-and hosted reruns. Owner visual judgment, owner R2 disposition, and merge
-disposition also remain pending. This receipt records implementation evidence;
-it is not an acceptance verdict.
+first hosted-repair candidate `7b16d364276d10ca772cd2eb8ca03a4b6081de45`,
+tree `30db2b7adf4abdf305086bacb3547294f50620e7`. Its second public run
+made every non-R2 job green and exposed two further pre-XFS hosted-runner
+defects. The second narrow repair is pending a fresh author proof, exact-head
+Luna Max rerun, and hosted reruns. Owner visual judgment, owner R2 disposition,
+and merge disposition also remain pending. This receipt records implementation
+evidence; it is not an acceptance verdict.
 
 ## Authority and historical boundary
 
@@ -54,9 +54,10 @@ benchmark's classification output and the final proof machinery that validates
 and records that output, plus the provenance plant that enforces this distinct
 route.
 
-The revision-4 provenance route covers exactly these changed evaluation source
-and test files:
+The revision-4 provenance route covers these changed workflow, evaluation
+source, and test files:
 
+- `.github/workflows/nomos-viewer.yml`
 - `docs/evaluation/measure-r2-compile.mjs`
 - `docs/evaluation/r2-complete-proof-receipt.mjs`
 - `docs/evaluation/r2-complete-proof-receipt.test.mjs`
@@ -69,12 +70,12 @@ and test files:
 - `docs/evaluation/r2-complete-proof.sh`
 - `docs/evaluation/r2-source-provenance.test.sh`
 
-All unchanged R1/R2 source, schema, fixture, presentation, browser-evidence,
-workflow, and proof-harness rows retain their existing historical producing
-receipts. This record does not reattribute those bytes. The provenance
-register, checker, and producing receipts remain control evidence bound by the
-eventual candidate commit/tree and final receipt under the existing
-self-binding rule.
+All other unchanged R1/R2 source, schema, fixture, presentation,
+browser-evidence, and proof-harness rows retain their existing historical
+producing receipts. This record does not reattribute those bytes. The
+provenance register, checker, and producing receipts remain control evidence
+bound by the eventual candidate commit/tree and final receipt under the
+existing self-binding rule.
 
 ## Retained first revision-4 formal red
 
@@ -488,16 +489,157 @@ revision-4 receipt. The 100-row provenance register SHA-256 is
 No compiler, decoder, renderer, UI, scene, plan, packet,
 contact-sheet, runtime, acceptance ceiling, or product byte changed.
 
+## Passing first hosted-repair candidate proofs
+
+The first hosted-portability repair was committed as candidate
+`7b16d364276d10ca772cd2eb8ca03a4b6081de45`, tree
+`30db2b7adf4abdf305086bacb3547294f50620e7`. Its exact-head portable
+preflight passed formatting, locked workspace Clippy and tests, boundaries,
+byte-identical plans and packet, the 100-row provenance register and 11 plants,
+5 neutrality plants, 39 complete-proof plants, XFS shell validation, 132 Node
+tests, the 805,600-byte 14-file build, and 20 browser launches with zero
+external requests.
+
+The fresh author proof used detached clean source
+`/data/dev/src/nomos-r2-repaired-author-candidate.StgxqS` and fresh work
+`/data/dev/src/nomos-r2-repaired-author-xfs-run.LwpKU4`. The wrapper returned
+PASS, and a separate author-side invocation recomputed its receipt
+byte-for-byte. Decisive evidence is:
+
+- outer wrapper receipt SHA-256:
+  `9ab7f585d13f536e1a86987d4e6afb561d2198d60690b0ce85f8b928136dcc2e`;
+- inner receipt SHA-256:
+  `0eb538eabc5af194a60c0e73e9319011b87d59f1dddfef41d5c32630e3e4ba93`;
+- inner evidence-manifest SHA-256:
+  `dee7e38160899cf306cc1db76f9e536884bb3267021df3f2a19069b8a1bcdbc3`;
+- equal 2,346-row source/export inventory digest:
+  `9b0a17ab64b28e8a95553f55e49375f9ca8992b1efa351575211a061d93628be`,
+  covering 1,884 files and 462 directories while the manifest binds 1,882
+  evidence files.
+
+All 33 commands and the 14/14, 104/104, and 132/132 test groups passed. The
+clean build took 17.16 seconds. Peak checkout allocation was 1,572 MiB; 3,471
+samples had maximum gap `91,251,965` ns. The distribution was 805,600 bytes in
+14 files. Browser combined p95 was `594,261,149` ns with zero external
+requests. The compile observation was median numerator `362135183` ns over
+denominator `2` and p95 `236,481,415` ns. Those magnitudes are observations,
+not acceptance ceilings.
+
+The required exact-head Luna Max proof used wholly separate detached clean
+source `/data/dev/src/nomos-r2-repaired-luna-candidate.ouSBZl` and fresh work
+`/data/dev/src/nomos-r2-repaired-luna-xfs-run.Njk1nu`. It returned PASS, and
+the reviewer independently recomputed the outer receipt byte-for-byte.
+Decisive evidence is:
+
+- outer wrapper receipt SHA-256:
+  `37a192a87f700b8a2a0fa16f74197f8eda9a409417d0836577be4a566747aa66`;
+- inner receipt SHA-256:
+  `b486a56484cae48ee214e2a44df9c3d1c46a1631a80e356f71d88209caf6de5b`;
+- inner evidence-manifest SHA-256:
+  `55e6e142b4c237f2a3e1c5e4e9061f9f3e9ecd07daaab94e6ddf20c61049bac5`;
+- equal 2,344-row source/export inventory digest:
+  `9abb212a4ba2626f095e00257aaf77d3842d0f31d7d0fc0c116c3a509b63e4ca`,
+  covering 1,882 files and 462 directories while the manifest binds 1,880
+  evidence files.
+
+The same command and test groups passed. The clean build took 10.22 seconds.
+Peak checkout allocation was 1,568 MiB; 2,767 samples had maximum gap
+`93,172,072` ns. The distribution remained 805,600 bytes in 14 files. Browser
+combined p95 was `639,246,684` ns with zero external requests. The compile
+observation was median numerator `130683956` ns over denominator `2` and p95
+`86,925,130` ns.
+
+Both images were exact 8 GiB logical and allocated before formatting, and both
+recorded the allowed 4 KiB post-teardown allocation increase. Ordinary unmount
+and exact `/dev/loop1` detachment passed with no holder, association, or proof
+mount. The before/after inventories were byte-identical and contained only the
+unrelated, untouched `/dev/loop0`. A read-only Sol Ultra audit independently
+checked the author evidence and found no blocker.
+
+## Second public-workflow reds and repair
+
+Draft PR #201 published exact head `7b16d36`. Public `verify` run 33236083997
+and `gate-k-evidence` run 33236083960 passed. In `nomos viewer` run 33236083963,
+ordinary viewer/browser job 99057201671 and R1 offline-budget job 99057201691
+passed. The two R2 jobs remained formal red:
+
+- portable job 99057201605 passed the 100-row provenance register and 11
+  plants, 5 neutrality plants, and 39 complete-proof plants. Its XFS shell
+  validation then invoked `/usr/bin/node` and stopped with status 127 because
+  `actions/setup-node@v5` had installed Node 22.23.2 under
+  `/opt/hostedtoolcache/node/.../bin/node`. The later missing-artifact failure
+  is secondary to that early fail-closed stop;
+- detached job 99057201685 stopped in wrapper tool recording with
+  `tool disappeared while recording: node`. Fallback facts record
+  `setup_failed:true`, every image/loop/mount operation at its not-run status,
+  no image, and byte-identical empty proof-loop inventories. Its public receipt
+  sandbox independently stopped at
+  `bwrap: loopback: Failed RTM_NEWADDR: Operation not permitted`, exposing the
+  Ubuntu 24.04 AppArmor restriction on unprivileged user namespaces.
+
+Both logs are immutable red evidence and neither job reached fallocate, image,
+loop, mount, or XFS setup. Downloaded detached artifact 9709965583 is retained
+at `/data/dev/src/nomos-r2-hosted-red-7b16d36.cAuhFq`; its archive SHA-256 is
+`7fef19b7534a247dc98b669034b352823a3757296ee0cb117e66ae1b8f7258c3`.
+The workflow correctly had no red backing image to upload. The unrelated
+`/dev/loop0` remained untouched.
+
+The second repair treats Node as the caller-selected development tool it is.
+The public wrapper resolves and canonicalizes it before PATH collapse, requires
+Node 22 or newer under a clean environment, refuses a Node directory that
+shadows any declared inner or wrapper tool, and passes the exact path
+positionally through the supervisor. The supervisor records and hashes that
+path after dropping identity and every capability; statfs and export execute it
+only after the same drop. Public host-check and receipt sandboxes invoke the
+same absolute path. Facts record it in the export operation, and validation
+derives the expected argv from the canonical, live-rehashed Node tool record.
+No caller-selected Node byte executes as root and no CI-only `/usr/bin` shim is
+created.
+
+Each hosted R2 job now provisions and validates `sysctl`, records the original
+`kernel.apparmor_restrict_unprivileged_userns` value, temporarily writes only
+that gate to zero, and runs an unprivileged production-shaped probe before the
+candidate step. The probe retains `setpriv --no-new-privs`, fresh network and
+PID namespaces, `--unshare-net`, a read-only root, zero inherited/permitted/
+effective/bounding/ambient capabilities, enabled IPv4/IPv6 loopback only, and
+loopback-only routes. An `if: always()` step restores and verifies the exact
+original gate value before artifact upload. The candidate proof is never run
+with sudo. This provisions the already-required topology; it changes no R2
+criterion or isolation boundary.
+
+The producing source SHA-256 values for this repair are:
+
+- workflow: `a631522dbd9b5639ec69a91c2d143cfe43725593af567b2271df6395e58264f2`;
+- XFS evidence validator:
+  `2ccdb094e420105e0b33c896ede5ba7f64e1250c2c992434baa8624f283d50f3`;
+- XFS receipt test:
+  `5d11c18e0b75a5c5092d7221e3f66a5de2f073198b873091e4e0c6480ca64926`;
+- XFS work-directory helper:
+  `d36e99a6f8db448686cf0439e17cf70ead0db3f0bd2ebe2750e29edb5da36538`;
+- XFS wrapper:
+  `3479b848be905afef6f42089d790ef03501f62c6a91df5583d83d662f06c8fda`;
+- XFS shell-validation suite:
+  `a0a77a2513e4d3ef1c92bd715cd42c1931515c9c271ba154cf10549413939516`.
+
+The 100-row provenance checker and all 11 provenance plants pass at register
+SHA-256
+`6ab5bd7eb266878b1ab8bd3f8811791f36438ecf938c36475981c63f7f45e4f5`.
+The toolcache-shaped Node plant, path-shadow refusal, dynamic operation/tool
+binding mutations, exact hosted-sandbox probe, workflow YAML parse, focused
+receipt tests, and ShellCheck pass. Three read-only Sol Ultra reviews found no
+remaining code, portability, or workflow blocker. No new 8 GiB proof has been
+launched for these bytes.
+
 ## Proof obligation and status
 
 The prior revision-3 proof, three retained revision-4 wrapper-red attempts, and
-two retained first-public-run job reds cannot be resumed, promoted, or
-reclassified. The passing runs through `acc8c02` remain evidence about their
-exact candidates; they do not make the hosted-portability repair green.
-Because that repair changes workflow and receipt-helper proof bytes, freeze one
-new combined candidate and run a fresh complete author XFS proof from new
-source/work paths. The same exact head then requires a fresh Luna Max complete
-XFS rerun. No evidence-summary commit may follow it.
+both sets of retained public-run job reds cannot be resumed, promoted, or
+reclassified. The passing runs through `7b16d36` remain evidence about their
+exact candidates; they do not make the second hosted-portability repair green.
+Because that repair changes workflow and proof bytes, freeze one new combined
+candidate and run a fresh complete author XFS proof from new source/work paths.
+The same exact head then requires a fresh Luna Max complete XFS rerun. No
+evidence-summary commit may follow it.
 
 R2 is not yet admitted. Both fresh local proofs, all applicable public hosted
 workflows, owner visual judgment, the owner's explicit R2 disposition, and the

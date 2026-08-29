@@ -27,7 +27,7 @@ line, and operational gotchas.
 | R1 contract | `RUNTIME.md` revision 4, in force under decision 0021 |
 | Game adoption | not authorized |
 | Mortal Estate evidence | sister-project prospective adopter; bounded evidence produced one admitted dependency point, representative frame, and classified adopter-neutral capability gap; no adoption |
-| R2 observed-scene epoch | revision 4 authorized under decision 0026; R2-1 and R2-2 landed; local author and exact-head proofs passed through `acc8c02`; the first public run exposed two pre-XFS proof-boundary portability reds whose repair awaits fresh proofs, hosted reruns, and owner verdicts |
+| R2 observed-scene epoch | revision 4 authorized under decision 0026; R2-1 and R2-2 landed; local author and exact-head proofs passed through `7b16d36`; the second public run exposed two further pre-XFS hosted-runner defects whose repair awaits fresh proofs, hosted reruns, and owner verdicts |
 
 R1 is the accepted runtime baseline for this repository. That result does not
 rewrite Gate K, pass a later gate, approve production art, or authorize Nomos
@@ -78,13 +78,24 @@ exact-head Luna Max rerun. The first public workflow run at that head made
 nine required jobs green and preserved two pre-XFS proof-boundary reds: the
 detached job passed a symlink-spelled runner Chrome path to a canonical-path
 guard, and Node 22.23 exposed asymmetric entrypoint-path comparison in the XFS
-shell validation. The narrow repair canonicalizes only the workflow Chrome
-argument and uses the loader's main-module identity with a symmetric-realpath
-fallback. Because those proof bytes change, the repaired candidate requires a
-fresh author proof, exact-head Luna Max rerun, and hosted reruns. R2 remains
-unadmitted pending those proofs, owner visual judgment, owner R2 disposition,
-and distinct merge disposition. No platform choice or game adoption is
-authorized.
+shell validation. The first narrow repair canonicalized only the workflow
+Chrome argument and used the loader's main-module identity with a
+symmetric-realpath fallback. Candidate `7b16d36`, tree `30db2b7`, then passed a
+fresh complete author proof and a wholly separate exact-head Luna Max rerun.
+Its second public run made `verify`, `gate-k-evidence`, both ordinary viewer
+jobs, and all non-R2 work green, but preserved two further pre-XFS reds:
+setup-node's canonical Node 22 binary lived outside `/usr/bin`, and Ubuntu
+24.04's AppArmor user-namespace gate prevented Bubblewrap from configuring
+isolated loopback. The current repair carries the exact caller Node path
+through privilege drop, provenance, operations, and receipt validation;
+rejects that directory if it shadows another proof tool; and has each hosted
+R2 job temporarily open, probe, and always restore the AppArmor gate without
+changing `--unshare-net`, fresh network/PID namespaces, read-only root, or zero
+capabilities. Because these proof bytes change, the replacement candidate
+requires a fresh author proof, exact-head Luna Max rerun, and hosted reruns. R2
+remains unadmitted pending those proofs, owner visual judgment, owner R2
+disposition, and distinct merge disposition. No platform choice or game
+adoption is authorized.
 
 The implementation includes:
 
@@ -220,9 +231,9 @@ disposition to repair the contract and rerun affected evidence. The latest
 revision-3 XFS attempt remains formal red under revision 3; it is not relabelled
 as a revision-4 pass. Issue #199 still forbids compiler edits, and no product
 optimization is authorized in this slice. Local author and exact-head Luna Max
-proofs passed through record-only head `acc8c02`; do not reuse or relabel any
-earlier red run. Its first public workflow run exposed two early proof-plumbing
-portability defects, now narrowly repaired and planted. Freeze that repair,
+proofs passed through `7b16d36`; do not reuse or relabel any earlier red run.
+Its second public workflow run exposed the setup-node path and hosted AppArmor
+defects described above, now narrowly repaired and planted. Freeze that repair,
 run a fresh complete author proof and exact-head Luna Max rerun, then rerun the
 public workflows and stop for the owner's visual and R2 verdicts plus separate
 merge disposition. GitHub Actions is available; branch state is not constrained

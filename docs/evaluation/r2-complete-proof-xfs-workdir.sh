@@ -56,12 +56,66 @@ R2_WRAPPER_REQUIRED_TOOLS=(
   rustup cargo rustc
 )
 
+# Sample the mounted filesystem with the exact caller-selected Node executable.
+# Node is a development tool, so it is resolved before privilege elevation and
+# executed only after the supervisor has dropped back to the caller identity.
+record_fs_statfs() {
+  local fs=$1 fragment=$2 output=$3
+  : >"$output.stderr"
+  set +e
+  run_as_user "$caller_node" --input-type=module - "$fs" "$fragment" "$IMAGE_BYTES" \
+    >"$output" 2>"$output.stderr" <<'NODE'
+import { statfsSync } from "node:fs";
+const [root, fragmentText, limitText] = process.argv.slice(2);
+const fragment = BigInt(fragmentText);
+const limit = BigInt(limitText);
+const stat = statfsSync(root, { bigint: true });
+if (stat.type !== 1481003842n || stat.bsize !== fragment || fragment === 0n) process.exit(2);
+if (stat.bavail > stat.bfree || stat.bfree > stat.blocks) process.exit(3);
+const capacity = stat.blocks * fragment;
+const allocated = (stat.blocks - stat.bfree) * fragment;
+if (capacity > limit) process.exit(4);
+process.stdout.write(JSON.stringify({
+  f_type: stat.type.toString(), f_bsize: stat.bsize.toString(), f_frsize: fragment.toString(),
+  f_blocks: stat.blocks.toString(), f_bfree: stat.bfree.toString(), f_bavail: stat.bavail.toString(),
+  capacity_bytes: capacity.toString(), allocated_bytes: allocated.toString(),
+  allocated_mib: ((allocated + 1048575n) / 1048576n).toString(),
+}) + "\n");
+NODE
+  RUN_STATUS=$?
+  set -e
+  [[ $RUN_STATUS -eq 0 ]] || return 1
+  jq -e '(.f_type == "1481003842" and .f_bsize == .f_frsize and
+    (.f_bavail | tonumber) <= (.f_bfree | tonumber) and
+    (.f_bfree | tonumber) <= (.f_blocks | tonumber) and
+    (.capacity_bytes | tonumber) <= 8589934592)' "$output" >/dev/null
+}
+
 require_public_tools() {
   local tool
   for tool in "${R2_INNER_REQUIRED_TOOLS[@]}" "${R2_WRAPPER_REQUIRED_TOOLS[@]}"; do
     type -P -- "$tool" >/dev/null 2>&1 || fail "required executable is missing: $tool"
   done
   [[ -f $receipt_helper && ! -L $receipt_helper ]] || fail 'wrapper receipt helper is missing or symlinked'
+}
+
+r2_validate_caller_path() {
+  local selected=$1 base=$2 expected_node=$3 tool selected_path base_path
+  [[ $(PATH=$selected type -P node) == "$expected_node" ]] ||
+    fail 'sanitized caller PATH does not resolve the exact node handoff'
+  for tool in "${R2_INNER_REQUIRED_TOOLS[@]}" "${R2_WRAPPER_REQUIRED_TOOLS[@]}"; do
+    [[ ${tool##*/} != node ]] || continue
+    selected_path=$(PATH=$selected type -P -- "$tool") ||
+      fail "sanitized caller PATH lost a required executable: $tool"
+    base_path=$(PATH=$base type -P -- "$tool") ||
+      fail "base caller PATH lost a required executable: $tool"
+    selected_path=$(/usr/bin/realpath -e -- "$selected_path") ||
+      fail "sanitized caller tool path is not canonicalizable: $tool"
+    base_path=$(/usr/bin/realpath -e -- "$base_path") ||
+      fail "base caller tool path is not canonicalizable: $tool"
+    [[ $selected_path == "$base_path" ]] ||
+      fail "node directory shadows a required caller tool: $tool"
+  done
 }
 
 r2_is_precreated_work_name() {
@@ -697,7 +751,7 @@ record_wrapper_tools() {
   local register=$1
   local temporary=$register.tmp
   local -a tools=(
-    bash sh git realpath find stat date mkdir readlink id node jq sudo unshare findmnt losetup
+    bash sh git realpath find stat date mkdir readlink id jq sudo unshare findmnt losetup
     mount umount blockdev mkfs.xfs xfs_info xfs_quota filefrag fuser fallocate sync setpriv
     bwrap tar ionice du blkid chown cp rm env sha256sum awk grep tr chmod mv dirname pwd cut
   )
@@ -729,7 +783,7 @@ record_wrapper_tools() {
 }
 
 record_wrapper_user_tool() {
-  local register=$1 tool=$2
+  local register=$1 tool=$2 expected_path=${3:-}
   local temporary=$register.tmp
   local path version status digest version_text
   [[ -f $register && ! -L $register && ! -e $temporary && ! -L $temporary ]] ||
@@ -743,8 +797,14 @@ record_wrapper_user_tool() {
     fail "caller tool disappeared while recording: $tool"
   path=$(/usr/bin/realpath -e -- "$path") || fail "caller tool path is not canonical: $tool"
   [[ -f $path && -x $path && ! -L $path ]] || fail "caller tool is not executable: $tool"
+  [[ -z $expected_path || $path == "$expected_path" ]] ||
+    fail "caller tool path differs from its public handoff: $tool"
   set +e
-  version=$(run_as_user "$tool" --version 2>&1)
+  if [[ -n $expected_path ]]; then
+    version=$(run_as_user "$expected_path" --version 2>&1)
+  else
+    version=$(run_as_user "$tool" --version 2>&1)
+  fi
   status=$?
   set -e
   [[ -n $version ]] || fail "caller tool reported no version: $tool"
