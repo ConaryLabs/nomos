@@ -253,6 +253,45 @@ requirement.
   They contain only the unrelated, untouched `/dev/loop0`. The source, work,
   backing image, logs, and wrapper metadata remain preserved and may not be
   reused for another candidate.
+- Candidate `fc8b0f8cbf28e0f4eaf84f8e80b5bbe91a881798`, tree
+  `e75e5a407826a822f6f1c13905aa8a5a096952f6`, source
+  `/data/dev/src/nomos-r2-candidate.oWsZoo`, work
+  `/data/dev/src/nomos-r2-xfs-run.Ri8Z2H`: the owner-directed candidate-native
+  formal attempt passed the repaired outer XFS shell validation and ordered
+  commands 1 through 32, including both browser lanes, then command 33
+  `maximum-compile-benchmark` returned 1. All 100 recorded maximum-scene
+  compiles produced the same 111,604-byte output at SHA-256
+  `aa36d6befffa48870d8f6cee00663139ec301bb1b606b9270e5e7984566cd6f0`.
+  The nearest-rank p95 passed at 77,475,936 ns against 100,000,000 ns. The
+  even-count median failed: its central pair was 59,552,400 ns and 59,587,361
+  ns, hence numerator 119,139,761 ns over denominator 2, against the 50,000,000
+  ns ceiling. All 100 samples exceeded 50,000,000 ns; the minimum was
+  51,686,070 ns. The compiler binary SHA-256 was
+  `dde136c1f2abd66e68ec395ce2fcfb427eec62e17f150d1bf35776a9da41e264`,
+  identical to the earlier retained rehearsal whose median was 58,361,295 ns
+  and p95 was 77,710,111 ns. Only two of those two runs' combined 200 recorded
+  samples met 50 ms. This is a repeatable criterion-4 budget miss under
+  `R2.md` section 9, not a proof-harness or output-determinism failure. The
+  wrapper receipt SHA-256 is
+  `894676108478468ce495f2ea26849517b9f7968265892d61deda28ba89bdfbb5`;
+  supervisor-facts SHA-256 is
+  `6ff35f70c42423b3a2078757f050691d3e6d3ac9809a2e047cc140a17ee8ca4a`;
+  compile summary SHA-256 is
+  `e1b8c1fedbc7ee5bdb9ec7d119679f76bd0728c0f16c908a2a9825fdb5625d03`;
+  raw samples SHA-256 is
+  `e684596861a5b830736f7bc3e282e58a5eba29f660177932961f1dd12765ad33`;
+  and command-33 stderr SHA-256 is
+  `a09c10ed9b8d80a2af83aa3c0b85f4a840caebc6503248da293a0aedcbd7ea23`.
+  The failed inner proof was exported with equal source and destination
+  inventories at SHA-256
+  `990c746ddf0433960062d50280b97f2dc14e0bbf261ade01cb2b375194dd0dfb`;
+  it produced no final evidence manifest or passing receipt. Cleanup unmounted
+  and detached `/dev/loop1`, the host monitor was clean, and pre/post loop
+  inventories were byte-identical at SHA-256
+  `e951f122f209cb4a215522a5b5e708d1a855da1e65e9aedfa014b849f4be6a74`.
+  Only the unrelated `/dev/loop0` remains, untouched. The source, work, fully
+  allocated backing image, exported partial evidence, and logs are preserved
+  and may not be reused for another candidate.
 
 ## Clean-room and adopter boundary
 

@@ -37,36 +37,35 @@ order. Decision 0025 established current `R2.md` revision 3 by replacing the
 falsified recursive disk observer with bounded accounting on a dedicated,
 fully allocated 8 GiB XFS image. Neither repair changed an R2 criterion or
 ceiling. Branch `feat/issue-199-r2-final` contains the revision-3 proof
-implementation and its retained red rehearsal record. It has no passing formal
+implementation and its retained formal-red records. It has no passing formal
 author proof, no exact-head non-author proof, no owner visual verdict, no owner
 R2 verdict, and no merge authorization.
 
 The most recent formal attempt was candidate
-`a0218893da0e80e50e51e0d510e7190581798cc5`, tree
-`3198a895e477d700643ef51a066715b4d0febad3`. It fully allocated the 8,192 MiB
-image, attached `/dev/loop1`, formatted and mounted XFS, then stopped before
-ordered command 1 and before formal Bubblewrap entry. The outer XFS
-shell-validation suite returned status 1 with empty stdout and stderr. The
-formal wrapper deliberately supplied a retained-descriptor `TMPDIR`; `mktemp`
-preserved that `/proc/self/fd/...` spelling in the fixture root, while the
-receipt helper correctly published canonical source and destination paths. An
-unguarded `jq -e` compared those different spellings and failed silently under
-`set -e`. The branch repair now creates every shell-test root through a retained
-temporary-parent descriptor, immediately resolves it to one real directory,
-and compares the helper's inventory with canonical expected paths under an
-explicit fail message. This makes the exact formal topology part of every
-standalone suite run without weakening the receipt helper or its assertion.
-Cleanup unmounted and detached `/dev/loop1`; pre/post loop inventories were
-byte-identical, the host monitor was clean, and the unrelated `/dev/loop0` was
-untouched. No privileged XFS run has occurred after this repair.
+`fc8b0f8cbf28e0f4eaf84f8e80b5bbe91a881798`, tree
+`e75e5a407826a822f6f1c13905aa8a5a096952f6`. It passed the repaired outer XFS
+shell validation and ordered commands 1 through 32, including both browser
+lanes, then command 33 failed the maximum-scene compile-median ceiling. All 100
+recorded compiles emitted the same 111,604-byte output. P95 passed at
+77,475,936 ns against 100,000,000 ns; the even median was 119,139,761 / 2 ns,
+or about 59.57 ms, against 50 ms. Every sample exceeded 50 ms, with a minimum of
+51,686,070 ns. An earlier retained run of the same compiler binary and fixture
+measured a 58.36 ms median and 77.71 ms p95; only two of the combined 200
+recorded samples met 50 ms. This is a repeatable criterion-4 budget miss under
+`R2.md` section 9, not a harness, XFS-accounting, browser, or determinism
+failure. Cleanup unmounted and detached `/dev/loop1`; pre/post loop inventories
+were byte-identical, the host monitor was clean, and the unrelated `/dev/loop0`
+was untouched.
 
 The stop line is deliberate: preserve the red source, work directory, backing
-image, and logs; freeze and review the narrow proof-test repair; then obtain the
-owner's disposition before launching another privileged 8 GiB attempt. If the
-owner directs `repair and rerun`, use one new standalone source clone and one
-new empty work directory. Do not reuse a prior source or work path, do not
-invoke the wrapper from a different checkout, and do not infer a pass from the
-preflight suite.
+image, exported partial evidence, and logs, then obtain the owner's disposition.
+Issue #199 deliverable 5 forbids compiler edits in this final slice. Pursuing a
+product optimization therefore requires separately recorded falsifiable
+implementation authority and must preserve the exact fixture,
+spawn-through-synced-publication method, and both latency ceilings. The evidence
+supports neither an identical-byte retry nor a contract weakening. Any later
+authorized retry uses one new standalone source clone and one new empty work
+directory. Do not reuse a prior source or work path.
 
 A fresh agent must not infer active work from an old remote branch. The
 repository intentionally retains evidence branches and annotated tags. Check
@@ -112,8 +111,8 @@ source, compiled plan, signatures, browser receipt, and pixels entered unchanged
 | Game adoption | not authorized; thesis applies to no game | decision 0019 |
 | Mortal Estate presentation evidence | bounded prerequisite evidence complete; no adoption | decisions 0022 and 0023 evidence |
 | R2 observed-scene presentation epoch | revision 3 in force; R2-1 and R2-2 landed; epoch not admitted | `R2.md`, decisions 0023–0025 |
-| R2 final evidence | issue #199 has two retained formal red attempts; no passing author proof | issue #199, branch `feat/issue-199-r2-final` |
-| Current queue | freeze the descriptor-TMPDIR proof-test repair, then await owner disposition before any fresh candidate-native XFS author proof | this handoff and `R2.md` sections 9 and 11 |
+| R2 final evidence | issue #199 has three retained formal red attempts; no passing author proof | issue #199, branch `feat/issue-199-r2-final` |
+| Current queue | owner disposition of the measured compile-median red; compiler optimization needs separate falsifiable implementation authority because issue #199 forbids those edits | issue #199 and `R2.md` sections 9, 11, and 13 |
 
 ## Current local verification
 
@@ -135,12 +134,11 @@ These were local pre-freeze checks and are not a formal author result. Rerun
 them from the clean committed tip before provisioning XFS.
 
 The latest retained formal-red work is
-`/data/dev/src/nomos-r2-xfs-run.Jdiqqw`, with its standalone source at
-`/data/dev/src/nomos-r2-candidate.LkM8y6`. Its backing image and logs remain red
-evidence but are no longer attached or mounted. The reproducing diagnostic is
-retained at `/data/dev/src/nomos-r2-xfs-diagnostic.NfZfVd`. Earlier red paths
-and all decisive digests are recorded in the revision-3 author receipt; do not
-relabel or reuse them.
+`/data/dev/src/nomos-r2-xfs-run.Ri8Z2H`, with its standalone source at
+`/data/dev/src/nomos-r2-candidate.oWsZoo`. Its fully allocated backing image,
+exported partial evidence, and logs remain red evidence but are no longer
+attached or mounted. Earlier red paths, diagnostics, and all decisive digests
+are recorded in the revision-3 author receipt; do not relabel or reuse them.
 
 The accepted R1 surface consists of:
 
@@ -433,13 +431,15 @@ Decision 0023 authorizes the R2 epoch boundary and nothing past its stated
 order. `R2.md` revision 3 defines exact acceptance, finite input and output
 grammars, ownership, workspace boundaries, budgets, and proof. R2-1 and R2-2
 are complete after PR #198. Issue #199 is already the authorized final-evidence
-slice; do not open a replacement issue. Freeze and independently review the
-current narrow repair, then stop for the owner's disposition of the retained
-formal red. Only an owner-directed `repair and rerun` authorizes one fresh
-candidate-native XFS author run. If that passes, obtain the required exact-head
-non-author proof and owner visual judgment, then stop for the owner's explicit
-`accept`, `repair and rerun`, or `stop` R2 verdict and a distinct merge
-disposition.
+slice; do not open a replacement issue. The current candidate is formally red
+on the maximum-scene compile median, so stop for the owner's disposition. Issue
+#199 expressly forbids compiler edits. A product-optimization path must first
+receive separate falsifiable implementation authority, is not a replacement
+for #199, and must preserve the frozen workload, synced atomic publication, and
+50 ms median and 100 ms p95 ceilings before any fresh candidate-native XFS
+author proof. If a later candidate passes, obtain the required exact-head
+non-author proof and owner visual judgment, then stop for the exact owner
+verdicts and a distinct merge disposition required by issue #199.
 
 A deeper adopter boundary, platform choice, Gate K attempt, R2 scope expansion,
 or adoption into a game requires its own owner decision. Work toward an actual
