@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { lstatSync, readFileSync, realpathSync } from "node:fs";
 import { join, resolve } from "node:path";
 
-const COMMAND_IDS = Object.freeze([
+export const COMMAND_IDS = Object.freeze([
   "workspace-fmt", "workspace-clippy", "workspace-test", "workspace-boundary",
   "r1-gaol-verify", "r1-wasm-build", "r1-native-build", "r1-viewer-mirror",
   "r1-viewer-build", "r1-viewer-tests", "r1-browser-smoke", "r1-native-replay",
@@ -13,6 +13,42 @@ const COMMAND_IDS = Object.freeze([
   "r2-browser-smoke", "clean-release-build", "clean-r1-viewer-build",
   "clean-r2-viewer-build-a", "clean-r2-viewer-build-b", "clean-r2-viewer-compare",
   "maximum-compile-benchmark",
+]);
+
+export const COMMAND_DISPLAYS = Object.freeze([
+  "cargo fmt --all -- --check",
+  "cargo clippy --workspace --all-targets --locked --offline -- -D warnings",
+  "cargo test --workspace --locked --offline",
+  "cargo xtask boundary",
+  "experiments/executable-gaol/gaol verify",
+  "build R1 wasm, remove its exact target subtree, rebuild, and compare digests",
+  "cargo build --locked --offline -p nomos-play",
+  "git archive HEAD apps/nomos-viewer and byte-verify output-local mirror",
+  "node apps/nomos-viewer/build.mjs in byte-identical output-local mirror",
+  "node --test apps/nomos-viewer/test/*.test.mjs (byte-identical mirror)",
+  "NOMOS_PLAY_BIN=target/debug/nomos-play NOMOS_PLAY_AREAS=target/executable-gaol/areas node apps/nomos-viewer/smoke/smoke.mjs --dist <output>/r1/viewer-dist --out <output>/r1/viewer-smoke --require-chrome",
+  "target/debug/nomos-play replay target/executable-gaol/areas --session <output>/r1/viewer-smoke/session.json",
+  "derive and assert accepted R1 facts",
+  "docs/evaluation/r2-schema-ownership.sh",
+  "three isolated git-archive schema-ownership plants must fail",
+  "docs/evaluation/r2-source-provenance.sh",
+  "docs/evaluation/r2-source-provenance.test.sh",
+  "docs/evaluation/r2-adopter-neutrality.sh",
+  "docs/evaluation/r2-adopter-neutrality.test.sh",
+  "node docs/evaluation/r2-maximum.test.mjs",
+  "compiler tests, release compiler, and exact frozen second-scene packet plants",
+  "compile scene_one ten times to unique outputs and compare committed plan",
+  "compile scene_two ten times to unique outputs and compare committed plan",
+  "node docs/evaluation/r2-scene-signature.mjs scene_one scene_two",
+  "node --test apps/nomos-observed-viewer/test/*.test.mjs docs/evaluation/r2-scene-signature.test.mjs docs/evaluation/r2-complete-proof-process.test.mjs docs/evaluation/r2-complete-proof-receipt.test.mjs docs/evaluation/r2-complete-proof-xfs-evidence.test.mjs docs/evaluation/r2-complete-proof-xfs-receipt.test.mjs docs/evaluation/r2-filesystem-accounting.test.mjs docs/evaluation/r2-filesystem-evidence.test.mjs; docs/evaluation/r2-complete-proof.test.sh",
+  "node apps/nomos-observed-viewer/build.mjs --plan scene_one --plan scene_two --out <output>/r2/viewer-proof/dist --receipt <output>/r2/viewer-proof/receipt.json",
+  "node apps/nomos-observed-viewer/smoke/smoke.mjs --dist <output>/r2/viewer-proof/dist --out <output>/r2/browser-smoke --samples 10",
+  "LC_ALL=C /usr/bin/time -v cargo build --workspace --release --locked --offline (fresh target)",
+  "clean R1 viewer build and byte comparison with proof distribution",
+  "clean R2 viewer build A",
+  "clean R2 viewer build B",
+  "compare full regular-file inventories for all clean R2 distributions",
+  "node docs/evaluation/measure-r2-compile.mjs --binary <fresh-release>/nomos-observed-scene --fixture maximum --output <output>/r2/compile-benchmark",
 ]);
 
 const fail = (message) => { throw new Error(`r2 complete proof argv: ${message}`); };

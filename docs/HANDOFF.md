@@ -14,6 +14,14 @@ baseline. Decision 0019 expressly does **not** adopt Nomos into a game. Decision
 point, recorded one representative adopter frame, and reduced the observed gap
 to an adopter-neutral fixture classified `reusable missing Nomos capability`.
 
+Nomos and The Mortal Estate operate as sister projects with separate
+repositories and authority trees. The Mortal Estate is the concrete prospective
+adopter: it tests admitted, digest-pinned Nomos artifacts, while reusable
+adopter-neutral gaps exposed by that work are reduced, authorized, implemented,
+and proved in Nomos before the game updates. Game-specific content, mechanics,
+integration, and the final adoption decision remain in The Mortal Estate. This
+working relationship is not itself a game-adoption verdict.
+
 Decision 0023 opens one narrow R2 observed-scene presentation epoch. R2-1's
 strict carrier and compiler landed through PR #196 at
 `cc47a7235f92d0ed460c7db5d178448b12fdba02`, tree
@@ -34,18 +42,29 @@ author proof, no exact-head non-author proof, no owner visual verdict, no owner
 R2 verdict, and no merge authorization.
 
 The most recent formal attempt was candidate
-`dfba1ad17e6a604cd343aac81bf48ded669d273d`, tree
-`62302d0c06e2171881d54a661a066e96cc947d0c`. It allocated, formatted, and
-mounted the XFS image, then correctly remained setup-red when the wrapper
-compared `findmnt`'s canonical mount target with a descriptor spelling. Its
-cleanup unmounted and detached `/dev/loop1`; pre/post loop inventories were
-byte-identical, and the unrelated Conary `/dev/loop0` was untouched. That run
-also exposed invalid facts assembly. The branch-tip repair covers those two
-observed failures plus the next descriptor-boundary blockers found by three
-independent audits: command-line `find` roots, the inner output argument, the
-Node helper entrypoint, and export inventory/copy paths. Every repair has a
-focused regression, including atomic replacement of invalid fallback facts.
-No privileged XFS run has occurred after these repairs.
+`8180d5d6931b4a091b7e8e14d8824d83fb81230f`, tree
+`cf8b6a87f0338ff882fb8408b3baa11a34fc2f2d`. It allocated, formatted, and
+mounted the XFS image and reached ordered command 25. All 126 Node tests and the
+complete-proof refusal plants passed, but the combined command returned 4
+before the XFS shell-validation suite's pass marker. A confined reproduction
+found the exact cause: Bubblewrap's root bind and explicit `/proc` mount create
+two identical `/proc` target rows, while the shell test required `findmnt` to
+return exactly one row. The branch-tip repair uses `findmnt --uniq`, which
+collapses only duplicate targets while the existing exact-one-row and canonical-
+target assertions continue to reject ambiguity. The confined reproduction then
+found that the shell suite's adversarial receipt-boundary plants deliberately
+create their own Bubblewrap namespaces and therefore cannot run inside the
+formal Bubblewrap. The repair does not omit that suite: the same formal wrapper
+invocation now runs it unprivileged in the outer phase, records token-bound
+stdout, stderr, status, exact argv, and post-test candidate identity, and the
+inner proof copies and verifies those bytes into manifest-bound metadata before
+command 1. The final receipt exposes a normalized validation binding, the outer
+parent byte-compares all five staged copies after the inner proof, and the
+wrapper binds them through the exported evidence manifest instead of attempting
+a nested namespace. Cleanup unmounted and detached `/dev/loop1`; pre/post loop
+inventories were byte-identical, the host monitor was clean, and the unrelated
+Conary `/dev/loop0` was untouched. No privileged XFS run has occurred after
+this repair.
 
 The good fresh-session stop line is therefore deliberate: preserve the red
 work directories and logs; begin by resolving and checking the clean branch
@@ -98,8 +117,8 @@ source, compiled plan, signatures, browser receipt, and pixels entered unchanged
 | Game adoption | not authorized; thesis applies to no game | decision 0019 |
 | Mortal Estate presentation evidence | bounded prerequisite evidence complete; no adoption | decisions 0022 and 0023 evidence |
 | R2 observed-scene presentation epoch | revision 3 in force; R2-1 and R2-2 landed; epoch not admitted | `R2.md`, decisions 0023–0025 |
-| R2 final evidence | issue #199 implementation locally preflight-green; formal author proof still absent | issue #199, branch `feat/issue-199-r2-final` |
-| Current queue | freeze and preflight the branch tip, then run one fresh candidate-native XFS author proof | this handoff and `R2.md` sections 9 and 11 |
+| R2 final evidence | issue #199 has one retained formal red attempt; no passing author proof | issue #199, branch `feat/issue-199-r2-final` |
+| Current queue | verify and freeze the duplicate-target plus outer-binding repair, then run one fresh candidate-native XFS author proof | this handoff and `R2.md` sections 9 and 11 |
 
 ## Current local verification
 
@@ -109,23 +128,23 @@ Immediately before this handoff commit, the revision-3 working bytes passed:
   locked workspace tests, and `cargo xtask boundary`;
 - schema ownership, the 100-row source-provenance register and 10 plants,
   adopter neutrality and 5 plants;
-- 36 complete-proof refusal plants and the XFS shell validation suite;
-- 126 Node tests across the R2 viewer, receipts, process closure, XFS evidence,
+- 39 complete-proof refusal plants and the XFS shell validation suite;
+- 131 Node tests across the R2 viewer, receipts, process closure, XFS evidence,
   accounting, and scene signatures; and
 - ShellCheck on every changed shell file with only the repository's existing
-  dynamic-source-path exemption.
+  dynamic-source-path and source-only function-analysis exemptions.
 
 The source-provenance register SHA-256 for these implementation bytes is
-`1404733a897fba8fe56007952b37309d78e60590719b4696bc08d045d3ca1c6d`.
+`e4a246d353b6d3cc7609e44e9a76b0759a0c3b091977cf35138aff12732ac0d2`.
 These were local pre-freeze checks and are not a formal author result. Rerun
 them from the clean committed tip before provisioning XFS.
 
-The last retained setup-red work is
-`/data/dev/src/nomos-r2-xfs-run.ds1Dk6`, with its standalone source at
-`/data/dev/src/nomos-r2-candidate.XywDQm`. The backing image remains useful red
-evidence but is no longer attached or mounted. Earlier red paths and their
-digests are recorded in the revision-3 author receipt; do not relabel or reuse
-them.
+The latest retained formal-red work is
+`/data/dev/src/nomos-r2-xfs-run.dm2G1G`, with its standalone source at
+`/data/dev/src/nomos-r2-candidate.juNVZP`. The backing image and exported inner
+evidence remain useful red evidence but are no longer attached or mounted.
+Earlier red paths and their digests are recorded in the revision-3 author
+receipt; do not relabel or reuse them.
 
 The accepted R1 surface consists of:
 
@@ -356,9 +375,11 @@ an unrelated Conary `/dev/loop0` that is outside Nomos and must not be touched.
 
 A passing author run still needs a fresh exact-head Luna Max rerun, the owner
 visual judgment, the required hosted workflows, and the owner's explicit R2
-and merge dispositions. GitHub Actions quota was exhausted at this snapshot,
-so hosted CI remains pending; local proof is useful evidence but does not
-replace that lane.
+and merge dispositions. The repository is now public and its configured jobs
+use standard public-repository runners, so the prior Actions-minutes quota is no
+longer a blocker. Hosted CI remains pending because this exact candidate is
+still local with no pull request or workflow run; local proof does not replace
+that lane.
 
 The formal archived Gate K harnesses are historical and materially heavier.
 Do not launch a new cold-agent attempt, checker, retry, or evidence assembly:
@@ -402,8 +423,9 @@ gh run list --branch main --limit 8
 At this snapshot, local `main` and `origin/main` are still PR #198's merge
 `6cbce64cb867aef24faf227e62bdfc585bbcbd5d`; issue #199 work is on
 `feat/issue-199-r2-final`. Do not expect the feature branch to have an upstream
-or infer a pull request from its existence. Query GitHub when quota and network
-access permit. Old remote heads may still exist; they do not override the owner
+or infer a pull request from its existence. The repository is public and
+Actions is enabled, but this branch has not been pushed and has no exact-head
+hosted run. Old remote heads may still exist; they do not override the owner
 decisions, open issue, or this candidate state.
 
 ## What can happen next

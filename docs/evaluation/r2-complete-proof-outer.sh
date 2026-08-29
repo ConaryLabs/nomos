@@ -88,13 +88,96 @@ r2_compare_outer_positive() {
   cmp -s "$host_stdout" "$output_stdout" && cmp -s "$host_stderr" "$output_stderr"
 }
 
+r2_compare_outer_xfs_validation() {
+  [[ $# -eq 7 ]] || return 2
+  local staged_prefix=$1 output_prefix=$2 suffix staged output path expected actual
+  local index=0
+  shift 2
+  for suffix in stdout stderr status argv.json candidate.json; do
+    expected=${1:-}
+    shift
+    [[ $expected =~ ^[0-9a-f]{64}$ ]] || return 2
+    staged=$staged_prefix.$suffix
+    output=$output_prefix.$suffix
+    for path in "$staged" "$output"; do
+      [[ -f $path && ! -L $path && $(realpath -e -- "$path") == "$path" ]] || return 1
+      actual=$(sha256sum "$path" | awk '{print $1}') || return 1
+      [[ $actual == "$expected" ]] || return 1
+    done
+    cmp -s "$staged" "$output" || return 1
+    index=$((index + 1))
+  done
+  [[ $index -eq 5 ]]
+}
+
+r2_bind_outer_xfs_validation() {
+  [[ $# -eq 5 && $1 == /* && $2 == /* &&
+     $3 =~ ^[0-9a-f]{64}$ && $4 =~ ^[0-9a-f]{40}$ && $5 =~ ^[0-9a-f]{40}$ ]] || return 2
+  local checkout=$1 evidence=$2 token=$3 expected_head=$4 expected_tree=$5
+  local staged_prefix=$checkout/target/.nomos-r2-xfs-validation-$token
+  local output_prefix=$evidence/metadata/xfs-shell-validation
+  local suffix staged output
+  for suffix in stdout stderr status argv.json candidate.json; do
+    staged=$staged_prefix.$suffix
+    output=$output_prefix.$suffix
+    [[ -f $staged && ! -L $staged && $(realpath -e -- "$staged") == "$staged" &&
+       ! -e $output && ! -L $output ]] || return 1
+    cp -- "$staged" "$output" || return 1
+  done
+  [[ $(<"$output_prefix.status") == 0 && ! -s $output_prefix.stderr &&
+     $(wc -l <"$output_prefix.stdout") -eq 1 &&
+     $(<"$output_prefix.stdout") == 'r2-complete-proof-xfs shell validation tests: PASS' ]] ||
+    return 1
+  jq -e --arg cwd "$checkout" --arg token "$token" \
+    --arg script "$checkout/docs/evaluation/r2-complete-proof-xfs.test.sh" '
+      (keys | sort) == ["argv","cwd","proof_token"] and
+      .argv == ["/usr/bin/bash",$script] and .cwd == $cwd and .proof_token == $token
+    ' "$output_prefix.argv.json" >/dev/null || return 1
+  jq -e --arg commit "$expected_head" --arg tree "$expected_tree" '
+      (keys | sort) == ["commit","outcome","porcelain","tree"] and
+      .outcome == "pass" and .commit == $commit and .tree == $tree and .porcelain == ""
+    ' "$output_prefix.candidate.json" >/dev/null || return 1
+}
+
+r2_prepare_inner_evidence() {
+  [[ $# -eq 5 && $2 == /* ]] || return 2
+  local checkout=$1 evidence=$2 token=$3 expected_head=$4 expected_tree=$5
+  mkdir -p \
+    "$evidence/host/home" "$evidence/host/tmp" \
+    "$evidence/host/xdg-cache" "$evidence/host/xdg-config" "$evidence/host/xdg-data" \
+    "$evidence/host/cargo-home" "$evidence/logs" "$evidence/metadata" \
+    "$evidence/measurements/filesystem" "$evidence/r1/wasm" "$evidence/r2" || return 1
+  r2_bind_outer_xfs_validation \
+    "$checkout" "$evidence" "$token" "$expected_head" "$expected_tree"
+}
+
+r2_report_outer_xfs_validation_failure() {
+  [[ $# -eq 3 && $1 =~ ^[0-9]+$ ]] || return 2
+  local status=$1 stdout=$2 stderr=$3 path line
+  for path in "$stdout" "$stderr"; do
+    [[ -f $path && ! -L $path && $(realpath -e -- "$path") == "$path" ]] || return 2
+  done
+  {
+    printf 'R2 complete proof: outer XFS shell validation status: %s\n' "$status"
+    printf '%s\n' 'R2 complete proof: outer XFS shell validation stdout follows:'
+    while IFS= read -r line || [[ -n $line ]]; do printf '%s\n' "$line"; done <"$stdout"
+    printf '%s\n' 'R2 complete proof: outer XFS shell validation stderr follows:'
+    while IFS= read -r line || [[ -n $line ]]; do printf '%s\n' "$line"; done <"$stderr"
+  } >&2
+}
+
 r2_run_outer_proof() {
   local node_major active_toolchain installed_targets browser browser_version
   local caller_uid caller_gid caller_user caller_path rustup_home
   local host_netns host_pidns proof_token outer_control_exit
   local host_control_stdout host_control_stderr
+  local xfs_validation_prefix xfs_validation_stdout xfs_validation_stderr
+  local xfs_validation_status_path xfs_validation_argv xfs_validation_candidate
   local preflight_host_netns preflight_host_pidns outer_preflight_log
-  local preflight_status inner_status positive_status
+  local preflight_status inner_status positive_status xfs_validation_status xfs_validation_bind_status path
+  local xfs_validation_head xfs_validation_tree xfs_validation_porcelain
+  local xfs_validation_suffix
+  local -a xfs_validation_command xfs_validation_expected_sha256=()
   node_major=$(node -p 'Number(process.versions.node.split(".")[0])')
   [[ $node_major =~ ^[0-9]+$ && $node_major -ge 22 ]] ||
     fail 'Node 22 or newer is required'
@@ -187,6 +270,12 @@ r2_run_outer_proof() {
     fail 'target and checkout must share one filesystem'
   outer_control_stdout=$repo_root/target/.nomos-r2-network-$proof_token.stdout
   outer_control_stderr=$repo_root/target/.nomos-r2-network-$proof_token.stderr
+  xfs_validation_prefix=$repo_root/target/.nomos-r2-xfs-validation-$proof_token
+  xfs_validation_stdout=$xfs_validation_prefix.stdout
+  xfs_validation_stderr=$xfs_validation_prefix.stderr
+  xfs_validation_status_path=$xfs_validation_prefix.status
+  xfs_validation_argv=$xfs_validation_prefix.argv.json
+  xfs_validation_candidate=$xfs_validation_prefix.candidate.json
   host_control_stdout=${NOMOS_R2_OUTER_POSITIVE_STDOUT:-}
   host_control_stderr=${NOMOS_R2_OUTER_POSITIVE_STDERR:-}
   realpath -e -- "$host_control_stdout" >/dev/null || fail 'wrapper positive-control stdout path is missing'
@@ -197,18 +286,64 @@ r2_run_outer_proof() {
      $(stat -c '%u:%g' "$host_control_stderr") == "$caller_uid:$caller_gid" &&
      ! -s $host_control_stdout && ! -s $host_control_stderr ]] ||
     fail 'wrapper positive-control logs are not fresh caller-owned regular files'
-  [[ ! -e $outer_control_stdout && ! -L $outer_control_stdout &&
-     ! -e $outer_control_stderr && ! -L $outer_control_stderr ]] ||
-    fail 'network positive-control target is not fresh'
+  for path in \
+    "$outer_control_stdout" "$outer_control_stderr" \
+    "$xfs_validation_stdout" "$xfs_validation_stderr" "$xfs_validation_status_path" \
+    "$xfs_validation_argv" "$xfs_validation_candidate"; do
+    [[ ! -e $path && ! -L $path ]] || fail 'outer staging target is not fresh'
+  done
   cleanup_outer_control() {
     local file
-    for file in "${outer_control_stdout:-}" "${outer_control_stderr:-}"; do
-      [[ -z $file || ! -e $file ]] || find "$file" -delete
+    for file in \
+      "${outer_control_stdout:-}" "${outer_control_stderr:-}" \
+      "${xfs_validation_stdout:-}" "${xfs_validation_stderr:-}" \
+      "${xfs_validation_status_path:-}" "${xfs_validation_argv:-}" \
+      "${xfs_validation_candidate:-}"; do
+      [[ -z $file || ( ! -e $file && ! -L $file ) ]] || find "$file" -delete
     done
   }
   trap cleanup_outer_control EXIT
   trap 'cleanup_outer_control; exit 130' INT
   trap 'cleanup_outer_control; exit 143' TERM
+
+  xfs_validation_command=(
+    /usr/bin/bash "$repo_root/docs/evaluation/r2-complete-proof-xfs.test.sh"
+  )
+  set +e
+  (
+    cd -- "$repo_root"
+    "${xfs_validation_command[@]}"
+  ) >"$xfs_validation_stdout" 2>"$xfs_validation_stderr"
+  xfs_validation_status=$?
+  set -e
+  printf '%s\n' "$xfs_validation_status" >"$xfs_validation_status_path"
+  jq -cn --arg cwd "$repo_root" --arg token "$proof_token" \
+    --arg script "${xfs_validation_command[1]}" \
+    '{argv:["/usr/bin/bash",$script],cwd:$cwd,proof_token:$token}' \
+    >"$xfs_validation_argv"
+  xfs_validation_head=$(git rev-parse --verify 'HEAD^{commit}')
+  xfs_validation_tree=$(git rev-parse --verify 'HEAD^{tree}')
+  xfs_validation_porcelain=$(git status --porcelain=v1 --untracked-files=all)
+  jq -cn --arg commit "$xfs_validation_head" --arg tree "$xfs_validation_tree" \
+    --arg porcelain "$xfs_validation_porcelain" \
+    '{outcome:"pass",commit:$commit,tree:$tree,porcelain:$porcelain}' \
+    >"$xfs_validation_candidate"
+  if [[ $xfs_validation_status -ne 0 || -s $xfs_validation_stderr ||
+        $(wc -l <"$xfs_validation_stdout") -ne 1 ||
+        $(<"$xfs_validation_stdout") != 'r2-complete-proof-xfs shell validation tests: PASS' ||
+        $xfs_validation_head != "$head" || $xfs_validation_tree != "$tree" ||
+        -n $xfs_validation_porcelain ]]; then
+    r2_report_outer_xfs_validation_failure \
+      "$xfs_validation_status" "$xfs_validation_stdout" "$xfs_validation_stderr" ||
+      printf 'R2 complete proof: outer XFS shell validation logs are unreadable\n' >&2
+    fail "outer XFS shell validation exited $xfs_validation_status or emitted unexpected output"
+  fi
+  for xfs_validation_suffix in stdout stderr status argv.json candidate.json; do
+    xfs_validation_expected_sha256+=(
+      "$(sha256sum "$xfs_validation_prefix.$xfs_validation_suffix" | awk '{print $1}')"
+    )
+  done
+
   set +e
   r2_network_probe 1.1.1.1 53 \
     >"$host_control_stdout" 2>"$host_control_stderr"
@@ -226,6 +361,8 @@ r2_run_outer_proof() {
   [[ -f $outer_control_stdout && ! -L $outer_control_stdout &&
      -f $outer_control_stderr && ! -L $outer_control_stderr ]] ||
     fail 'network positive-control staging evidence is invalid'
+  [[ -z $(find "$output_real" -mindepth 1 -print -quit) ]] ||
+    fail 'proof output changed before formal Bubblewrap entry'
 
   set +e
   env -i \
@@ -280,10 +417,19 @@ r2_run_outer_proof() {
   else
     positive_status=1
   fi
+  if r2_compare_outer_xfs_validation "$xfs_validation_prefix" \
+    "$output_real/metadata/xfs-shell-validation" \
+    "${xfs_validation_expected_sha256[@]}"; then
+    xfs_validation_bind_status=0
+  else
+    xfs_validation_bind_status=1
+  fi
   cleanup_outer_control
   trap - EXIT INT TERM
   [[ $positive_status -eq 0 ]] ||
     fail 'network positive-control evidence differs between host, staging, and inner output'
   [[ $inner_status -eq 0 ]] ||
     fail "isolated proof exited $inner_status"
+  [[ $xfs_validation_bind_status -eq 0 ]] ||
+    fail 'outer XFS shell-validation evidence differs from the inner proof copy'
 }

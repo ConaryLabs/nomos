@@ -152,19 +152,9 @@ cpu_topology_groups=$R2_CPU_TOPOLOGY_GROUPS
 sampler_physical_groups=$R2_SAMPLER_PHYSICAL_GROUPS
 workload_physical_groups=$R2_WORKLOAD_PHYSICAL_GROUPS
 evidence_dir=$output_real
-mkdir -p \
-  "$evidence_dir/host/home" \
-  "$evidence_dir/host/tmp" \
-  "$evidence_dir/host/xdg-cache" \
-  "$evidence_dir/host/xdg-config" \
-  "$evidence_dir/host/xdg-data" \
-  "$evidence_dir/host/cargo-home" \
-  "$evidence_dir/logs" \
-  "$evidence_dir/metadata" \
-  "$evidence_dir/measurements" \
-  "$evidence_dir/measurements/filesystem" \
-  "$evidence_dir/r1/wasm" \
-  "$evidence_dir/r2"
+r2_prepare_inner_evidence \
+  "$repo_root" "$evidence_dir" "$NOMOS_R2_PROOF_TOKEN" "$head" "$tree" ||
+  fail 'inner evidence directories or outer XFS shell-validation evidence differ'
 cp /proc/self/mountinfo "$evidence_dir/metadata/mountinfo.txt"
 readonly_stdout=$evidence_dir/metadata/read-only-negative-control.stdout
 readonly_stderr=$evidence_dir/metadata/read-only-negative-control.stderr
@@ -801,10 +791,9 @@ r2_viewer_tests() {
     docs/evaluation/r2-filesystem-accounting.test.mjs \
     docs/evaluation/r2-filesystem-evidence.test.mjs
   docs/evaluation/r2-complete-proof.test.sh
-  docs/evaluation/r2-complete-proof-xfs.test.sh
 }
 run_step r2-viewer-tests \
-  'node --test apps/nomos-observed-viewer/test/*.test.mjs docs/evaluation/r2-scene-signature.test.mjs docs/evaluation/r2-complete-proof-process.test.mjs docs/evaluation/r2-complete-proof-receipt.test.mjs docs/evaluation/r2-complete-proof-xfs-evidence.test.mjs docs/evaluation/r2-complete-proof-xfs-receipt.test.mjs docs/evaluation/r2-filesystem-accounting.test.mjs docs/evaluation/r2-filesystem-evidence.test.mjs; docs/evaluation/r2-complete-proof.test.sh; docs/evaluation/r2-complete-proof-xfs.test.sh' \
+  'node --test apps/nomos-observed-viewer/test/*.test.mjs docs/evaluation/r2-scene-signature.test.mjs docs/evaluation/r2-complete-proof-process.test.mjs docs/evaluation/r2-complete-proof-receipt.test.mjs docs/evaluation/r2-complete-proof-xfs-evidence.test.mjs docs/evaluation/r2-complete-proof-xfs-receipt.test.mjs docs/evaluation/r2-filesystem-accounting.test.mjs docs/evaluation/r2-filesystem-evidence.test.mjs; docs/evaluation/r2-complete-proof.test.sh' \
   r2_viewer_tests
 
 run_step r2-viewer-build \

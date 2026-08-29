@@ -13,7 +13,11 @@ import {
 } from "node:fs";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
-import { validateCommandArgv } from "./r2-complete-proof-argv.mjs";
+import {
+  COMMAND_DISPLAYS,
+  COMMAND_IDS,
+  validateCommandArgv,
+} from "./r2-complete-proof-argv.mjs";
 import { auditLiveProcessNamespace } from "./r2-complete-proof-process.mjs";
 import { validateFilesystemEvidence } from "./r2-filesystem-evidence.mjs";
 const CONSTANTS = Object.freeze({
@@ -41,54 +45,6 @@ const CONSTANTS = Object.freeze({
   r1_viewer_files: 24,
   r1_viewer_bytes: 1_386_650,
 });
-const COMMAND_IDS = Object.freeze([
-  "workspace-fmt", "workspace-clippy", "workspace-test", "workspace-boundary",
-  "r1-gaol-verify", "r1-wasm-build", "r1-native-build", "r1-viewer-mirror",
-  "r1-viewer-build", "r1-viewer-tests", "r1-browser-smoke", "r1-native-replay",
-  "r1-facts", "r2-schema-ownership", "r2-schema-plants", "r2-source-provenance",
-  "r2-source-provenance-plants", "r2-adopter-neutrality", "r2-adopter-neutrality-plants",
-  "r2-maximum-fixture", "r2-compiler-tests", "r2-scene-one-repro",
-  "r2-scene-two-repro", "r2-scene-signatures", "r2-viewer-tests", "r2-viewer-build",
-  "r2-browser-smoke", "clean-release-build", "clean-r1-viewer-build",
-  "clean-r2-viewer-build-a", "clean-r2-viewer-build-b", "clean-r2-viewer-compare",
-  "maximum-compile-benchmark",
-]);
-
-const COMMAND_DISPLAYS = Object.freeze([
-  "cargo fmt --all -- --check",
-  "cargo clippy --workspace --all-targets --locked --offline -- -D warnings",
-  "cargo test --workspace --locked --offline",
-  "cargo xtask boundary",
-  "experiments/executable-gaol/gaol verify",
-  "build R1 wasm, remove its exact target subtree, rebuild, and compare digests",
-  "cargo build --locked --offline -p nomos-play",
-  "git archive HEAD apps/nomos-viewer and byte-verify output-local mirror",
-  "node apps/nomos-viewer/build.mjs in byte-identical output-local mirror",
-  "node --test apps/nomos-viewer/test/*.test.mjs (byte-identical mirror)",
-  "NOMOS_PLAY_BIN=target/debug/nomos-play NOMOS_PLAY_AREAS=target/executable-gaol/areas node apps/nomos-viewer/smoke/smoke.mjs --dist <output>/r1/viewer-dist --out <output>/r1/viewer-smoke --require-chrome",
-  "target/debug/nomos-play replay target/executable-gaol/areas --session <output>/r1/viewer-smoke/session.json",
-  "derive and assert accepted R1 facts",
-  "docs/evaluation/r2-schema-ownership.sh",
-  "three isolated git-archive schema-ownership plants must fail",
-  "docs/evaluation/r2-source-provenance.sh",
-  "docs/evaluation/r2-source-provenance.test.sh",
-  "docs/evaluation/r2-adopter-neutrality.sh",
-  "docs/evaluation/r2-adopter-neutrality.test.sh",
-  "node docs/evaluation/r2-maximum.test.mjs",
-  "compiler tests, release compiler, and exact frozen second-scene packet plants",
-  "compile scene_one ten times to unique outputs and compare committed plan",
-  "compile scene_two ten times to unique outputs and compare committed plan",
-  "node docs/evaluation/r2-scene-signature.mjs scene_one scene_two",
-  "node --test apps/nomos-observed-viewer/test/*.test.mjs docs/evaluation/r2-scene-signature.test.mjs docs/evaluation/r2-complete-proof-process.test.mjs docs/evaluation/r2-complete-proof-receipt.test.mjs docs/evaluation/r2-complete-proof-xfs-evidence.test.mjs docs/evaluation/r2-complete-proof-xfs-receipt.test.mjs docs/evaluation/r2-filesystem-accounting.test.mjs docs/evaluation/r2-filesystem-evidence.test.mjs; docs/evaluation/r2-complete-proof.test.sh; docs/evaluation/r2-complete-proof-xfs.test.sh",
-  "node apps/nomos-observed-viewer/build.mjs --plan scene_one --plan scene_two --out <output>/r2/viewer-proof/dist --receipt <output>/r2/viewer-proof/receipt.json",
-  "node apps/nomos-observed-viewer/smoke/smoke.mjs --dist <output>/r2/viewer-proof/dist --out <output>/r2/browser-smoke --samples 10",
-  "LC_ALL=C /usr/bin/time -v cargo build --workspace --release --locked --offline (fresh target)",
-  "clean R1 viewer build and byte comparison with proof distribution",
-  "clean R2 viewer build A",
-  "clean R2 viewer build B",
-  "compare full regular-file inventories for all clean R2 distributions",
-  "node docs/evaluation/measure-r2-compile.mjs --binary <fresh-release>/nomos-observed-scene --fixture maximum --output <output>/r2/compile-benchmark",
-]);
 const TOOL_LABELS = Object.freeze([
   "git", "realpath", "readlink", "find", "grep", "awk", "sed", "sort", "cmp", "cut",
   "sha256sum", "stat", "date", "du", "jq", "gnu-time", "fallocate", "sync", "unlink",
@@ -285,7 +241,7 @@ const tapSummary = (text, label) => {
   return summary;
 };
 
-const validateComponentLogs = (output, ledger) => {
+const validateComponentLogs = (repo, output, ledger, candidate) => {
   const stdout = (id) => readText(join(output, ledger.find((row) => row.id === id).stdout), `${id} stdout`);
   const markers = {
     "r2-schema-ownership": "R2_SCHEMA_OWNERSHIP PASS",
@@ -311,10 +267,24 @@ const validateComponentLogs = (output, ledger) => {
     "maximum-compile-benchmark": "r2 compile latency:",
   };
   for (const [id, marker] of Object.entries(proofMarkers)) required(stdout(id).includes(marker), `${id} proof marker is absent`);
-  required(
-    stdout("r2-viewer-tests").includes("r2-complete-proof-xfs shell validation tests: PASS"),
-    "r2-viewer-tests XFS wrapper plant marker is absent",
-  );
+  const xfsValidationStdout = readText(join(output, "metadata/xfs-shell-validation.stdout"), "XFS shell-validation stdout");
+  const xfsValidationStderr = readText(join(output, "metadata/xfs-shell-validation.stderr"), "XFS shell-validation stderr");
+  const xfsValidationStatus = readText(join(output, "metadata/xfs-shell-validation.status"), "XFS shell-validation status");
+  const xfsValidationArgv = readJson(join(output, "metadata/xfs-shell-validation.argv.json"), "XFS shell-validation argv");
+  const xfsValidationCandidate = readJson(join(output, "metadata/xfs-shell-validation.candidate.json"), "XFS shell-validation candidate");
+  required(xfsValidationStdout === "r2-complete-proof-xfs shell validation tests: PASS\n",
+    "outer XFS shell-validation PASS marker differs");
+  required(xfsValidationStderr === "" && xfsValidationStatus === "0\n",
+    "outer XFS shell-validation status or stderr differs");
+  exactKeys(xfsValidationArgv, ["argv", "cwd", "proof_token"], "XFS shell-validation argv");
+  required(JSON.stringify(xfsValidationArgv.argv) === JSON.stringify([
+    "/usr/bin/bash", join(repo, "docs/evaluation/r2-complete-proof-xfs.test.sh"),
+  ]) && xfsValidationArgv.cwd === repo && HEX.test(xfsValidationArgv.proof_token),
+  "outer XFS shell-validation invocation differs");
+  exactKeys(xfsValidationCandidate, ["outcome", "commit", "tree", "porcelain"], "XFS shell-validation candidate");
+  required(xfsValidationCandidate.outcome === "pass" &&
+    xfsValidationCandidate.commit === candidate.commit && xfsValidationCandidate.tree === candidate.tree &&
+    xfsValidationCandidate.porcelain === "", "outer XFS shell-validation candidate differs");
   required(stdout("maximum-compile-benchmark").includes("; PASS"), "maximum-compile-benchmark PASS marker is absent");
   const schemaPlants = stdout("r2-schema-plants");
   required(schemaPlants === "expected refusal: missing\nexpected refusal: duplicate\nexpected refusal: third\n", "r2-schema-plants output differs");
@@ -322,7 +292,35 @@ const validateComponentLogs = (output, ledger) => {
   const r1Tap = tapSummary(stdout("r1-viewer-tests"), "R1 viewer tests");
   const r2Tap = tapSummary(stdout("r2-viewer-tests"), "R2 viewer tests");
   required(r1Tap.tests === 104 && r1Tap.pass === 104, "R1 viewer test count is not 104/104");
-  return { r1_gaol_tests: r1GaolTap, r1_viewer_tests: r1Tap, r2_viewer_tests: r2Tap };
+  const validationEvidence = {};
+  for (const [key, relativePath] of Object.entries({
+    stdout: "metadata/xfs-shell-validation.stdout",
+    stderr: "metadata/xfs-shell-validation.stderr",
+    status: "metadata/xfs-shell-validation.status",
+    argv: "metadata/xfs-shell-validation.argv.json",
+    candidate: "metadata/xfs-shell-validation.candidate.json",
+  })) {
+    const bytes = readRegular(join(output, relativePath), `XFS shell-validation ${key}`);
+    validationEvidence[key] = { path: relativePath, bytes: String(bytes.length), sha256: sha256(bytes) };
+  }
+  return {
+    tests: { r1_gaol_tests: r1GaolTap, r1_viewer_tests: r1Tap, r2_viewer_tests: r2Tap },
+    xfs_wrapper_validation: {
+      outcome: "pass",
+      candidate: {
+        commit: xfsValidationCandidate.commit,
+        tree: xfsValidationCandidate.tree,
+        porcelain: xfsValidationCandidate.porcelain,
+      },
+      invocation: {
+        proof_token: xfsValidationArgv.proof_token,
+        cwd: xfsValidationArgv.cwd,
+        argv: xfsValidationArgv.argv,
+        status: 0,
+      },
+      evidence: validationEvidence,
+    },
+  };
 };
 
 const validateIpRows = (addresses, route4, route6, label = "recorded isolation") => {
@@ -879,13 +877,13 @@ export const validateEvidence = ({ repo: repoArgument, output: outputArgument, c
   const source = validateSourceBindings(repo, output, candidate);
   const ledger = parseLedger(output);
   const argv = validateCommandArgv({ repo, output, commandRows: ledger });
-  const tests = validateComponentLogs(output, ledger);
+  const componentLogs = validateComponentLogs(repo, output, ledger, candidate);
   const networkIsolation = validateIsolation(output, liveChecks);
   const filesystemIsolation = validateFilesystemIsolation(repo, output, liveChecks);
   const tools = validateTools(output, liveChecks);
   const closure = validateClosure(repo, output, liveChecks);
   const budgets = validateMeasurements(repo, output);
-  const r1 = validateR1(repo, output, ledger, tests.r1_viewer_tests, liveChecks);
+  const r1 = validateR1(repo, output, ledger, componentLogs.tests.r1_viewer_tests, liveChecks);
   const signatures = validateScenes(repo, output);
   const proofBuild = validateBuildReceipt(repo, join(output, "r2/viewer-proof"), CONSTANTS.plans);
   const buildA = validateBuildReceipt(repo, join(output, "r2/viewer-a"), CONSTANTS.plans);
@@ -904,7 +902,8 @@ export const validateEvidence = ({ repo: repoArgument, output: outputArgument, c
       argv_count: argv.count,
       argv_sha256: argv.sha256,
     },
-    tests,
+    tests: componentLogs.tests,
+    xfs_wrapper_validation: componentLogs.xfs_wrapper_validation,
     r1,
     r2: { signatures, distribution_bytes: buildA.total, distribution_files: buildA.inventory.length, compile, browser },
     budgets,

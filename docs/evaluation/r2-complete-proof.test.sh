@@ -439,6 +439,93 @@ if r2_compare_outer_positive \
 fi
 plant_count=$((plant_count + 1))
 
+xfs_bind_checkout=$temporary/xfs-bind-checkout
+xfs_bind_evidence=$temporary/xfs-bind-evidence
+xfs_bind_red_evidence=$temporary/xfs-bind-red-evidence
+xfs_bind_token=1111111111111111111111111111111111111111111111111111111111111111
+xfs_bind_head=2222222222222222222222222222222222222222
+xfs_bind_tree=3333333333333333333333333333333333333333
+xfs_bind_stage=$xfs_bind_checkout/target/.nomos-r2-xfs-validation-$xfs_bind_token
+mkdir -p "$xfs_bind_checkout/target" "$xfs_bind_red_evidence/metadata"
+printf 'r2-complete-proof-xfs shell validation tests: PASS\n' >"$xfs_bind_stage.stdout"
+: >"$xfs_bind_stage.stderr"
+printf '0\n' >"$xfs_bind_stage.status"
+jq -cn --arg cwd "$xfs_bind_checkout" --arg token "$xfs_bind_token" \
+  --arg script "$xfs_bind_checkout/docs/evaluation/r2-complete-proof-xfs.test.sh" \
+  '{argv:["/usr/bin/bash",$script],cwd:$cwd,proof_token:$token}' >"$xfs_bind_stage.argv.json"
+jq -cn --arg commit "$xfs_bind_head" --arg tree "$xfs_bind_tree" \
+  '{outcome:"pass",commit:$commit,tree:$tree,porcelain:""}' >"$xfs_bind_stage.candidate.json"
+r2_prepare_inner_evidence \
+  "$xfs_bind_checkout" "$xfs_bind_evidence" "$xfs_bind_token" "$xfs_bind_head" "$xfs_bind_tree" ||
+  fail 'valid outer XFS shell-validation evidence did not bind into inner evidence'
+for xfs_suffix in stdout stderr status argv.json candidate.json; do
+  cmp -s "$xfs_bind_stage.$xfs_suffix" \
+    "$xfs_bind_evidence/metadata/xfs-shell-validation.$xfs_suffix" ||
+    fail 'outer XFS shell-validation binding changed evidence bytes'
+done
+printf '1\n' >"$xfs_bind_stage.status"
+if r2_bind_outer_xfs_validation \
+  "$xfs_bind_checkout" "$xfs_bind_red_evidence" "$xfs_bind_token" "$xfs_bind_head" "$xfs_bind_tree"; then
+  fail 'red outer XFS shell-validation evidence bound as an exact pass'
+fi
+plant_count=$((plant_count + 1))
+
+# The outer XFS shell suite cannot nest inside the formal Bubblewrap. Its
+# token-scoped streams must therefore survive an exact byte comparison when
+# the inner proof copies them into manifest-bound metadata.
+xfs_validation_fixture=$temporary/xfs-validation
+mkdir "$xfs_validation_fixture"
+xfs_stage_prefix=$xfs_validation_fixture/stage
+xfs_output_prefix=$xfs_validation_fixture/output
+xfs_stage_stdout=$xfs_stage_prefix.stdout
+xfs_stage_stderr=$xfs_stage_prefix.stderr
+xfs_stage_status=$xfs_stage_prefix.status
+xfs_output_stdout=$xfs_output_prefix.stdout
+xfs_output_status=$xfs_output_prefix.status
+printf 'r2-complete-proof-xfs shell validation tests: PASS\n' >"$xfs_stage_stdout"
+: >"$xfs_stage_stderr"
+printf '0\n' >"$xfs_stage_status"
+printf '{"argv":[]}\n' >"$xfs_stage_prefix.argv.json"
+printf '{"outcome":"pass"}\n' >"$xfs_stage_prefix.candidate.json"
+for xfs_suffix in stdout stderr status argv.json candidate.json; do
+  cp "$xfs_stage_prefix.$xfs_suffix" "$xfs_output_prefix.$xfs_suffix"
+done
+xfs_expected_sha256=()
+for xfs_suffix in stdout stderr status argv.json candidate.json; do
+  xfs_expected_sha256+=("$(sha256sum "$xfs_stage_prefix.$xfs_suffix" | awk '{print $1}')")
+done
+r2_compare_outer_xfs_validation "$xfs_stage_prefix" "$xfs_output_prefix" \
+  "${xfs_expected_sha256[@]}" ||
+  fail 'matching outer XFS shell-validation evidence was rejected'
+printf 'forged\n' >"$xfs_output_stdout"
+printf 'forged\n' >"$xfs_stage_stdout"
+if r2_compare_outer_xfs_validation "$xfs_stage_prefix" "$xfs_output_prefix" \
+  "${xfs_expected_sha256[@]}"; then
+  fail 'jointly mutated outer XFS shell-validation evidence was accepted'
+fi
+printf 'r2-complete-proof-xfs shell validation tests: PASS\n' >"$xfs_stage_stdout"
+cp "$xfs_stage_stdout" "$xfs_output_stdout"
+mv "$xfs_output_status" "$xfs_validation_fixture/output.status.real"
+ln -s output.status.real "$xfs_output_status"
+if r2_compare_outer_xfs_validation "$xfs_stage_prefix" "$xfs_output_prefix" \
+  "${xfs_expected_sha256[@]}"; then
+  fail 'symlinked outer XFS shell-validation evidence was accepted'
+fi
+plant_count=$((plant_count + 1))
+
+xfs_failure_stdout=$xfs_validation_fixture/failure.stdout
+xfs_failure_stderr=$xfs_validation_fixture/failure.stderr
+printf 'validation diagnostic\n' >"$xfs_failure_stdout"
+printf 'nested namespace unavailable\n' >"$xfs_failure_stderr"
+xfs_failure_report=$(r2_report_outer_xfs_validation_failure \
+  4 "$xfs_failure_stdout" "$xfs_failure_stderr" 2>&1) ||
+  fail 'outer XFS shell-validation failure report was rejected'
+[[ $xfs_failure_report == *'outer XFS shell validation status: 4'* &&
+   $xfs_failure_report == *'validation diagnostic'* &&
+   $xfs_failure_report == *'nested namespace unavailable'* ]] ||
+  fail 'outer XFS shell-validation failure report erased the red evidence'
+plant_count=$((plant_count + 1))
+
 # The sidecar binds each actual executor argv to its ordinal and command id;
 # changing one argument must fail the same row-level validation.
 argv_ledger=$temporary/command-argv.ndjson

@@ -108,7 +108,7 @@ const commandDisplays = [
   "compile scene_one ten times to unique outputs and compare committed plan",
   "compile scene_two ten times to unique outputs and compare committed plan",
   "node docs/evaluation/r2-scene-signature.mjs scene_one scene_two",
-  "node --test apps/nomos-observed-viewer/test/*.test.mjs docs/evaluation/r2-scene-signature.test.mjs docs/evaluation/r2-complete-proof-process.test.mjs docs/evaluation/r2-complete-proof-receipt.test.mjs docs/evaluation/r2-complete-proof-xfs-evidence.test.mjs docs/evaluation/r2-complete-proof-xfs-receipt.test.mjs docs/evaluation/r2-filesystem-accounting.test.mjs docs/evaluation/r2-filesystem-evidence.test.mjs; docs/evaluation/r2-complete-proof.test.sh; docs/evaluation/r2-complete-proof-xfs.test.sh",
+  "node --test apps/nomos-observed-viewer/test/*.test.mjs docs/evaluation/r2-scene-signature.test.mjs docs/evaluation/r2-complete-proof-process.test.mjs docs/evaluation/r2-complete-proof-receipt.test.mjs docs/evaluation/r2-complete-proof-xfs-evidence.test.mjs docs/evaluation/r2-complete-proof-xfs-receipt.test.mjs docs/evaluation/r2-filesystem-accounting.test.mjs docs/evaluation/r2-filesystem-evidence.test.mjs; docs/evaluation/r2-complete-proof.test.sh",
   "node apps/nomos-observed-viewer/build.mjs --plan scene_one --plan scene_two --out <output>/r2/viewer-proof/dist --receipt <output>/r2/viewer-proof/receipt.json",
   "node apps/nomos-observed-viewer/smoke/smoke.mjs --dist <output>/r2/viewer-proof/dist --out <output>/r2/browser-smoke --samples 10",
   "LC_ALL=C /usr/bin/time -v cargo build --workspace --release --locked --offline (fresh target)",
@@ -304,6 +304,17 @@ const makeTemplate = () => {
   writeFileSync(join(template, "metadata/network-outer-positive.stderr"), "");
   writeFileSync(join(template, "metadata/network-inner-negative.stdout"), "");
   writeFileSync(join(template, "metadata/network-inner-negative.stderr"), "network unreachable");
+  writeFileSync(join(template, "metadata/xfs-shell-validation.stdout"), "r2-complete-proof-xfs shell validation tests: PASS\n");
+  writeFileSync(join(template, "metadata/xfs-shell-validation.stderr"), "");
+  writeFileSync(join(template, "metadata/xfs-shell-validation.status"), "0\n");
+  json(join(template, "metadata/xfs-shell-validation.argv.json"), {
+    argv: ["/usr/bin/bash", join(repo, "docs/evaluation/r2-complete-proof-xfs.test.sh")],
+    cwd: repo,
+    proof_token: "1".repeat(64),
+  });
+  json(join(template, "metadata/xfs-shell-validation.candidate.json"), {
+    outcome: "pass", commit, tree, porcelain: "",
+  });
   json(join(template, "metadata/filesystem-isolation.json"), {
     outcome: "pass", mechanism: "bubblewrap", repository_mount: "read-only",
     writable_roots: ["target/template", "target"],
@@ -342,7 +353,7 @@ const makeTemplate = () => {
     if (id === "r1-viewer-tests") content = tap(104);
     if (id === "r1-browser-smoke") content = "NOMOS_VIEWER_SMOKE PASS areas=6 moves=65 cost=95 requests=1 external=0\n";
     if (id === "r1-native-replay") content = `NOMOS_PLAY_REPLAY PASS areas=6 commands=77 receipts=77 chain=${chain}\n`;
-    if (id === "r2-viewer-tests") content = `${tap(3)}# includes docs/evaluation/r2-complete-proof-process.test.mjs\nR2_COMPLETE_PROOF_PLANTS PASS\nr2-complete-proof-xfs shell validation tests: PASS\n`;
+    if (id === "r2-viewer-tests") content = `${tap(3)}# includes docs/evaluation/r2-complete-proof-process.test.mjs\nR2_COMPLETE_PROOF_PLANTS PASS\n`;
     if (id === "r2-schema-ownership") content = "R2_SCHEMA_OWNERSHIP PASS\n";
     if (id === "r2-schema-plants") content = "expected refusal: missing\nexpected refusal: duplicate\nexpected refusal: third\n";
     if (id === "r2-source-provenance") content = "R2_SOURCE_PROVENANCE PASS\n";
@@ -744,6 +755,21 @@ test("major plants fail closed before a receipt can be assembled", async (t) => 
       json(path, value);
     }, /positive control did not connect/],
     ["missing-outer-positive", (out) => rmSync(join(out, "metadata/network-outer-positive.stdout")), /network-outer-positive.stdout is missing/],
+    ["missing-xfs-validation", (out) => rmSync(join(out, "metadata/xfs-shell-validation.stdout")), /XFS shell-validation stdout is missing/],
+    ["xfs-validation-status", (out) => writeFileSync(join(out, "metadata/xfs-shell-validation.status"), "1\n"), /XFS shell-validation status or stderr differs/],
+    ["xfs-validation-drift", (out) => writeFileSync(join(out, "metadata/xfs-shell-validation.stdout"), "forged pass\n"), /XFS shell-validation PASS marker differs/],
+    ["xfs-validation-argv", (out) => {
+      const path = join(out, "metadata/xfs-shell-validation.argv.json");
+      const value = JSON.parse(readFileSync(path));
+      value.argv[1] = "/tmp/forged-test.sh";
+      json(path, value);
+    }, /XFS shell-validation invocation differs/],
+    ["xfs-validation-candidate", (out) => {
+      const path = join(out, "metadata/xfs-shell-validation.candidate.json");
+      const value = JSON.parse(readFileSync(path));
+      value.tree = "0".repeat(40);
+      json(path, value);
+    }, /XFS shell-validation candidate differs/],
     ["inner-negative-control", (out) => {
       const path = join(out, "metadata/network-control.json");
       const value = JSON.parse(readFileSync(path));

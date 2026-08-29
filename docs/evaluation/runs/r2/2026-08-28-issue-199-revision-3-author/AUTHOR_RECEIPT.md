@@ -183,6 +183,46 @@ judgment, or acceptance requirement.
   `e951f122f209cb4a215522a5b5e708d1a855da1e65e9aedfa014b849f4be6a74`,
   and `/dev/loop0` remained the unrelated pre-existing Conary loop. This
   attempt remains setup-red.
+- Candidate `8180d5d6931b4a091b7e8e14d8824d83fb81230f`, tree
+  `cf8b6a87f0338ff882fb8408b3baa11a34fc2f2d`, source
+  `/data/dev/src/nomos-r2-candidate.juNVZP`, work
+  `/data/dev/src/nomos-r2-xfs-run.dm2G1G`: the first formal candidate-native
+  author attempt after the descriptor-boundary repairs fully allocated the
+  8,192 MiB image, attached `/dev/loop1`, mounted the dedicated XFS filesystem,
+  and reached ordered command 25. All 126 Node tests and the complete-proof
+  refusal plants printed pass; the combined command then exited 4 before the
+  XFS shell-validation suite could print its pass marker. A confined xtrace
+  reproduced the exact cause: Bubblewrap's read-only root bind and explicit
+  `/proc` mount produce two identical `findmnt` target rows for a retained
+  `/proc` descriptor, while the shell test required exactly one row instead of
+  asking `findmnt` to collapse duplicate targets. The retained xtrace is
+  `/data/dev/src/nomos-r2-exit4-trace.qB9FV5/xtrace.log`, SHA-256
+  `665f427332fef8dd5e4a07155a9261e72b1af12cec26a3fc5db15eb59699d65a`.
+  This was a proof-test assumption, not a browser, XFS-accounting, or budget
+  result. A later
+  nonprivileged formal-topology reproduction, not a second author run, found
+  the next latent layering fault: several adversarial receipt-boundary plants
+  inside that shell suite intentionally launch Bubblewrap, which the formal
+  inner Bubblewrap cannot nest on this host. The candidate repair retains the
+  complete suite in the same wrapper invocation's unprivileged outer phase,
+  stages its token-bound streams, status, exact argv, and unchanged-candidate
+  record, and copies and revalidates all five files as inner manifest evidence.
+  The wrapper receipt SHA-256 is
+  `a5add1af46d8372539a160e5c68111d5a709fc893c4b9addc014733e24867d27`;
+  supervisor-facts SHA-256 is
+  `87ff36ca82c57420ad739f0847587b3e7f8afe0c3f3dc34258e5201e3d6d5df0`;
+  command-25 stdout SHA-256 is
+  `3f86d7b3031c5a70fe2ff45838a8d9a05c21c5c8330bfe7b76c53e908de451a7`;
+  its empty stderr SHA-256 is
+  `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855`;
+  and retained mountinfo SHA-256 is
+  `f81d51f617f078e2f44d20c7c6e29a59a94fb4362d51b9b999260699f05d29c0`.
+  Cleanup unmounted and detached the proof filesystem, the host monitor was
+  clean, pre/post loop inventories were byte-identical at SHA-256
+  `e951f122f209cb4a215522a5b5e708d1a855da1e65e9aedfa014b849f4be6a74`,
+  and the unrelated `/dev/loop0` was untouched. This attempt remains red; its
+  source, work directory, backing image, export, logs, and wrapper metadata are
+  retained and may not satisfy the next candidate's proof.
 
 ## Clean-room and adopter boundary
 

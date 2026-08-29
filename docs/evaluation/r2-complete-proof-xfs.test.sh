@@ -13,6 +13,8 @@ fail() {
   printf 'r2-complete-proof-xfs shell validation tests: FAIL: %s\n' "$*" >&2
   exit 1
 }
+[[ ${NOMOS_R2_PROOF_INNER:-} != 1 ]] ||
+  fail 'XFS shell validation must run in the unprivileged outer proof before formal Bubblewrap'
 # shellcheck source=docs/evaluation/r2-complete-proof-xfs-workdir.sh
 source "$workdir_helper"
 outer=$script_directory/r2-complete-proof-outer.sh
@@ -23,6 +25,15 @@ grep -Fq 'work_fd_path=/proc/self/fd/' "$workdir_helper"
 grep -Fq 'r2_public_open_work_directory' "$workdir_helper"
 grep -Fq 'r2_public_pinned_exec' "$workdir_helper"
 grep -Fq 'r2_public_pinned_exec /usr/bin/node' "$wrapper"
+inner_viewer_test_text=$(/usr/bin/awk '/^r2_viewer_tests\(\) \{/{inside=1} inside{print} inside && /^\}/{exit}' "$inner")
+grep -Fq 'docs/evaluation/r2-complete-proof.test.sh' <<<"$inner_viewer_test_text"
+if grep -Fq 'docs/evaluation/r2-complete-proof-xfs.test.sh' <<<"$inner_viewer_test_text"; then
+  fail 'host XFS shell validation is nested inside the formal inner proof'
+fi
+grep -Fq '/usr/bin/bash "$repo_root/docs/evaluation/r2-complete-proof-xfs.test.sh"' "$outer" ||
+  fail 'formal outer proof does not execute the XFS shell-validation suite'
+grep -Fq 'docs/evaluation/r2-complete-proof-xfs.test.sh' "$workflow" ||
+  fail 'hosted preflight does not execute the XFS shell-validation suite'
 grep -Fq '/usr/bin/bash "$pinned_supervisor_path" --pinned-supervise' "$wrapper"
 grep -Fq -- '--config core.hooksPath=/dev/null "$source_fd_path" "$checkout"' "$wrapper"
 if grep -Fq '/usr/bin/mount --bind' "$workdir_helper"; then
@@ -92,12 +103,17 @@ pwd_tool_path=$(/usr/bin/awk -F '\t' '$1 == "pwd" {print $2}' "$wrapper_tool_tsv
 [[ $pwd_tool_path == /* && -x $pwd_tool_path ]] || fail 'wrapper tool recorder did not resolve external pwd'
 
 # findmnt reports the canonical mount-table target even when its lookup path
-# is a retained descriptor. The production comparison must account for that
-# normalization without changing the descriptor-derived mount operation.
+# is a retained descriptor. A Bubblewrap namespace can stack its writable
+# /proc over the read-only /proc inherited from the root bind, so collapse
+# duplicate target rows without hiding distinct targets. The production
+# comparison must account for descriptor normalization without changing the
+# descriptor-derived mount operation.
 exec {findmnt_fd}</proc
 findmnt_descriptor=/proc/self/fd/$findmnt_fd
-findmnt_record=$(/usr/bin/findmnt --json -T "$findmnt_descriptor" -o TARGET)
-findmnt_target=$(/usr/bin/jq -er 'if (.filesystems | length) == 1 then .filesystems[0].target else empty end' <<<"$findmnt_record")
+findmnt_record=$(/usr/bin/findmnt --uniq --json -T "$findmnt_descriptor" -o TARGET) ||
+  fail 'findmnt could not inspect the descriptor target'
+findmnt_target=$(/usr/bin/jq -er 'if (.filesystems | length) == 1 then .filesystems[0].target else empty end' <<<"$findmnt_record") ||
+  fail 'findmnt descriptor targets are absent or conflicting'
 findmnt_canonical=$(/usr/bin/realpath -e -- "$findmnt_descriptor")
 [[ $findmnt_target == "$findmnt_canonical" && $findmnt_target != "$findmnt_descriptor" ]] ||
   fail 'findmnt descriptor-target normalization differs'
@@ -114,7 +130,8 @@ write_facts_program=$(printf '%s\n' "$write_facts_text" |
 write_facts_references=$(printf '%s\n' "$write_facts_program" |
   /usr/bin/grep -oE '\$[A-Za-z_][A-Za-z0-9_]*' | /usr/bin/tr -d '$' |
   /usr/bin/grep -vx tmp | /usr/bin/sort -u)
-write_facts_missing=$(comm -23 <(printf '%s\n' "$write_facts_references") <(printf '%s\n' "$write_facts_arguments"))
+write_facts_missing=$(/usr/bin/awk 'NR == FNR {present[$0]=1; next} !($0 in present)' \
+  <(printf '%s\n' "$write_facts_arguments") <(printf '%s\n' "$write_facts_references"))
 [[ -z $write_facts_missing ]] || fail "facts jq has unbound variables: $write_facts_missing"
 
 # Node canonicalizes an ES-module entrypoint reached through /proc/self/fd.
@@ -455,13 +472,16 @@ exec {pinned_helper_fd}<&-
 
 # Network isolation belongs to the post-drop inner harness. Prove both the
 # static ownership boundary and Bubblewrap's actual no-capability entry state.
+# This suite runs in the unprivileged outer proof because its adversarial
+# receipt tests and this topology regression deliberately create sandboxes of
+# their own.
 if grep -Eq 'unshare[[:space:]]+--net|ip[[:space:]]+link[[:space:]]+set[[:space:]]+lo' "$wrapper"; then
   printf 'privileged wrapper owns a forbidden network-namespace operation\n' >&2
   exit 1
 fi
 grep -Fq -- '--unshare-net --unshare-pid' "$outer"
 # shellcheck disable=SC2016 # The confined child expands its own procfs fields.
-/usr/bin/setpriv --no-new-privs /usr/bin/bwrap \
+if ! /usr/bin/setpriv --no-new-privs /usr/bin/bwrap \
   --die-with-parent --new-session --unshare-net --unshare-pid \
   --ro-bind / / --dev /dev --proc /proc /usr/bin/bash -ceu '
     for field in CapInh CapPrm CapEff CapBnd CapAmb; do
@@ -469,7 +489,20 @@ grep -Fq -- '--unshare-net --unshare-pid' "$outer"
     done
     [[ $(/usr/bin/awk "/^NoNewPrivs:/ {print \$2}" /proc/self/status) == 1 ]]
     /usr/sbin/ip -j link show lo | /usr/bin/jq -e ".[0].ifname == \"lo\" and (.[0].flags | index(\"UP\")) != null" >/dev/null
-  '
+
+    exec {confined_findmnt_fd}</proc
+    confined_findmnt_descriptor=/proc/self/fd/$confined_findmnt_fd
+    confined_findmnt_raw=$(/usr/bin/findmnt --json -T "$confined_findmnt_descriptor" -o TARGET)
+    /usr/bin/jq -e "(.filesystems | length) >= 2 and all(.filesystems[]; .target == \"/proc\")" \
+      <<<"$confined_findmnt_raw" >/dev/null
+    confined_findmnt_unique=$(/usr/bin/findmnt --uniq --json -T "$confined_findmnt_descriptor" -o TARGET)
+    [[ $(/usr/bin/jq -er "if (.filesystems | length) == 1 then .filesystems[0].target else empty end" \
+      <<<"$confined_findmnt_unique") == /proc ]]
+    [[ $(/usr/bin/realpath -e -- "$confined_findmnt_descriptor") == /proc ]]
+    exec {confined_findmnt_fd}<&-
+  '; then
+  fail 'confined capability or duplicate-/proc regression failed'
+fi
 
 # A canonical-path private entry is never accepted; only the descriptor-backed
 # handoff above may reach the supervisor.
