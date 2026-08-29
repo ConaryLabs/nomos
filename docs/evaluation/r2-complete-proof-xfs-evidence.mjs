@@ -28,12 +28,65 @@ export const TOOL_NAMES = Object.freeze(
 
 const fail = (message) => { throw new XfsWrapperError(message); };
 
+const DECIMAL = /^(0|[1-9][0-9]*)$/;
+
 const evidenceText = (path, label, { nonempty = true } = {}) => {
   const { content, ...digest } = readRegularEvidence(path, label);
   const text = content.toString("utf8");
   if (text.includes("\0") || text.includes("\r") || (nonempty && text.length === 0) ||
       (text.length > 0 && !text.endsWith("\n"))) fail(`${label} is not canonical text`);
   return Object.freeze({ ...digest, text });
+};
+
+export const readJsonEvidence = (path, label) => {
+  const evidence = readRegularEvidence(path, label);
+  try {
+    return Object.freeze({
+      path: evidence.path,
+      value: JSON.parse(evidence.content.toString("utf8")),
+      digest: Object.freeze({ path: evidence.path, bytes: evidence.bytes, sha256: evidence.sha256 }),
+    });
+  } catch (error) {
+    fail(`${label} is invalid JSON: ${error.message}`);
+  }
+};
+
+export const requireExactPath = (actual, expected, label) => {
+  if (actual !== expected) fail(`${label} differs from its canonical expected path`);
+};
+
+export const requireOption = (options, option, label) => {
+  if (typeof options !== "string" || !options.split(",").includes(option)) fail(`${label} is missing ${option}`);
+};
+
+export const validateImageStatEvidence = (path, label, { expectedBytes = IMAGE_BYTES } = {}) => {
+  const evidence = evidenceText(path, label);
+  const match = /^logical_bytes=(0|[1-9][0-9]*)\nst_blocks=(0|[1-9][0-9]*)\nallocated_bytes=(0|[1-9][0-9]*)\nblock_size=(0|[1-9][0-9]*)\n$/.exec(evidence.text);
+  if (!match) fail(`${label} fields or values are not canonical`);
+  const [, logicalText, blocksText, allocatedText, blockSizeText] = match;
+  if (![logicalText, blocksText, allocatedText, blockSizeText].every((value) => DECIMAL.test(value))) {
+    fail(`${label} contains a non-canonical counter`);
+  }
+  const logicalBytes = BigInt(logicalText);
+  const blocks = BigInt(blocksText);
+  const allocatedBytes = BigInt(allocatedText);
+  const blockSize = BigInt(blockSizeText);
+  if (blockSize !== 512n) fail(`${label} block size is not 512 bytes`);
+  if (allocatedBytes !== blocks * blockSize) fail(`${label} allocation arithmetic is inconsistent`);
+  if (logicalBytes !== expectedBytes || allocatedBytes < expectedBytes) {
+    fail(`${label} does not prove an exact fully allocated image`);
+  }
+  const { text: _text, ...digest } = evidence;
+  return Object.freeze({
+    facts: Object.freeze({
+      logical_bytes: logicalText,
+      st_blocks: blocksText,
+      allocated_bytes: allocatedText,
+      block_size: blockSizeText,
+    }),
+    values: Object.freeze({ logicalBytes, blocks, allocatedBytes, blockSize }),
+    digest: Object.freeze(digest),
+  });
 };
 
 export const parseHostStatfs = (prefix, label) => {

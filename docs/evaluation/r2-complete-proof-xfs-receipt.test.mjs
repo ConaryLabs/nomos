@@ -250,7 +250,14 @@ test("receipt has exact top-level schema and success requires inner plus teardow
     ]) writeFileSync(path, "");
     writeFileSync(join(work, "image.filefrag"), "Filesystem type is: 0x58465342\nFile size of test is 8589934592 (2097152 blocks of 4096 bytes)\n ext: logical_offset: physical_offset: length: expected: flags:\n   0:        0..       0:        1..       1: last,eof\n");
     writeFileSync(join(work, "xfs-info.txt"), "log = internal\nrealtime = none\n");
-    writeFileSync(join(work, "image.stat"), `logical_bytes=${IMAGE_BYTES}\nst_blocks=16777216\nallocated_bytes=${IMAGE_BYTES}\nblock_size=512\n`);
+    const preFormatStatPath = join(work, "image-pre-format.stat");
+    const postTeardownStatPath = join(work, "image-post-teardown.stat");
+    const preFormatBlocks = IMAGE_BYTES / 512n;
+    const postTeardownBlocks = preFormatBlocks + 8n;
+    const imageStatText = ({ logical = IMAGE_BYTES, blocks, allocated = blocks * 512n, blockSize = 512n }) =>
+      `logical_bytes=${logical}\nst_blocks=${blocks}\nallocated_bytes=${allocated}\nblock_size=${blockSize}\n`;
+    writeFileSync(preFormatStatPath, imageStatText({ blocks: preFormatBlocks }));
+    writeFileSync(postTeardownStatPath, imageStatText({ blocks: postTeardownBlocks }));
     const statfs = { f_type: "1481003842", f_bsize: "4096", f_blocks: "2000000", f_bfree: "1990000", f_bavail: "1985000" };
     for (const name of ["statfs-mounted.json", "statfs-checkout.json", "statfs-close.json"]) writeFileSync(join(work, name), `${JSON.stringify(statfs)}\n`);
     const hostStatfs = "f_frsize=4096 f_blocks=2000000 f_bfree=1990000 f_bavail=1985000 f_type=xfs f_fsid=1234\n";
@@ -465,7 +472,27 @@ test("receipt has exact top-level schema and success requires inner plus teardow
       setup_failed: false,
       inner_pass: true,
       candidate: { source, commit: "a".repeat(40), tree: "b".repeat(40), clean: true, source_status: 0 },
-      image: { path: image, stat_path: join(work, "image.stat"), filefrag_path: join(work, "image.filefrag"), fallocate_stdout: join(work, "image-fallocate.stdout"), fallocate_stderr: join(work, "image-fallocate.stderr"), sync_stdout: join(work, "image-sync.stdout"), sync_stderr: join(work, "image-sync.stderr"), status: 0, sync_status: 0, logical_bytes: IMAGE_BYTES.toString(), allocated_bytes: IMAGE_BYTES.toString(), expected_bytes: IMAGE_BYTES.toString() },
+      image: {
+        path: image,
+        pre_format_stat_path: preFormatStatPath,
+        pre_format_filefrag_path: join(work, "image.filefrag"),
+        post_teardown_stat_path: postTeardownStatPath,
+        fallocate_stdout: join(work, "image-fallocate.stdout"),
+        fallocate_stderr: join(work, "image-fallocate.stderr"),
+        sync_stdout: join(work, "image-sync.stdout"),
+        sync_stderr: join(work, "image-sync.stderr"),
+        status: 0,
+        sync_status: 0,
+        pre_format_logical_bytes: IMAGE_BYTES.toString(),
+        pre_format_st_blocks: preFormatBlocks.toString(),
+        pre_format_block_size: "512",
+        pre_format_allocated_bytes: IMAGE_BYTES.toString(),
+        post_teardown_logical_bytes: IMAGE_BYTES.toString(),
+        post_teardown_st_blocks: postTeardownBlocks.toString(),
+        post_teardown_block_size: "512",
+        post_teardown_allocated_bytes: (postTeardownBlocks * 512n).toString(),
+        expected_bytes: IMAGE_BYTES.toString(),
+      },
       loop_device: { path: "/dev/loop9", major_minor: "7:9", size_bytes: IMAGE_BYTES.toString(), attached: false },
       filesystem: { type: "xfs", uuid: "11111111-2222-3333-4444-555555555555", fragment_size: "4096", capacity_limit_bytes: IMAGE_BYTES.toString(), capacity_ok: true, mounted_statfs_path: join(work, "statfs-mounted.json"), checkout_statfs_path: join(work, "statfs-checkout.json"), close_statfs_path: join(work, "statfs-close.json"), host_filesystem_before_path: join(work, "host-filesystem-before"), host_filesystem_after_path: join(work, "host-filesystem-after"), xfs_info_path: join(work, "xfs-info.txt") },
       mount: { path: fs, source: "/dev/loop9", options: "rw,nodev,nosuid,relatime", propagation: "private", status: 0, mounted: true, unmounted: true, mount_absent: true },
@@ -485,11 +512,17 @@ test("receipt has exact top-level schema and success requires inner plus teardow
       operations,
       tool_register: toolRegister,
     };
-    const receiptOptions = { statReader: () => ({ size: IMAGE_BYTES, blocks: 16_777_216n }) };
+    const receiptOptions = { statReader: () => ({ size: IMAGE_BYTES, blocks: postTeardownBlocks }) };
     const receipt = assembleReceipt(facts, receiptOptions);
     assert.deepEqual(Object.keys(receipt).sort(), [...TOP_LEVEL_FIELDS].sort());
     assert.equal(receipt.receipt.schema, SCHEMA);
     assert.equal(receipt.outcome, "pass");
+    assert.equal(receipt.image.pre_format_allocated_bytes, IMAGE_BYTES.toString());
+    assert.equal(receipt.image.post_teardown_allocated_bytes, (IMAGE_BYTES + 4096n).toString());
+    assert.equal(receipt.image.evidence.pre_format_stat.sha256,
+      digestRegular(preFormatStatPath, "pre-format stat").sha256);
+    assert.equal(receipt.image.evidence.post_teardown_stat.sha256,
+      digestRegular(postTeardownStatPath, "post-teardown stat").sha256);
     assert.equal(receipt.export.destination, facts.export.destination);
     assert.equal(receipt.export.evidence_manifest.sha256,
       createHash("sha256").update(evidenceBytes).digest("hex"));
@@ -608,9 +641,64 @@ test("receipt has exact top-level schema and success requires inner plus teardow
     writeFileSync(monitorEvidencePaths.after_loops_stderr, "");
     assert.equal(assembleReceipt({ ...facts, inner_pass: false, invocation: { ...facts.invocation, inner_pass: false } }).outcome, "red");
     assert.equal(assembleReceipt({ ...facts, export: { ...facts.export, status: 1, equal: false } }).outcome, "red");
-    assert.throws(() => assembleReceipt({ ...facts, image: { ...facts.image, expected_bytes: "1" } }, receiptOptions), /image size/);
-    assert.throws(() => assembleReceipt(facts, { statReader: () => ({ size: IMAGE_BYTES, blocks: 16_777_215n }) }),
-      /image file size or allocation differs from the receipt facts/);
+    assert.throws(() => assembleReceipt({ ...facts, image: { ...facts.image, expected_bytes: "1" } }, receiptOptions), /image expected size/);
+    assert.throws(() => assembleReceipt({
+      ...facts,
+      image: { ...facts.image, pre_format_allocated_bytes: (IMAGE_BYTES + 512n).toString() },
+    }, receiptOptions), /pre_format_allocated_bytes differs from its stat evidence/);
+    assert.throws(() => assembleReceipt(facts, {
+      statReader: () => ({ size: IMAGE_BYTES, blocks: preFormatBlocks }),
+    }), /post-teardown image stat evidence differs from the image file/);
+
+    writeFileSync(postTeardownStatPath, imageStatText({ blocks: preFormatBlocks - 1n }));
+    assert.throws(() => assembleReceipt({
+      ...facts,
+      image: {
+        ...facts.image,
+        post_teardown_st_blocks: (preFormatBlocks - 1n).toString(),
+        post_teardown_allocated_bytes: (IMAGE_BYTES - 512n).toString(),
+      },
+    }, { statReader: () => ({ size: IMAGE_BYTES, blocks: preFormatBlocks - 1n }) }),
+    /post-teardown image stat evidence does not prove an exact fully allocated image/);
+    writeFileSync(postTeardownStatPath, imageStatText({ blocks: postTeardownBlocks }));
+
+    writeFileSync(preFormatStatPath, imageStatText({ blocks: preFormatBlocks - 1n }));
+    assert.throws(() => assembleReceipt({
+      ...facts,
+      image: {
+        ...facts.image,
+        pre_format_st_blocks: (preFormatBlocks - 1n).toString(),
+        pre_format_allocated_bytes: (IMAGE_BYTES - 512n).toString(),
+      },
+    }, receiptOptions), /pre-format image stat evidence does not prove an exact fully allocated image/);
+    writeFileSync(preFormatStatPath, imageStatText({ blocks: preFormatBlocks }));
+
+    writeFileSync(postTeardownStatPath, imageStatText({
+      blocks: postTeardownBlocks,
+      allocated: postTeardownBlocks * 512n - 1n,
+    }));
+    assert.throws(() => assembleReceipt(facts, receiptOptions), /post-teardown image stat evidence allocation arithmetic is inconsistent/);
+    writeFileSync(postTeardownStatPath, imageStatText({ blocks: postTeardownBlocks }));
+
+    writeFileSync(preFormatStatPath, imageStatText({ blocks: IMAGE_BYTES / 4096n, blockSize: 4096n }));
+    assert.throws(() => assembleReceipt(facts, receiptOptions), /pre-format image stat evidence block size is not 512 bytes/);
+    writeFileSync(preFormatStatPath, imageStatText({ blocks: preFormatBlocks }));
+
+    writeFileSync(postTeardownStatPath, imageStatText({ logical: IMAGE_BYTES + 1n, blocks: postTeardownBlocks }));
+    assert.throws(() => assembleReceipt(facts, receiptOptions), /post-teardown image stat evidence does not prove an exact fully allocated image/);
+    writeFileSync(postTeardownStatPath, imageStatText({ blocks: postTeardownBlocks }));
+
+    assert.throws(() => assembleReceipt({
+      ...facts,
+      image: {
+        ...facts.image,
+        pre_format_stat_path: postTeardownStatPath,
+        post_teardown_stat_path: preFormatStatPath,
+      },
+    }, receiptOptions), /pre-format image stat path differs from its canonical expected path/);
+    const missingCheckpoint = { ...facts.image };
+    delete missingCheckpoint.post_teardown_stat_path;
+    assert.throws(() => assembleReceipt({ ...facts, image: missingCheckpoint }, receiptOptions), /image fields differ/);
     assert.throws(() => assembleReceipt({ ...facts, filesystem: { ...facts.filesystem, type: "ext4" } }, receiptOptions), /filesystem identity/);
     assert.throws(() => assembleReceipt({ ...facts, invocation: { ...facts.invocation, status: 1 } }, receiptOptions), /proof invocation/);
     assert.equal(assembleReceipt({ ...facts, export: { ...facts.export, export_inventory_sha256: "d".repeat(64) } }).outcome, "red");

@@ -21,9 +21,13 @@ import {
   ceilMebibytes,
 } from "./r2-filesystem-accounting.mjs";
 import {
+  readJsonEvidence,
+  requireExactPath,
+  requireOption,
   validateFilefragEvidence,
   validateEvidenceManifest,
   validateHostFilesystemEvidence,
+  validateImageStatEvidence,
   validateOperationsAndTools,
   validateXfsInfoEvidence,
 } from "./r2-complete-proof-xfs-evidence.mjs";
@@ -59,7 +63,7 @@ const FACT_FIELDS = Object.freeze([
 ]);
 const SECTION_FIELDS = Object.freeze({
   candidate: ["source", "commit", "tree", "clean", "source_status"],
-  image: ["path", "stat_path", "filefrag_path", "fallocate_stdout", "fallocate_stderr", "sync_stdout", "sync_stderr", "status", "sync_status", "logical_bytes", "allocated_bytes", "expected_bytes"],
+  image: ["path", "pre_format_stat_path", "pre_format_filefrag_path", "post_teardown_stat_path", "fallocate_stdout", "fallocate_stderr", "sync_stdout", "sync_stderr", "status", "sync_status", "pre_format_logical_bytes", "pre_format_st_blocks", "pre_format_block_size", "pre_format_allocated_bytes", "post_teardown_logical_bytes", "post_teardown_st_blocks", "post_teardown_block_size", "post_teardown_allocated_bytes", "expected_bytes"],
   loop_device: ["path", "major_minor", "size_bytes", "attached"],
   filesystem: ["type", "uuid", "fragment_size", "capacity_limit_bytes", "capacity_ok", "mounted_statfs_path", "checkout_statfs_path", "close_statfs_path", "host_filesystem_before_path", "host_filesystem_after_path", "xfs_info_path"],
   mount: ["path", "source", "options", "propagation", "status", "mounted", "unmounted", "mount_absent"],
@@ -581,36 +585,6 @@ export const executablePath = (value, label) => {
   return value;
 };
 
-const jsonEvidence = (value, label) => {
-  const evidence = readRegularEvidence(value, label);
-  try { return { path: evidence.path, value: JSON.parse(evidence.content.toString("utf8")), digest: Object.freeze({ path: evidence.path, bytes: evidence.bytes, sha256: evidence.sha256 }) }; }
-  catch (error) { fail(`${label} is invalid JSON: ${error.message}`); }
-};
-
-const requirePath = (actual, expected, label) => {
-  if (actual !== expected) fail(`${label} differs from its canonical expected path`);
-};
-
-const requireOption = (options, option, label) => {
-  if (typeof options !== "string" || !options.split(",").includes(option)) fail(`${label} is missing ${option}`);
-};
-
-const imageStatFacts = (path) => {
-  const evidence = readRegularEvidence(path, "image stat evidence");
-  const text = evidence.content.toString("utf8");
-  if (!text.endsWith("\n") || text.includes("\r")) fail("image stat evidence is not canonical");
-  const rows = text.slice(0, -1).split("\n");
-  const facts = {};
-  for (const row of rows) {
-    const separator = row.indexOf("=");
-    if (separator < 1 || Object.prototype.hasOwnProperty.call(facts, row.slice(0, separator))) fail("image stat evidence has duplicate or malformed fields");
-    facts[row.slice(0, separator)] = row.slice(separator + 1);
-  }
-  const expected = ["logical_bytes", "st_blocks", "allocated_bytes", "block_size"];
-  if (JSON.stringify(Object.keys(facts)) !== JSON.stringify(expected)) fail("image stat evidence fields differ");
-  return { facts, digest: Object.freeze({ path: evidence.path, bytes: evidence.bytes, sha256: evidence.sha256 }) };
-};
-
 export const exactFields = (value, fields, label) => {
   const actual = Object.keys(objectValue(value, label)).sort();
   const expected = [...fields].sort();
@@ -639,29 +613,37 @@ export const validatePassFacts = (facts, { statReader = (path) => statSync(path,
   const image = objectValue(requiredField(value, "image"), "image");
   const imagePath = canonicalRegular(requiredField(image, "path", "image path"), "image path");
   const work = canonicalDirectory(dirname(imagePath), "work directory");
-  requirePath(imagePath, join(work, "filesystem.xfs"), "image path");
+  requireExactPath(imagePath, join(work, "filesystem.xfs"), "image path");
   if (statusCode(requiredField(image, "status", "fallocate status"), "fallocate status") !== 0 ||
       statusCode(requiredField(image, "sync_status", "image sync status"), "image sync status") !== 0) fail("image provisioning did not pass");
-  if (decimal(requiredField(image, "expected_bytes"), "image expected bytes") !== IMAGE_BYTES ||
-      decimal(requiredField(image, "logical_bytes"), "image logical bytes") !== IMAGE_BYTES ||
-      decimal(requiredField(image, "allocated_bytes"), "image allocated bytes") < IMAGE_BYTES) fail("image size or allocation is not exact");
-  const imageActual = statReader(imagePath);
-  const imageActualAllocated = imageActual.blocks * 512n;
-  if (imageActual.size !== IMAGE_BYTES || imageActualAllocated < IMAGE_BYTES) fail("image file size or allocation differs from the receipt facts");
+  if (decimal(requiredField(image, "expected_bytes"), "image expected bytes") !== IMAGE_BYTES) fail("image expected size is not exact");
   for (const field of ["fallocate_stdout", "fallocate_stderr", "sync_stdout", "sync_stderr"]) {
     canonicalRegular(requiredField(image, field, `image ${field}`), `image ${field}`);
   }
-  const filefragEvidence = validateFilefragEvidence(requiredField(image, "filefrag_path", "filefrag path"));
-  const imageStatPath = requiredField(image, "stat_path", "image stat path");
-  const imageStatRead = imageStatFacts(imageStatPath);
-  const imageStatEvidence = imageStatRead.digest;
-  const imageStat = imageStatRead.facts;
-  if (decimal(imageStat.logical_bytes, "image stat logical bytes") !== IMAGE_BYTES ||
-      decimal(imageStat.allocated_bytes, "image stat allocated bytes") < IMAGE_BYTES ||
-      decimal(imageStat.allocated_bytes, "image stat allocated bytes") !==
-        decimal(imageStat.st_blocks, "image stat blocks") * decimal(imageStat.block_size, "image stat block size")) fail("image stat allocation is inconsistent");
-  if (decimal(imageStat.logical_bytes, "image stat logical bytes") !== imageActual.size ||
-      decimal(imageStat.allocated_bytes, "image stat allocated bytes") !== imageActualAllocated) fail("image stat evidence differs from the image file");
+  const preFormatStatPath = requiredField(image, "pre_format_stat_path", "pre-format image stat path");
+  const postTeardownStatPath = requiredField(image, "post_teardown_stat_path", "post-teardown image stat path");
+  const preFormatFilefragPath = requiredField(image, "pre_format_filefrag_path", "pre-format filefrag path");
+  requireExactPath(preFormatStatPath, join(work, "image-pre-format.stat"), "pre-format image stat path");
+  requireExactPath(postTeardownStatPath, join(work, "image-post-teardown.stat"), "post-teardown image stat path");
+  requireExactPath(preFormatFilefragPath, join(work, "image.filefrag"), "pre-format filefrag path");
+  const preFormatStat = validateImageStatEvidence(preFormatStatPath, "pre-format image stat evidence");
+  const postTeardownStat = validateImageStatEvidence(postTeardownStatPath, "post-teardown image stat evidence");
+  for (const [field, value] of [
+    ["pre_format_logical_bytes", preFormatStat.values.logicalBytes],
+    ["pre_format_st_blocks", preFormatStat.values.blocks],
+    ["pre_format_block_size", preFormatStat.values.blockSize],
+    ["pre_format_allocated_bytes", preFormatStat.values.allocatedBytes],
+    ["post_teardown_logical_bytes", postTeardownStat.values.logicalBytes],
+    ["post_teardown_st_blocks", postTeardownStat.values.blocks],
+    ["post_teardown_block_size", postTeardownStat.values.blockSize],
+    ["post_teardown_allocated_bytes", postTeardownStat.values.allocatedBytes],
+  ]) {
+    if (decimal(requiredField(image, field), `image ${field}`) !== value) fail(`image ${field} differs from its stat evidence`);
+  }
+  const imageActual = statReader(imagePath);
+  if (imageActual.size !== postTeardownStat.values.logicalBytes ||
+      imageActual.blocks !== postTeardownStat.values.blocks) fail("post-teardown image stat evidence differs from the image file");
+  const filefragEvidence = validateFilefragEvidence(preFormatFilefragPath);
 
   const loop = objectValue(requiredField(value, "loop_device"), "loop device");
   const loopPath = requiredField(loop, "path", "loop device path");
@@ -676,7 +658,7 @@ export const validatePassFacts = (facts, { statReader = (path) => statSync(path,
   const statfsSnapshots = [];
   const statfsEvidence = {};
   for (const field of ["mounted_statfs_path", "checkout_statfs_path", "close_statfs_path"]) {
-    const parsed = jsonEvidence(requiredField(filesystem, field, `filesystem ${field}`), `filesystem ${field}`);
+    const parsed = readJsonEvidence(requiredField(filesystem, field, `filesystem ${field}`), `filesystem ${field}`);
     statfsSnapshots.push(validateStatfsSnapshot(parsed.value, { fragmentSize, capacityLimitBytes: IMAGE_BYTES }));
     statfsEvidence[field] = parsed.digest;
   }
@@ -687,7 +669,7 @@ export const validatePassFacts = (facts, { statReader = (path) => statSync(path,
   const hostFilesystem = {};
   for (const [field, suffix] of [["host_filesystem_before_path", "host-filesystem-before"], ["host_filesystem_after_path", "host-filesystem-after"]]) {
     const prefix = canonicalPath(requiredField(filesystem, field, `filesystem ${field}`), `filesystem ${field}`, { mustExist: false });
-    requirePath(prefix, join(work, suffix), `filesystem ${field}`);
+    requireExactPath(prefix, join(work, suffix), `filesystem ${field}`);
     hostFilesystem[field] = validateHostFilesystemEvidence(prefix, field);
   }
   const hostBefore = hostFilesystem.host_filesystem_before_path;
@@ -699,8 +681,8 @@ export const validatePassFacts = (facts, { statReader = (path) => statSync(path,
 
   const mount = objectValue(requiredField(value, "mount"), "mount");
   const mountPath = canonicalDirectory(requiredField(mount, "path", "mount path"), "mount path");
-  requirePath(mountPath, join(work, "fs"), "mount path");
-  requirePath(requiredField(mount, "source", "mount source"), loopPath, "mount source");
+  requireExactPath(mountPath, join(work, "fs"), "mount path");
+  requireExactPath(requiredField(mount, "source", "mount source"), loopPath, "mount source");
   requireOption(requiredField(mount, "options", "mount options"), "rw", "mount options");
   requireOption(mount.options, "nodev", "mount options");
   requireOption(mount.options, "nosuid", "mount options");
@@ -713,21 +695,21 @@ export const validatePassFacts = (facts, { statReader = (path) => statSync(path,
   const invocation = objectValue(requiredField(value, "invocation"), "invocation");
   const checkout = canonicalStringPath(requiredField(invocation, "cwd", "proof cwd"), "proof cwd");
   const output = join(checkout, "target", "r2-complete-proof");
-  requirePath(exportSource, output, "export source");
-  requirePath(exportDestination, join(work, "export", "target", "r2-complete-proof"), "export destination");
+  requireExactPath(exportSource, output, "export source");
+  requireExactPath(exportDestination, join(work, "export", "target", "r2-complete-proof"), "export destination");
   assertNonOverlappingPaths(candidateSource, work);
   if (statusCode(requiredField(exportSection, "status"), "export status") !== 0 || exportSection.equal !== true) fail("export did not pass");
   const destinationInventory = canonicalInventory(exportDestination, "export destination");
   if (exportSection.source_inventory_sha256 !== destinationInventory.sha256 || exportSection.export_inventory_sha256 !== destinationInventory.sha256 ||
       !/^[0-9a-f]{64}$/.test(exportSection.source_inventory_sha256) || !/^[0-9a-f]{64}$/.test(exportSection.export_inventory_sha256)) fail("export inventory digest binding differs");
-  const inventoryDocument = jsonEvidence(requiredField(exportSection, "inventory_path", "export inventory path"), "export inventory").value;
+  const inventoryDocument = readJsonEvidence(requiredField(exportSection, "inventory_path", "export inventory path"), "export inventory").value;
   if (inventoryDocument.source !== exportSource || inventoryDocument.destination !== exportDestination || inventoryDocument.source_inventory_sha256 !== destinationInventory.sha256 ||
       inventoryDocument.export_inventory_sha256 !== destinationInventory.sha256 || inventoryDocument.equal !== true || inventoryDocument.rows !== destinationInventory.rows.length) fail("export inventory document differs");
   const digestText = readRegularEvidence(requiredField(exportSection, "inventory_digest_path", "export inventory digest path"), "export inventory digest").content.toString("utf8");
   if (digestText !== `source\t${destinationInventory.sha256}\nexport\t${destinationInventory.sha256}\n`) fail("export inventory digest evidence differs");
   const manifestPath = requiredField(exportSection, "inner_evidence_manifest_path", "inner evidence manifest path");
   const manifest = canonicalRegular(manifestPath, "inner evidence manifest");
-  requirePath(manifest, join(exportDestination, "EVIDENCE.sha256"), "inner evidence manifest");
+  requireExactPath(manifest, join(exportDestination, "EVIDENCE.sha256"), "inner evidence manifest");
   const manifestEvidence = validateEvidenceManifest(manifest, destinationInventory);
 
   const argv = requiredField(invocation, "argv", "proof argv");
@@ -789,7 +771,12 @@ export const validatePassFacts = (facts, { statReader = (path) => statSync(path,
   const preflight = validateOuterPreflight(
     requiredField(invocation, "outer_preflight_path", "outer preflight path"), { work });
   return Object.freeze({
-    image: Object.freeze({ stat: imageStatEvidence, filefrag: filefragEvidence, xfs_info: xfsInfoEvidence }),
+    image: Object.freeze({
+      pre_format_stat: preFormatStat.digest,
+      pre_format_filefrag: filefragEvidence,
+      post_teardown_stat: postTeardownStat.digest,
+      xfs_info: xfsInfoEvidence,
+    }),
     filesystem: Object.freeze({
       statfs: Object.freeze(statfsEvidence),
       host: Object.freeze(hostFilesystem),
@@ -881,11 +868,6 @@ const requiredArg = (options, key) => {
   return options[key];
 };
 
-const readJson = (path, label) => {
-  const bytes = readRegularEvidence(path, label).content.toString("utf8");
-  try { return JSON.parse(bytes); } catch (error) { fail(`${label} is invalid JSON: ${error.message}`); }
-};
-
 const readEvidenceText = (path, label) => readRegularEvidence(path, label).content.toString("utf8");
 
 export const runCli = (argv = process.argv.slice(2)) => {
@@ -926,7 +908,7 @@ export const runCli = (argv = process.argv.slice(2)) => {
     }
     if (command === "compare-inventory") {
       const options = parseArgs(argv);
-      const result = compareInventories(readJson(requiredArg(options, "left"), "left inventory"), readJson(requiredArg(options, "right"), "right inventory"));
+      const result = compareInventories(readJsonEvidence(requiredArg(options, "left"), "left inventory").value, readJsonEvidence(requiredArg(options, "right"), "right inventory").value);
       process.stdout.write(`${JSON.stringify(result)}\n`);
       return 0;
     }
@@ -945,7 +927,7 @@ export const runCli = (argv = process.argv.slice(2)) => {
         readEvidenceText(requiredArg(options, "stdout"), "du stdout"), requiredArg(options, "path"),
         readEvidenceText(requiredArg(options, "stderr"), "du stderr"), Number(requiredArg(options, "status")),
       );
-      const snapshot = readJson(requiredArg(options, "statfs"), "statfs snapshot");
+      const snapshot = readJsonEvidence(requiredArg(options, "statfs"), "statfs snapshot").value;
       const accounting = accountingFromStatfs(snapshot, { fragmentSize: requiredArg(options, "fragment_size") });
       validateDuAgainstStatfs(du, accounting);
       process.stdout.write(`${JSON.stringify({ ...du, mib: du.mib.toString(), allocated_mib: accounting.mebibytes.toString() })}\n`);
@@ -953,9 +935,9 @@ export const runCli = (argv = process.argv.slice(2)) => {
     }
     if (command === "receipt") {
       const options = parseArgs(argv);
-      let facts = readJson(requiredArg(options, "facts"), "facts");
+      let facts = readJsonEvidence(requiredArg(options, "facts"), "facts").value;
       if (options.host_monitor !== undefined) {
-        const monitor = readJson(options.host_monitor, "host monitor");
+        const monitor = readJsonEvidence(options.host_monitor, "host monitor").value;
         facts = bindHostMonitor(facts, monitor);
       }
       const receipt = assembleReceipt(facts);

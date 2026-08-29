@@ -48,37 +48,46 @@ author proof, exact-head non-author proof, owner visual verdict, owner R2
 verdict, or merge authorization.
 
 The most recent formal attempt was revision-4 candidate
-`ff35834dc98cf15a1f8d659adb67fe6f81718a40`, tree
-`ed547a0ab4378a3259dc10827c9c7dfdf533e481`. Its inner proof passed all 33
-ordered commands and independently assembled and verified its receipt. The
-compile observation was a median of `117194938 / 2` ns (`58,597,469` ns) and a
-p95 of `69,426,702` ns; all 100 outputs were the same 111,604 bytes. The 10.82 s
-build, 1,559 MiB peak disk use, 54,848,808 ns maximum sampler gap, 805,600-byte
+`00987913615b266f2fa792edb37db7b9304da439`, tree
+`abe227ef4e33d23578a535427a3b999a2cdcfb61`. Its fresh detached source was
+`/data/dev/src/nomos-r4-k-candidate.akDvtZ`; its fresh work directory was
+`/data/dev/src/nomos-r4-k-xfs-run.h5H2w9`. The inner proof passed all 33 ordered
+commands and independently assembled and verified its receipt. The compile
+observation was a median of `116912362 / 2` ns (`58,456,181` ns) and p95
+`64,134,818` ns; all 100 outputs were the same 111,604 bytes. The 18.54 s build,
+1,544 MiB peak disk use, `97,894,050` ns maximum sampler gap, 805,600-byte
 distribution, both browser lanes, and process-closure checks all passed.
 
 The outer wrapper nevertheless remained formally red and emitted no
-`wrapper-receipt.json`. It had fully allocated the 8 GiB image, but default
-`mkfs.xfs` discard propagated through `/dev/loop1` and punched holes in the
-backing file; formatter stdout says `Discarding blocks...Done.` After teardown,
-the logical size remained 8 GiB while allocated bytes had fallen from
-`8,589,934,592` to `1,480,175,616`. The final receipt correctly refused this
-underallocated image. The harness repair binds `mkfs.xfs -K`, which implements
-the existing fully allocated, non-sparse-image requirement without changing
-the contract, workload, product, or measurement. A controlled diagnostic
-confirmed that `-K` preserves full allocation through format and a normal XFS
-mount/create/delete/sync/unmount cycle; XFS already defaults to runtime
-`nodiscard`, so the mount argv is unchanged.
+`wrapper-receipt.json`; receipt assembly exited one with `image stat evidence
+differs from the image file` while the supervisor exited zero. The `-K` repair
+worked: exact formatter argv was
+`/usr/sbin/mkfs.xfs -f -K -l internal /dev/loop1`, with no discard output. The
+pre-format image was exactly 8 GiB logical and allocated. After ordinary
+unmount, detach, and proof of no association, it remained exactly 8 GiB logical
+and had `8,589,938,688` allocated bytes, 4,096 more than the pre-format
+snapshot. Read-only diagnosis found the full 8 GiB data map and 98 extents; the
+additional host-XFS block is consistent with extent-map metadata, not a hole.
+The contract requires allocation **at least** 8 GiB and never requires the two
+checkpoints to be equal. The sole refusal was an extra-contractual comparison
+between a pre-format evidence file and the post-teardown inode.
 
-Preserve the source `/data/dev/src/nomos-r4-candidate.wbrd6Z`, work directory
-`/data/dev/src/nomos-r4-xfs-run.1djISn`, backing image, exported inner evidence,
-and logs as historical formal-red evidence. Cleanup unmounted and detached
-`/dev/loop1`; pre/post loop inventories were byte-identical, the host monitor
-was clean, and the unrelated `/dev/loop0` was untouched. The inner pass cannot
-be resumed, promoted, or spliced into another run. After the no-discard repair,
-tests, provenance, and red record are frozen in a clean candidate, the next
-formal action is one entirely fresh complete candidate-native XFS author proof
-using a new standalone source clone and new empty work directory. Issue #199
-deliverable 5 still forbids product edits.
+The repair in this candidate records separately named pre-format and
+post-teardown stat evidence, validates each exact logical size, 512-byte
+`st_blocks` arithmetic, and minimum allocation, binds facts to the matching
+checkpoint, and compares the live inode only to the post-teardown snapshot. It
+changes no contract, workload, compiler, viewer, or acceptance ceiling.
+
+Preserve both second-run paths above and the earlier first-red source
+`/data/dev/src/nomos-r4-candidate.wbrd6Z` and work
+`/data/dev/src/nomos-r4-xfs-run.1djISn` as historical formal-red evidence.
+Cleanup for both runs removed `/dev/loop1`; the loop inventories were
+byte-identical and the unrelated `/dev/loop0` was untouched. Neither inner pass
+may be resumed, promoted, or spliced. After the two-checkpoint repair, tests,
+provenance, and red record are frozen in a clean candidate, the next formal
+action is one entirely fresh complete candidate-native XFS author proof using
+new standalone source and work paths. Issue #199 deliverable 5 still forbids
+product edits.
 
 A fresh agent must not infer active work from an old remote branch. The
 repository intentionally retains evidence branches and annotated tags. Check
@@ -124,12 +133,13 @@ source, compiled plan, signatures, browser receipt, and pixels entered unchanged
 | Game adoption | not authorized; thesis applies to no game | decision 0019 |
 | Mortal Estate presentation evidence | bounded prerequisite evidence complete; no adoption | decisions 0022 and 0023 evidence |
 | R2 observed-scene presentation epoch | revision 4 in force; R2-1 and R2-2 landed; epoch not admitted | `R2.md`, decisions 0023–0026 |
-| R2 final evidence | revision-3 attempts and the first revision-4 wrapper attempt remain historical formal red; no passing revision-4 author proof | issue #199, decision 0026, branch `feat/issue-199-r2-final` |
-| Current queue | finish and freeze the `mkfs.xfs -K` harness repair, then run one fresh complete candidate-native XFS author proof | issue #199 and `R2.md` sections 9, 11, and 13 |
+| R2 final evidence | revision-3 attempts and two revision-4 wrapper attempts remain historical formal red; no passing revision-4 author proof | issue #199, decision 0026, branch `feat/issue-199-r2-final` |
+| Current queue | finish and freeze the two-checkpoint image-stat verifier repair, then run one fresh complete candidate-native XFS author proof | issue #199 and `R2.md` sections 9, 11, and 13 |
 
 ## Current local verification
 
-Before the retained first revision-4 formal attempt, candidate `ff35834` passed:
+Before the retained second revision-4 formal attempt, exact-head candidate
+`0098791` passed:
 
 - `cargo fmt --all -- --check`, workspace Clippy with warnings denied, all
   locked workspace tests, and `cargo xtask boundary`;
@@ -141,20 +151,22 @@ Before the retained first revision-4 formal attempt, candidate `ff35834` passed:
 - ShellCheck on every changed shell file with only the repository's existing
   dynamic-source-path and source-only function-analysis exemptions.
 
-The source-provenance register SHA-256 for those revision-4 implementation
-bytes is `6d8128993f76db0ee60e64d85e0ffdd3cd60e6d6a807d76b77b721c226342088`.
-Those checks predate the no-discard harness repair now in progress. Rerun the
-portable preflight from its clean committed tip before provisioning XFS; do not
-claim a revision-4 author pass until the fresh complete wrapper finishes and
-its outer receipt independently verifies.
+The source-provenance register SHA-256 at that exact head is
+`7fb00336e5f3b35f7a69c75a5f4d72c635dbbc98e0ddd2962e8412e1e5367c6b`.
+Focused receipt, evidence, XFS shell-validation, syntax, and ShellCheck tests
+pass for the subsequent two-checkpoint repair, but those dirty-tree checks are
+not an author proof. Freeze the repair, rerun the entire portable preflight from
+its clean committed tip, and do not claim a revision-4 author pass until a
+fresh complete wrapper finishes and its outer receipt independently verifies.
 
 The latest retained formal-red work is
-`/data/dev/src/nomos-r4-xfs-run.1djISn`, with its standalone source at
-`/data/dev/src/nomos-r4-candidate.wbrd6Z`. Its underallocated backing image,
+`/data/dev/src/nomos-r4-k-xfs-run.h5H2w9`, with standalone source
+`/data/dev/src/nomos-r4-k-candidate.akDvtZ`. Its fully allocated backing image,
 exported passing inner evidence, and logs remain red evidence but are no longer
-attached or mounted. All decisive digests are recorded in the revision-4 author
-receipt. Earlier red paths and diagnostics remain recorded in the revision-3
-receipt; do not relabel or reuse any of them.
+attached or mounted. The preceding discard-red R4 paths are also retained. All
+decisive digests are recorded in the revision-4 author receipt. Earlier red
+paths and diagnostics remain recorded in the revision-3 receipt; do not
+relabel or reuse any of them.
 
 The accepted R1 surface consists of:
 

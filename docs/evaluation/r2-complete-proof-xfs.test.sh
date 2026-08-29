@@ -40,6 +40,26 @@ grep -Fq -- '--config core.hooksPath=/dev/null "$source_fd_path" "$checkout"' "$
   fail 'supervisor facts do not bind the no-discard XFS format command exactly once'
 [[ $(grep -Fc '/usr/sbin/mkfs.xfs -f -K -l internal "$loop_device"' "$wrapper") -eq 1 ]] ||
   fail 'supervisor does not execute the no-discard XFS format command exactly once'
+[[ $(grep -Fc 'capture_image_stat "$image"' "$wrapper") -eq 2 ]] ||
+  fail 'supervisor does not capture exactly the pre-format and post-teardown image checkpoints'
+grep -Fq 'image_pre_format_stat=$work/image-pre-format.stat' "$workdir_helper" ||
+  fail 'pinned work helper does not reset the pre-format stat below the descriptor'
+grep -Fq 'image_post_teardown_stat=$work/image-post-teardown.stat' "$workdir_helper" ||
+  fail 'pinned work helper does not reset the post-teardown stat below the descriptor'
+if grep -Fq 'image_stat=$work/image.stat' "$workdir_helper"; then
+  fail 'pinned work helper retains the stale single-checkpoint stat path'
+fi
+image_sync_line=$(grep -nF '[[ $image_sync_status -eq 0 ]]' "$wrapper" | cut -d: -f1)
+pre_format_stat_line=$(grep -nF 'capture_image_stat "$image" "$image_pre_format_stat"' "$wrapper" | cut -d: -f1)
+mkfs_line=$(grep -nF '/usr/sbin/mkfs.xfs -f -K -l internal "$loop_device"' "$wrapper" | cut -d: -f1)
+[[ $image_sync_line =~ ^[0-9]+$ && $pre_format_stat_line =~ ^[0-9]+$ && $mkfs_line =~ ^[0-9]+$ &&
+   $pre_format_stat_line -gt $image_sync_line && $pre_format_stat_line -lt $mkfs_line ]] ||
+  fail 'pre-format image stat is not captured after sync and before formatting'
+image_unattached_line=$(grep -nF '[[ $image_unattached == true ]]' "$wrapper" | cut -d: -f1)
+post_teardown_stat_line=$(grep -nF 'capture_image_stat "$image" "$image_post_teardown_stat"' "$wrapper" | cut -d: -f1)
+[[ $image_unattached_line =~ ^[0-9]+$ && $post_teardown_stat_line =~ ^[0-9]+$ &&
+   $post_teardown_stat_line -gt $image_unattached_line ]] ||
+  fail 'post-teardown image stat is not captured after attachment absence is proved'
 if grep -Fq '/usr/bin/mount --bind' "$workdir_helper"; then
   printf 'descriptor boundary must not rely on a canonical-path bind mount\n' >&2
   exit 1

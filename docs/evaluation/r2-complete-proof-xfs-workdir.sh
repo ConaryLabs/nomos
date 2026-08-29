@@ -357,7 +357,9 @@ r2_pin_work_directory() {
   setup_statfs=$work/statfs-mounted.json checkout_statfs=$work/statfs-checkout.json close_statfs=$work/statfs-close.json
   image_filefrag=$work/image.filefrag xfs_info_file=$work/xfs-info.txt
   archive=$work/checkout.tar
-  image_stat=$work/image.stat image_fallocate_stdout=$work/image-fallocate.stdout
+  image_pre_format_stat=$work/image-pre-format.stat
+  image_post_teardown_stat=$work/image-post-teardown.stat
+  image_fallocate_stdout=$work/image-fallocate.stdout
   image_fallocate_stderr=$work/image-fallocate.stderr image_sync_stdout=$work/image-sync.stdout
   image_sync_stderr=$work/image-sync.stderr
   user_env=$work/user-env

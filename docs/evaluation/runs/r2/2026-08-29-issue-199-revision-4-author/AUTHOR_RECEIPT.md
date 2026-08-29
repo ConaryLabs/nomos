@@ -57,9 +57,11 @@ and test files:
 - `docs/evaluation/r2-complete-proof-receipt.mjs`
 - `docs/evaluation/r2-complete-proof-receipt.test.mjs`
 - `docs/evaluation/r2-complete-proof-xfs-evidence.mjs`
+- `docs/evaluation/r2-complete-proof-xfs-receipt.mjs`
 - `docs/evaluation/r2-complete-proof-xfs-receipt.test.mjs`
 - `docs/evaluation/r2-complete-proof-xfs.sh`
 - `docs/evaluation/r2-complete-proof-xfs.test.sh`
+- `docs/evaluation/r2-complete-proof-xfs-workdir.sh`
 - `docs/evaluation/r2-complete-proof.sh`
 - `docs/evaluation/r2-source-provenance.test.sh`
 
@@ -70,7 +72,7 @@ register, checker, and producing receipts remain control evidence bound by the
 eventual candidate commit/tree and final receipt under the existing
 self-binding rule.
 
-## Retained revision-4 formal red
+## Retained first revision-4 formal red
 
 Candidate `ff35834dc98cf15a1f8d659adb67fe6f81718a40`, tree
 `ed547a0ab4378a3259dc10827c9c7dfdf533e481`, was run once from fresh standalone
@@ -134,14 +136,103 @@ with default formatting and preserved all `536,870,912` allocated bytes with
 and unmount. XFS defaults to runtime `nodiscard`, so this repair does not add
 an unnecessary mount-argv change.
 
+## Retained second revision-4 formal red
+
+Candidate `00987913615b266f2fa792edb37db7b9304da439`, tree
+`abe227ef4e33d23578a535427a3b999a2cdcfb61`, was run once from the fresh,
+detached, non-shallow, clean source
+`/data/dev/src/nomos-r4-k-candidate.akDvtZ` with fresh work directory
+`/data/dev/src/nomos-r4-k-xfs-run.h5H2w9`. The candidate-native inner proof
+passed all 33 ordered commands, assembled and verified its receipt, and
+exported byte-identical evidence. The supervisor exited zero. The outer receipt
+assembler exited one with exact error `image stat evidence differs from the
+image file`; the wrapper reported `R2 XFS wrapper: RED (receipt=1
+supervisor=0)` and emitted no `wrapper-receipt.json`. This is therefore formal
+red regardless of the valid diagnostic inner evidence.
+
+The prior no-discard repair worked. Both the operation facts and ordered ledger
+bind exact formatter argv
+`/usr/sbin/mkfs.xfs -f -K -l internal /dev/loop1`, and formatter output contains
+no discard line. The pre-format snapshot recorded exact logical and allocated
+size `8,589,934,592`, `st_blocks` `16,777,216`, and 512-byte block units. After
+ordinary sync, unmount, loop detach, and proof of no holder or image
+association, the live image still had exact logical size `8,589,934,592` and
+`st_blocks` `16,777,224`, or `8,589,938,688` allocated bytes: a harmless 4,096
+byte increase, not a hole or underallocation. A read-only diagnosis found 98
+mapped data extents covering exactly 8 GiB; the additional host-XFS block is
+consistent with extent-map metadata created when writes split the original
+unwritten extent.
+
+The contract requires exact 8 GiB logical size and `st_blocks * 512` allocated
+bytes **at least** 8 GiB. It does not require pre-format and post-teardown
+allocation counts to be equal or impose a host-backing-allocation ceiling. The
+sole outer refusal was therefore an extra-contractual temporal comparison:
+the verifier compared a deliberately retained pre-format stat snapshot for
+exact equality with the post-teardown inode. This is a proof-harness defect,
+not a product result, performance failure, or new contract defect. The repair
+retains separately named pre-format and post-teardown stat evidence, validates
+each independently against the existing exact-size/fully-allocated rule, binds
+facts to their corresponding checkpoint, and compares the live inode only to
+the post-teardown snapshot. It requires no equality or ordering between the two
+allocation counts.
+
+The retained inner evidence remains diagnostic old-head evidence only:
+
+- inner receipt SHA-256:
+  `bad5efc54bdfe8f1d17ef239880fe49b57582f290ae47990aca5489d7c7bcbe3`;
+- inner `EVIDENCE.sha256` SHA-256:
+  `c640340b79ff805d139bd4691cda09a4bdf0c3fad59bb51f4e14b20409eaed6d`,
+  with all 1,879 listed entries hash-valid;
+- equal source and export inventory digest:
+  `496420950d42d0555081a3fc3c206a809049f6335843c5feae77f29ec33d201c`,
+  over 2,343 rows;
+- compile-summary SHA-256:
+  `34a8d78a83349ee2dd36e88ec83a65f4965c12b1b73eb2269373dea42005b3e5`,
+  recording median numerator `116912362` ns over denominator `2` (58,456,181
+  ns), p95 `64134818` ns, and 100 separately published 111,604-byte outputs,
+  all with SHA-256
+  `aa36d6befffa48870d8f6cee00663139ec301bb1b606b9270e5e7984566cd6f0`;
+- raw compile-sample table SHA-256:
+  `9ad5f5b6ac22e542c17761dca0cec2632128a878ad218545e7ffbf7822ec7f22`;
+- supervisor-facts SHA-256:
+  `1bc66d9a98c5a450f261c994b55a898dc23756e7b6df18d2d296b6262adb0e3b`;
+- initial image-stat SHA-256:
+  `80ad97fd657fac7c80f9ee3eefe09c1f7b00b5914356abd1fdbe1a1858bbeab2`;
+- initial filefrag SHA-256:
+  `c3265c646ef80a590ce8945f619e922c6e84ca0322ba5aedbb9c74d4cf676751`;
+- formatter-stdout SHA-256:
+  `cff8c93a40832108d074128c8ff37828e33eb54357f670edd2ed5d627088779e`;
+- wrapper-command ledger SHA-256:
+  `d9aec42c7c1a88a87f8b714a5ae6b6a235ad4b6eef9613fecea9c17c60501a05`;
+- wrapper-execution ledger SHA-256:
+  `dd8c00ad83ecc8bc4c9dfd44852243741f7f92f6beef83318e381b4b0411a457`;
+- host-monitor SHA-256:
+  `33654f762e99d401c9de642249e52cd16ddc91f059fefdd89e5fed202b20842d`;
+  and receipt-stderr SHA-256:
+  `6dc5da52c39be25efe18708a9c4c0c1931f35335f9fdd5cbff45b7e9fe696ace`.
+
+The inner build took 18.54 seconds; peak checkout allocation was 1,544 MiB;
+the 3,967-sample filesystem trace had maximum gap `97,894,050` ns; XFS capacity
+was `8,511,139,840` bytes; the distribution was 805,600 bytes in 14 files; and
+the two browser lanes, their 20 samples, bounded process closures, and zero
+external-request checks passed. These measurements do not promote the run.
+
+Teardown unmounted and detached `/dev/loop1`; no proof mount, holder, or image
+association remains. The before/after loop inventories are byte-identical at
+SHA-256
+`e951f122f209cb4a215522a5b5e708d1a855da1e65e9aedfa014b849f4be6a74`
+and contain only the unrelated, untouched `/dev/loop0`. Preserve both exact
+second-run paths and all contents. Nothing from this run may be resumed,
+spliced, relabelled, or carried into the repaired candidate's proof.
+
 ## Proof obligation and status
 
-The prior revision-3 proof stopped at ordered command 33 and emitted no final
-evidence manifest or passing receipt. It cannot be resumed, promoted, or
-reclassified. Revision 4 therefore requires a fresh candidate-native author
-proof on a newly created dedicated 8,192 MiB XFS filesystem. If that author
-proof passes, the same exact head still requires the issue's independent Luna
-Max XFS rerun. Public CI can supplement those proofs; it does not replace them.
+The prior revision-3 proof and both retained revision-4 wrapper-red attempts
+cannot be resumed, promoted, or reclassified. Revision 4 therefore requires a
+fresh candidate-native author proof on a newly created dedicated 8,192 MiB XFS
+filesystem from wholly new source and work paths. If that author proof passes,
+the same exact head still requires the issue's independent Luna Max XFS rerun.
+Public CI can supplement those proofs; it does not replace them.
 
 No passing revision-4 author proof, exact-head non-author proof, owner visual
 judgment, or owner R2 disposition is bound by this source receipt. Focused

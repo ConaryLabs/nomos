@@ -127,6 +127,21 @@ run_capture() {
   fi
 }
 
+capture_image_stat() {
+  local image_path=$1 output_path=$2
+  read -r CAPTURED_IMAGE_LOGICAL CAPTURED_IMAGE_BLOCKS CAPTURED_IMAGE_BLOCK_SIZE \
+    < <(/usr/bin/stat -c '%s %b %B' -- "$image_path") || return 1
+  [[ $CAPTURED_IMAGE_LOGICAL =~ ^(0|[1-9][0-9]*)$ &&
+     $CAPTURED_IMAGE_BLOCKS =~ ^(0|[1-9][0-9]*)$ &&
+     $CAPTURED_IMAGE_BLOCK_SIZE == 512 ]] || return 1
+  CAPTURED_IMAGE_ALLOCATED=$((CAPTURED_IMAGE_BLOCKS * CAPTURED_IMAGE_BLOCK_SIZE))
+  printf '%s\n' \
+    "logical_bytes=$CAPTURED_IMAGE_LOGICAL" \
+    "st_blocks=$CAPTURED_IMAGE_BLOCKS" \
+    "allocated_bytes=$CAPTURED_IMAGE_ALLOCATED" \
+    "block_size=$CAPTURED_IMAGE_BLOCK_SIZE" >"$output_path"
+}
+
 # shellcheck source=docs/evaluation/r2-complete-proof-xfs-workdir.sh
 if [[ $pinned_supervisor == true ]]; then
   source "$workdir_helper"
@@ -192,7 +207,9 @@ supervisor() {
   mounted=false loop_attached=false unmounted=false loop_detached=false
   mount_absent=false image_unattached=false no_holder=false
   candidate_clean=false setup_failed=true capacity_ok=false
-  image_status=125 image_sync_status=125 image_logical=0 image_allocated=0
+  image_status=125 image_sync_status=125
+  pre_format_logical=0 pre_format_blocks=0 pre_format_block_size=0 pre_format_allocated=0
+  post_teardown_logical=0 post_teardown_blocks=0 post_teardown_block_size=0 post_teardown_allocated=0
   loop_size=0 loop_attach_status=125 mkfs_status=125 mount_status=125
   inner_status=125
   export_status=125 source_inventory_sha256='' export_inventory_sha256=''
@@ -204,14 +221,15 @@ supervisor() {
   image_filefrag=$work/image.filefrag xfs_info_file=$work/xfs-info.txt
   xfs_uuid_status=125 archive=$work/checkout.tar
   archive_status=125 clone_status=125
-  image_stat=$work/image.stat image_fallocate_stdout=$work/image-fallocate.stdout
+  image_pre_format_stat=$work/image-pre-format.stat
+  image_post_teardown_stat=$work/image-post-teardown.stat
+  image_fallocate_stdout=$work/image-fallocate.stdout
   image_fallocate_stderr=$work/image-fallocate.stderr image_sync_stdout=$work/image-sync.stdout
   image_sync_stderr=$work/image-sync.stderr
   supervisor_exit=1
   mount_options='' mount_propagation='' mount_target='' mount_source='' mount_type=''
   user_env=$work/user-env
   source_status=125 filter_status=125
-  image_blocks=0 image_block_size=0
   export_root=$work/export export_parent=$work/export/target
   export_destination=$work/export/target/r2-complete-proof
   inventory_path=$work/export/inventory.json
@@ -259,7 +277,8 @@ supervisor() {
     # a root operation to an attacker-selected path.
     r2_work_path_identity_ok && r2_source_path_identity_ok || return 1
     local display_work display_fs display_checkout display_output display_image
-    local display_image_stat display_image_filefrag display_image_fallocate_stdout display_image_fallocate_stderr
+    local display_image_pre_format_stat display_image_post_teardown_stat display_image_filefrag
+    local display_image_fallocate_stdout display_image_fallocate_stderr
     local display_image_sync_stdout display_image_sync_stderr display_xfs_info display_setup_statfs
     local display_checkout_statfs display_close_statfs display_proof_script display_proof_stdout display_proof_stderr
     local display_command_ledger display_execution_ledger display_export_destination display_inventory_path display_export_sha
@@ -270,7 +289,8 @@ supervisor() {
     display_checkout=$(r2_display_work_path "$checkout") || return 1
     display_output=$(r2_display_work_path "$output") || return 1
     display_image=$(r2_display_work_path "$image") || return 1
-    display_image_stat=$(r2_display_work_path "$image_stat") || return 1
+    display_image_pre_format_stat=$(r2_display_work_path "$image_pre_format_stat") || return 1
+    display_image_post_teardown_stat=$(r2_display_work_path "$image_post_teardown_stat") || return 1
     display_image_filefrag=$(r2_display_work_path "$image_filefrag") || return 1
     display_image_fallocate_stdout=$(r2_display_work_path "$image_fallocate_stdout") || return 1
     display_image_fallocate_stderr=$(r2_display_work_path "$image_fallocate_stderr") || return 1
@@ -307,11 +327,15 @@ supervisor() {
     if ! jq -n \
       --arg source "$source" --arg head "$expected_head" --arg tree "$expected_tree" \
       --argjson source_status "${source_status:-125}" --argjson candidate_clean "$candidate_clean" \
-      --arg image "$display_image" --arg image_stat "$display_image_stat" --arg image_filefrag "$display_image_filefrag" \
+      --arg image "$display_image" --arg pre_format_stat "$display_image_pre_format_stat" \
+      --arg post_teardown_stat "$display_image_post_teardown_stat" --arg image_filefrag "$display_image_filefrag" \
       --arg image_fallocate_stdout "$display_image_fallocate_stdout" --arg image_fallocate_stderr "$display_image_fallocate_stderr" \
       --arg image_sync_stdout "$display_image_sync_stdout" --arg image_sync_stderr "$display_image_sync_stderr" \
       --argjson image_status "$image_status" --argjson image_sync_status "$image_sync_status" \
-      --arg image_logical "$image_logical" --arg image_allocated "$image_allocated" \
+      --arg pre_format_logical "$pre_format_logical" --arg pre_format_blocks "$pre_format_blocks" \
+      --arg pre_format_block_size "$pre_format_block_size" --arg pre_format_allocated "$pre_format_allocated" \
+      --arg post_teardown_logical "$post_teardown_logical" --arg post_teardown_blocks "$post_teardown_blocks" \
+      --arg post_teardown_block_size "$post_teardown_block_size" --arg post_teardown_allocated "$post_teardown_allocated" \
       --argjson loop_attached "$loop_attached" --arg loop_device "$loop_device" --arg major_minor "$major_minor" \
       --arg loop_size "$loop_size" --argjson loop_attach_status "$loop_attach_status" \
       --argjson mkfs_status "$mkfs_status" --arg xfs_info "$display_xfs_info" \
@@ -345,10 +369,15 @@ supervisor() {
       'def nz: if . == "" then null else . end;
        {setup_failed:$setup_failed,inner_pass:$inner_pass,
         candidate:{source:$source,commit:$head,tree:$tree,clean:$candidate_clean,source_status:$source_status},
-        image:{path:$image,stat_path:$image_stat,filefrag_path:$image_filefrag,
+        image:{path:$image,pre_format_stat_path:$pre_format_stat,pre_format_filefrag_path:$image_filefrag,
+          post_teardown_stat_path:$post_teardown_stat,
           fallocate_stdout:$image_fallocate_stdout,fallocate_stderr:$image_fallocate_stderr,
           sync_stdout:$image_sync_stdout,sync_stderr:$image_sync_stderr,status:$image_status,
-          sync_status:$image_sync_status,logical_bytes:$image_logical,allocated_bytes:$image_allocated,
+          sync_status:$image_sync_status,pre_format_logical_bytes:$pre_format_logical,
+          pre_format_st_blocks:$pre_format_blocks,pre_format_block_size:$pre_format_block_size,
+          pre_format_allocated_bytes:$pre_format_allocated,post_teardown_logical_bytes:$post_teardown_logical,
+          post_teardown_st_blocks:$post_teardown_blocks,post_teardown_block_size:$post_teardown_block_size,
+          post_teardown_allocated_bytes:$post_teardown_allocated,
           expected_bytes:"8589934592"},
         loop_device:{path:($loop_device|nz),major_minor:($major_minor|nz),size_bytes:($loop_size|nz),attached:$loop_attached},
         filesystem:{type:"xfs",uuid:($uuid|nz),fragment_size:($fragment_size|nz),capacity_limit_bytes:"8589934592",capacity_ok:$capacity_ok,
@@ -494,11 +523,13 @@ supervisor() {
   run_capture "$image_sync_stdout" "$image_sync_stderr" run_as_user /usr/bin/sync -f "$image"
   image_sync_status=$RUN_STATUS
   [[ $image_sync_status -eq 0 ]] || fail 'backing-image sync failed'
-  read -r image_logical image_blocks image_block_size < <(/usr/bin/stat -c '%s %b %B' "$image")
-  [[ $image_block_size == 512 ]] || fail 'st_blocks fundamental unit is not 512 bytes'
-  image_allocated=$((image_blocks * 512))
-  printf '%s\n' "logical_bytes=$image_logical" "st_blocks=$image_blocks" "allocated_bytes=$image_allocated" "block_size=$image_block_size" >"$image_stat"
-  [[ $image_logical == "$IMAGE_BYTES" && $image_allocated -ge $IMAGE_BYTES ]] || fail 'backing image is not exact and fully allocated'
+  capture_image_stat "$image" "$image_pre_format_stat" || fail 'pre-format image stat capture failed'
+  pre_format_logical=$CAPTURED_IMAGE_LOGICAL
+  pre_format_blocks=$CAPTURED_IMAGE_BLOCKS
+  pre_format_block_size=$CAPTURED_IMAGE_BLOCK_SIZE
+  pre_format_allocated=$CAPTURED_IMAGE_ALLOCATED
+  [[ $pre_format_logical == "$IMAGE_BYTES" && $pre_format_allocated -ge $IMAGE_BYTES ]] ||
+    fail 'pre-format backing image is not exact and fully allocated'
   r2_display_work_path "$image" >/dev/null || fail 'work directory changed before caller extent inspection'
   run_capture "$image_filefrag" "$work/image.filefrag.stderr" run_as_user /usr/sbin/filefrag -v "$image"
   [[ $RUN_STATUS -eq 0 ]] || fail 'filefrag extent evidence failed'
@@ -758,6 +789,13 @@ supervisor() {
   run_capture "$work/loop-associated.stdout" "$work/loop-associated.stderr" /usr/sbin/losetup --associated "$image"
   [[ $RUN_STATUS -eq 0 && ! -s $work/loop-associated.stdout && ! -s $work/loop-associated.stderr ]] || image_unattached=false
   [[ $image_unattached == true ]] || fail 'detached loop still has a holder or image attachment'
+  capture_image_stat "$image" "$image_post_teardown_stat" || fail 'post-teardown image stat capture failed'
+  post_teardown_logical=$CAPTURED_IMAGE_LOGICAL
+  post_teardown_blocks=$CAPTURED_IMAGE_BLOCKS
+  post_teardown_block_size=$CAPTURED_IMAGE_BLOCK_SIZE
+  post_teardown_allocated=$CAPTURED_IMAGE_ALLOCATED
+  [[ $post_teardown_logical == "$IMAGE_BYTES" && $post_teardown_allocated -ge $IMAGE_BYTES ]] ||
+    fail 'post-teardown backing image is not exact and fully allocated'
   loop_attached=false
   supervisor_exit=0
   [[ $inner_status -eq 0 && $export_status -eq 0 && $unmounted == true &&
