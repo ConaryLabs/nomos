@@ -162,6 +162,7 @@ while IFS=$'\t' read -r path digest origin receipt license; do
           [[ $receipt == docs/evaluation/runs/r2/2026-08-27-issue-197-second-author/SECOND_AUTHOR_RECEIPT.md ]] ||
             fail "unexpected independent-author receipt for $path"
           ;;
+        .github/workflows/nomos-viewer.yml | \
         docs/evaluation/measure-r2-compile.mjs | \
         docs/evaluation/r2-complete-proof-receipt.mjs | \
         docs/evaluation/r2-complete-proof-receipt.test.mjs | \
@@ -202,13 +203,8 @@ while IFS=$'\t' read -r path digest origin receipt license; do
             fail "unexpected unchanged R2 process/plant receipt for $path"
           ;;
         *)
-          if [[ $path == .github/workflows/nomos-viewer.yml ]]; then
-            [[ $receipt == docs/evaluation/runs/r2/2026-08-28-issue-199-revision-3-author/AUTHOR_RECEIPT.md ]] ||
-              fail "unexpected R2 final-proof workflow receipt for $path"
-          else
-            [[ $receipt == docs/evaluation/runs/r2/2026-08-27-issue-197-author/AUTHOR_RECEIPT.md ]] ||
-              fail "unexpected R2-2 primary-author receipt for $path"
-          fi
+          [[ $receipt == docs/evaluation/runs/r2/2026-08-27-issue-197-author/AUTHOR_RECEIPT.md ]] ||
+            fail "unexpected R2-2 primary-author receipt for $path"
           ;;
       esac
       ;;

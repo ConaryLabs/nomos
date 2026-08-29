@@ -1,9 +1,11 @@
 # Nomos handoff
 
-Status snapshot: 2026-08-29, after issue #199's revision-4 author and first
-exact-head non-author proofs and before the record-only head's required final
-non-author rerun. This file is an operational map; owner decisions and
-revisioned contracts remain the authority when prose conflicts.
+Status snapshot: 2026-08-29, after issue #199's local author and exact-head
+proofs through `acc8c02` and after its first public run exposed two pre-XFS
+proof-boundary portability reds. Their narrow repair is pending fresh author,
+exact-head non-author, and hosted reruns. This file is an operational map;
+owner decisions and revisioned contracts remain the authority when prose
+conflicts.
 
 **Play the accepted six-area viewer:** <https://conarylabs.github.io/nomos/>
 
@@ -47,10 +49,13 @@ acceptance ceilings to required recorded observations. Branch
 and the revision-4 contract-and-proof repair. Combined candidate
 `52d126f235a0ab31cf8b48f8a87bd3a400c7437d`, tree
 `9a5e520339950c14ecb180298ec5ff392700437d`, passed both the fresh formal author
-proof and the fresh exact-head Luna Max non-author proof. Committing this
-post-proof control record creates a record-only successor that still requires
-its own exact-head Luna Max rerun. R2 also lacks the applicable hosted-workflow
-results, owner visual verdict, owner R2 verdict, and merge authorization.
+proof and the fresh exact-head Luna Max non-author proof. Record-only successor
+`acc8c02133f956f22de182bc6b67ff002c1553c5`, tree
+`968d4c77217da955814cb112ac4cd1d95b2d9fe8`, then passed its own fresh
+exact-head Luna Max rerun. Its first public workflow run exposed two pre-XFS
+proof-boundary portability reds. R2 still lacks a passing repaired candidate,
+fully green hosted workflows, owner visual verdict, owner R2 verdict, and
+merge authorization.
 
 The author proof used fresh detached source
 `/data/dev/src/nomos-r4-manifest-candidate.2K7kNz` and fresh work
@@ -79,6 +84,32 @@ detached `/dev/loop1`, left no holder, association, or proof mount, and retained
 byte-identical before/after loop inventories containing only the unrelated,
 untouched `/dev/loop0`. Preserve all four passing source/work paths above.
 
+The record-only head's required final Luna Max proof used fresh source
+`/data/dev/src/nomos-final-luna-candidate.k1YYy3` and fresh work
+`/data/dev/src/nomos-final-luna-xfs-run.X8m6rn`. All 33 commands and the
+14/14, 104/104, and 132/132 test groups passed. The clean build took 22.22
+seconds; peak allocation was 1,553 MiB; 3,296 samples had maximum gap
+`78,320,767` ns; the distribution remained 805,600 bytes in 14 files; browser
+combined p95 was `1,222,937,745` ns with zero external requests; and compile
+observations were median `259723758 / 2` ns and p95 `207,390,954` ns. The
+outer receipt SHA-256 is
+`0c17c0445c35e9ba282a04f2f0bdcebf91917cd6c1420f2e7940435da582c4f7`;
+it independently recomputed byte-for-byte. Its 2,344-row source/export
+inventory digest is
+`91f3aed9f7669dea1d956d4f350bc829b29c556b36e16cf751fdec59f5d4ba31`.
+Teardown again removed `/dev/loop1` and left only untouched `/dev/loop0`.
+
+Public `nomos viewer` run 33234517044 at
+<https://github.com/TusanHomichi/nomos/actions/runs/33234517044> made every
+non-R2 job green but preserved two early reds. Job 99053026380 refused the
+symlink-spelled `google-chrome` result before XFS allocation. Job 99053026507
+exposed environment-dependent `/proc/self/fd` spelling in the receipt helper's
+main-module check. Both job logs are immutable red evidence; neither started
+XFS. The repair canonicalizes the detached job's Chrome argument, uses
+`import.meta.main` with a symmetric-realpath fallback for older Node, retains
+canonical and descriptor-path CLI plants, and routes the changed workflow and
+proof sources through the revision-4 receipt.
+
 The three earlier revision-4 formal-red attempts remain historical red and may
 not be promoted or spliced. Preserve the third-red source
 `/data/dev/src/nomos-r4-checkpoint-candidate.vQg7jb` and work
@@ -90,10 +121,10 @@ not be promoted or spliced. Preserve the third-red source
 Cleanup for all three runs removed `/dev/loop1`; the loop inventories were
 byte-identical and the unrelated `/dev/loop0` was untouched. The revision-4
 author receipt records all decisive hashes and metrics. Issue #199 deliverable
-5 still forbids product edits. After this control record is committed, run one
-fresh Luna Max complete XFS proof at that exact record-only head. No new author
-proof is required, and no later local XFS run is warranted unless the head
-changes again or later evidence fails.
+5 still forbids product edits. Because hosted evidence changed the proof
+boundary, freeze the repair and run one fresh complete author XFS proof plus a
+separate exact-head Luna Max proof from new source/work paths. Do not commit an
+evidence summary after the exact-head rerun.
 
 A fresh agent must not infer active work from an old remote branch. The
 repository intentionally retains evidence branches and annotated tags. Check
@@ -139,8 +170,8 @@ source, compiled plan, signatures, browser receipt, and pixels entered unchanged
 | Game adoption | not authorized; thesis applies to no game | decision 0019 |
 | Mortal Estate presentation evidence | bounded prerequisite evidence complete; no adoption | decisions 0022 and 0023 evidence |
 | R2 observed-scene presentation epoch | revision 4 in force; R2-1 and R2-2 landed; epoch not admitted | `R2.md`, decisions 0023–0026 |
-| R2 final evidence | implementation candidate `52d126f` passed fresh author and exact-head Luna Max XFS proofs; three earlier R4 attempts remain historical red; record-only successor rerun pending | issue #199, decision 0026, branch `feat/issue-199-r2-final` |
-| Current queue | commit the control record, rerun Luna Max at that exact head, run applicable public hosted workflows, obtain owner visual and R2 verdicts, and leave merge disposition to the owner | issue #199 and `R2.md` sections 9, 11, and 13 |
+| R2 final evidence | local proofs passed through `acc8c02`; three earlier local R4 attempts and two first-public-run proof-boundary jobs remain historical red; repaired candidate pending | issue #199, decision 0026, PR #201 |
+| Current queue | freeze the hosted-portability repair, run fresh author and exact-head Luna Max proofs, rerun public workflows, obtain owner visual and R2 verdicts, and leave merge disposition to the owner | issue #199 and `R2.md` sections 9, 11, and 13 |
 
 ## Current local verification
 
@@ -161,9 +192,15 @@ The source-provenance register SHA-256 at that exact head is
 The fresh author and exact-head Luna Max complete XFS proofs then passed at that
 same commit/tree. Their retained paths, receipt hashes, measurements, and
 teardown evidence are recorded above and in the revision-4 author receipt.
-Because this post-proof record changes the head, issue #199 requires one final
-fresh exact-head Luna Max rerun after it is committed. Earlier red paths and
-diagnostics remain recorded in the revision-3 and revision-4 receipts; do not
+Record-only successor `acc8c02` also passed its fresh exact-head Luna Max
+complete XFS proof. Its first hosted run then exposed the two proof-boundary
+portability reds described above. The current repair passes focused XFS shell,
+receipt, and 100-row provenance validation at register SHA-256
+`2782c821f0e90eb214abe72f7cd0c35be74198610868096c5c5ca2647140263b`;
+its provenance suite now has 11 plants. Freeze it, rerun the full portable
+preflight, then obtain fresh author
+and exact-head Luna Max proofs. Earlier red paths and diagnostics remain
+recorded in the revision-3 and revision-4 receipts and GitHub logs; do not
 relabel or reuse any of them.
 
 The accepted R1 surface consists of:
@@ -462,13 +499,13 @@ observation, and proof. R2-1 and R2-2 are complete after PR #198. Issue #199 is
 already the authorized final-evidence slice; do not open a replacement issue.
 Decision 0026 authorizes only the contract-and-proof classification repair and
 rerun. It does not authorize compiler edits or relabel any historical red. The
-fresh author and first exact-head Luna Max proofs have passed. Commit this
-record-only head, run one fresh Luna Max complete XFS proof at that exact head,
-and make no later evidence-summary commit. Then publish it and run the
-applicable public workflows before stopping for the owner visual judgment,
-exact R2 verdict, and distinct merge disposition required by issue #199. Do
-not launch another local 8 GiB proof unless that head changes or new evidence
-fails.
+local author and exact-head Luna Max proofs passed through `acc8c02`, whose
+first hosted run exposed two early proof-plumbing defects. Freeze the narrow
+repair, run a fresh complete author XFS proof and fresh exact-head Luna Max
+rerun, and make no later evidence-summary commit. Push that unchanged head and
+require all applicable public workflows to pass before stopping for the owner
+visual judgment, exact R2 verdict, and distinct merge disposition required by
+issue #199.
 
 A deeper adopter boundary, platform choice, Gate K attempt, R2 scope expansion,
 or adoption into a game requires its own owner decision. Work toward an actual

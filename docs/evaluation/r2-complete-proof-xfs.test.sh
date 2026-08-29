@@ -6,6 +6,7 @@ script_directory=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)
 repository_script_directory=$script_directory
 wrapper=$script_directory/r2-complete-proof-xfs.sh
 workdir_helper=$script_directory/r2-complete-proof-xfs-workdir.sh
+receipt_helper=$script_directory/r2-complete-proof-xfs-receipt.mjs
 inner=$script_directory/r2-complete-proof.sh
 workflow=$script_directory/../../.github/workflows/nomos-viewer.yml
 [[ -f $workdir_helper && ! -L $workdir_helper ]]
@@ -34,6 +35,9 @@ grep -Fq '/usr/bin/bash "$repo_root/docs/evaluation/r2-complete-proof-xfs.test.s
   fail 'formal outer proof does not execute the XFS shell-validation suite'
 grep -Fq 'docs/evaluation/r2-complete-proof-xfs.test.sh' "$workflow" ||
   fail 'hosted preflight does not execute the XFS shell-validation suite'
+detached_workflow_text=$(/usr/bin/awk '/^  r2-complete-proof:/{inside=1} inside{print}' "$workflow")
+grep -Fq 'CHROME_BIN=$(realpath -e -- "$(command -v google-chrome)")' <<<"$detached_workflow_text" ||
+  fail 'hosted detached proof does not pass a canonical Chrome executable'
 grep -Fq '/usr/bin/bash "$pinned_supervisor_path" --pinned-supervise' "$wrapper"
 grep -Fq -- '--config core.hooksPath=/dev/null "$source_fd_path" "$checkout"' "$wrapper"
 [[ $(grep -Fc '"/usr/sbin/mkfs.xfs","-f","-K","-l","internal",($loop_path|nz)' "$wrapper") -eq 1 ]] ||
@@ -181,13 +185,21 @@ write_facts_missing=$(/usr/bin/awk 'NR == FNR {present[$0]=1; next} !($0 in pres
 # Node canonicalizes an ES-module entrypoint reached through /proc/self/fd.
 # The cloned export helper must still recognize that descriptor-spelled entry
 # as its own CLI rather than silently importing and exiting zero.
+grep -Fq 'let invokedAsMain = import.meta.main;' "$receipt_helper" ||
+  fail 'receipt helper does not use loader-provided main-module identity'
+set +e
+receipt_canonical_output=$(/usr/bin/node "$receipt_helper" unknown-command 2>&1)
+receipt_canonical_status=$?
+set -e
+[[ $receipt_canonical_status -eq 2 && $receipt_canonical_output == usage:* ]] ||
+  fail "canonical receipt helper did not enter its CLI: status=$receipt_canonical_status output=$receipt_canonical_output"
 exec {receipt_entry_fd}<"$script_directory"
 set +e
 receipt_entry_output=$(/usr/bin/node "/proc/self/fd/$receipt_entry_fd/r2-complete-proof-xfs-receipt.mjs" unknown-command 2>&1)
 receipt_entry_status=$?
 set -e
 [[ $receipt_entry_status -eq 2 && $receipt_entry_output == usage:* ]] ||
-  fail 'descriptor-spelled receipt helper did not enter its CLI'
+  fail "descriptor-spelled receipt helper did not enter its CLI: status=$receipt_entry_status output=$receipt_entry_output"
 receipt_cli_root=$test_root/receipt-cli
 mkdir -p -- "$receipt_cli_root/source" "$receipt_cli_root/export/target"
 printf 'descriptor CLI\n' >"$receipt_cli_root/source/value"

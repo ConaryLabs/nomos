@@ -382,7 +382,7 @@ jobs:
           work=${RUNNER_TEMP}/nomos-r2-xfs
           test ! -e "$work"
           mkdir "$work"
-          CHROME_BIN=$(command -v google-chrome) \
+          CHROME_BIN=$(realpath -e -- "$(command -v google-chrome)") \
             docs/evaluation/r2-complete-proof-xfs.sh \
               --source "$GITHUB_WORKSPACE" \
               --work "$work"

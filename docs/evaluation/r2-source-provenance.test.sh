@@ -107,6 +107,12 @@ plant_wrong_revision_4_receipt() {
     "$1/docs/evaluation/R2_SOURCE_PROVENANCE.md"
 }
 
+plant_wrong_workflow_receipt() {
+  # shellcheck disable=SC2016
+  sed -i '\|`.github/workflows/nomos-viewer.yml`|s|`docs/evaluation/runs/r2/2026-08-29-issue-199-revision-4-author/AUTHOR_RECEIPT.md`|`docs/evaluation/runs/r2/2026-08-28-issue-199-revision-3-author/AUTHOR_RECEIPT.md`|' \
+    "$1/docs/evaluation/R2_SOURCE_PROVENANCE.md"
+}
+
 expect_failure missing plant_missing
 expect_failure extra plant_extra
 expect_failure symlink plant_symlink
@@ -117,6 +123,7 @@ expect_failure unknown-origin plant_unknown_origin
 expect_failure unlicensed plant_unlicensed
 expect_failure dangling-receipt plant_dangling_receipt
 expect_failure wrong-revision-4-receipt plant_wrong_revision_4_receipt
+expect_failure wrong-workflow-receipt plant_wrong_workflow_receipt
 
 printf 'R2_SOURCE_PROVENANCE_PLANTS PASS\n'
-printf 'planted_failures 10\n'
+printf 'planted_failures 11\n'

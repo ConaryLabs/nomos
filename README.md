@@ -27,7 +27,7 @@ line, and operational gotchas.
 | R1 contract | `RUNTIME.md` revision 4, in force under decision 0021 |
 | Game adoption | not authorized |
 | Mortal Estate evidence | sister-project prospective adopter; bounded evidence produced one admitted dependency point, representative frame, and classified adopter-neutral capability gap; no adoption |
-| R2 observed-scene epoch | revision 4 authorized under decision 0026; R2-1 and R2-2 landed; implementation candidate `52d126f` passed fresh author and exact-head Luna Max proofs; the record-only successor still requires its own exact-head rerun, hosted workflows, and owner verdicts |
+| R2 observed-scene epoch | revision 4 authorized under decision 0026; R2-1 and R2-2 landed; local author and exact-head proofs passed through `acc8c02`; the first public run exposed two pre-XFS proof-boundary portability reds whose repair awaits fresh proofs, hosted reruns, and owner verdicts |
 
 R1 is the accepted runtime baseline for this repository. That result does not
 rewrite Gate K, pass a later gate, approve production art, or authorize Nomos
@@ -73,11 +73,18 @@ candidate `52d126f`, tree `9a5e520`, then passed the complete fresh author proof
 and an independent exact-head Luna Max rerun from wholly separate source and
 work paths. Both outer receipts independently recompute as pass, both teardowns
 left only the unrelated `/dev/loop0`, and neither proof produced a finding.
-Committing this control summary creates a record-only successor and therefore
-requires one more exact-head Luna Max rerun under issue #199. R2 is not
-admitted until that rerun, the applicable public workflows, owner visual
-judgment, owner R2 disposition, and distinct merge disposition complete. No
-platform choice or game adoption is authorized.
+Record-only successor `acc8c02`, tree `968d4c7`, then passed its own fresh
+exact-head Luna Max rerun. The first public workflow run at that head made
+nine required jobs green and preserved two pre-XFS proof-boundary reds: the
+detached job passed a symlink-spelled runner Chrome path to a canonical-path
+guard, and Node 22.23 exposed asymmetric entrypoint-path comparison in the XFS
+shell validation. The narrow repair canonicalizes only the workflow Chrome
+argument and uses the loader's main-module identity with a symmetric-realpath
+fallback. Because those proof bytes change, the repaired candidate requires a
+fresh author proof, exact-head Luna Max rerun, and hosted reruns. R2 remains
+unadmitted pending those proofs, owner visual judgment, owner R2 disposition,
+and distinct merge disposition. No platform choice or game adoption is
+authorized.
 
 The implementation includes:
 
@@ -212,14 +219,14 @@ slice required by `R2.md` section 11. Decision 0026 records the owner's exact
 disposition to repair the contract and rerun affected evidence. The latest
 revision-3 XFS attempt remains formal red under revision 3; it is not relabelled
 as a revision-4 pass. Issue #199 still forbids compiler edits, and no product
-optimization is authorized in this slice. The fresh author and exact-head Luna
-Max proofs passed for implementation candidate `52d126f`; do not reuse or
-relabel any earlier red run. Commit this post-proof control record, run one
-fresh Luna Max proof at that exact record-only head, then run the
-public-repository hosted workflows and stop for the owner's visual and R2
-verdicts plus separate merge disposition. GitHub Actions is available; any
-currently local-only branch state is a pending workflow step, not an
-Actions-quota constraint. Do not start a later epoch from this branch.
+optimization is authorized in this slice. Local author and exact-head Luna Max
+proofs passed through record-only head `acc8c02`; do not reuse or relabel any
+earlier red run. Its first public workflow run exposed two early proof-plumbing
+portability defects, now narrowly repaired and planted. Freeze that repair,
+run a fresh complete author proof and exact-head Luna Max rerun, then rerun the
+public workflows and stop for the owner's visual and R2 verdicts plus separate
+merge disposition. GitHub Actions is available; branch state is not constrained
+by an Actions quota. Do not start a later epoch from this branch.
 
 Nomos is authority only for this repository. Nothing here becomes authority for
 another project without that project's own explicit decision.

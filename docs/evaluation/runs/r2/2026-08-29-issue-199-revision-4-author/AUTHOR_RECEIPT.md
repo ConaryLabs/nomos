@@ -1,13 +1,13 @@
 # R2 revision-4 implementation-author receipt
 
-Status: the revision-4 author proof and first exact-head Luna Max non-author
-rerun passed for implementation candidate
-`52d126f235a0ab31cf8b48f8a87bd3a400c7437d`, tree
-`9a5e520339950c14ecb180298ec5ff392700437d`. Committing this post-proof control
-record creates a record-only successor that requires one final exact-head Luna
-Max rerun. Hosted workflows, owner visual judgment, owner R2 disposition, and
-merge disposition remain pending. This receipt records implementation
-evidence; it is not an acceptance verdict.
+Status: the revision-4 author and exact-head non-author proofs passed through
+record-only candidate `acc8c02133f956f22de182bc6b67ff002c1553c5`, tree
+`968d4c77217da955814cb112ac4cd1d95b2d9fe8`. Its first public run made nine
+required jobs green and exposed two pre-XFS proof-boundary portability reds.
+The narrow repair is pending a fresh author proof, exact-head Luna Max rerun,
+and hosted reruns. Owner visual judgment, owner R2 disposition, and merge
+disposition also remain pending. This receipt records implementation evidence;
+it is not an acceptance verdict.
 
 ## Authority and historical boundary
 
@@ -417,22 +417,93 @@ byte-identical loop inventories at SHA-256
 `e951f122f209cb4a215522a5b5e708d1a855da1e65e9aedfa014b849f4be6a74`
 containing only the unrelated, untouched `/dev/loop0`.
 
+## Passing record-only-head Luna Max proof
+
+Committing the preceding control summary created candidate
+`acc8c02133f956f22de182bc6b67ff002c1553c5`, tree
+`968d4c77217da955814cb112ac4cd1d95b2d9fe8`. A fresh OpenAI `gpt-5.6-luna`
+Max reviewer ran the complete candidate-native wrapper from detached clean
+source `/data/dev/src/nomos-final-luna-candidate.k1YYy3` and fresh work
+`/data/dev/src/nomos-final-luna-xfs-run.X8m6rn`. The wrapper returned `R2 XFS
+wrapper: PASS`; both the reviewer and the implementation author independently
+recomputed the outer receipt byte-for-byte. No finding remained.
+
+Decisive record-head evidence is:
+
+- outer wrapper receipt SHA-256:
+  `0c17c0445c35e9ba282a04f2f0bdcebf91917cd6c1420f2e7940435da582c4f7`;
+- inner receipt SHA-256:
+  `c83a31b51078e8bf1216f96987c99d610e1c0061b03bc66903d1510a80771182`;
+- inner evidence-manifest SHA-256:
+  `4453031d4b8f51245cea542da3b44c7204a5976c5f39fea54231b0fc15163be2`;
+- equal 2,344-row source/export inventory digest:
+  `91f3aed9f7669dea1d956d4f350bc829b29c556b36e16cf751fdec59f5d4ba31`,
+  covering 1,882 files and 462 directories while the manifest binds 1,880
+  evidence files.
+
+All 33 ordered commands passed, as did the 14/14, 104/104, and 132/132 test
+groups. The clean release build took 22.22 seconds. Peak checkout allocation
+was 1,553 MiB; 3,296 filesystem samples had maximum gap `78,320,767` ns. The
+distribution remained 805,600 bytes across 14 files. Browser combined p95 was
+`1,222,937,745` ns with zero external requests. The compile observation was
+median numerator `259723758` ns over denominator `2` and p95 `207,390,954` ns
+across 100 deterministic outputs; those magnitudes are observations, not
+acceptance ceilings. Process and write-boundary closure passed.
+
+The image was exact 8 GiB logical and allocated before formatting and exact 8
+GiB logical with `8,589,938,688` allocated bytes after teardown. Ordinary
+unmount and exact `/dev/loop1` detachment passed with no holder, association,
+or proof mount. Before/after loop inventories were byte-identical and contain
+only the unrelated, untouched `/dev/loop0`.
+
+## First public-workflow reds and repair
+
+Draft PR #201 published exact head `acc8c02`. Public `verify` run 33234517046
+and every `gate-k-evidence` job in run 33234517031 passed. In `nomos viewer`
+run 33234517044, the R1 offline job and ordinary viewer/browser job passed, but
+the two R2 jobs were formal red:
+
+- detached job 99053026380 supplied `CHROME_BIN=$(command -v google-chrome)`.
+  GitHub's runner command path traversed a symlink, so the wrapper's canonical
+  path guard correctly refused it before image allocation or XFS setup;
+- portable job 99053026507 reached the XFS shell-validation suite, where Node
+  22.23 represented the `/proc/self/fd` entrypoint differently across
+  `process.argv[1]` and `import.meta.url`. The asymmetric comparison did not
+  enter the receipt helper CLI. This lane also started no XFS work.
+
+Both GitHub job logs are retained immutable red evidence. The empty artifact
+diagnostics are expected because both failures preceded evidence creation; the
+workflow's fail-closed `if-no-files-found: error` remains unchanged.
+
+The repair does not weaken either boundary. The detached job now passes
+`realpath -e --` of the discovered Chrome executable. Its job-scoped shell
+plant prevents the already-canonical portable lane from masking future drift.
+The receipt helper now uses the loader-provided `import.meta.main` boolean and
+retains a symmetric-realpath fallback for older Node versions. Canonical and
+descriptor-spelled CLI executions both require status 2 plus the exact usage
+prefix, with captured status/output reported on failure. The workflow, helper,
+XFS shell suite, and 11-plant provenance routing are attributed to this
+revision-4 receipt. The 100-row provenance register SHA-256 is
+`2782c821f0e90eb214abe72f7cd0c35be74198610868096c5c5ca2647140263b`.
+No compiler, decoder, renderer, UI, scene, plan, packet,
+contact-sheet, runtime, acceptance ceiling, or product byte changed.
+
 ## Proof obligation and status
 
-The prior revision-3 proof and all three retained revision-4 wrapper-red attempts
-cannot be resumed, promoted, or reclassified. The fresh author proof and first
-exact-head Luna Max non-author proof above establish the implementation facts
-for combined candidate `52d126f`. This post-proof control update does not alter
-or relabel that implementation candidate, but committing it creates a new
-record-only head. Issue #199 therefore requires one final fresh exact-head Luna
-Max complete XFS rerun at that commit/tree. Its execution receipt must bind the
-new head externally, and no evidence-summary commit may follow it.
+The prior revision-3 proof, three retained revision-4 wrapper-red attempts, and
+two retained first-public-run job reds cannot be resumed, promoted, or
+reclassified. The passing runs through `acc8c02` remain evidence about their
+exact candidates; they do not make the hosted-portability repair green.
+Because that repair changes workflow and receipt-helper proof bytes, freeze one
+new combined candidate and run a fresh complete author XFS proof from new
+source/work paths. The same exact head then requires a fresh Luna Max complete
+XFS rerun. No evidence-summary commit may follow it.
 
-R2 is not yet admitted. The final record-head rerun, applicable public hosted
+R2 is not yet admitted. Both fresh local proofs, all applicable public hosted
 workflows, owner visual judgment, the owner's explicit R2 disposition, and the
-distinct merge disposition remain required. No new author proof is required.
-After the final exact-head rerun, no additional local XFS run is warranted
-unless the head changes again or later evidence produces a new failure.
+distinct merge disposition remain required. After the repaired exact-head
+rerun, no additional local XFS run is warranted unless the head changes again
+or later evidence produces a new failure.
 
 ## Clean-room and adopter boundary
 

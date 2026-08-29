@@ -987,9 +987,13 @@ export const runCli = (argv = process.argv.slice(2)) => {
   }
 };
 
-let invokedAsMain = false;
-try { invokedAsMain = Boolean(process.argv[1]) && realpathSync.native(process.argv[1]) === fileURLToPath(import.meta.url); }
-catch { invokedAsMain = false; }
+let invokedAsMain = import.meta.main;
+if (typeof invokedAsMain !== "boolean") {
+  try {
+    invokedAsMain = Boolean(process.argv[1]) && realpathSync.native(process.argv[1]) ===
+      realpathSync.native(fileURLToPath(import.meta.url));
+  } catch { invokedAsMain = false; }
+}
 if (invokedAsMain) {
   process.exitCode = runCli();
 }
