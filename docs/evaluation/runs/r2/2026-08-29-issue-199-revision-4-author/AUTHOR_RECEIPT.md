@@ -1,9 +1,13 @@
 # R2 revision-4 implementation-author receipt
 
-Status: revision-4 implementation evidence is pending. This receipt records
-the authority boundary and provenance routing for the contract-classification
-repair. It is not a proof result, acceptance verdict, or substitute for a fresh
-author run and exact-head non-author rerun.
+Status: the revision-4 author proof and first exact-head Luna Max non-author
+rerun passed for implementation candidate
+`52d126f235a0ab31cf8b48f8a87bd3a400c7437d`, tree
+`9a5e520339950c14ecb180298ec5ff392700437d`. Committing this post-proof control
+record creates a record-only successor that requires one final exact-head Luna
+Max rerun. Hosted workflows, owner visual judgment, owner R2 disposition, and
+merge disposition remain pending. This receipt records implementation
+evidence; it is not an acceptance verdict.
 
 ## Authority and historical boundary
 
@@ -311,18 +315,124 @@ and contain only the unrelated, untouched `/dev/loop0`. Preserve both exact
 third-run paths and all contents. Nothing from this run may be resumed,
 spliced, relabelled, or carried into the repaired candidate's proof.
 
+## Passing revision-4 author proof
+
+The clean implementation candidate is
+`52d126f235a0ab31cf8b48f8a87bd3a400c7437d`, tree
+`9a5e520339950c14ecb180298ec5ff392700437d`. Before the formal run, that exact
+head passed the complete portable preflight: formatting, locked offline
+workspace Clippy and tests, dependency boundaries, release compiler, packet,
+schema, 100-row provenance register and 10 plants, adopter neutrality and 5
+plants, 39 complete-proof refusal plants, XFS shell validation, maximum
+fixture, scene signatures, 132 Node tests, the 14-file 805,600-byte build, and
+20 browser launches with zero external requests. The worktree was clean.
+
+The candidate was then run once from fresh detached, non-shallow, clean source
+`/data/dev/src/nomos-r4-manifest-candidate.2K7kNz` with fresh work directory
+`/data/dev/src/nomos-r4-manifest-xfs-run.OqSRS1`. The candidate-native wrapper
+returned `R2 XFS wrapper: PASS`. Its inner and outer receipts both report
+`pass`; a separate in-memory invocation of the candidate's outer assembler
+recomputed a byte-identical receipt. A read-only Sol Ultra audit independently
+rehash-validated all 117 outer evidence bindings, all 1,879 manifest-listed
+regular files, and the complete 2,343-row source/export inventory, and found no
+blocker.
+
+Decisive author evidence is:
+
+- outer wrapper receipt SHA-256:
+  `ec7ef34f671774d557fea48801c6739fbce4382dafc7d6566e15649863a5e0db`;
+- inner receipt SHA-256:
+  `0b94e9445cc84557e0cb8f09c0a3cb1695f1835cfa39bef04459cf51af77f6ac`;
+- inner evidence-manifest SHA-256:
+  `c0dcc9b468f38c45be910c9cca53d25e33f59db3caeb2df533fdc24c2bd4c4a6`;
+- equal source/export inventory digest:
+  `1d3ef3280b0bb9524e884e3525dd0bad76615d7cbd61f301940a14ccdb15fa75`;
+- compile-summary and raw-sample SHA-256 respectively
+  `af6051166c649c54eec9e4ae84e723636ef1a8164b23e75142e340df90f642c0`
+  and `f1d94280e27c2dd33d54707ee894341cd157834bf5615af98684b2a4cc39e26a`;
+- wrapper-command and execution-ledger SHA-256 respectively
+  `b3f0a9ab59ffbdb14fd0f9f4fb9e197647aef7cd256b6e8a1807c35436ff9afa`
+  and `22de34e52462fe4d3bd3e806e119ee3e96bc4bba709d505374b959da5d5cb976`;
+- clean host-monitor SHA-256:
+  `9b53187439aec918a7bc5a4628a4f01d822bdf848126b9039f2c6aeb94fe9726`.
+
+All 33 ordered proof commands passed. The clean release build took 10.39
+seconds. Peak checkout allocation was 1,551 MiB; 2,527 filesystem samples had
+maximum gap `64,167,911` ns; XFS capacity was `8,511,139,840` bytes. The
+compile observation retained 100 identical 111,604-byte outputs and recorded
+median numerator `128598343` ns over denominator `2` and p95 `88,680,729` ns.
+The two-scene browser proof recorded combined p95 `637,752,598` ns and zero
+external requests. Process and write-boundary closure passed.
+
+The image was exact 8 GiB logical and allocated before formatting. The
+post-teardown snapshot and live inode agreed at exact 8 GiB logical and
+`8,589,938,688` allocated bytes. Teardown unmounted and detached `/dev/loop1`,
+left no holder, image association, or proof mount, and retained byte-identical
+before/after loop inventories containing only the unrelated `/dev/loop0`.
+
+## Passing exact-head Luna Max non-author proof
+
+An independent OpenAI `gpt-5.6-luna` agent at Max reasoning reran the complete
+candidate-native proof against the identical commit and tree. It used wholly
+fresh detached, non-shallow, clean source
+`/data/dev/src/nomos-luna-max-candidate.fMDUJB` and fresh work directory
+`/data/dev/src/nomos-luna-max-xfs-run.IGFzbG`; it did not reuse or modify the
+author paths. The wrapper returned `R2 XFS wrapper: PASS`, and the reviewer
+independently recomputed the exact outer receipt in memory with the candidate's
+module. No finding or proof defect remained.
+
+Decisive non-author evidence is:
+
+- outer wrapper receipt SHA-256:
+  `9e9902f92a712b5e8983015a24fddd89313accdb7a9a7d22ce3892200f985c4d`;
+- inner receipt SHA-256:
+  `d90cbe24ffa1ebbc71526b42ab1546864e401750e8f9d781c4c528d0c8cb54bc`;
+- inner evidence-manifest SHA-256:
+  `3322631f4ececa5ae0bfc763ad4cac0ef2161991dccfd0806fe3b77482971712`;
+- equal source/export inventory digest:
+  `d2704ea4b9437700c96ef837326b30833e059483e25ab799ef6eaca2e1fc4e06`,
+  over 2,345 canonical rows;
+- compile-summary and raw-sample SHA-256 respectively
+  `204a4394aa95d5f7be69c2b6fc7df0f84aa53a4e89de9970423e3bf497ab5d39`
+  and `9ddd6d7a7b2b3bff203fc4fc043be317117730c16bd5b4c30956f7ba0583d668`;
+- wrapper-command and execution-ledger SHA-256 respectively
+  `49275d4b62251624bada40b69e1fdab18e42f9ff326156490573fa66b1ad50fd`
+  and `dd11ad4652e691a174ff123c07ea7cbe694268f431756f93b04f0cf2089dbadf`;
+- clean host-monitor SHA-256:
+  `69dda48250b255afe1739d7e9ed321b7f316c33ce1bb6a61391b1ad26fb4c48c`.
+
+All 33 ordered commands and the same 14/14, 104/104, and 132/132 test groups
+passed. The clean release build took 10.14 seconds. Peak checkout allocation
+was 1,552 MiB; 2,514 filesystem samples had maximum gap `53,372,691` ns. The
+compile observation retained 100 identical 111,604-byte outputs and recorded
+median numerator `129040131` ns over denominator `2` and p95 `96,861,044` ns.
+The 805,600-byte, 14-file distribution and all 20 browser launches passed with
+combined p95 `671,572,235` ns and zero external requests. Process and
+write-boundary closure passed.
+
+The non-author image recorded the same exact pre-format and post-teardown
+allocation checkpoints as the author proof. Teardown unmounted and detached
+`/dev/loop1`, left no holder, image association, or proof mount, and retained
+byte-identical loop inventories at SHA-256
+`e951f122f209cb4a215522a5b5e708d1a855da1e65e9aedfa014b849f4be6a74`
+containing only the unrelated, untouched `/dev/loop0`.
+
 ## Proof obligation and status
 
 The prior revision-3 proof and all three retained revision-4 wrapper-red attempts
-cannot be resumed, promoted, or reclassified. Revision 4 therefore requires a
-fresh candidate-native author proof on a newly created dedicated 8,192 MiB XFS
-filesystem from wholly new source and work paths. If that author proof passes,
-the same exact head still requires the issue's independent Luna Max XFS rerun.
-Public CI can supplement those proofs; it does not replace them.
+cannot be resumed, promoted, or reclassified. The fresh author proof and first
+exact-head Luna Max non-author proof above establish the implementation facts
+for combined candidate `52d126f`. This post-proof control update does not alter
+or relabel that implementation candidate, but committing it creates a new
+record-only head. Issue #199 therefore requires one final fresh exact-head Luna
+Max complete XFS rerun at that commit/tree. Its execution receipt must bind the
+new head externally, and no evidence-summary commit may follow it.
 
-No passing revision-4 author proof, exact-head non-author proof, owner visual
-judgment, or owner R2 disposition is bound by this source receipt. Focused
-tests may establish implementation facts but do not make R2 green or accepted.
+R2 is not yet admitted. The final record-head rerun, applicable public hosted
+workflows, owner visual judgment, the owner's explicit R2 disposition, and the
+distinct merge disposition remain required. No new author proof is required.
+After the final exact-head rerun, no additional local XFS run is warranted
+unless the head changes again or later evidence produces a new failure.
 
 ## Clean-room and adopter boundary
 

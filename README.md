@@ -27,7 +27,7 @@ line, and operational gotchas.
 | R1 contract | `RUNTIME.md` revision 4, in force under decision 0021 |
 | Game adoption | not authorized |
 | Mortal Estate evidence | sister-project prospective adopter; bounded evidence produced one admitted dependency point, representative frame, and classified adopter-neutral capability gap; no adoption |
-| R2 observed-scene epoch | revision 4 authorized under decision 0026; R2-1 and R2-2 landed; three revision-4 full attempts are wrapper-red and a repaired fresh author proof is pending |
+| R2 observed-scene epoch | revision 4 authorized under decision 0026; R2-1 and R2-2 landed; implementation candidate `52d126f` passed fresh author and exact-head Luna Max proofs; the record-only successor still requires its own exact-head rerun, hosted workflows, and owner verdicts |
 
 R1 is the accepted runtime baseline for this repository. That result does not
 rewrite Gate K, pass a later gate, approve production art, or authorize Nomos
@@ -68,12 +68,16 @@ passed every inner command, but the outer verifier incorrectly compared the
 file-only evidence manifest against canonical inventory directory rows, which
 have no file digest. All 1,880 manifest-listed exported files match; a
 nested-file fixture now guards the narrow file-row projection repair while the
-full export inventory continues to bind directory paths and modes. A wholly fresh
-candidate-native author run is next. No retained red attempt can satisfy the
-repaired candidate. R2 is not admitted until one revision-4 combined candidate
-passes the complete author proof, exact-head non-author rerun, owner visual
-judgment, required CI, and owner disposition. No platform choice or game
-adoption is authorized.
+full export inventory continues to bind directory paths and modes. Combined
+candidate `52d126f`, tree `9a5e520`, then passed the complete fresh author proof
+and an independent exact-head Luna Max rerun from wholly separate source and
+work paths. Both outer receipts independently recompute as pass, both teardowns
+left only the unrelated `/dev/loop0`, and neither proof produced a finding.
+Committing this control summary creates a record-only successor and therefore
+requires one more exact-head Luna Max rerun under issue #199. R2 is not
+admitted until that rerun, the applicable public workflows, owner visual
+judgment, owner R2 disposition, and distinct merge disposition complete. No
+platform choice or game adoption is authorized.
 
 The implementation includes:
 
@@ -208,16 +212,14 @@ slice required by `R2.md` section 11. Decision 0026 records the owner's exact
 disposition to repair the contract and rerun affected evidence. The latest
 revision-3 XFS attempt remains formal red under revision 3; it is not relabelled
 as a revision-4 pass. Issue #199 still forbids compiler edits, and no product
-optimization is authorized in this slice. After the proof machinery binds
-revision 4 and the frozen issue body, create fresh candidate/source/work paths
-and run the complete candidate-native XFS author proof. Do not reuse the two
-revision-4 runs whose inner proofs passed but whose outer receipts refused the
-backing-image evidence, or the later run refused by the manifest projection
-bug. A passing candidate
-still requires the contract's exact-head non-author rerun, public-repository
-hosted workflows, and the owner's visual and R2 verdicts. GitHub Actions is
-available; any currently local-only branch state is a pending workflow step,
-not an Actions-quota constraint. Do not start a later epoch from this branch.
+optimization is authorized in this slice. The fresh author and exact-head Luna
+Max proofs passed for implementation candidate `52d126f`; do not reuse or
+relabel any earlier red run. Commit this post-proof control record, run one
+fresh Luna Max proof at that exact record-only head, then run the
+public-repository hosted workflows and stop for the owner's visual and R2
+verdicts plus separate merge disposition. GitHub Actions is available; any
+currently local-only branch state is a pending workflow step, not an
+Actions-quota constraint. Do not start a later epoch from this branch.
 
 Nomos is authority only for this repository. Nothing here becomes authority for
 another project without that project's own explicit decision.

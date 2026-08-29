@@ -1,8 +1,9 @@
 # Nomos handoff
 
-Status snapshot: 2026-08-29, during the issue #199 revision-4 contract-and-proof
-repair. This file is an operational map; owner decisions and revisioned
-contracts remain the authority when prose conflicts.
+Status snapshot: 2026-08-29, after issue #199's revision-4 author and first
+exact-head non-author proofs and before the record-only head's required final
+non-author rerun. This file is an operational map; owner decisions and
+revisioned contracts remain the authority when prose conflicts.
 
 **Play the accepted six-area viewer:** <https://conarylabs.github.io/nomos/>
 
@@ -43,52 +44,56 @@ raw samples, arithmetic, environment, and deterministic-output checks, but
 corrects the unsupported 50 ms median and 100 ms p95 classification from
 acceptance ceilings to required recorded observations. Branch
 `feat/issue-199-r2-final` contains the historical revision-3 formal-red records
-and the revision-4 contract-and-proof repair. R2 still has no passing formal
-author proof, exact-head non-author proof, owner visual verdict, owner R2
-verdict, or merge authorization.
+and the revision-4 contract-and-proof repair. Combined candidate
+`52d126f235a0ab31cf8b48f8a87bd3a400c7437d`, tree
+`9a5e520339950c14ecb180298ec5ff392700437d`, passed both the fresh formal author
+proof and the fresh exact-head Luna Max non-author proof. Committing this
+post-proof control record creates a record-only successor that still requires
+its own exact-head Luna Max rerun. R2 also lacks the applicable hosted-workflow
+results, owner visual verdict, owner R2 verdict, and merge authorization.
 
-The most recent formal attempt was revision-4 candidate
-`c1b50cfb4930ec6fb2298b235464133855135b58`, tree
-`036ad93f1d2f0729b79a219bdf8bdc5b100f087c`. Its fresh detached source was
-`/data/dev/src/nomos-r4-checkpoint-candidate.vQg7jb`; its fresh work directory
-was `/data/dev/src/nomos-r4-checkpoint-xfs-run.cxAdBh`. The inner proof passed
-all 33 ordered commands and independently assembled and verified its receipt.
-The compile observation was a median of `114562392 / 2` ns (`57,281,196` ns)
-and p95 `77,071,650` ns; all 100 outputs were the same 111,604 bytes. The 10.88
-s build, 1,547 MiB peak disk use, `74,748,991` ns maximum sampler gap,
-805,600-byte distribution, both browser lanes, and process-closure checks all
-passed.
+The author proof used fresh detached source
+`/data/dev/src/nomos-r4-manifest-candidate.2K7kNz` and fresh work
+`/data/dev/src/nomos-r4-manifest-xfs-run.OqSRS1`. The wrapper, inner receipt,
+all 33 commands, 132 Node tests, both browser lanes, filesystem accounting,
+process closure, and write boundary passed. It recorded a 10.39-second clean
+build, 1,551 MiB peak checkout allocation, `64,167,911` ns maximum sampler gap,
+805,600-byte distribution, and compile observation `128598343 / 2` ns median
+and `88,680,729` ns p95. Its outer receipt SHA-256 is
+`ec7ef34f671774d557fea48801c6739fbce4382dafc7d6566e15649863a5e0db`.
 
-The outer wrapper nevertheless remained formally red and emitted no
-`wrapper-receipt.json`; receipt assembly exited one with `inner evidence
-manifest does not bind exported output` while the supervisor exited zero. The
-two-checkpoint repair worked: pre-format allocation was exactly 8 GiB, while
-the post-teardown snapshot and live inode agreed at exact 8 GiB logical and
-`8,589,938,688` allocated bytes. Read-only comparison then proved all 1,880
-manifest rows match the exported regular files with zero missing, extra,
-digest-drifted, or misordered rows. The canonical export inventory has 1,882
-files, including the manifest and receipt, plus 462 directories. The
-outer validator mistakenly projected the directory rows, which have no file
-digest, into the manifest comparison. Its flat positive fixture had no
-directory and missed the defect.
+The exact-head non-author proof used wholly separate fresh source
+`/data/dev/src/nomos-luna-max-candidate.fMDUJB` and work
+`/data/dev/src/nomos-luna-max-xfs-run.IGFzbG`. An OpenAI `gpt-5.6-luna` Max
+reviewer reran the complete candidate-native wrapper and independently
+recomputed its outer receipt byte-for-byte. It passed with 1,552 MiB peak
+checkout allocation, `53,372,691` ns maximum sampler gap, the same distribution
+and deterministic output, and compile observation `129040131 / 2` ns median
+and `96,861,044` ns p95. Its outer receipt SHA-256 is
+`9e9902f92a712b5e8983015a24fddd89313accdb7a9a7d22ce3892200f985c4d`.
+Neither recorded compile magnitude is an acceptance verdict.
 
-The narrow repair filters only this manifest projection to inventory rows of
-type `file` and adds a nested-file positive fixture. The complete source/export
-inventory still binds directory paths and modes. This changes no contract,
-workload, compiler, viewer, product byte, or acceptance ceiling.
+Both runs recorded exact 8 GiB logical and pre-format allocated image size and
+post-teardown allocation of `8,589,938,688` bytes. Both cleanly unmounted and
+detached `/dev/loop1`, left no holder, association, or proof mount, and retained
+byte-identical before/after loop inventories containing only the unrelated,
+untouched `/dev/loop0`. Preserve all four passing source/work paths above.
 
-Preserve the latest paths above, the second-red source
+The three earlier revision-4 formal-red attempts remain historical red and may
+not be promoted or spliced. Preserve the third-red source
+`/data/dev/src/nomos-r4-checkpoint-candidate.vQg7jb` and work
+`/data/dev/src/nomos-r4-checkpoint-xfs-run.cxAdBh`, the second-red source
 `/data/dev/src/nomos-r4-k-candidate.akDvtZ` and work
 `/data/dev/src/nomos-r4-k-xfs-run.h5H2w9`, and the first-red source
 `/data/dev/src/nomos-r4-candidate.wbrd6Z` and work
 `/data/dev/src/nomos-r4-xfs-run.1djISn` as historical formal-red evidence.
 Cleanup for all three runs removed `/dev/loop1`; the loop inventories were
-byte-identical and the unrelated `/dev/loop0` was untouched. No inner pass may
-be resumed, promoted, or spliced. After the manifest-projection repair, tests,
-provenance, and red record are frozen in a clean candidate, the next formal
-action is one entirely fresh complete candidate-native XFS author proof using
-new standalone source and work paths. Issue #199 deliverable 5 still forbids
-product edits.
+byte-identical and the unrelated `/dev/loop0` was untouched. The revision-4
+author receipt records all decisive hashes and metrics. Issue #199 deliverable
+5 still forbids product edits. After this control record is committed, run one
+fresh Luna Max complete XFS proof at that exact record-only head. No new author
+proof is required, and no later local XFS run is warranted unless the head
+changes again or later evidence fails.
 
 A fresh agent must not infer active work from an old remote branch. The
 repository intentionally retains evidence branches and annotated tags. Check
@@ -134,13 +139,12 @@ source, compiled plan, signatures, browser receipt, and pixels entered unchanged
 | Game adoption | not authorized; thesis applies to no game | decision 0019 |
 | Mortal Estate presentation evidence | bounded prerequisite evidence complete; no adoption | decisions 0022 and 0023 evidence |
 | R2 observed-scene presentation epoch | revision 4 in force; R2-1 and R2-2 landed; epoch not admitted | `R2.md`, decisions 0023–0026 |
-| R2 final evidence | revision-3 attempts and three revision-4 wrapper attempts remain historical formal red; no passing revision-4 author proof | issue #199, decision 0026, branch `feat/issue-199-r2-final` |
-| Current queue | finish and freeze the exported-manifest file-row verifier repair, then run one fresh complete candidate-native XFS author proof | issue #199 and `R2.md` sections 9, 11, and 13 |
+| R2 final evidence | implementation candidate `52d126f` passed fresh author and exact-head Luna Max XFS proofs; three earlier R4 attempts remain historical red; record-only successor rerun pending | issue #199, decision 0026, branch `feat/issue-199-r2-final` |
+| Current queue | commit the control record, rerun Luna Max at that exact head, run applicable public hosted workflows, obtain owner visual and R2 verdicts, and leave merge disposition to the owner | issue #199 and `R2.md` sections 9, 11, and 13 |
 
 ## Current local verification
 
-Before the retained third revision-4 formal attempt, exact-head candidate
-`c1b50cf` passed:
+Exact-head combined candidate `52d126f` passed:
 
 - `cargo fmt --all -- --check`, workspace Clippy with warnings denied, all
   locked workspace tests, and `cargo xtask boundary`;
@@ -153,21 +157,14 @@ Before the retained third revision-4 formal attempt, exact-head candidate
   dynamic-source-path and source-only function-analysis exemptions.
 
 The source-provenance register SHA-256 at that exact head is
-`dcf551a19e777c919a572b68e4250ef4739dbbc69974dfac8c248f773987ad3b`.
-The focused outer-evidence and receipt tests pass for the subsequent nested-file
-manifest repair, but those dirty-tree checks are not an author proof. Freeze
-the repair, rerun the entire portable preflight from its clean committed tip,
-and do not claim a revision-4 author pass until a fresh complete wrapper
-finishes and its outer receipt independently verifies.
-
-The latest retained formal-red work is
-`/data/dev/src/nomos-r4-checkpoint-xfs-run.cxAdBh`, with standalone source
-`/data/dev/src/nomos-r4-checkpoint-candidate.vQg7jb`. Its fully allocated
-backing image, exported passing inner evidence, and logs remain red evidence
-but are no longer attached or mounted. The preceding two R4 paths are also
-retained. All decisive digests are recorded in the revision-4 author receipt.
-Earlier red paths and diagnostics remain recorded in the revision-3 receipt;
-do not relabel or reuse any of them.
+`74578013c80ff4d29b171b6aef571c4257523b5649904c97159106660768ac2a`.
+The fresh author and exact-head Luna Max complete XFS proofs then passed at that
+same commit/tree. Their retained paths, receipt hashes, measurements, and
+teardown evidence are recorded above and in the revision-4 author receipt.
+Because this post-proof record changes the head, issue #199 requires one final
+fresh exact-head Luna Max rerun after it is committed. Earlier red paths and
+diagnostics remain recorded in the revision-3 and revision-4 receipts; do not
+relabel or reuse any of them.
 
 The accepted R1 surface consists of:
 
@@ -448,12 +445,10 @@ gh run list --branch main --limit 8
 
 At this snapshot, local `main` and `origin/main` are still PR #198's merge
 `6cbce64cb867aef24faf227e62bdfc585bbcbd5d`; issue #199 work is on
-`feat/issue-199-r2-final`. Do not expect the feature branch to have an upstream
-or infer a pull request from its existence. The repository is public and
-Actions is available; the branch does not need to remain local because of a
-quota. It has not yet been pushed and therefore has no exact-head hosted run.
-Old remote heads may still exist; they do not override the owner decisions,
-open issue, or this candidate state.
+`feat/issue-199-r2-final`. Verify the current remote branch and pull-request
+state rather than inferring it from this local branch. The repository is public
+and Actions is available; no quota requires this work to remain local. Old
+remote heads do not override the owner decisions, open issue, or candidate.
 
 ## What can happen next
 
@@ -466,12 +461,14 @@ grammars, ownership, workspace boundaries, ceilings, the required compile
 observation, and proof. R2-1 and R2-2 are complete after PR #198. Issue #199 is
 already the authorized final-evidence slice; do not open a replacement issue.
 Decision 0026 authorizes only the contract-and-proof classification repair and
-rerun. It does not authorize compiler edits or relabel the revision-3 red. Once
-the manifest-projection repair is clean and committed, run one fresh full
-candidate-native XFS author proof from new source and work paths. If it passes,
-obtain the required fresh exact-head Luna Max proof, applicable hosted
-workflows, and owner visual judgment, then stop for the exact owner verdicts
-and distinct merge disposition required by issue #199.
+rerun. It does not authorize compiler edits or relabel any historical red. The
+fresh author and first exact-head Luna Max proofs have passed. Commit this
+record-only head, run one fresh Luna Max complete XFS proof at that exact head,
+and make no later evidence-summary commit. Then publish it and run the
+applicable public workflows before stopping for the owner visual judgment,
+exact R2 verdict, and distinct merge disposition required by issue #199. Do
+not launch another local 8 GiB proof unless that head changes or new evidence
+fails.
 
 A deeper adopter boundary, platform choice, Gate K attempt, R2 scope expansion,
 or adoption into a game requires its own owner decision. Work toward an actual
