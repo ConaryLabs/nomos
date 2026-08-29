@@ -56,6 +56,10 @@ and test files:
 - `docs/evaluation/measure-r2-compile.mjs`
 - `docs/evaluation/r2-complete-proof-receipt.mjs`
 - `docs/evaluation/r2-complete-proof-receipt.test.mjs`
+- `docs/evaluation/r2-complete-proof-xfs-evidence.mjs`
+- `docs/evaluation/r2-complete-proof-xfs-receipt.test.mjs`
+- `docs/evaluation/r2-complete-proof-xfs.sh`
+- `docs/evaluation/r2-complete-proof-xfs.test.sh`
 - `docs/evaluation/r2-complete-proof.sh`
 - `docs/evaluation/r2-source-provenance.test.sh`
 
@@ -65,6 +69,70 @@ receipts. This record does not reattribute those bytes. The provenance
 register, checker, and producing receipts remain control evidence bound by the
 eventual candidate commit/tree and final receipt under the existing
 self-binding rule.
+
+## Retained revision-4 formal red
+
+Candidate `ff35834dc98cf15a1f8d659adb67fe6f81718a40`, tree
+`ed547a0ab4378a3259dc10827c9c7dfdf533e481`, was run once from fresh standalone
+source `/data/dev/src/nomos-r4-candidate.wbrd6Z` with fresh work directory
+`/data/dev/src/nomos-r4-xfs-run.1djISn`. The candidate-native inner proof
+passed all 33 ordered commands, assembled and verified its inner receipt, and
+exported byte-identical evidence. The outer wrapper remained formally red and
+emitted no `wrapper-receipt.json`: final receipt assembly correctly refused
+the backing image with `image file size or allocation differs from the receipt
+facts`. An inner pass cannot be promoted through an absent wrapper receipt and
+none of this run may be resumed, spliced, relabelled, or reused for another
+candidate.
+
+The wrapper first recorded the required logical and allocated size of
+`8,589,934,592` bytes, then invoked
+`/usr/sbin/mkfs.xfs -f -l internal /dev/loop1`. Its retained stdout ends with
+`Discarding blocks...Done.` After teardown the image remained logically 8 GiB
+but had only `1,480,175,616` allocated bytes. The formatter's default discard
+had propagated through the loop device and punched holes in the backing file.
+This is a proof-harness defect against the existing fully allocated,
+non-sparse-image requirement, not a product result or another contract defect.
+The repair adds and receipt-binds `-K`, the `mkfs.xfs` no-discard option; the
+strict post-run allocation check remains unchanged.
+
+The retained inner evidence is diagnostic old-head evidence only:
+
+- inner receipt SHA-256:
+  `4aeafd1523c2734963b1aeba539f267ab7a276a831d61e7b69a33bc675f5e39b`;
+- inner `EVIDENCE.sha256` SHA-256:
+  `0f9dda92144aa8e292cd5976c8d1f9ec75f86f33602e9b5676d1a156ced07377`,
+  with all 1,883 listed entries hash-valid;
+- equal source and export inventory digest:
+  `798f29146ca6bd306e72f910557c28fa71edf0673619a3fc1480104f34197207`;
+- compile summary SHA-256:
+  `32680dbeb4754b91c354c659fcf8917dc793c101d166a76694a42e34463aff74`,
+  recording median numerator `117194938` ns over denominator `2`, p95
+  `69426702` ns, and 100 separately published 111,604-byte outputs, all with
+  SHA-256
+  `aa36d6befffa48870d8f6cee00663139ec301bb1b606b9270e5e7984566cd6f0`;
+- raw compile-sample table SHA-256:
+  `d0ec4d743ad72a4ce6f02099c18c89cac4af85c533dfa5f3e3efe97ebeee1ed9`;
+- supervisor-facts SHA-256:
+  `fda0524a1f2e15c1aa831a27364e40480fcb1de963b90bcf311ceba10a4bcaa7`;
+- initial image-stat SHA-256:
+  `80ad97fd657fac7c80f9ee3eefe09c1f7b00b5914356abd1fdbe1a1858bbeab2`;
+- formatter-stdout SHA-256:
+  `d7319c37618228543ac2e59887f15e07d6b01e188e2777569915026034b6c2d4`;
+  and outer receipt-stderr SHA-256:
+  `b98219aa570aa310a14853ca02e730cfedbad2cb9cf75ce6e0c786e1dd6e1d16`.
+
+Teardown unmounted and detached `/dev/loop1` with no holder. The before/after
+loop inventories are byte-identical at SHA-256
+`e951f122f209cb4a215522a5b5e708d1a855da1e65e9aedfa014b849f4be6a74`
+and contain only the unrelated, untouched `/dev/loop0`; the clean host-monitor
+SHA-256 is
+`afbb5224506774022a4c261e3a772883640f8d80e3d95d8af1934c18be8a7f62`.
+A separate controlled 512 MiB diagnostic retained at
+`/data/dev/src/nomos-xfs-allocation-diag.emvjOo` reproduced the allocation loss
+with default formatting and preserved all `536,870,912` allocated bytes with
+`mkfs.xfs -K`, including after a normal XFS mount, 64 MiB create/delete, sync,
+and unmount. XFS defaults to runtime `nodiscard`, so this repair does not add
+an unnecessary mount-argv change.
 
 ## Proof obligation and status
 

@@ -363,7 +363,7 @@ supervisor() {
           fallocate:{argv:["/usr/bin/fallocate","--posix","--length","8589934592",$image],cwd:$display_work,status:$image_status,stdout_path:$image_fallocate_stdout,stderr_path:$image_fallocate_stderr},
           image_sync:{argv:["/usr/bin/sync","-f",$image],cwd:$display_work,status:$image_sync_status,stdout_path:$image_sync_stdout,stderr_path:$image_sync_stderr},
           loop_attach:{argv:["/usr/sbin/losetup","--find","--show",$image],cwd:$display_work,status:$loop_attach_status,stdout_path:($display_work+"/loop-attach.stdout"),stderr_path:($display_work+"/loop-attach.stderr")},
-          mkfs_xfs:{argv:["/usr/sbin/mkfs.xfs","-f","-l","internal",($loop_path|nz)],cwd:$display_work,status:$mkfs_status,stdout_path:($display_work+"/mkfs-xfs.stdout"),stderr_path:($display_work+"/mkfs-xfs.stderr")},
+          mkfs_xfs:{argv:["/usr/sbin/mkfs.xfs","-f","-K","-l","internal",($loop_path|nz)],cwd:$display_work,status:$mkfs_status,stdout_path:($display_work+"/mkfs-xfs.stdout"),stderr_path:($display_work+"/mkfs-xfs.stderr")},
           mount:{argv:["/usr/bin/mount","-t","xfs","-o","rw,nodev,nosuid",($loop_path|nz),$fs],cwd:$display_work,status:$mount_status,stdout_path:($display_work+"/mount.stdout"),stderr_path:($display_work+"/mount.stderr")},
           proof:{argv:["/usr/bin/bash",$proof_script,"--output",$output],cwd:$checkout,status:$inner_status,stdout_path:$proof_stdout,stderr_path:$proof_stderr},
           export:{argv:["/usr/bin/node",$receipt_helper,"copy","--source",$output,"--destination",$export_destination,"--output",$inventory_path],cwd:$display_work,status:$export_status,stdout_path:($display_work+"/export.stdout"),stderr_path:($display_work+"/export.stderr")},
@@ -523,7 +523,7 @@ supervisor() {
   major_minor=$major_decimal:$minor_decimal
   [[ $major_minor =~ ^[0-9]+:[0-9]+$ ]] || fail 'loop major:minor is malformed'
 
-  run_capture "$work/mkfs-xfs.stdout" "$work/mkfs-xfs.stderr" /usr/sbin/mkfs.xfs -f -l internal "$loop_device"
+  run_capture "$work/mkfs-xfs.stdout" "$work/mkfs-xfs.stderr" /usr/sbin/mkfs.xfs -f -K -l internal "$loop_device"
   mkfs_status=$RUN_STATUS
   [[ $mkfs_status -eq 0 ]] || fail 'XFS formatting failed'
   run_capture "$xfs_info_file" "$work/xfs-info.stderr" /usr/sbin/xfs_info "$loop_device"

@@ -36,6 +36,10 @@ grep -Fq 'docs/evaluation/r2-complete-proof-xfs.test.sh' "$workflow" ||
   fail 'hosted preflight does not execute the XFS shell-validation suite'
 grep -Fq '/usr/bin/bash "$pinned_supervisor_path" --pinned-supervise' "$wrapper"
 grep -Fq -- '--config core.hooksPath=/dev/null "$source_fd_path" "$checkout"' "$wrapper"
+[[ $(grep -Fc '"/usr/sbin/mkfs.xfs","-f","-K","-l","internal",($loop_path|nz)' "$wrapper") -eq 1 ]] ||
+  fail 'supervisor facts do not bind the no-discard XFS format command exactly once'
+[[ $(grep -Fc '/usr/sbin/mkfs.xfs -f -K -l internal "$loop_device"' "$wrapper") -eq 1 ]] ||
+  fail 'supervisor does not execute the no-discard XFS format command exactly once'
 if grep -Fq '/usr/bin/mount --bind' "$workdir_helper"; then
   printf 'descriptor boundary must not rely on a canonical-path bind mount\n' >&2
   exit 1

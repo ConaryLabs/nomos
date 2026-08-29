@@ -340,7 +340,7 @@ test("receipt has exact top-level schema and success requires inner plus teardow
       fallocate: operation("fallocate", ["/usr/bin/fallocate", "--posix", "--length", IMAGE_BYTES.toString(), image], work),
       image_sync: operation("image_sync", ["/usr/bin/sync", "-f", image], work),
       loop_attach: operation("loop_attach", ["/usr/sbin/losetup", "--find", "--show", image], work),
-      mkfs_xfs: operation("mkfs_xfs", ["/usr/sbin/mkfs.xfs", "-f", "-l", "internal", "/dev/loop9"], work),
+      mkfs_xfs: operation("mkfs_xfs", ["/usr/sbin/mkfs.xfs", "-f", "-K", "-l", "internal", "/dev/loop9"], work),
       mount: operation("mount", ["/usr/bin/mount", "-t", "xfs", "-o", "rw,nodev,nosuid", "/dev/loop9", fs], work),
       proof: operation("proof", ["/usr/bin/bash", join(checkout, "docs", "evaluation", "r2-complete-proof.sh"), "--output", output], checkout),
       export: operation("export", ["/usr/bin/node", join(checkout, "docs", "evaluation", "r2-complete-proof-xfs-receipt.mjs"), "copy", "--source", output, "--destination", exportDestination, "--output", inventoryPath], work),
@@ -513,6 +513,15 @@ test("receipt has exact top-level schema and success requires inner plus teardow
     };
     assert.throws(() => assembleReceipt(wrongHelperFacts, receiptOptions),
       /operation export argv differs from the exact wrapper command/);
+    const missingMkfsNoDiscardFacts = {
+      ...facts,
+      operations: {
+        ...facts.operations,
+        mkfs_xfs: { ...facts.operations.mkfs_xfs, argv: facts.operations.mkfs_xfs.argv.toSpliced(2, 1) },
+      },
+    };
+    assert.throws(() => assembleReceipt(missingMkfsNoDiscardFacts, receiptOptions),
+      /operation mkfs_xfs argv differs from the exact wrapper command/);
     const rewriteExecutionLedger = (rows) =>
       writeFileSync(executionLedgerPath, rows.map((row) => JSON.stringify(row)).join("\n") + "\n");
     const mutatedExecutionRows = executionLedgerText.trimEnd().split("\n").map((row) => JSON.parse(row));
@@ -600,6 +609,8 @@ test("receipt has exact top-level schema and success requires inner plus teardow
     assert.equal(assembleReceipt({ ...facts, inner_pass: false, invocation: { ...facts.invocation, inner_pass: false } }).outcome, "red");
     assert.equal(assembleReceipt({ ...facts, export: { ...facts.export, status: 1, equal: false } }).outcome, "red");
     assert.throws(() => assembleReceipt({ ...facts, image: { ...facts.image, expected_bytes: "1" } }, receiptOptions), /image size/);
+    assert.throws(() => assembleReceipt(facts, { statReader: () => ({ size: IMAGE_BYTES, blocks: 16_777_215n }) }),
+      /image file size or allocation differs from the receipt facts/);
     assert.throws(() => assembleReceipt({ ...facts, filesystem: { ...facts.filesystem, type: "ext4" } }, receiptOptions), /filesystem identity/);
     assert.throws(() => assembleReceipt({ ...facts, invocation: { ...facts.invocation, status: 1 } }, receiptOptions), /proof invocation/);
     assert.equal(assembleReceipt({ ...facts, export: { ...facts.export, export_inventory_sha256: "d".repeat(64) } }).outcome, "red");

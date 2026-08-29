@@ -27,7 +27,7 @@ line, and operational gotchas.
 | R1 contract | `RUNTIME.md` revision 4, in force under decision 0021 |
 | Game adoption | not authorized |
 | Mortal Estate evidence | sister-project prospective adopter; bounded evidence produced one admitted dependency point, representative frame, and classified adopter-neutral capability gap; no adoption |
-| R2 observed-scene epoch | revision 4 authorized under decision 0026; R2-1 and R2-2 landed; the revision-3 formal red remains historical and a fresh revision-4 author proof is pending |
+| R2 observed-scene epoch | revision 4 authorized under decision 0026; R2-1 and R2-2 landed; the first revision-4 full attempt is wrapper-red and a repaired fresh author proof is pending |
 
 R1 is the accepted runtime baseline for this repository. That result does not
 rewrite Gate K, pass a later gate, approve production art, or authorize Nomos
@@ -53,12 +53,16 @@ latency classification from acceptance ceiling to recorded observation. R2-1's
 strict carrier and compiler landed at
 `cc47a7235f92d0ed460c7db5d178448b12fdba02`; R2-2's isolated offline consumer
 and hash-frozen independent second-scene evidence landed through PR #198.
-Issue #199 carries the revision-4 contract-and-proof repair. Its fresh complete
-candidate-native XFS author proof is next. The retained revision-3 attempt stays
-formal red under the contract it ran against and cannot satisfy revision 4. R2
-is not admitted until one revision-4 combined candidate passes the complete
-author proof, exact-head non-author rerun, owner visual judgment, required CI,
-and owner disposition. No platform choice or game adoption is authorized.
+Issue #199 carries the revision-4 contract-and-proof repair. Its first complete
+revision-4 attempt passed every inner proof command but remained formally red
+when `mkfs.xfs` default discard deallocated most of the fully preallocated loop
+backing file and the strict outer receipt correctly refused it. The harness now
+binds the formatter's `-K` no-discard option; a wholly fresh candidate-native
+author run is next. The retained revision-3 and revision-4 red attempts cannot
+satisfy the repaired candidate. R2 is not admitted until one revision-4
+combined candidate passes the complete author proof, exact-head non-author
+rerun, owner visual judgment, required CI, and owner disposition. No platform
+choice or game adoption is authorized.
 
 The implementation includes:
 
@@ -195,7 +199,9 @@ revision-3 XFS attempt remains formal red under revision 3; it is not relabelled
 as a revision-4 pass. Issue #199 still forbids compiler edits, and no product
 optimization is authorized in this slice. After the proof machinery binds
 revision 4 and the frozen issue body, create fresh candidate/source/work paths
-and run the complete candidate-native XFS author proof. A passing candidate
+and run the complete candidate-native XFS author proof. Do not reuse the first
+revision-4 run whose inner proof passed but outer receipt correctly refused the
+formatter-deallocated backing image. A passing candidate
 still requires the contract's exact-head non-author rerun, public-repository
 hosted workflows, and the owner's visual and R2 verdicts. GitHub Actions is
 available; any currently local-only branch state is a pending workflow step,

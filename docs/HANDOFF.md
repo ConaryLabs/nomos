@@ -47,32 +47,38 @@ and the revision-4 contract-and-proof repair. R2 still has no passing formal
 author proof, exact-head non-author proof, owner visual verdict, owner R2
 verdict, or merge authorization.
 
-The most recent formal attempt was candidate
-`fc8b0f8cbf28e0f4eaf84f8e80b5bbe91a881798`, tree
-`e75e5a407826a822f6f1c13905aa8a5a096952f6`. It passed the repaired outer XFS
-shell validation and ordered commands 1 through 32, including both browser
-lanes, then command 33 failed the maximum-scene compile-median ceiling. All 100
-recorded compiles emitted the same 111,604-byte output. P95 passed at
-77,475,936 ns against 100,000,000 ns; the even median was 119,139,761 / 2 ns,
-or about 59.57 ms, against 50 ms. Every sample exceeded 50 ms, with a minimum of
-51,686,070 ns. An earlier retained run of the same compiler binary and fixture
-measured a 58.36 ms median and 77.71 ms p95; only two of the combined 200
-recorded samples met 50 ms. This is a repeatable criterion-4 budget miss under
-`R2.md` revision 3 section 9, not a harness, XFS-accounting, browser, or
-determinism failure. It remains formal red under revision 3; decision 0026 does
-not relabel it as passing evidence or permit it to satisfy revision 4. Cleanup
-unmounted and detached `/dev/loop1`; pre/post loop inventories were
-byte-identical, the host monitor was clean, and the unrelated `/dev/loop0` was
-untouched.
+The most recent formal attempt was revision-4 candidate
+`ff35834dc98cf15a1f8d659adb67fe6f81718a40`, tree
+`ed547a0ab4378a3259dc10827c9c7dfdf533e481`. Its inner proof passed all 33
+ordered commands and independently assembled and verified its receipt. The
+compile observation was a median of `117194938 / 2` ns (`58,597,469` ns) and a
+p95 of `69,426,702` ns; all 100 outputs were the same 111,604 bytes. The 10.82 s
+build, 1,559 MiB peak disk use, 54,848,808 ns maximum sampler gap, 805,600-byte
+distribution, both browser lanes, and process-closure checks all passed.
 
-Preserve that red source, work directory, backing image, exported partial
-evidence, and logs as historical evidence. The owner has now supplied the
-disposition that was previously pending. Issue #199 deliverable 5 still forbids
-compiler edits, and this classification repair changes no product bytes. Once
-the revision-4 contract, issue body, proof machinery, tests, and provenance are
-bound in a clean candidate, the next formal action is one fresh complete
-candidate-native XFS author proof using one new standalone source clone and one
-new empty work directory. Do not reuse or relabel a prior source or work path.
+The outer wrapper nevertheless remained formally red and emitted no
+`wrapper-receipt.json`. It had fully allocated the 8 GiB image, but default
+`mkfs.xfs` discard propagated through `/dev/loop1` and punched holes in the
+backing file; formatter stdout says `Discarding blocks...Done.` After teardown,
+the logical size remained 8 GiB while allocated bytes had fallen from
+`8,589,934,592` to `1,480,175,616`. The final receipt correctly refused this
+underallocated image. The harness repair binds `mkfs.xfs -K`, which implements
+the existing fully allocated, non-sparse-image requirement without changing
+the contract, workload, product, or measurement. A controlled diagnostic
+confirmed that `-K` preserves full allocation through format and a normal XFS
+mount/create/delete/sync/unmount cycle; XFS already defaults to runtime
+`nodiscard`, so the mount argv is unchanged.
+
+Preserve the source `/data/dev/src/nomos-r4-candidate.wbrd6Z`, work directory
+`/data/dev/src/nomos-r4-xfs-run.1djISn`, backing image, exported inner evidence,
+and logs as historical formal-red evidence. Cleanup unmounted and detached
+`/dev/loop1`; pre/post loop inventories were byte-identical, the host monitor
+was clean, and the unrelated `/dev/loop0` was untouched. The inner pass cannot
+be resumed, promoted, or spliced into another run. After the no-discard repair,
+tests, provenance, and red record are frozen in a clean candidate, the next
+formal action is one entirely fresh complete candidate-native XFS author proof
+using a new standalone source clone and new empty work directory. Issue #199
+deliverable 5 still forbids product edits.
 
 A fresh agent must not infer active work from an old remote branch. The
 repository intentionally retains evidence branches and annotated tags. Check
@@ -118,37 +124,37 @@ source, compiled plan, signatures, browser receipt, and pixels entered unchanged
 | Game adoption | not authorized; thesis applies to no game | decision 0019 |
 | Mortal Estate presentation evidence | bounded prerequisite evidence complete; no adoption | decisions 0022 and 0023 evidence |
 | R2 observed-scene presentation epoch | revision 4 in force; R2-1 and R2-2 landed; epoch not admitted | `R2.md`, decisions 0023–0026 |
-| R2 final evidence | revision-3 attempts remain historical formal red; no revision-4 author proof has run | issue #199, decision 0026, branch `feat/issue-199-r2-final` |
-| Current queue | finish and freeze the revision-4 proof repair, then run one fresh complete candidate-native XFS author proof | issue #199 and `R2.md` sections 9, 11, and 13 |
+| R2 final evidence | revision-3 attempts and the first revision-4 wrapper attempt remain historical formal red; no passing revision-4 author proof | issue #199, decision 0026, branch `feat/issue-199-r2-final` |
+| Current queue | finish and freeze the `mkfs.xfs -K` harness repair, then run one fresh complete candidate-native XFS author proof | issue #199 and `R2.md` sections 9, 11, and 13 |
 
 ## Current local verification
 
-Before the retained revision-3 formal attempt, its exact-head working bytes
-passed:
+Before the retained first revision-4 formal attempt, candidate `ff35834` passed:
 
 - `cargo fmt --all -- --check`, workspace Clippy with warnings denied, all
   locked workspace tests, and `cargo xtask boundary`;
 - schema ownership, the 100-row source-provenance register and 10 plants,
   adopter neutrality and 5 plants;
 - 39 complete-proof refusal plants and the XFS shell validation suite;
-- 131 Node tests across the R2 viewer, receipts, process closure, XFS evidence,
+- 132 Node tests across the R2 viewer, receipts, process closure, XFS evidence,
   accounting, and scene signatures; and
 - ShellCheck on every changed shell file with only the repository's existing
   dynamic-source-path and source-only function-analysis exemptions.
 
-The source-provenance register SHA-256 for those revision-3 implementation
-bytes is `61ab821b9ecd7bc5089d7881555054eb669f51faf461e8b56d67a6a038baabee`.
-Those checks do not prove the revision-4 changes now in progress. Rerun the
-portable preflight from the clean committed revision-4 tip before provisioning
-XFS; do not claim a revision-4 author result until the fresh complete wrapper
-finishes and its receipt independently verifies.
+The source-provenance register SHA-256 for those revision-4 implementation
+bytes is `6d8128993f76db0ee60e64d85e0ffdd3cd60e6d6a807d76b77b721c226342088`.
+Those checks predate the no-discard harness repair now in progress. Rerun the
+portable preflight from its clean committed tip before provisioning XFS; do not
+claim a revision-4 author pass until the fresh complete wrapper finishes and
+its outer receipt independently verifies.
 
 The latest retained formal-red work is
-`/data/dev/src/nomos-r2-xfs-run.Ri8Z2H`, with its standalone source at
-`/data/dev/src/nomos-r2-candidate.oWsZoo`. Its fully allocated backing image,
-exported partial evidence, and logs remain red evidence but are no longer
-attached or mounted. Earlier red paths, diagnostics, and all decisive digests
-are recorded in the revision-3 author receipt; do not relabel or reuse them.
+`/data/dev/src/nomos-r4-xfs-run.1djISn`, with its standalone source at
+`/data/dev/src/nomos-r4-candidate.wbrd6Z`. Its underallocated backing image,
+exported passing inner evidence, and logs remain red evidence but are no longer
+attached or mounted. All decisive digests are recorded in the revision-4 author
+receipt. Earlier red paths and diagnostics remain recorded in the revision-3
+receipt; do not relabel or reuse any of them.
 
 The accepted R1 surface consists of:
 
