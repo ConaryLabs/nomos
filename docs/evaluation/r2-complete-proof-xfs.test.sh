@@ -48,6 +48,32 @@ grep -Fq 'docs/evaluation/r2-complete-proof-xfs.test.sh' "$workflow" ||
   fail 'hosted preflight does not execute the XFS shell-validation suite'
 observed_workflow_text=$(/usr/bin/awk '/^  r2-observed-viewer:/{inside=1} /^  r2-complete-proof:/{if (inside) exit} inside{print}' "$workflow")
 detached_workflow_text=$(/usr/bin/awk '/^  r2-complete-proof:/{inside=1} inside{print}' "$workflow")
+mapfile -t hosted_detached_work_paths < <(/usr/bin/sed -n \
+  's/^[[:space:]]*work=\(\/tmp\/[A-Za-z0-9._-]*\)$/\1/p' <<<"$detached_workflow_text")
+[[ ${#hosted_detached_work_paths[@]} -eq 1 ]] ||
+  fail 'hosted detached proof does not declare one short literal /tmp work path'
+hosted_detached_work=${hosted_detached_work_paths[0]}
+hosted_singleton_socket=$hosted_detached_work/fs/checkout/target/r2-complete-proof/host/tmp/com.google.Chrome.XXXXXX/SingletonSocket
+[[ ${#hosted_singleton_socket} -le 107 ]] ||
+  fail 'hosted detached proof exceeds the Linux Chrome ProcessSingleton socket-path limit'
+grep -Fq 'test ! -e "$work"' <<<"$detached_workflow_text" ||
+  fail 'hosted detached proof does not refuse an existing work path'
+grep -Fq 'mkdir -m 0700 -- "$work"' <<<"$detached_workflow_text" ||
+  fail 'hosted detached proof does not atomically create its private work directory'
+for hosted_artifact_path in \
+  "$hosted_detached_work" \
+  "!$hosted_detached_work/filesystem.xfs" \
+  "!$hosted_detached_work/checkout.tar" \
+  "!$hosted_detached_work/fs" \
+  "!$hosted_detached_work/user-env"; do
+  grep -Fxq "            $hosted_artifact_path" <<<"$detached_workflow_text" ||
+    fail "hosted detached evidence upload lost its work-root path: $hosted_artifact_path"
+done
+grep -Fxq "          path: $hosted_detached_work/filesystem.xfs" <<<"$detached_workflow_text" ||
+  fail 'hosted detached red-image upload differs from the proof work root'
+if grep -Fq '${{ runner.temp }}/nomos-r2-xfs' <<<"$detached_workflow_text"; then
+  fail 'hosted detached proof retains the overlong runner-temporary work path'
+fi
 grep -Fq 'CHROME_BIN=$(realpath -e -- "$(command -v google-chrome)")' <<<"$detached_workflow_text" ||
   fail 'hosted detached proof does not pass a canonical Chrome executable'
 assert_hosted_sandbox_lane() {

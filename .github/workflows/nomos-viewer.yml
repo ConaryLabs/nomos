@@ -466,9 +466,9 @@ jobs:
           candidate=$(git rev-parse 'HEAD^{commit}')
           git checkout --detach "$candidate"
           test "$(git rev-parse --is-shallow-repository)" = false
-          work=${RUNNER_TEMP}/nomos-r2-xfs
+          work=/tmp/r2
           test ! -e "$work"
-          mkdir "$work"
+          mkdir -m 0700 -- "$work"
           CHROME_BIN=$(realpath -e -- "$(command -v google-chrome)") \
             docs/evaluation/r2-complete-proof-xfs.sh \
               --source "$GITHUB_WORKSPACE" \
@@ -495,11 +495,11 @@ jobs:
         with:
           name: r2-complete-proof
           path: |
-            ${{ runner.temp }}/nomos-r2-xfs
-            !${{ runner.temp }}/nomos-r2-xfs/filesystem.xfs
-            !${{ runner.temp }}/nomos-r2-xfs/checkout.tar
-            !${{ runner.temp }}/nomos-r2-xfs/fs
-            !${{ runner.temp }}/nomos-r2-xfs/user-env
+            /tmp/r2
+            !/tmp/r2/filesystem.xfs
+            !/tmp/r2/checkout.tar
+            !/tmp/r2/fs
+            !/tmp/r2/user-env
           if-no-files-found: error
           retention-days: 90
 
@@ -508,7 +508,7 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: r2-complete-proof-red-image
-          path: ${{ runner.temp }}/nomos-r2-xfs/filesystem.xfs
+          path: /tmp/r2/filesystem.xfs
           if-no-files-found: ignore
           retention-days: 90
           compression-level: 0

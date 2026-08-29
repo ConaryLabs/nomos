@@ -27,7 +27,7 @@ line, and operational gotchas.
 | R1 contract | `RUNTIME.md` revision 4, in force under decision 0021 |
 | Game adoption | not authorized |
 | Mortal Estate evidence | sister-project prospective adopter; bounded evidence produced one admitted dependency point, representative frame, and classified adopter-neutral capability gap; no adoption |
-| R2 observed-scene epoch | revision 4 authorized under decision 0026; R2-1 and R2-2 landed; local author and exact-head proofs passed through `7b16d36`; the second public run exposed two further pre-XFS hosted-runner defects whose repair awaits fresh proofs, hosted reruns, and owner verdicts |
+| R2 observed-scene epoch | revision 4 authorized under decision 0026; R2-1 and R2-2 landed; exact-head local proofs and every public job except the detached XFS job passed at `0a60189`; its preserved retry exposed an overlong hosted Chrome socket path, now narrowly repaired pending fresh proofs, hosted reruns, and owner verdicts |
 
 R1 is the accepted runtime baseline for this repository. That result does not
 rewrite Gate K, pass a later gate, approve production art, or authorize Nomos
@@ -91,11 +91,22 @@ through privilege drop, provenance, operations, and receipt validation;
 rejects that directory if it shadows another proof tool; and has each hosted
 R2 job temporarily open, probe, and always restore the AppArmor gate without
 changing `--unshare-net`, fresh network/PID namespaces, read-only root, or zero
-capabilities. Because these proof bytes change, the replacement candidate
-requires a fresh author proof, exact-head Luna Max rerun, and hosted reruns. R2
-remains unadmitted pending those proofs, owner visual judgment, owner R2
-disposition, and distinct merge disposition. No platform choice or game
-adoption is authorized.
+capabilities. Candidate `0a60189`, tree `d0de57c`, then passed a fresh complete
+author proof and a separate exact-head Luna Max proof. Public `verify` and
+`gate-k-evidence` passed, as did the ordinary viewer, R1, and portable R2 jobs
+in `nomos viewer` run 33238818844. The detached job's first attempt stopped on
+a pre-command sampler-cadence miss; its one unchanged-head retry passed the
+sampler, commands 1–10, Node binding, isolation, and XFS setup before hosted
+Google Chrome refused its 123-byte ProcessSingleton socket path. No browser or
+product request ran, and both red attempts restored AppArmor and tore XFS down
+cleanly. The proof-only repair selects the real, atomically created `/tmp/r2`
+work directory, keeps every inner temporary write inside the same measured XFS
+output, updates the matching artifact paths, and plants the Linux 107-byte
+socket-path limit. Because the workflow, plant, provenance, and record bytes
+change, the replacement candidate requires a fresh author proof, exact-head
+Luna Max rerun, and hosted reruns. R2 remains unadmitted pending those proofs,
+owner visual judgment, owner R2 disposition, and distinct merge disposition.
+No platform choice or game adoption is authorized.
 
 The implementation includes:
 
@@ -231,9 +242,10 @@ disposition to repair the contract and rerun affected evidence. The latest
 revision-3 XFS attempt remains formal red under revision 3; it is not relabelled
 as a revision-4 pass. Issue #199 still forbids compiler edits, and no product
 optimization is authorized in this slice. Local author and exact-head Luna Max
-proofs passed through `7b16d36`; do not reuse or relabel any earlier red run.
-Its second public workflow run exposed the setup-node path and hosted AppArmor
-defects described above, now narrowly repaired and planted. Freeze that repair,
+proofs passed through `0a60189`; do not reuse or relabel any earlier red run.
+Its public workflow proved the Node and AppArmor repair, preserved one
+startup-cadence red, then exposed the hosted Chrome socket-path defect described
+above on the single unchanged-head retry. Freeze the short-work-path repair,
 run a fresh complete author proof and exact-head Luna Max rerun, then rerun the
 public workflows and stop for the owner's visual and R2 verdicts plus separate
 merge disposition. GitHub Actions is available; branch state is not constrained

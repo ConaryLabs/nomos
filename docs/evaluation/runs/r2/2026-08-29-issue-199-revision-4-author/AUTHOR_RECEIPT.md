@@ -1,13 +1,14 @@
 # R2 revision-4 implementation-author receipt
 
-Status: the revision-4 author and exact-head non-author proofs passed through
-first hosted-repair candidate `7b16d364276d10ca772cd2eb8ca03a4b6081de45`,
-tree `30db2b7adf4abdf305086bacb3547294f50620e7`. Its second public run
-made every non-R2 job green and exposed two further pre-XFS hosted-runner
-defects. The second narrow repair is pending a fresh author proof, exact-head
-Luna Max rerun, and hosted reruns. Owner visual judgment, owner R2 disposition,
-and merge disposition also remain pending. This receipt records implementation
-evidence; it is not an acceptance verdict.
+Status: revision-4 author and exact-head non-author proofs passed through second
+hosted-repair candidate `0a601897a1098fce464bc8f4fd146c44fa6f0980`, tree
+`d0de57c0343a8289b0b5693d2a90f8ef2618e2f6`. Its public run made every job
+green except the detached XFS proof; one startup-cadence red and one
+unchanged-head retry exposed the 123-byte Chrome ProcessSingleton socket path.
+The short-work-path repair is pending a new candidate, fresh author proof,
+exact-head Luna Max rerun, and hosted reruns. Owner visual judgment, owner R2
+disposition, and merge disposition also remain pending. This receipt records
+implementation evidence; it is not an acceptance verdict.
 
 ## Authority and historical boundary
 
@@ -630,13 +631,134 @@ receipt tests, and ShellCheck pass. Three read-only Sol Ultra reviews found no
 remaining code, portability, or workflow blocker. No new 8 GiB proof has been
 launched for these bytes.
 
+## Passing second hosted-repair candidate proofs
+
+The Node/AppArmor repair was committed as candidate
+`0a601897a1098fce464bc8f4fd146c44fa6f0980`, tree
+`d0de57c0343a8289b0b5693d2a90f8ef2618e2f6`. Its exact-head portable preflight
+passed formatting, locked workspace Clippy and tests, boundaries, byte-identical
+plans and packet, the 100-row provenance register and 11 plants, 5 neutrality
+plants, 39 complete-proof plants, XFS shell validation, 132 Node tests, the
+805,600-byte 14-file build, and 20 browser launches with zero external requests.
+
+The first fresh author attempt used source
+`/data/dev/src/nomos-r2-node-apparmor-author-candidate.YPop8V` and work
+`/data/dev/src/nomos-r2-node-apparmor-author-xfs-run.znv3NU`. It is retained
+formal red because the filesystem sampler detected an attempted sample-start
+gap over 100,000,000 ns during command 03 even though that workspace test exited
+zero. The offending timestamp was not appended, so its exact overshoot is not
+claimed. Outer receipt SHA-256 is
+`42fa32c005ba939546476dd81a7c6e5d816e42851b90c46be282bf708c148492`.
+Teardown was clean, and the unrelated `/dev/loop0` remained untouched. An Ultra
+audit authorized one fresh-path retry without reusing or splicing the red run.
+
+The passing author retry used detached source
+`/data/dev/src/nomos-r2-node-apparmor-author-retry-candidate.P5ss76`, work
+`/data/dev/src/nomos-r2-node-apparmor-author-retry-xfs-run.KKmXh6`, and
+independent recompute
+`/data/dev/src/nomos-r2-node-apparmor-author-recompute.VXx7XK`. Its
+byte-identical outer receipt, inner receipt, evidence manifest, and equal
+2,344-row source/export inventory SHA-256 values are respectively:
+
+- `7e8965d0f3192e35dd015b93f7f6bf150575850e0ce5ddb66fec04a2ba274a77`;
+- `2eb4d13e3418a3eae3c87e5845b0e9310558ffc6e3c105f8d54b92d427c96dde`;
+- `a83268eb647264a1136040341bb89ac88e4bf716807564e037d559e0d4a83664`;
+- `da2cc889a76cfe8da076c712b7fd1acf73c0f665755cba7f96c4ac26b3c5185d`.
+
+The required exact-head Luna Max proof used wholly separate detached source
+`/data/dev/src/nomos-r2-node-apparmor-luna-candidate.c3Si5b`, work
+`/data/dev/src/nomos-r2-node-apparmor-luna-xfs-run.FXwVqm`, and independent
+recompute `/data/dev/src/nomos-r2-node-apparmor-luna-recompute.yRQMeo`. Its
+byte-identical outer receipt, inner receipt, evidence manifest, and equal
+2,349-row source/export inventory SHA-256 values are respectively:
+
+- `d71e92d9c1c853c1f1b35a28a52c49349f223352b96d929d347dbcd62c053617`;
+- `fe2300efe754c5c1f6a7114472e18ea05e006c3250ba47cdf72f82c6a865468f`;
+- `22f82e7494dbf25408f4ca9b6537475c482a1fc3a46ad6526d31fde99d09485a`;
+- `44d0cf0cccaaeceb0df2a2474533ce7b02343d29b88f69816af27808616bb6ad`.
+
+Both passing runs completed all 33 commands and the 14/14, 104/104, and
+132/132 test groups. Author/Luna observations respectively were: clean build
+10.60/10.36 seconds; peak checkout allocation 1,551/1,567 MiB; sampler maximum
+gap `54,182,374`/`58,135,359` ns; distribution 805,600 bytes in 14 files;
+browser combined p95 `555,681,111`/`540,616,511` ns with zero external
+requests; and compile median numerator `113257383`/`111604718` over denominator
+2 with p95 `63,055,855`/`68,083,730` ns. Compile magnitudes remain observations,
+not acceptance ceilings. Both exact 8 GiB image proofs and clean teardowns
+passed, leaving only the unrelated, untouched `/dev/loop0`. Sol Ultra found no
+author-pass blocker, and Luna Max returned formal GO.
+
+## Third public-workflow reds and short-path repair
+
+Draft PR #201 published exact head `0a60189`. Public `verify` run 33238818795
+and `gate-k-evidence` run 33238818805 passed. In `nomos viewer` run
+33238818844, ordinary viewer/browser job 99064476928, R1 job 99064476976, and
+portable R2 job 99064476879 passed, including the hosted sandbox probe and
+AppArmor restoration.
+
+Detached attempt-1 job 99064476899 stopped before any product command when the
+sampler published row zero and its next sample start exceeded the 100 ms
+integrity limit. Artifact 9710738412 has SHA-256
+`9340854265dbd06d896fb173ed9a7071d6d8e9ae3bc7fc3e649ca0aa062cf349`;
+its red outer receipt SHA-256 is
+`e20d3c32043f4fcbea5dbac42c90fecea8565333ba9e427536b78529cf128983`.
+Undownloaded red image artifact 9710756623 has SHA-256
+`040574cd924e2519d78c6c27cc6f6077896893e1ec5f3039d8cb1512be68d326`.
+An Ultra audit verified exact Node binding, isolation, AppArmor restoration,
+equal export inventories, and clean teardown, and authorized exactly one
+failed-job retry at unchanged head.
+
+Attempt-2 job 99065267342 passed the sampler and commands 1–10 before hosted
+Google Chrome attempted the 123-byte pathname
+`/home/runner/work/_temp/nomos-r2-xfs/fs/checkout/target/r2-complete-proof/host/tmp/com.google.Chrome.pVQsb8/SingletonSocket`,
+which exceeds Linux's 107-byte pathname capacity for a NUL-terminated Unix
+socket. Chrome wrote no `DevToolsActivePort`; the smoke receipt retained zero
+requests. The sampler remained valid with 2,009 rows and maximum gap
+`51,372,174` ns. AppArmor restoration, export, unmount, loop detachment, and the
+host monitor all passed.
+
+Small artifact 9710837839 is retained at
+`/data/dev/src/nomos-r2-hosted-attempt2-red-0a60189.M7ycAL`; its archive,
+wrapper receipt, browser stderr, smoke receipt, and proof stderr SHA-256 values
+are respectively:
+
+- `5204c4281b8e6275f2eea261d017b02d97f2cbb75e04cbb7479f3971c20b22ec`;
+- `bd24f1e8e57bbf6406a6cce1164d1c3903ec80967276eefd7de462ac8d990fac`;
+- `ced3a2f7e4262d1494a911bf4e8061904180005c022f3d88d336ff73b74ce076`;
+- `952b2c91c5030c5a8f92d25819bcfe2145cd92023f5d28d8546632fd727b03fb`;
+- `2d0fad3818a008ff2ade24a6d769ae045d2e1d33a62d98d76c57ae1d047e98b4`.
+
+Undownloaded red image artifact 9710862160 has SHA-256
+`8356e65945b480d80fad1bf0e5cb531834d129497f7cd4993f6b1a000dafa2cc`.
+An Ultra audit classified this as a deterministic hosted work-path portability
+blocker and forbade another unchanged-head rerun.
+
+The narrow repair changes only the detached hosted workflow and its XFS shell
+plant. The workflow now uses real `/tmp/r2`, refuses a pre-existing target, and
+atomically creates it with mode 0700. The representative generated Chrome
+socket path is 94 bytes. Evidence and red-image uploads use that same work root.
+Inner `TMPDIR` remains output-local on the measured XFS; there is no symlink
+alias, extra bind, wrapper-topology change, accepted R1 harness edit, or product
+edit. The plant computes the complete generated socket path, requires at most
+107 bytes, and binds work creation plus every artifact path.
+
+The workflow and XFS shell-validation suite SHA-256 values are respectively
+`6858cbc3d0bc1d649a0d0fae45be88e4ba96265fc75857348c6aa940c946f47f`
+and `407f7e694ff1fd4ccc14ac208ae68ae927b4f549479bbd85e1e13e016b912f60`.
+The 100-row provenance checker and all 11 plants pass at register SHA-256
+`2f339db524d655ee78059f0b4c11fe75e425e4320607723f22b555119b37ed33`.
+The focused XFS shell suite, ShellCheck, and workflow YAML parse pass. No
+compiler, decoder, catalog, renderer, UI, scene, plan, packet, contact-sheet,
+runtime, acceptance ceiling, or accepted R1 harness byte changed. No new 8 GiB
+proof has been launched for the short-path repair.
+
 ## Proof obligation and status
 
-The prior revision-3 proof, three retained revision-4 wrapper-red attempts, and
-both sets of retained public-run job reds cannot be resumed, promoted, or
-reclassified. The passing runs through `7b16d36` remain evidence about their
-exact candidates; they do not make the second hosted-portability repair green.
-Because that repair changes workflow and proof bytes, freeze one new combined
+The prior revision-3 proof, retained revision-4 wrapper-red attempts, and all
+retained public-run job reds cannot be resumed, promoted, or reclassified. The
+passing runs through `0a60189` remain evidence about their exact candidates;
+they do not make the short-work-path repair green. Because that repair changes
+workflow, plant, provenance, and record bytes, freeze one new combined
 candidate and run a fresh complete author XFS proof from new source/work paths.
 The same exact head then requires a fresh Luna Max complete XFS rerun. No
 evidence-summary commit may follow it.

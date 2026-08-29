@@ -36,7 +36,7 @@ license bytes in the first inventory row.
 
 | Path | SHA-256 | Origin class | Producing receipt | License disposition |
 | --- | --- | --- | --- | --- |
-| `.github/workflows/nomos-viewer.yml` | `a631522dbd9b5639ec69a91c2d143cfe43725593af567b2271df6395e58264f2` | `r2_authored` | `docs/evaluation/runs/r2/2026-08-29-issue-199-revision-4-author/AUTHOR_RECEIPT.md` | `project_mit` |
+| `.github/workflows/nomos-viewer.yml` | `6858cbc3d0bc1d649a0d0fae45be88e4ba96265fc75857348c6aa940c946f47f` | `r2_authored` | `docs/evaluation/runs/r2/2026-08-29-issue-199-revision-4-author/AUTHOR_RECEIPT.md` | `project_mit` |
 | `apps/nomos-observed-viewer/PUBLIC_FILES` | `7f53e4db82e1faed7d523be4165cfb024b57d12e2ebb9cf2b0f356fd27560da9` | `r2_authored` | `docs/evaluation/runs/r2/2026-08-27-issue-197-author/AUTHOR_RECEIPT.md` | `project_mit` |
 | `apps/nomos-observed-viewer/README.md` | `7195b279cbf644cb2535c40dabaea91eb99e138787c651e894acda827ed75cef` | `r2_authored` | `docs/evaluation/runs/r2/2026-08-27-issue-197-author/AUTHOR_RECEIPT.md` | `project_mit` |
 | `apps/nomos-observed-viewer/SOURCE_MANIFEST` | `84585a60921f3281920fdccc635be15ac61cfe3d9b8a9868cea352f7dd58361c` | `r2_authored` | `docs/evaluation/runs/r2/2026-08-27-issue-199-author/AUTHOR_RECEIPT.md` | `project_mit` |
@@ -106,7 +106,7 @@ license bytes in the first inventory row.
 | `docs/evaluation/r2-complete-proof-xfs-receipt.test.mjs` | `5d11c18e0b75a5c5092d7221e3f66a5de2f073198b873091e4e0c6480ca64926` | `r2_authored` | `docs/evaluation/runs/r2/2026-08-29-issue-199-revision-4-author/AUTHOR_RECEIPT.md` | `project_mit` |
 | `docs/evaluation/r2-complete-proof-xfs-workdir.sh` | `d36e99a6f8db448686cf0439e17cf70ead0db3f0bd2ebe2750e29edb5da36538` | `r2_authored` | `docs/evaluation/runs/r2/2026-08-29-issue-199-revision-4-author/AUTHOR_RECEIPT.md` | `project_mit` |
 | `docs/evaluation/r2-complete-proof-xfs.sh` | `3479b848be905afef6f42089d790ef03501f62c6a91df5583d83d662f06c8fda` | `r2_authored` | `docs/evaluation/runs/r2/2026-08-29-issue-199-revision-4-author/AUTHOR_RECEIPT.md` | `project_mit` |
-| `docs/evaluation/r2-complete-proof-xfs.test.sh` | `a0a77a2513e4d3ef1c92bd715cd42c1931515c9c271ba154cf10549413939516` | `r2_authored` | `docs/evaluation/runs/r2/2026-08-29-issue-199-revision-4-author/AUTHOR_RECEIPT.md` | `project_mit` |
+| `docs/evaluation/r2-complete-proof-xfs.test.sh` | `407f7e694ff1fd4ccc14ac208ae68ae927b4f549479bbd85e1e13e016b912f60` | `r2_authored` | `docs/evaluation/runs/r2/2026-08-29-issue-199-revision-4-author/AUTHOR_RECEIPT.md` | `project_mit` |
 | `docs/evaluation/r2-complete-proof.sh` | `3108a239fb56cb566504e9e25053ae2129d93dc5860534d08e8d275c11631ba1` | `r2_authored` | `docs/evaluation/runs/r2/2026-08-29-issue-199-revision-4-author/AUTHOR_RECEIPT.md` | `project_mit` |
 | `docs/evaluation/r2-complete-proof.test.sh` | `33ede95f984c2a0eae47e28d71d1b5618036f7da5f4238611551313bd288516d` | `r2_authored` | `docs/evaluation/runs/r2/2026-08-28-issue-199-revision-3-author/AUTHOR_RECEIPT.md` | `project_mit` |
 | `docs/evaluation/r2-filesystem-accounting.mjs` | `51fbb06f714c84417b8edcc327fc14927e7859126d1db393557a6c843686202d` | `r2_authored` | `docs/evaluation/runs/r2/2026-08-28-issue-199-revision-3-author/AUTHOR_RECEIPT.md` | `project_mit` |
