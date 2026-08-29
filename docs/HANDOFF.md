@@ -42,36 +42,31 @@ author proof, no exact-head non-author proof, no owner visual verdict, no owner
 R2 verdict, and no merge authorization.
 
 The most recent formal attempt was candidate
-`8180d5d6931b4a091b7e8e14d8824d83fb81230f`, tree
-`cf8b6a87f0338ff882fb8408b3baa11a34fc2f2d`. It allocated, formatted, and
-mounted the XFS image and reached ordered command 25. All 126 Node tests and the
-complete-proof refusal plants passed, but the combined command returned 4
-before the XFS shell-validation suite's pass marker. A confined reproduction
-found the exact cause: Bubblewrap's root bind and explicit `/proc` mount create
-two identical `/proc` target rows, while the shell test required `findmnt` to
-return exactly one row. The branch-tip repair uses `findmnt --uniq`, which
-collapses only duplicate targets while the existing exact-one-row and canonical-
-target assertions continue to reject ambiguity. The confined reproduction then
-found that the shell suite's adversarial receipt-boundary plants deliberately
-create their own Bubblewrap namespaces and therefore cannot run inside the
-formal Bubblewrap. The repair does not omit that suite: the same formal wrapper
-invocation now runs it unprivileged in the outer phase, records token-bound
-stdout, stderr, status, exact argv, and post-test candidate identity, and the
-inner proof copies and verifies those bytes into manifest-bound metadata before
-command 1. The final receipt exposes a normalized validation binding, the outer
-parent byte-compares all five staged copies after the inner proof, and the
-wrapper binds them through the exported evidence manifest instead of attempting
-a nested namespace. Cleanup unmounted and detached `/dev/loop1`; pre/post loop
-inventories were byte-identical, the host monitor was clean, and the unrelated
-Conary `/dev/loop0` was untouched. No privileged XFS run has occurred after
-this repair.
+`a0218893da0e80e50e51e0d510e7190581798cc5`, tree
+`3198a895e477d700643ef51a066715b4d0febad3`. It fully allocated the 8,192 MiB
+image, attached `/dev/loop1`, formatted and mounted XFS, then stopped before
+ordered command 1 and before formal Bubblewrap entry. The outer XFS
+shell-validation suite returned status 1 with empty stdout and stderr. The
+formal wrapper deliberately supplied a retained-descriptor `TMPDIR`; `mktemp`
+preserved that `/proc/self/fd/...` spelling in the fixture root, while the
+receipt helper correctly published canonical source and destination paths. An
+unguarded `jq -e` compared those different spellings and failed silently under
+`set -e`. The branch repair now creates every shell-test root through a retained
+temporary-parent descriptor, immediately resolves it to one real directory,
+and compares the helper's inventory with canonical expected paths under an
+explicit fail message. This makes the exact formal topology part of every
+standalone suite run without weakening the receipt helper or its assertion.
+Cleanup unmounted and detached `/dev/loop1`; pre/post loop inventories were
+byte-identical, the host monitor was clean, and the unrelated `/dev/loop0` was
+untouched. No privileged XFS run has occurred after this repair.
 
-The good fresh-session stop line is therefore deliberate: preserve the red
-work directories and logs; begin by resolving and checking the clean branch
-tip; then make one new standalone source clone and one new empty work directory
-for the candidate-native author run. Do not reuse a prior source or work path,
-do not invoke the wrapper from a different checkout, and do not infer a pass
-from the preflight suite.
+The stop line is deliberate: preserve the red source, work directory, backing
+image, and logs; freeze and review the narrow proof-test repair; then obtain the
+owner's disposition before launching another privileged 8 GiB attempt. If the
+owner directs `repair and rerun`, use one new standalone source clone and one
+new empty work directory. Do not reuse a prior source or work path, do not
+invoke the wrapper from a different checkout, and do not infer a pass from the
+preflight suite.
 
 A fresh agent must not infer active work from an old remote branch. The
 repository intentionally retains evidence branches and annotated tags. Check
@@ -117,8 +112,8 @@ source, compiled plan, signatures, browser receipt, and pixels entered unchanged
 | Game adoption | not authorized; thesis applies to no game | decision 0019 |
 | Mortal Estate presentation evidence | bounded prerequisite evidence complete; no adoption | decisions 0022 and 0023 evidence |
 | R2 observed-scene presentation epoch | revision 3 in force; R2-1 and R2-2 landed; epoch not admitted | `R2.md`, decisions 0023–0025 |
-| R2 final evidence | issue #199 has one retained formal red attempt; no passing author proof | issue #199, branch `feat/issue-199-r2-final` |
-| Current queue | verify and freeze the duplicate-target plus outer-binding repair, then run one fresh candidate-native XFS author proof | this handoff and `R2.md` sections 9 and 11 |
+| R2 final evidence | issue #199 has two retained formal red attempts; no passing author proof | issue #199, branch `feat/issue-199-r2-final` |
+| Current queue | freeze the descriptor-TMPDIR proof-test repair, then await owner disposition before any fresh candidate-native XFS author proof | this handoff and `R2.md` sections 9 and 11 |
 
 ## Current local verification
 
@@ -135,16 +130,17 @@ Immediately before this handoff commit, the revision-3 working bytes passed:
   dynamic-source-path and source-only function-analysis exemptions.
 
 The source-provenance register SHA-256 for these implementation bytes is
-`e4a246d353b6d3cc7609e44e9a76b0759a0c3b091977cf35138aff12732ac0d2`.
+`61ab821b9ecd7bc5089d7881555054eb669f51faf461e8b56d67a6a038baabee`.
 These were local pre-freeze checks and are not a formal author result. Rerun
 them from the clean committed tip before provisioning XFS.
 
 The latest retained formal-red work is
-`/data/dev/src/nomos-r2-xfs-run.dm2G1G`, with its standalone source at
-`/data/dev/src/nomos-r2-candidate.juNVZP`. The backing image and exported inner
-evidence remain useful red evidence but are no longer attached or mounted.
-Earlier red paths and their digests are recorded in the revision-3 author
-receipt; do not relabel or reuse them.
+`/data/dev/src/nomos-r2-xfs-run.Jdiqqw`, with its standalone source at
+`/data/dev/src/nomos-r2-candidate.LkM8y6`. Its backing image and logs remain red
+evidence but are no longer attached or mounted. The reproducing diagnostic is
+retained at `/data/dev/src/nomos-r2-xfs-diagnostic.NfZfVd`. Earlier red paths
+and all decisive digests are recorded in the revision-3 author receipt; do not
+relabel or reuse them.
 
 The accepted R1 surface consists of:
 
@@ -437,11 +433,13 @@ Decision 0023 authorizes the R2 epoch boundary and nothing past its stated
 order. `R2.md` revision 3 defines exact acceptance, finite input and output
 grammars, ownership, workspace boundaries, budgets, and proof. R2-1 and R2-2
 are complete after PR #198. Issue #199 is already the authorized final-evidence
-slice; do not open a replacement issue. Continue with exact-head preflight and
-one fresh candidate-native XFS author run. If it passes, obtain the required
-exact-head non-author proof and owner visual judgment, then stop for the
-owner's explicit `accept`, `repair and rerun`, or `stop` R2 verdict and a
-distinct merge disposition.
+slice; do not open a replacement issue. Freeze and independently review the
+current narrow repair, then stop for the owner's disposition of the retained
+formal red. Only an owner-directed `repair and rerun` authorizes one fresh
+candidate-native XFS author run. If that passes, obtain the required exact-head
+non-author proof and owner visual judgment, then stop for the owner's explicit
+`accept`, `repair and rerun`, or `stop` R2 verdict and a distinct merge
+disposition.
 
 A deeper adopter boundary, platform choice, Gate K attempt, R2 scope expansion,
 or adoption into a game requires its own owner decision. Work toward an actual

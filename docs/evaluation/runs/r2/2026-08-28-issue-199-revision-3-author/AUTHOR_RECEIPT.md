@@ -92,11 +92,11 @@ along with other unchanged evaluation sources, remain bound to their existing
 historical producing receipts. This receipt is not used to reattribute those
 bytes.
 
-## Revision-3 development rehearsals retained as red
+## Revision-3 development and formal attempts retained as red
 
-Two local rehearsal runs predate the next frozen candidate. They are retained
-as failure evidence and do not satisfy any author-proof, non-author, CI, owner
-judgment, or acceptance requirement.
+The attempts below are retained as failure evidence. None satisfies a passing
+author proof, non-author proof, CI result, owner judgment, or acceptance
+requirement.
 
 - Candidate `2f2c27c40241621c934844f9b087b6069ac04d78`, tree
   `2a054de5477874721cde10797f4aa8b26d39d87c`, source
@@ -223,6 +223,36 @@ judgment, or acceptance requirement.
   and the unrelated `/dev/loop0` was untouched. This attempt remains red; its
   source, work directory, backing image, export, logs, and wrapper metadata are
   retained and may not satisfy the next candidate's proof.
+- Candidate `a0218893da0e80e50e51e0d510e7190581798cc5`, tree
+  `3198a895e477d700643ef51a066715b4d0febad3`, source
+  `/data/dev/src/nomos-r2-candidate.LkM8y6`, work
+  `/data/dev/src/nomos-r2-xfs-run.Jdiqqw`: the next candidate-native formal
+  attempt fully allocated the 8,192 MiB image, attached `/dev/loop1`, formatted
+  and mounted XFS, then stopped before ordered command 1 and before formal
+  Bubblewrap entry because the outer XFS shell-validation suite exited 1 with
+  empty stdout and stderr. The wrapper's retained `TMPDIR` spelling was
+  `/proc/self/fd/11/user-env/tmp`; `mktemp` preserved that spelling in the test
+  fixture, while the receipt helper correctly published canonical source and
+  destination paths. An unguarded `jq -e` compared those two spellings and
+  failed silently under `set -e`. The retained diagnostic xtrace at
+  `/data/dev/src/nomos-r2-xfs-diagnostic.NfZfVd/descriptor-tmp.xtrace` has
+  SHA-256
+  `54595a188e3c07ef3d735fa201f81935f0fe59987f403e1044c68fc334f0c885`.
+  This is a proof-test fixture assumption, not an XFS-accounting, browser,
+  workload, or budget result. The wrapper receipt SHA-256 is
+  `668c7bc26a83f18236b4b1eed642a052e13a158e9f423ee9d46bb090c7110370`;
+  supervisor-facts SHA-256 is
+  `9c122c0cbcd8a134ce5f8cadef06dbbb9457a88ac247e43cf9598f4365ac985c`;
+  retained proof stderr SHA-256 is
+  `6d00c86ca42b372b620e7dae41b28c723f98185beeb64c55b6a12dae89cc0db0`;
+  and host-monitor SHA-256 is
+  `a429965af2ae8a2f4bd6a974a640d74df1877fb980895e6cecc3eb33e01528a5`.
+  Cleanup unmounted and detached the proof filesystem, the host monitor was
+  clean, and the before/after loop inventories were byte-identical at SHA-256
+  `e951f122f209cb4a215522a5b5e708d1a855da1e65e9aedfa014b849f4be6a74`.
+  They contain only the unrelated, untouched `/dev/loop0`. The source, work,
+  backing image, logs, and wrapper metadata remain preserved and may not be
+  reused for another candidate.
 
 ## Clean-room and adopter boundary
 

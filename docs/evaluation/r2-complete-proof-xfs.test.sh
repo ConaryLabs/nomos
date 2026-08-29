@@ -59,7 +59,27 @@ if grep -Fq 'chmod 0733' "$wrapper"; then
   printf 'wrapper temporarily reopens caller top-level write authority\n' >&2
   exit 1
 fi
-test_root=$(mktemp -d "${TMPDIR:-/tmp}/nomos-r2-xfs-shell-test.XXXXXX")
+# The formal outer proof deliberately spells TMPDIR through a retained
+# descriptor. Recreate that topology on every standalone run, then canonicalize
+# the fixture root once so canonical-path guards and receipt expectations do not
+# accidentally compare a /proc spelling with the helper's realpath result.
+test_tmp_parent=${TMPDIR:-/tmp}
+exec {test_tmp_fd}<"$test_tmp_parent" || fail 'could not retain the shell-test temporary parent'
+test_root_spelling=$(/usr/bin/mktemp -d "/proc/self/fd/$test_tmp_fd/nomos-r2-xfs-shell-test.XXXXXX") || {
+  exec {test_tmp_fd}<&-
+  fail 'could not create the shell-test fixture through its retained descriptor'
+}
+test_root=$(/usr/bin/realpath -e -- "$test_root_spelling") || {
+  /usr/bin/rm -rf -- "$test_root_spelling"
+  exec {test_tmp_fd}<&-
+  fail 'could not canonicalize the descriptor-spelled shell-test fixture'
+}
+[[ -d $test_root && ! -L $test_root && $test_root != "$test_root_spelling" ]] || {
+  /usr/bin/rm -rf -- "$test_root_spelling"
+  exec {test_tmp_fd}<&-
+  fail 'descriptor-spelled shell-test fixture did not resolve to one real directory'
+}
+exec {test_tmp_fd}<&-
 trap 'rm -rf -- "$test_root"' EXIT
 
 # The outer preflight is the union of every tool the inner proof can execute
@@ -147,16 +167,19 @@ set -e
 receipt_cli_root=$test_root/receipt-cli
 mkdir -p -- "$receipt_cli_root/source" "$receipt_cli_root/export/target"
 printf 'descriptor CLI\n' >"$receipt_cli_root/source/value"
+receipt_cli_canonical=$(/usr/bin/realpath -e -- "$receipt_cli_root") ||
+  fail 'could not canonicalize the descriptor CLI fixture'
 exec {receipt_cli_fd}<"$receipt_cli_root"
 receipt_cli_descriptor=/proc/self/fd/$receipt_cli_fd
 /usr/bin/node "/proc/self/fd/$receipt_entry_fd/r2-complete-proof-xfs-receipt.mjs" copy \
   --source "$receipt_cli_descriptor/source" \
   --destination "$receipt_cli_descriptor/export/target/r2-complete-proof" \
   --output "$receipt_cli_descriptor/inventory.json" >"$receipt_cli_root/copy.stdout"
-/usr/bin/jq -e --arg source "$receipt_cli_root/source" \
-  --arg destination "$receipt_cli_root/export/target/r2-complete-proof" \
+/usr/bin/jq -e --arg source "$receipt_cli_canonical/source" \
+  --arg destination "$receipt_cli_canonical/export/target/r2-complete-proof" \
   '.source == $source and .destination == $destination and .equal == true' \
-  "$receipt_cli_root/inventory.json" >/dev/null
+  "$receipt_cli_root/inventory.json" >/dev/null ||
+  fail 'descriptor CLI inventory did not publish canonical paths'
 /usr/bin/cmp "$receipt_cli_root/source/value" \
   "$receipt_cli_root/export/target/r2-complete-proof/value"
 exec {receipt_cli_fd}<&-

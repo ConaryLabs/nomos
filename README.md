@@ -177,10 +177,13 @@ runtime epoch, Gate K attempt, or game adoption requires a new owner decision.
 
 Decision 0023 is the narrow exception for the observed-scene R2 epoch. R2-1 and
 R2-2 are complete, and issue #199 is the active final-evidence-and-disposition
-slice required by `R2.md` section 11. At this snapshot its next action is an
-exact-head preflight followed by a fresh candidate-native revision-3 XFS author
-run. A pass must still receive an exact-head non-author rerun and stop for the
-owner's visual and R2 verdicts. Do not start a later epoch from this branch.
+slice required by `R2.md` section 11. Its latest candidate-native revision-3
+XFS author attempt is retained red. Freeze and review the narrow proof-test
+repair, then stop for owner disposition before any retry. Only an owner-directed
+`repair and rerun` proceeds through exact-head preflight and one fresh XFS author
+run. A pass must still receive the contract-required exact-head non-author rerun
+and stop for the owner's visual and R2 verdicts. Do not start a later epoch from
+this branch.
 
 Nomos is authority only for this repository. Nothing here becomes authority for
 another project without that project's own explicit decision.
