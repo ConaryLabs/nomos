@@ -1,9 +1,9 @@
 # Nomos handoff
 
-Status snapshot: 2026-08-31, after the owner stopped R2 and authorized one
-separately scoped look-kernel experiment. This file is an operational map;
-owner decisions and revisioned contracts remain the authority when prose
-conflicts.
+Status snapshot: 2026-08-31, after decision 0027 landed, R2's stopped records
+were closed without merge, and issue #205 became the only authorized capability
+work. This file is an operational map; owner decisions and revisioned contracts
+remain the authority when prose conflicts.
 
 **Play the accepted six-area viewer:** <https://conarylabs.github.io/nomos/>
 
@@ -86,8 +86,8 @@ is not an active acceptance line.
 | Game adoption | not authorized; thesis applies to no game | decision 0019 |
 | Mortal Estate presentation evidence | bounded prerequisite evidence complete; no adoption | decisions 0022 and 0023 evidence |
 | R2 observed-scene presentation epoch | stopped and unadmitted after visual-family rejection | decision 0027; PRs #196, #198, and unmerged #201 |
-| Look-kernel experiment | issue #205 freezes the boundary; blocked until decision 0027 lands | decision 0027, issue #205 |
-| Current queue | land decision 0027; issue #205 is the only next capability slice | GitHub issues and PRs, decision 0027 |
+| Look-kernel experiment | authorized but not begun; issue #205 is ready for a feature branch | decision 0027, issue #205 |
+| Current queue | issue #205 is the only authorized capability slice | GitHub issues and PRs, decision 0027 |
 
 The accepted R1 surface consists of:
 
@@ -303,16 +303,14 @@ gh pr list --state open
 gh run list --branch main --limit 8
 ```
 
-Expected state while decision 0027 is under review: issue #204 and its draft
-decision pull request are open; historical R2 issue #199 and draft PR #201, and
-the superseded direction issue #202 and draft PR #203, remain open until the
-decision lands. Do not merge or cherry-pick them. After the decision lands,
-close or supersede those records explicitly. Look-kernel issue #205 remains
-blocked until that merge. Unrelated repository-transfer issue #200 remains
-open.
-Pages retains its last applicable successful run when its path filter does not
-select the decision change. Old remote heads may still exist; they do not
-override owner decisions or the open issue and pull-request lists.
+Expected steady state after this handoff update merges: clean `main`; open issue
+#205 as the only authorized capability work; unrelated repository-transfer
+issue #200; and no open pull request. Issue #204 and PR #206 are complete. R2
+issue #199 and PR #201 are closed as stopped and unmerged, with PR #201's exact
+branch preserved. Direction-pause issue #202 and PR #203 are superseded and
+closed. Pages retains its last applicable successful run when its path filter
+does not select the documentation change. Old remote heads may still exist;
+they do not override owner decisions or the open issue and pull-request lists.
 
 ## What can happen next
 
@@ -324,11 +322,11 @@ or infer authority from its unmerged contract records. Root `R2.md` remains
 frozen historical revision-1 contract text; decision 0027 supplies its closed
 disposition without rewriting it.
 
-After decision 0027 lands, the next capability slice is issue #205's separately
-falsifiable look-kernel experiment. It must remain under `experiments/`,
-use one frozen executable visual kit, give cold authors content-only controls,
-compile deterministically, show one reference and two independently authored
-scenes at actual play size, and stop for the owner's frame-by-frame verdict.
+The next capability slice is issue #205's separately falsifiable look-kernel
+experiment. It must remain under `experiments/`, use one frozen executable
+visual kit, give cold authors content-only controls, compile deterministically,
+show one reference and two independently authored scenes at actual play size,
+and stop for the owner's frame-by-frame verdict.
 The experiment may fail cleanly; failure is evidence, not permission to weaken
 the bar or smuggle machinery changes into scene content.
 

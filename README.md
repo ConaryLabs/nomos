@@ -28,7 +28,7 @@ line, and operational gotchas.
 | Game adoption | not authorized |
 | Mortal Estate evidence | bounded evidence produced one admitted dependency point, representative frame, and classified capability gap; no integration or adoption |
 | R2 observed-scene epoch | stopped unadmitted under decision 0027 after the exact final-evidence visual family was owner-rejected |
-| Look-kernel experiment | issue #205 is blocked until decision 0027 lands; implementation has not begun |
+| Look-kernel experiment | authorized under decision 0027; issue #205 is ready for a feature branch; implementation has not begun |
 
 R1 is the accepted runtime baseline for this repository. That result does not
 rewrite Gate K, pass a later gate, approve production art, or authorize Nomos
@@ -172,8 +172,9 @@ and follows [AGENTS.md](AGENTS.md). A new capability family, dependency policy,
 runtime epoch, Gate K attempt, or game adoption requires a new owner decision.
 
 Decision 0027 stops the observed-scene R2 epoch. No R2 repair, rerun, or merge
-is active. After decision 0027 lands, the next authorized capability action is
-issue #205's separately falsifiable quarantined look-kernel experiment.
+is active. Decision 0027 landed through PR #206; the next authorized capability
+action is issue #205's separately falsifiable quarantined look-kernel
+experiment.
 That experiment must test actual-play-size visual coherence from one frozen
 executable kit with one reference scene and two content-only cold-authored
 scenes. It cannot satisfy acceptance or authorize another project.
