@@ -1,6 +1,8 @@
 # Agent guide
 
 Read [README.md](README.md), then [docs/HANDOFF.md](docs/HANDOFF.md), then
+[docs/decisions/0027-stop-r2-authorize-look-kernel-experiment.md](docs/decisions/0027-stop-r2-authorize-look-kernel-experiment.md),
+then
 [docs/decisions/0019-r1-final-disposition.md](docs/decisions/0019-r1-final-disposition.md),
 then [docs/decisions/0022-mortal-estate-presentation-adoption-evidence.md](docs/decisions/0022-mortal-estate-presentation-adoption-evidence.md),
 then [docs/decisions/0021-runtime-revision-4.md](docs/decisions/0021-runtime-revision-4.md),
@@ -10,6 +12,13 @@ under `docs/decisions/`.
 
 Nomos is the project/runtime; The Signed World is the thesis it tests. Nothing
 here is authority for any other project.
+
+R2 is stopped under decision 0027. Its landed carrier/compiler and viewer remain
+unadmitted evidence and are not an active work line. The only authorized next
+capability work is one separately falsifiable, Nomos-only quarantined
+look-kernel experiment under issue #205 after decision 0027 lands. No Mortal
+Estate integration, R2 repair, or accepted implementation may be inferred from
+that authority.
 
 ## Working rules
 

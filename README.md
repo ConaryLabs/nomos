@@ -26,8 +26,9 @@ line, and operational gotchas.
 | R1 runtime epoch | all five criteria passed; accepted and closed under decision 0019 |
 | R1 contract | `RUNTIME.md` revision 4, in force under decision 0021 |
 | Game adoption | not authorized |
-| Mortal Estate evidence | bounded evidence produced one admitted dependency point, representative frame, and classified capability gap |
-| R2 observed-scene epoch | revision 1 authorized; R2-1 and R2-2 implementation targets complete; final evidence and disposition remain |
+| Mortal Estate evidence | bounded evidence produced one admitted dependency point, representative frame, and classified capability gap; no integration or adoption |
+| R2 observed-scene epoch | stopped unadmitted under decision 0027 after the exact final-evidence visual family was owner-rejected |
+| Look-kernel experiment | issue #205 is blocked until decision 0027 lands; implementation has not begun |
 
 R1 is the accepted runtime baseline for this repository. That result does not
 rewrite Gate K, pass a later gate, approve production art, or authorize Nomos
@@ -39,13 +40,15 @@ The Mortal Estate. That program admitted an immutable R1 dependency point,
 recorded a representative adopter frame, and reduced its presentation gap to an
 adopter-neutral fixture classified `reusable missing Nomos capability`.
 
-Decision 0023 opens one narrow R2 observed-scene presentation epoch from that
-evidence. The separately reviewed root contract `R2.md` revision 1 is
-owner-authorized. R2-1's strict carrier and compiler landed at
-`cc47a7235f92d0ed460c7db5d178448b12fdba02`; R2-2 adds the isolated offline
-consumer and hash-frozen independent second-scene evidence through PR #198.
-R2 is not admitted until its separately authorized final evidence and owner
-disposition target passes. No platform choice or game adoption is authorized.
+Decision 0023 opened one narrow R2 observed-scene presentation epoch from that
+evidence. R2-1's strict carrier and compiler landed at
+`cc47a7235f92d0ed460c7db5d178448b12fdba02`; R2-2 added the isolated offline
+consumer and hash-frozen independent second scene through PR #198. The exact
+draft final-evidence candidate on PR #201 passed its applicable proofs, but the
+owner rejected its committed visual family. Decision 0027 therefore stops R2
+unadmitted, preserves the landed and unmerged evidence, and authorizes one
+future quarantined look-kernel experiment focused on deterministic coherent
+visual authorship. No platform choice or game adoption is authorized.
 
 The implementation includes:
 
@@ -59,9 +62,9 @@ The implementation includes:
 - `apps/nomos-viewer`, an accepted offline viewer with vendored Three.js,
   strict decoders, scanned artifacts, native/browser session identity, and a
   bounded headless-Chromium proof; plus
-- the unadmitted R2 `nomos-observed-scene` carrier/compiler and isolated
+- the stopped, unadmitted R2 `nomos-observed-scene` carrier/compiler and isolated
   `apps/nomos-observed-viewer`, with strict render-only decoding and two-scene
-  offline browser evidence awaiting the R2 final disposition.
+  offline browser evidence retained after the rejected final visual verdict.
 
 The proof corpus connects six independently authored areas from the
 quarantined executable-gaol study through one route. Two were cold-authored
@@ -109,31 +112,33 @@ The browser lane requires Node 22 or newer and Chrome/Chromium; set
 `CHROME_BIN` when discovery cannot find the binary. See
 [docs/HANDOFF.md](docs/HANDOFF.md) for complete setup and worktree rules.
 
-Run the R2-2 checks and two-scene browser proof with the commands recorded in
-the handoff. They require no npm installation and reuse only the accepted,
-digest-checked Three.js bytes.
+The handoff retains the historical R2-2 commands so its evidence remains
+auditable. Decision 0027 stops that acceptance line; do not launch a new R2
+proof or repair run.
 
 ## Read in this order
 
 1. [docs/HANDOFF.md](docs/HANDOFF.md) — current state, fresh-box setup, stop
    line, and next authorized action.
-2. [decision 0019](docs/decisions/0019-r1-final-disposition.md) — final R1
+2. [decision 0027](docs/decisions/0027-stop-r2-authorize-look-kernel-experiment.md)
+   — final R2 stop and the bounded look-kernel experiment authority.
+3. [decision 0019](docs/decisions/0019-r1-final-disposition.md) — final R1
    verdict, evidence boundary, and no-adoption disposition.
-3. [decision 0022](docs/decisions/0022-mortal-estate-presentation-adoption-evidence.md)
+4. [decision 0022](docs/decisions/0022-mortal-estate-presentation-adoption-evidence.md)
    — bounded Mortal Estate evidence authority and upstream-admission stop line.
-4. [decision 0023](docs/decisions/0023-observed-scene-presentation-epoch.md)
+5. [decision 0023](docs/decisions/0023-observed-scene-presentation-epoch.md)
    — narrow R2 authority, semantic boundary, target order, and stop line.
-5. [THESIS.md](THESIS.md) — the exploratory architecture and adoption bars.
-6. [KERNEL.md](KERNEL.md) — frozen Gate K revision 7 contract.
-7. [RUNTIME.md](RUNTIME.md) — accepted R1 revision 4 contract.
-8. [decision 0021](docs/decisions/0021-runtime-revision-4.md) — revision 4's
+6. [THESIS.md](THESIS.md) — the exploratory architecture and adoption bars.
+7. [KERNEL.md](KERNEL.md) — frozen Gate K revision 7 contract.
+8. [RUNTIME.md](RUNTIME.md) — accepted R1 revision 4 contract.
+9. [decision 0021](docs/decisions/0021-runtime-revision-4.md) — revision 4's
    lifecycle-history repair after R1 closed.
-9. [decision 0020](docs/decisions/0020-runtime-revision-3.md) — revision 3's
+10. [decision 0020](docs/decisions/0020-runtime-revision-3.md) — revision 3's
    exact comparison-count repair.
-10. [decision 0013](docs/decisions/0013-gate-k-disposition.md) and
+11. [decision 0013](docs/decisions/0013-gate-k-disposition.md) and
    [decision 0016](docs/decisions/0016-terminate-gate-k-round-two.md) — the
    historical Gate K dispositions.
-11. [docs/workspace.md](docs/workspace.md) — crate map and dependency boundary.
+12. [docs/workspace.md](docs/workspace.md) — crate map and dependency boundary.
 
 Subsystem designs and receipts live under `docs/review/` and
 `docs/evaluation/`. The large `docs/evaluation/runs/` archive and `gate-k-*`
@@ -166,12 +171,12 @@ remote branches do not. Ordinary maintenance begins with a falsifiable issue
 and follows [AGENTS.md](AGENTS.md). A new capability family, dependency policy,
 runtime epoch, Gate K attempt, or game adoption requires a new owner decision.
 
-Decision 0023 is the narrow exception for the observed-scene R2 epoch. With
-R2-1 and R2-2 complete, the next authorized action is the separately
-falsifiable R2 final-evidence-and-disposition issue required by `R2.md`
-section 11. It must bind one combined candidate, run the complete
-network-isolated proof, obtain an exact-head non-author rerun, and stop for the
-owner's R2 verdict.
+Decision 0027 stops the observed-scene R2 epoch. No R2 repair, rerun, or merge
+is active. After decision 0027 lands, the next authorized capability action is
+issue #205's separately falsifiable quarantined look-kernel experiment.
+That experiment must test actual-play-size visual coherence from one frozen
+executable kit with one reference scene and two content-only cold-authored
+scenes. It cannot satisfy acceptance or authorize another project.
 
 Nomos is authority only for this repository. Nothing here becomes authority for
 another project without that project's own explicit decision.
